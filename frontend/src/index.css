@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 设计令牌 ===== */
+:root {
+  --primary-color: #4f46e5;
+  --primary-light: #818cf8;
+  --primary-dark: #4338ca;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f8fafc;
+  color: #334155;
+}
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ===== 选中样式 ===== */
+::selection {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* ===== 卡片悬浮效果 ===== */
+.card-hover {
+  transition: box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0,0,0,0.02);
+}
+
+/* ===== 聊天气泡 ===== */
+.chat-bubble-user {
+  background: #4f46e5;
+  color: white;
+  border-radius: 18px 18px 4px 18px;
+}
+.chat-bubble-ai {
+  background: #f8fafc;
+  color: #1e293b;
+  border-radius: 18px 18px 18px 4px;
+  border: 1px solid #f1f5f9;
+}
+
+/* ===== 骨架屏 ===== */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 0.5rem;
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ===== 玻璃拟态 ===== */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ===== 输入框聚焦光晕 ===== */
+.input-glow:focus-within {
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  border-color: #a5b4fc;
+}
+
+/* ===== 页面进入动画延迟类 ===== */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* ===== 代码块 ===== */
+code {
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* ===== Ant Design 覆盖 ===== */
+.ant-menu-item-selected {
+  background: rgba(79, 70, 229, 0.08) !important;
+  color: #4f46e5 !important;
+  font-weight: 600;
+  border-radius: 0 10px 10px 0;
+  margin-right: 12px;
+}
+.ant-menu-item:hover {
+  border-radius: 0 10px 10px 0;
+  margin-right: 12px;
+}
+.ant-card {
+  border-radius: var(--radius-lg) !important;
+}
+.ant-btn-primary {
+  transition: all 0.2s ease;
+}
+.ant-btn-primary:hover {
+  filter: brightness(1.05);
+}
+.ant-progress-inner {
+  border-radius: 100px !important;
+}
+.ant-progress-bg {
+  border-radius: 100px !important;
+}
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+  body {
+    background-image: none;
+  }
+}

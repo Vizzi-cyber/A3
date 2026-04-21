@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+    container_name: ai-learning-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=false
+      - DATABASE_URL=sqlite:///./ai_learning.db
+      - SPARK_APP_ID=${SPARK_APP_ID}
+      - SPARK_API_KEY=${SPARK_API_KEY}
+      - SPARK_API_SECRET=${SPARK_API_SECRET}
+    volumes:
+      - ./backend/.env:/app/backend/.env:ro
+      - backend_static:/app/backend/static
+    networks:
+      - ai-learning-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+    container_name: ai-learning-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ai-learning-network
+    restart: unless-stopped
+
+  # 可选：PostgreSQL 数据库
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: ai-learning-db
+  #   environment:
+  #     POSTGRES_USER: user
+  #     POSTGRES_PASSWORD: password
+  #     POSTGRES_DB: ai_learning
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - ai-learning-network
+  #   restart: unless-stopped
+
+  # 可选：Redis 缓存
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ai-learning-redis
+  #   networks:
+  #     - ai-learning-network
+  #   restart: unless-stopped
+
+networks:
+  ai-learning-network:
+    driver: bridge
+
+volumes:
+  backend_static:
+  # postgres_data:
