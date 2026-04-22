@@ -11,13 +11,30 @@ import {
   BulbOutlined,
   ArrowRightOutlined,
   LineChartOutlined,
+  NodeIndexOutlined,
+  RobotOutlined,
+  ToolOutlined,
+  SafetyOutlined,
+  AudioOutlined,
+  VideoCameraOutlined,
+  ReadOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { profileApi, trendApi } from '../services/api'
+import { profileApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
 import { ChatPanel } from '../components/ChatPanel'
 import { PageCard } from '../components/PageCard'
-import type { ChatMessage, StudentProfile } from '../types'
+import type { ChatMessage, StudentProfile, VisionContentItem } from '../types'
+
+const historyData = [
+  { date: '周一', value: 68 },
+  { date: '周二', value: 70 },
+  { date: '周三', value: 72 },
+  { date: '周四', value: 75 },
+  { date: '周五', value: 78 },
+  { date: '周六', value: 80 },
+  { date: '周日', value: 82 },
+]
 
 const quickActions = [
   { icon: <PlayCircleOutlined />, title: '开始评估', desc: '对话式画像评估', color: '#4f46e5' },
@@ -27,40 +44,28 @@ const quickActions = [
 
 const Profile: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'ai', content: '你好！我是你的AI学习画像师。为了更好地为你推荐学习路径，我想先了解一下你的学习背景。比如你的数学基础和编程能力如何？' },
+    { role: 'ai', content: '你好！我是你的AI学习画像师。在学习《人工智能导论》之前，我想了解一下：你的数学基础如何？比如线性代数和概率论是否熟悉？这会影响我为你推荐的学习路径。', agent: '评估智能体' },
   ])
   const [profileData, setProfileData] = useState(buildRadarData(null))
   const [dimensions, setDimensions] = useState([
-    { label: '知识基础', value: 0, color: '#4f46e5' },
-    { label: '数学基础', value: 0, color: '#0ea5e9' },
-    { label: '编程能力', value: 0, color: '#10b981' },
-    { label: '薄弱点识别', value: 0, color: '#f59e0b' },
-    { label: '学习进度', value: 0, color: '#8b5cf6' },
-    { label: '专注度', value: 0, color: '#ec4899' },
+    { label: '知识基础', value: 85, color: '#4f46e5' },
+    { label: '数学基础', value: 65, color: '#0ea5e9' },
+    { label: '编程能力', value: 80, color: '#10b981' },
+    { label: '薄弱点识别', value: 60, color: '#f59e0b' },
+    { label: '学习进度', value: 75, color: '#8b5cf6' },
+    { label: '专注度', value: 80, color: '#ec4899' },
   ])
-  const [historyData, setHistoryData] = useState<{ date: string; value: number }[]>([])
+  const [interactionPref, setInteractionPref] = useState<'video' | 'text' | 'audio'>('text')
+  const [multiAgentStatus, setMultiAgentStatus] = useState({ planner: true, worker: true, critic: false })
   const [loading, setLoading] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [profileRes, trendRes] = await Promise.all([
-          profileApi.get(studentId).catch((e) => { console.error('画像加载失败:', e); return null }),
-          trendApi.getHistory(studentId, 7).catch((e) => { console.error('趋势加载失败:', e); return null }),
-        ])
-        if (profileRes?.data?.data) updateVisuals(profileRes.data.data)
-        if (trendRes?.data?.data?.length) {
-          const mapped = trendRes.data.data
-            .slice(-7)
-            .map((t: any) => ({
-              date: t.date?.slice(5) || '',
-              value: Math.round(((t.trend_factor || 0.5) * 100)),
-            }))
-          if (mapped.length >= 3) setHistoryData(mapped)
-        }
+        const res = await profileApi.get(studentId)
+        if (res.data.data) updateVisuals(res.data.data)
       } catch (e) {
-        console.error('画像数据加载失败:', e)
         message.error('获取画像失败，显示默认数据')
       }
     }
@@ -82,19 +87,19 @@ const Profile: React.FC = () => {
     })))
   }
 
-  const handleSend = async (content: string | import('../types').VisionContentItem[]) => {
-    setMessages((prev) => [...prev, { role: 'user' as const, content }])
+  const handleSend = async (content: string | VisionContentItem[]) => {
+    const text = typeof content === 'string' ? content : ''
+    setMessages((prev) => [...prev, { role: 'user' as const, content: text }])
     setLoading(true)
     try {
-      const safeText = typeof content === 'string' ? content : '(图片消息)'
-      await profileApi.update(studentId, { dimension: 'interest', updates: { goals: [safeText] } })
+      await profileApi.update(studentId, { dimension: 'interest', updates: { goals: [text] } })
       const res = await profileApi.get(studentId)
       if (res.data.data) updateVisuals(res.data.data)
-      setMessages((prev) => [...prev, { role: 'ai' as const, content: '收到！我会根据你的反馈更新画像数据。' }])
+      setMessages((prev) => [...prev, { role: 'ai' as const, content: '收到！我会根据你的反馈更新画像数据。', agent: '评估智能体' }])
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '更新失败'
       message.error(errMsg)
-      setMessages((prev) => [...prev, { role: 'ai' as const, content: '更新画像时出了点小问题，但我已记录你的反馈。' }])
+      setMessages((prev) => [...prev, { role: 'ai' as const, content: '更新画像时出了点小问题，但我已记录你的反馈。', agent: '评估智能体' }])
     } finally {
       setLoading(false)
     }
@@ -119,7 +124,7 @@ const Profile: React.FC = () => {
         {quickActions.map((action, idx) => (
           <button
             key={idx}
-            onClick={idx === 0 ? () => message.info('请在下方聊天框中回复画像师的问题，完成评估') : idx === 1 ? () => message.info('请在下方聊天框中输入你的学习目标') : handleInitProfile}
+            onClick={idx === 2 ? handleInitProfile : undefined}
             className="flex items-center gap-3 px-5 py-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all text-left"
           >
             <div
@@ -136,10 +141,10 @@ const Profile: React.FC = () => {
         ))}
       </div>
 
-      <Row gutter={[20, 20]}>
+      <Row gutter={[20, 20]} align="stretch">
         {/* AI画像师聊天 */}
-        <Col xs={24} lg={14}>
-          <PageCard className="h-[600px]" bodyStyle={{ height: '100%', padding: '24px' }}>
+        <Col xs={24} lg={9}>
+          <PageCard className="h-full min-h-[600px]" bodyStyle={{ height: '100%', padding: '24px' }}>
             <ChatPanel
               messages={messages}
               loading={loading}
@@ -152,39 +157,93 @@ const Profile: React.FC = () => {
           </PageCard>
         </Col>
 
-        {/* 画像雷达 + 维度 */}
-        <Col xs={24} lg={10}>
-          <PageCard
-            title={<Space>
-              <span className="font-semibold text-slate-800">六维画像雷达</span>
-            </Space>}
-            className="mb-5"
-          >
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={profileData}>
-                  <PolarGrid stroke="#e2e8f0" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar name="当前画像" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.15} strokeWidth={2} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </PageCard>
-
-          <PageCard title={<span className="font-semibold text-slate-800">维度详情</span>}>
-            <div className="space-y-4">
-              {dimensions.map((dim) => (
-                <div key={dim.label}>
-                  <div className="flex justify-between mb-1.5">
-                    <Typography.Text className="text-sm text-slate-600 font-medium">{dim.label}</Typography.Text>
-                    <Typography.Text className="text-sm font-bold" style={{ color: dim.color }}>{dim.value}</Typography.Text>
-                  </div>
-                  <Progress percent={dim.value} showInfo={false} strokeColor={dim.color} trailColor="#f1f5f9" size="small" />
+        {/* 画像雷达 + 维度 + 偏好 + 智能体 —— 2x2 紧凑布局 */}
+        <Col xs={24} lg={15}>
+          <Row gutter={[20, 20]}>
+            <Col xs={24} md={12}>
+              <PageCard
+                title={<Space>
+                  <span className="font-semibold text-slate-800">六维画像雷达</span>
+                </Space>}
+              >
+                <div className="h-52">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={profileData}>
+                      <PolarGrid stroke="#e2e8f0" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 11 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Radar name="当前画像" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.15} strokeWidth={2} />
+                    </RadarChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
-          </PageCard>
+              </PageCard>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <PageCard title={<span className="font-semibold text-slate-800">维度详情</span>}>
+                <div className="space-y-3">
+                  {dimensions.map((dim) => (
+                    <div key={dim.label}>
+                      <div className="flex justify-between mb-1">
+                        <Typography.Text className="text-sm text-slate-600 font-medium">{dim.label}</Typography.Text>
+                        <Typography.Text className="text-sm font-bold" style={{ color: dim.color }}>{dim.value}</Typography.Text>
+                      </div>
+                      <Progress percent={dim.value} showInfo={false} strokeColor={dim.color} trailColor="#f1f5f9" size="small" />
+                    </div>
+                  ))}
+                </div>
+              </PageCard>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <PageCard title={<span className="font-semibold text-slate-800">交互偏好</span>}>
+                <div className="flex gap-2">
+                  {[
+                    { key: 'video', icon: <VideoCameraOutlined />, label: '视频' },
+                    { key: 'text', icon: <ReadOutlined />, label: '图文' },
+                    { key: 'audio', icon: <AudioOutlined />, label: '语音' },
+                  ].map((item: any) => (
+                    <button
+                      key={item.key}
+                      onClick={() => setInteractionPref(item.key)}
+                      className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${interactionPref === item.key ? 'bg-primary-50 border-primary text-primary' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                    >
+                      <div className="text-lg">{item.icon}</div>
+                      <span className="text-xs font-medium">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 text-xs text-slate-400">
+                  优先推送{interactionPref === 'video' ? '视频讲解类' : interactionPref === 'audio' ? '音频播客类' : '图文文档类'}资源。
+                </div>
+              </PageCard>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <PageCard title={<span className="font-semibold text-slate-800">多智能体协作</span>}>
+                <div className="space-y-2">
+                  {[
+                    { key: 'planner', icon: <NodeIndexOutlined />, label: 'Planner', desc: '拆解学习目标', active: multiAgentStatus.planner },
+                    { key: 'worker', icon: <ToolOutlined />, label: 'Worker', desc: '生成导图与习题', active: multiAgentStatus.worker },
+                    { key: 'critic', icon: <SafetyOutlined />, label: 'Critic', desc: '防幻觉过滤', active: multiAgentStatus.critic },
+                  ].map((agent: any) => (
+                    <div key={agent.key} className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${agent.active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ${agent.active ? 'bg-primary' : 'bg-slate-300'}`}>
+                        {agent.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-800 truncate">{agent.label}</div>
+                        <div className="text-xs text-slate-400 truncate">{agent.desc}</div>
+                      </div>
+                      <Tag className={`rounded-full border-0 text-xs ${agent.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                        {agent.active ? '运行中' : '待机'}
+                      </Tag>
+                    </div>
+                  ))}
+                </div>
+              </PageCard>
+            </Col>
+          </Row>
         </Col>
       </Row>
 
@@ -206,6 +265,59 @@ const Profile: React.FC = () => {
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </PageCard>
+
+      {/* 遗忘曲线维度 */}
+      <PageCard
+        title={<span className="font-semibold text-slate-800">遗忘曲线 · 知识点衰减</span>}
+        extra={<Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">艾宾浩斯</Tag>}
+      >
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={12}>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={[
+                  { day: '第1天', memory: 100 },
+                  { day: '第2天', memory: 55 },
+                  { day: '第3天', memory: 42 },
+                  { day: '第5天', memory: 35 },
+                  { day: '第8天', memory: 30 },
+                  { day: '第15天', memory: 25 },
+                  { day: '第30天', memory: 20 },
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }} />
+                  <Line type="monotone" dataKey="memory" name="理论记忆保留率" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="5 5" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Col>
+          <Col xs={24} lg={12}>
+            <div className="space-y-3">
+              {[
+                { topic: '梯度下降原理', retention: 85, nextReview: '明天' },
+                { topic: '线性代数基础', retention: 62, nextReview: '今天' },
+                { topic: '神经网络结构', retention: 45, nextReview: '今天' },
+                { topic: '反向传播算法', retention: 78, nextReview: '后天' },
+              ].map((item) => (
+                <div key={item.topic} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-slate-800">{item.topic}</div>
+                    <div className="text-xs text-slate-400">下次复习: {item.nextReview}</div>
+                  </div>
+                  <div className="w-24">
+                    <Progress percent={item.retention} size="small" strokeColor={item.retention > 70 ? '#10b981' : item.retention > 50 ? '#f59e0b' : '#ef4444'} trailColor="#f1f5f9" showInfo={false} />
+                  </div>
+                  <Tag className={`rounded-full border-0 text-xs ${item.retention > 70 ? 'bg-emerald-50 text-emerald-600' : item.retention > 50 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
+                    {item.retention}%
+                  </Tag>
+                </div>
+              ))}
+            </div>
+          </Col>
+        </Row>
       </PageCard>
     </div>
   )

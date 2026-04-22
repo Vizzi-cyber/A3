@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
   Typography, Card, Button, Input, Space, Tabs, Tag, Collapse,
-  FloatButton, message, Spin, Tooltip, Badge, Modal, Empty
+  FloatButton, message, Spin, Tooltip, Badge, Modal
 } from 'antd'
 import {
   FileTextOutlined,
@@ -19,145 +19,148 @@ import {
   BulbOutlined,
   NodeIndexOutlined,
   FormOutlined,
-  PictureOutlined,
   CameraOutlined,
+  LikeOutlined,
+  DislikeOutlined,
+  SafetyOutlined,
+  ToolOutlined,
+  ApartmentOutlined,
+  ThunderboltOutlined,
+  StarOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { resourceApi, tutorApi, imageApi, knowledgeApi, learningDataApi } from '../services/api'
+import { resourceApi, tutorApi } from '../services/api'
 import type { ChatMessage, QuestionItem, VisionContentItem } from '../types'
 import { ChatPanel } from '../components/ChatPanel'
 
+const { Panel } = Collapse
+
+const courseMenu = [
+  {
+    key: 'chapter1',
+    icon: <BookOutlined />,
+    label: '第一章：机器学习概述',
+    children: [
+      { key: '1-1', label: '1.1 什么是机器学习', completed: true },
+      { key: '1-2', label: '1.2 监督与无监督学习', completed: true },
+      { key: '1-3', label: '1.3 机器学习基本流程', completed: false },
+    ],
+  },
+  {
+    key: 'chapter2',
+    icon: <BookOutlined />,
+    label: '第二章：数学基础',
+    children: [
+      { key: '2-1', label: '2.1 线性代数基础', completed: false },
+      { key: '2-2', label: '2.2 概率论与统计', completed: false },
+      { key: '2-3', label: '2.3 梯度下降原理', completed: false },
+    ],
+  },
+  {
+    key: 'chapter3',
+    icon: <BookOutlined />,
+    label: '第三章：经典算法',
+    children: [
+      { key: '3-1', label: '3.1 线性回归', completed: false },
+      { key: '3-2', label: '3.2 逻辑回归', completed: false },
+      { key: '3-3', label: '3.3 神经网络基础', completed: false },
+    ],
+  },
+  {
+    key: 'chapter4',
+    icon: <BookOutlined />,
+    label: '第四章：深度学习进阶',
+    children: [
+      { key: '4-1', label: '4.1 反向传播算法', completed: false },
+      { key: '4-2', label: '4.2 CNN与图像识别', completed: false },
+      { key: '4-3', label: '4.3 大模型应用开发', completed: false },
+    ],
+  },
+]
+
 const ResourceCenter: React.FC = () => {
-  const [activeKey, setActiveKey] = useState('')
+  const [activeKey, setActiveKey] = useState('2-1')
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'ai', content: '你好！我正在和你一起学习。有什么不懂的地方随时问我。' },
+    { role: 'ai', content: '你好！我正在和你一起学习《线性代数基础》。矩阵运算、特征值分解是后续理解神经网络的关键，有什么不懂的地方随时问我。', agent: '辅导助手' },
   ])
   const [notes, setNotes] = useState('')
-  const [docContent, setDocContent] = useState('')
-  const [codeContent, setCodeContent] = useState('')
+  const [docContent, setDocContent] = useState(`
+## 什么是机器学习？
+
+机器学习（Machine Learning）是人工智能的一个分支，它让计算机通过**数据**自动学习和改进，而无需显式编程。
+
+### 核心思想
+传统编程：规则 + 数据 → 答案
+机器学习：数据 + 答案 → 规则
+
+### 三大类别
+- **监督学习（Supervised Learning）**：使用带标签的数据训练模型，如分类、回归
+- **无监督学习（Unsupervised Learning）**：从无标签数据中发现模式，如聚类、降维
+- **强化学习（Reinforcement Learning）**：通过与环境交互获得奖励来学习策略
+
+### 典型应用场景
+| 领域 | 应用示例 |
+|------|---------|
+| 计算机视觉 | 图像分类、目标检测、人脸识别 |
+| 自然语言处理 | 机器翻译、文本生成、情感分析 |
+| 推荐系统 | 商品推荐、内容个性化推送 |
+| 自动驾驶 | 环境感知、路径规划、决策控制 |
+
+> 💡 **关键洞察**：机器学习的本质是**函数拟合**——找一个函数 $f$，使得 $f(X) \approx Y$。
+`)
+  const [codeContent, setCodeContent] = useState(`import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+# 生成示例数据
+X = np.array([[1], [2], [3], [4], [5]])
+y = np.array([2.1, 4.0, 6.1, 7.8, 10.2])
+
+# 创建并训练模型
+model = LinearRegression()
+model.fit(X, y)
+
+# 预测
+X_test = np.array([[6]])
+prediction = model.predict(X_test)
+
+print(f"斜率: {model.coef_[0]:.2f}")
+print(f"截距: {model.intercept_:.2f}")
+print(f"x=6 时预测值: {prediction[0]:.2f}")
+
+# 可视化
+plt.scatter(X, y, color='blue', label='真实数据')
+plt.plot(X, model.predict(X), color='red', label='拟合直线')
+plt.legend()
+plt.show()`)
   const [questions, setQuestions] = useState<QuestionItem[]>([])
-  const [mindmap, setMindmap] = useState<{ root: string; children: { name: string }[] }>({ root: '', children: [] })
+  const [mindmap, setMindmap] = useState<{ root: string; children: { name: string }[] }>({ root: '机器学习概述', children: [] })
   const [loading, setLoading] = useState(false)
   const [resLoading, setResLoading] = useState(false)
   const [bottomTab, setBottomTab] = useState('code')
+  const [resourceFeedback, setResourceFeedback] = useState<Record<string, 'good' | 'bad' | null>>({})
+  const [cornellNotes, setCornellNotes] = useState({ cues: '', notes: '', summary: '' })
+  const [feynmanMode, setFeynmanMode] = useState(false)
+  const [feynmanInput, setFeynmanInput] = useState('')
+  const [ragActive, setRagActive] = useState(true)
+  const [multiAgentStep, setMultiAgentStep] = useState<'planner' | 'worker' | 'critic' | 'done'>('done')
+  const [ocrModalOpen, setOcrModalOpen] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
 
-  // 课程目录状态
-  const [courseMenu, setCourseMenu] = useState<any[]>([])
-  const [menuLoading, setMenuLoading] = useState(false)
-  const [completedKps, setCompletedKps] = useState<Set<string>>(new Set())
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({})
-
-  // 文生图状态
-  const [imagePrompt, setImagePrompt] = useState('')
-  const [imageWidth, setImageWidth] = useState(1328)
-  const [imageHeight, setImageHeight] = useState(1328)
-  const [imageResult, setImageResult] = useState<string[]>([])
-  const [imageLoading, setImageLoading] = useState(false)
-  const [imageStatus, setImageStatus] = useState('')
-  const [imageHistory, setImageHistory] = useState<any[]>([])
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [codeOutput, setCodeOutput] = useState('')
-  const [codeError, setCodeError] = useState('')
-  const [codeExplanation, setCodeExplanation] = useState('')
-  const [codeRunning, setCodeRunning] = useState(false)
-
-  // 加载课程目录
-  useEffect(() => {
-    const loadMenu = async () => {
-      setMenuLoading(true)
-      try {
-        const [kpRes, historyRes] = await Promise.all([
-          knowledgeApi.list().catch(() => null),
-          learningDataApi.getHistory(studentId, 100).catch(() => null),
-        ])
-
-        // 计算已完成的知识点（进度 >= 0.8）
-        const completed = new Set<string>()
-        if (historyRes?.data?.records) {
-          historyRes.data.records.forEach((r: any) => {
-            if ((r.progress || 0) >= 0.8) {
-              completed.add(r.kp_id)
-            }
-          })
-        }
-        setCompletedKps(completed)
-
-        if (kpRes?.data?.data?.length) {
-          // 按 subject 分组
-          const groups: Record<string, any[]> = {}
-          kpRes.data.data.forEach((kp: any, idx: number) => {
-            const subject = kp.subject || '未分类'
-            if (!groups[subject]) groups[subject] = []
-            groups[subject].push({
-              key: kp.kp_id,
-              label: kp.name,
-              completed: completed.has(kp.kp_id),
-            })
-          })
-          const menu = Object.entries(groups).map(([subject, children], idx) => ({
-            key: `chapter_${idx}`,
-            icon: <BookOutlined />,
-            label: `${subject}`,
-            children,
-          }))
-          setCourseMenu(menu)
-          // 默认选中第一个
-          if (!activeKey && menu[0]?.children?.[0]) {
-            setActiveKey(menu[0].children[0].key)
-          }
-        } else {
-          message.warning('暂无课程目录数据')
-          setCourseMenu([])
-        }
-      } catch (e) {
-        console.error('课程目录加载失败:', e)
-        message.error('加载课程目录失败')
-        setCourseMenu([])
-      } finally {
-        setMenuLoading(false)
-        // 处理从搜索跳转过来的选中知识点
-        const selectedKpId = localStorage.getItem('selected_kp_id')
-        if (selectedKpId) {
-          setActiveKey(selectedKpId)
-          localStorage.removeItem('selected_kp_id')
-          localStorage.removeItem('selected_kp_name')
-        }
-      }
-    }
-    loadMenu()
-  }, [studentId])
-
-  // 加载图片生成历史
-  useEffect(() => {
-    const loadImageHistory = async () => {
-      try {
-        const res = await imageApi.listTasks()
-        if (res.data?.tasks) {
-          setImageHistory(res.data.tasks)
-        }
-      } catch (e) {
-        console.error('图片历史加载失败:', e)
-      }
-    }
-    loadImageHistory()
-  }, [])
-
-  const currentTopic = courseMenu.flatMap((c: any) => c.children || []).find((c: any) => c.key === activeKey)?.label || '机器学习'
+  const currentTopic = courseMenu.flatMap(c => c.children || []).find(c => c.key === activeKey)?.label || '线性代数基础'
 
   useEffect(() => {
-    if (!activeKey) return
-    const topic = courseMenu.flatMap((c: any) => c.children || []).find((c: any) => c.key === activeKey)?.label || '机器学习'
     let ignore = false
     const load = async () => {
       setResLoading(true)
       try {
         const [docRes, codeRes, qRes, mapRes] = await Promise.all([
-          resourceApi.generateDocument({ student_id: studentId, topic }),
-          resourceApi.generateCode({ student_id: studentId, topic, language: 'Python' }),
-          resourceApi.generateQuestions({ student_id: studentId, topic, count: 3 }),
-          resourceApi.generateMindmap({ student_id: studentId, topic }),
+          resourceApi.generateDocument({ student_id: studentId, topic: currentTopic }),
+          resourceApi.generateCode({ student_id: studentId, topic: currentTopic, language: 'Python' }),
+          resourceApi.generateQuestions({ student_id: studentId, topic: currentTopic, count: 3 }),
+          resourceApi.generateMindmap({ student_id: studentId, topic: currentTopic }),
         ])
         if (ignore) return
         if (docRes.data.document) setDocContent(docRes.data.document)
@@ -166,7 +169,7 @@ const ResourceCenter: React.FC = () => {
         if (qs.length) setQuestions(qs)
         if (mapRes.data.mindmap) {
           setMindmap({
-            root: mapRes.data.mindmap.root || topic,
+            root: mapRes.data.mindmap.root || currentTopic,
             children: (mapRes.data.mindmap.children || []) as { name: string }[],
           })
         }
@@ -178,20 +181,20 @@ const ResourceCenter: React.FC = () => {
     }
     load()
     return () => { ignore = true }
-  }, [activeKey, studentId, courseMenu])
+  }, [activeKey, studentId])
 
-  const handleSend = async (content?: string | VisionContentItem[]) => {
-    if (!content || (typeof content === 'string' && !content.trim())) return
-    const safeContent = content || ''
-    setMessages((prev) => [...prev, { role: 'user', content: safeContent }])
+  const handleSend = async (content: string | VisionContentItem[]) => {
+    const question = typeof content === 'string' ? content : ''
+    if (!question.trim()) return
+    setMessages((prev) => [...prev, { role: 'user', content: question }])
     setLoading(true)
     try {
-      const res = await tutorApi.ask({ student_id: studentId, question: safeContent, session_id: `${studentId}_resource` })
-      setMessages((prev) => [...prev, { role: 'ai', content: res.data.response || '让我再想想...' }])
+      const res = await tutorApi.ask({ student_id: studentId, question, session_id: `${studentId}_resource` })
+      setMessages((prev) => [...prev, { role: 'ai', content: res.data.response || '让我再想想...', agent: '辅导助手' }])
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '请求失败'
       message.error(errMsg)
-      setMessages((prev) => [...prev, { role: 'ai', content: '服务暂时不可用。' }])
+      setMessages((prev) => [...prev, { role: 'ai', content: '服务暂时不可用。', agent: '辅导助手' }])
     } finally {
       setLoading(false)
     }
@@ -201,155 +204,10 @@ const ResourceCenter: React.FC = () => {
     navigator.clipboard.writeText(codeContent).then(() => message.success('代码已复制'))
   }
 
-  const handleGenerateImage = async () => {
-    if (!imagePrompt.trim()) {
-      message.warning('请输入图像描述')
-      return
-    }
-    setImageLoading(true)
-    setImageStatus('提交任务中...')
-    try {
-      const res = await imageApi.generate({
-        prompt: imagePrompt,
-        width: imageWidth,
-        height: imageHeight,
-      })
-
-      if (res.data.status === 'done' && res.data.image_urls) {
-        setImageResult(res.data.image_urls)
-        setImageStatus('生成完成')
-        setImageLoading(false)
-        message.success('图像生成成功')
-        // 刷新历史
-        imageApi.listTasks().then((r) => r.data?.tasks && setImageHistory(r.data.tasks)).catch(() => {})
-        return
-      }
-
-      const tid = res.data.task_id
-      setImageResult([])
-      setImageStatus('任务已提交，生成中...')
-
-      const poll = async () => {
-        const maxAttempts = 40
-        for (let i = 0; i < maxAttempts; i++) {
-          await new Promise((r) => setTimeout(r, 3000))
-          try {
-            const r = await imageApi.getResult(tid)
-            setImageStatus(`状态：${r.data.status}`)
-            if (r.data.status === 'done') {
-              setImageResult(r.data.image_urls || [])
-              setImageStatus('生成完成')
-              setImageLoading(false)
-              message.success('图像生成成功')
-              // 刷新历史
-              imageApi.listTasks().then((hist) => hist.data?.tasks && setImageHistory(hist.data.tasks)).catch(() => {})
-              return
-            }
-            if (r.data.status === 'not_found' || r.data.status === 'expired') {
-              setImageStatus('任务失败或已过期')
-              setImageLoading(false)
-              return
-            }
-          } catch (e) {
-            console.error('图像查询失败:', e)
-          }
-        }
-        setImageStatus('查询超时，请稍后手动刷新')
-        setImageLoading(false)
-      }
-      poll()
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '生成失败'
-      message.error(msg)
-      setImageStatus(`失败：${msg}`)
-      setImageLoading(false)
-    }
-  }
-
-  const handleMarkComplete = async () => {
-    if (!activeKey) {
-      message.warning('请先选择一个知识点')
-      return
-    }
-    try {
-      await learningDataApi.record({
-        student_id: studentId,
-        kp_id: activeKey,
-        action: 'review',
-        duration: 300,
-        progress: 1.0,
-        score: 100,
-      })
-      setCompletedKps((prev) => new Set(prev).add(activeKey))
-      message.success('已标记完成')
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '标记失败'
-      message.error(msg)
-    }
-  }
-
-  const handleRunCode = async () => {
-    if (!codeContent.trim()) {
-      message.warning('代码内容为空')
-      return
-    }
-    setCodeRunning(true)
-    setCodeOutput('')
-    setCodeError('')
-    setCodeExplanation('')
-    try {
-      const res = await resourceApi.executeCode({ code: codeContent, language: 'Python' })
-      if (res.data.error) {
-        setCodeError(res.data.error)
-        message.error('代码执行出错')
-      } else {
-        setCodeOutput(res.data.output)
-        message.success('代码执行成功')
-      }
-      setCodeExplanation(res.data.explanation)
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '执行失败'
-      message.error(msg)
-      setCodeError(msg)
-    } finally {
-      setCodeRunning(false)
-    }
-  }
-
-  const handleSelectAnswer = (qIdx: number, optId: string, correct: string) => {
-    setSelectedAnswers((prev) => ({ ...prev, [qIdx]: optId }))
-    if (optId === correct) {
-      message.success('回答正确！')
-    } else {
-      message.error('回答错误，再想想')
-    }
-  }
-
-  const handleSaveNotes = async () => {
-    if (!notes.trim()) {
-      message.warning('笔记内容为空')
-      return
-    }
-    try {
-      await learningDataApi.record({
-        student_id: studentId,
-        kp_id: activeKey || 'notes',
-        action: 'read',
-        duration: 60,
-        progress: 0.5,
-        meta: { notes },
-      })
-      message.success('笔记已保存')
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '保存失败'
-      message.error(msg)
-    }
-  }
-
   return (
     <div className="space-y-5">
       {/* 顶部标题栏 */}
-      <Card className="border border-slate-100 rounded-2xl" styles={{ body: { padding: '20px 24px' } }}>
+      <Card className="border border-slate-100 rounded-2xl" bodyStyle={{ padding: '20px 24px' }}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <Space>
             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
@@ -360,42 +218,47 @@ const ResourceCenter: React.FC = () => {
               <Typography.Text className="text-slate-400 text-xs">人工智能导论 · 机器学习基础</Typography.Text>
             </div>
           </Space>
-          <Button type="primary" className="rounded-lg bg-primary" onClick={handleMarkComplete}>
-            <CheckCircleOutlined /> 标记完成
-          </Button>
+          <Space>
+            <Tooltip title="OCR 拍照上传纸质笔记或错题">
+              <Button className="rounded-lg border-slate-200" icon={<CameraOutlined />} onClick={() => setOcrModalOpen(true)}>
+                OCR识图
+              </Button>
+            </Tooltip>
+            <Tooltip title={ragActive ? 'RAG 检索增强已启用' : 'RAG 已关闭'}>
+              <Tag className={`rounded-full border-0 text-xs cursor-pointer ${ragActive ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-400'}`} onClick={() => setRagActive(!ragActive)}>
+                <ApartmentOutlined /> {ragActive ? 'RAG 检索中' : 'RAG 关闭'}
+              </Tag>
+            </Tooltip>
+            <Button type="primary" className="rounded-lg bg-primary">
+              <CheckCircleOutlined /> 标记完成
+            </Button>
+          </Space>
         </div>
       </Card>
 
       <div className="flex gap-5 items-start">
         {/* 左侧目录 */}
-        <Card className="border border-slate-100 rounded-2xl w-56 hidden xl:block flex-shrink-0" styles={{ body: { padding: '20px 16px' } }}>
+        <Card className="border border-slate-100 rounded-2xl w-56 hidden xl:block flex-shrink-0" bodyStyle={{ padding: '20px 16px' }}>
           <Typography.Text className="font-semibold text-slate-800 block mb-4 text-sm">课程目录</Typography.Text>
-          <Spin spinning={menuLoading}>
-            <Collapse
-              defaultActiveKey={courseMenu.length > 0 ? [courseMenu[0]?.key] : ['chapter1']}
-              ghost
-              expandIconPosition="end"
-              items={courseMenu.map((chapter: any) => ({
-                key: chapter.key,
-                label: <span className="font-medium text-slate-700 text-sm">{chapter.label}</span>,
-                children: (
-                  <div className="flex flex-col gap-1">
-                    {chapter.children?.map((item: any) => (
-                      <Button
-                        key={item.key}
-                        type={activeKey === item.key ? 'primary' : 'text'}
-                        className={`justify-start text-left rounded-lg text-sm transition-all ${activeKey === item.key ? 'bg-primary' : 'text-slate-600 hover:bg-slate-50'}`}
-                        icon={item.completed ? <CheckCircleOutlined className="text-success text-xs" /> : <FileTextOutlined className={activeKey === item.key ? 'text-white text-xs' : 'text-slate-400 text-xs'} />}
-                        onClick={() => setActiveKey(item.key)}
-                      >
-                        {item.label}
-                      </Button>
-                    ))}
-                  </div>
-                ),
-              }))}
-            />
-          </Spin>
+          <Collapse defaultActiveKey={['chapter1', 'chapter2']} ghost expandIconPosition="end">
+            {courseMenu.map((chapter) => (
+              <Panel header={<span className="font-medium text-slate-700 text-sm">{chapter.label}</span>} key={chapter.key}>
+                <div className="flex flex-col gap-1">
+                  {chapter.children?.map((item) => (
+                    <Button
+                      key={item.key}
+                      type={activeKey === item.key ? 'primary' : 'text'}
+                      className={`justify-start text-left rounded-lg text-sm transition-all ${activeKey === item.key ? 'bg-primary' : 'text-slate-600 hover:bg-slate-50'}`}
+                      icon={item.completed ? <CheckCircleOutlined className="text-success text-xs" /> : <FileTextOutlined className={activeKey === item.key ? 'text-white text-xs' : 'text-slate-400 text-xs'} />}
+                      onClick={() => setActiveKey(item.key)}
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              </Panel>
+            ))}
+          </Collapse>
         </Card>
 
         {/* 中间主内容区 */}
@@ -407,24 +270,39 @@ const ResourceCenter: React.FC = () => {
               <Space>
                 <FileTextOutlined className="text-primary" />
                 <span className="font-semibold text-slate-800">图文讲义</span>
+                {multiAgentStep !== 'done' && (
+                  <Tag className="rounded-full border-0 bg-blue-50 text-blue-600 text-xs">
+                    <ThunderboltOutlined className="mr-1" />
+                    {multiAgentStep === 'planner' ? 'Planner 规划中' : multiAgentStep === 'worker' ? 'Worker 生成中' : 'Critic 审核中'}
+                  </Tag>
+                )}
               </Space>
             }
-            extra={<Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">{currentTopic}</Tag>}
-            styles={{ body: { padding: '40px' } }}
+            extra={
+              <Space>
+                <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">{currentTopic}</Tag>
+                <Button.Group className="rounded-lg overflow-hidden">
+                  <Button size="small" icon={<LikeOutlined />} className={resourceFeedback[currentTopic] === 'good' ? 'text-emerald-600' : ''} onClick={() => setResourceFeedback({ ...resourceFeedback, [currentTopic]: 'good' })} />
+                  <Button size="small" icon={<DislikeOutlined />} className={resourceFeedback[currentTopic] === 'bad' ? 'text-red-500' : ''} onClick={() => setResourceFeedback({ ...resourceFeedback, [currentTopic]: 'bad' })} />
+                </Button.Group>
+              </Space>
+            }
+            bodyStyle={{ padding: '40px' }}
           >
             <Spin spinning={resLoading}>
               <div className="prose max-w-none text-slate-700 leading-relaxed text-[15px]">
-                {docContent ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{docContent}</ReactMarkdown>
-                ) : (
-                  <Typography.Text className="text-slate-400">选择一个知识点开始学习...</Typography.Text>
-                )}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{docContent}</ReactMarkdown>
               </div>
             </Spin>
+            {resourceFeedback[currentTopic] === 'bad' && (
+              <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600">
+                已记录负反馈，系统将自动优化该资源生成的 Prompt。
+              </div>
+            )}
           </Card>
 
           {/* 下方辅助功能区 */}
-          <Card className="border border-slate-100 rounded-2xl" styles={{ body: { padding: '20px 24px' } }}>
+          <Card className="border border-slate-100 rounded-2xl" bodyStyle={{ padding: '20px 24px' }}>
             <Tabs
               activeKey={bottomTab}
               onChange={setBottomTab}
@@ -446,33 +324,11 @@ const ResourceCenter: React.FC = () => {
                           </Tooltip>
                         </div>
                         <pre className="text-green-400"># 请在这里编写代码</pre>
-                        <pre className="text-slate-200 whitespace-pre-wrap mt-2">{codeContent || '# 暂无代码'}</pre>
+                        <pre className="text-slate-200 whitespace-pre-wrap mt-2">{codeContent}</pre>
                       </div>
-                      <Button type="primary" className="rounded-lg bg-primary" onClick={handleRunCode} loading={codeRunning}>
+                      <Button type="primary" className="rounded-lg bg-primary">
                         <ArrowRightOutlined /> 运行代码
                       </Button>
-                      {(codeOutput || codeError || codeExplanation) && (
-                        <div className="mt-3 space-y-2">
-                          {codeOutput && (
-                            <div className="bg-slate-800 rounded-lg p-3">
-                              <Typography.Text className="text-xs text-slate-400 block mb-1">输出</Typography.Text>
-                              <pre className="text-green-400 text-sm whitespace-pre-wrap">{codeOutput}</pre>
-                            </div>
-                          )}
-                          {codeError && (
-                            <div className="bg-red-50 border border-red-100 rounded-lg p-3">
-                              <Typography.Text className="text-xs text-red-400 block mb-1">错误</Typography.Text>
-                              <pre className="text-red-600 text-sm whitespace-pre-wrap">{codeError}</pre>
-                            </div>
-                          )}
-                          {codeExplanation && (
-                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                              <Typography.Text className="text-xs text-blue-400 block mb-1">解释</Typography.Text>
-                              <Typography.Text className="text-blue-700 text-sm">{codeExplanation}</Typography.Text>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ),
                 },
@@ -488,25 +344,13 @@ const ResourceCenter: React.FC = () => {
                           {q.options && (
                             <div className="space-y-2">
                               {q.options.map((opt) => (
-                                <div
-                                  key={opt.id}
-                                  className={`px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${
-                                    selectedAnswers[idx] === opt.id
-                                      ? opt.id === q.correct_answer
-                                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                                        : 'bg-red-50 text-red-600 border border-red-200'
-                                      : 'text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-primary'
-                                  }`}
-                                  onClick={() => handleSelectAnswer(idx, opt.id, q.correct_answer)}
-                                >
+                                <div key={opt.id} className="text-slate-600 px-3 py-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-primary transition-colors cursor-pointer text-sm">
                                   {opt.id}. {opt.text}
                                 </div>
                               ))}
                             </div>
                           )}
-                          {selectedAnswers[idx] !== undefined && (
-                            <Tag className="mt-3 rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">答案：{q.correct_answer}</Tag>
-                          )}
+                          <Tag className="mt-3 rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">答案：{q.correct_answer}</Tag>
                         </Card>
                       ))}
                     </div>
@@ -532,78 +376,49 @@ const ResourceCenter: React.FC = () => {
                   children: (
                     <div className="space-y-3">
                       <Input.TextArea rows={8} placeholder="在这里记录学习笔记，数据会同步到画像分析..." value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-xl bg-slate-50 border-slate-200" />
-                      <Button type="primary" className="rounded-lg bg-primary" onClick={handleSaveNotes}>
+                      <Button type="primary" className="rounded-lg bg-primary">
                         <CheckCircleOutlined /> 保存笔记
                       </Button>
                     </div>
                   ),
                 },
                 {
-                  key: 'image',
-                  label: <span className="flex items-center gap-1.5 text-sm"><PictureOutlined /> 文生图</span>,
+                  key: 'cornell',
+                  label: <span className="flex items-center gap-1.5 text-sm"><EditOutlined /> 康奈尔笔记</span>,
                   children: (
-                    <div className="space-y-4">
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="描述你想生成的图像，例如：一只穿着宇航服的橘猫在月球上..."
-                        value={imagePrompt}
-                        onChange={(e) => setImagePrompt(e.target.value)}
-                        className="rounded-xl"
-                      />
-                      <div className="flex gap-4 flex-wrap items-center">
-                        <div className="flex items-center gap-2">
-                          <Typography.Text className="text-sm text-slate-500">宽度</Typography.Text>
-                          <Input type="number" value={imageWidth} onChange={(e) => setImageWidth(Number(e.target.value))} min={512} max={2048} className="w-24 rounded-lg" />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-1 space-y-2">
+                          <div className="text-xs font-medium text-slate-500">线索栏 (Cues)</div>
+                          <Input.TextArea rows={8} placeholder="记录关键词、问题..." value={cornellNotes.cues} onChange={(e) => setCornellNotes({ ...cornellNotes, cues: e.target.value })} className="rounded-xl bg-slate-50 border-slate-200" />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Typography.Text className="text-sm text-slate-500">高度</Typography.Text>
-                          <Input type="number" value={imageHeight} onChange={(e) => setImageHeight(Number(e.target.value))} min={512} max={2048} className="w-24 rounded-lg" />
+                        <div className="col-span-2 space-y-2">
+                          <div className="text-xs font-medium text-slate-500">笔记栏 (Notes)</div>
+                          <Input.TextArea rows={8} placeholder="记录课堂/阅读笔记..." value={cornellNotes.notes} onChange={(e) => setCornellNotes({ ...cornellNotes, notes: e.target.value })} className="rounded-xl bg-slate-50 border-slate-200" />
                         </div>
                       </div>
-                      <Button type="primary" loading={imageLoading} onClick={handleGenerateImage} className="rounded-lg bg-primary">
-                        <CameraOutlined /> 生成图像
+                      <div className="space-y-2">
+                        <div className="text-xs font-medium text-slate-500">总结栏 (Summary)</div>
+                        <Input.TextArea rows={3} placeholder="用一句话总结本页核心内容..." value={cornellNotes.summary} onChange={(e) => setCornellNotes({ ...cornellNotes, summary: e.target.value })} className="rounded-xl bg-slate-50 border-slate-200" />
+                      </div>
+                      <Button type="primary" className="rounded-lg bg-primary">
+                        <CheckCircleOutlined /> 保存康奈尔笔记
                       </Button>
-                      {imageStatus && (
-                        <Typography.Text className="text-slate-500 text-sm block">{imageStatus}</Typography.Text>
-                      )}
-                      {imageResult.length > 0 && (
-                        <div className="space-y-2">
-                          <Typography.Text className="font-semibold text-slate-800 text-sm block">本次生成结果</Typography.Text>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {imageResult.map((url, i) => (
-                              <img
-                                key={i}
-                                src={url}
-                                alt={`generated-${i}`}
-                                className="rounded-xl border border-slate-100 w-full object-cover cursor-pointer hover:shadow-md transition-shadow"
-                                onClick={() => setPreviewImage(url)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {imageHistory.length > 0 && (
-                        <div className="space-y-2 mt-4">
-                          <Typography.Text className="font-semibold text-slate-800 text-sm block">历史生成记录</Typography.Text>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {imageHistory.map((task: any, idx: number) => (
-                              <div key={idx} className="relative group">
-                                <img
-                                  src={task.image_urls?.[0] || ''}
-                                  alt={`history-${idx}`}
-                                  className="rounded-lg border border-slate-100 w-full h-24 object-cover cursor-pointer hover:shadow-md transition-shadow"
-                                  onClick={() => task.image_urls?.[0] && setPreviewImage(task.image_urls[0])}
-                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                                />
-                                <span className="absolute bottom-1 right-1 text-[10px] bg-black/50 text-white px-1.5 rounded">{task.status}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {imageHistory.length === 0 && imageResult.length === 0 && (
-                        <Empty description="暂无生成记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'feynman',
+                  label: <span className="flex items-center gap-1.5 text-sm"><BulbOutlined /> 费曼学习</span>,
+                  children: (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-sm text-amber-800">
+                        <strong>费曼学习法：</strong>尝试用最简单的语言向一个"小孩"解释你学到的概念。如果你卡住了，就回到材料中重新学习。
+                      </div>
+                      <Input.TextArea rows={6} placeholder="用你自己的话，尝试向一个外行解释当前知识点..." value={feynmanInput} onChange={(e) => setFeynmanInput(e.target.value)} className="rounded-xl bg-slate-50 border-slate-200" />
+                      <Button type="primary" className="rounded-lg bg-primary" onClick={() => { if (feynmanInput.trim()) { message.success('费曼练习已保存，AI 将帮你检查理解盲点'); setFeynmanInput(''); } }}>
+                        <ThunderboltOutlined /> 提交费曼练习
+                      </Button>
                     </div>
                   ),
                 },
@@ -614,11 +429,11 @@ const ResourceCenter: React.FC = () => {
 
         {/* 右侧 AI 辅导 */}
         {chatOpen && (
-          <Card className="border border-slate-100 rounded-2xl w-72 flex-shrink-0 hidden lg:flex flex-col" styles={{ body: { padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' } }}>
+          <Card className="border border-slate-100 rounded-2xl w-72 flex-shrink-0 hidden lg:flex flex-col" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
             <ChatPanel
               messages={messages}
               loading={loading}
-              onSend={(text) => handleSend(text)}
+              onSend={handleSend}
               title="AI 辅导助手"
               subtitle="苏格拉底式教学"
               placeholder="输入问题..."
@@ -631,12 +446,31 @@ const ResourceCenter: React.FC = () => {
         )}
       </div>
 
+      {/* OCR 拍照上传弹窗 */}
+      <Modal
+        title={<span className="font-semibold text-slate-800">OCR 拍照上传</span>}
+        open={ocrModalOpen}
+        onCancel={() => setOcrModalOpen(false)}
+        footer={null}
+        width={520}
+        className="rounded-2xl"
+      >
+        <div className="space-y-4 py-2">
+          <div className="p-6 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center cursor-pointer hover:border-primary transition-all">
+            <CameraOutlined className="text-3xl text-slate-300 mb-2" />
+            <div className="text-sm text-slate-600">点击或拖拽上传纸质笔记 / 错题照片</div>
+            <div className="text-xs text-slate-400 mt-1">支持 JPG、PNG，基于 PaddleOCR 识别</div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <SafetyOutlined />
+            <span>端云协同：本地 Edge 端完成 OCR 识别，原始图片不上传云端</span>
+          </div>
+        </div>
+      </Modal>
+
       {!chatOpen && (
         <FloatButton icon={<MessageOutlined />} type="primary" tooltip="打开 AI 辅导" onClick={() => setChatOpen(true)} className="right-6 bottom-6" />
       )}
-      <Modal open={!!previewImage} footer={null} onCancel={() => setPreviewImage(null)} centered width="auto">
-        {previewImage && <img src={previewImage} alt="preview" className="max-w-full max-h-[70vh] rounded-lg" />}
-      </Modal>
     </div>
   )
 }

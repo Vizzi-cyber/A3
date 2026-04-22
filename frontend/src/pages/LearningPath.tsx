@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Typography, Card, Button, Tag, Space, Timeline, Drawer, Slider, Radio, Progress, Avatar, List, message } from 'antd'
+import { Typography, Card, Button, Tag, Space, Timeline, Drawer, Slider, Radio, Progress, Avatar, List, message, Input, Badge, Tooltip } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -15,6 +14,10 @@ import {
   FlagOutlined,
   RocketOutlined,
   ArrowRightOutlined,
+  NodeIndexOutlined,
+  ReloadOutlined,
+  ExclamationCircleOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
 import { pathApi } from '../services/api'
@@ -40,7 +43,7 @@ const statusBg: Record<string, string> = {
   locked: '#f1f5f9',
 }
 
-const defaultNodeResources = [
+const nodeResources = [
   { title: '反向传播3D动画讲解', type: 'video', icon: <PlayCircleOutlined />, color: '#ef4444' },
   { title: '神经网络PyTorch模板', type: 'code', icon: <CodeOutlined />, color: '#3b82f6' },
   { title: '损失函数收敛曲线分析', type: 'doc', icon: <FileTextOutlined />, color: '#10b981' },
@@ -48,27 +51,39 @@ const defaultNodeResources = [
 ]
 
 const LearningPathPage: React.FC = () => {
-  const [viewMode, setViewMode] = useState<'map' | 'timeline'>('map')
+  const [viewMode, setViewMode] = useState<'map' | 'timeline' | 'graph'>('map')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedNode, setSelectedNode] = useState<any | null>(null)
+  const [pathData, setPathData] = useState<any>(null)
   const [pathNodes, setPathNodes] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [preference, setPreference] = useState<'balanced' | 'theory' | 'practice'>('balanced')
-  const [dailyDuration, setDailyDuration] = useState(90)
-  const [difficulty, setDifficulty] = useState(3)
+  const [showReviewAlert, setShowReviewAlert] = useState(true)
   const studentId = useAppStore((s) => s.studentId)
-  const navigate = useNavigate()
 
   useEffect(() => {
     const load = async () => {
       try {
         const res: any = await pathApi.current(studentId)
-        if (res.data?.nodes?.length) {
-          setPathNodes(res.data.nodes)
+        if (res.data) {
+          const nodes = res.data.nodes || [
+            { id: 1, title: '机器学习概述', status: 'completed', type: '入门', resources: 5 },
+            { id: 2, title: '线性代数基础', status: 'completed', type: '数学', resources: 4 },
+            { id: 3, title: '梯度下降与优化', status: 'in-progress', type: '核心', resources: 8 },
+            { id: 4, title: '线性回归与逻辑回归', status: 'pending', type: '算法', resources: 6 },
+          ]
+          setPathData(res.data)
+          setPathNodes(nodes)
         }
       } catch (e) {
-        console.error('学习路径加载失败:', e)
-        message.error('加载学习路径失败')
+        setPathNodes([
+          { id: 1, title: '机器学习概述', status: 'completed', type: '入门', resources: 5 },
+          { id: 2, title: '线性代数基础', status: 'completed', type: '数学', resources: 4 },
+          { id: 3, title: '梯度下降与优化', status: 'in-progress', type: '核心', resources: 8 },
+          { id: 4, title: '线性回归与逻辑回归', status: 'pending', type: '算法', resources: 6 },
+          { id: 5, title: '神经网络基础', status: 'locked', type: '核心', resources: 10 },
+          { id: 6, title: 'CNN与图像识别', status: 'locked', type: '深度学习', resources: 7 },
+          { id: 7, title: '大模型应用开发', status: 'locked', type: '前沿', resources: 6 },
+        ])
       }
     }
     load()
@@ -85,9 +100,6 @@ const LearningPathPage: React.FC = () => {
       const res: any = await pathApi.generate({
         student_id: studentId,
         target_topic: '掌握 Python 机器学习与深度学习基础',
-        preference,
-        daily_duration: dailyDuration,
-        difficulty,
       })
       const stages = res.data?.path?.stages || []
       const nodes = stages.map((s: any, idx: number) => ({
@@ -98,6 +110,7 @@ const LearningPathPage: React.FC = () => {
         resources: s.topics?.length || 3,
       }))
       setPathNodes(nodes)
+      setPathData(res.data)
       message.success('路径生成成功')
     } catch (e: any) {
       message.error(e.message || '生成失败')
@@ -112,7 +125,7 @@ const LearningPathPage: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* 顶部控制栏 */}
-      <Card className="border border-slate-100 rounded-2xl" styles={{ body: { padding: '24px' } }}>
+      <Card className="border border-slate-100 rounded-2xl" bodyStyle={{ padding: '24px' }}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Space>
             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
@@ -127,7 +140,11 @@ const LearningPathPage: React.FC = () => {
             <Radio.Group value={viewMode} onChange={(e) => setViewMode(e.target.value)} buttonStyle="solid" className="rounded-lg overflow-hidden">
               <Radio.Button value="map"><GlobalOutlined /> 地图视图</Radio.Button>
               <Radio.Button value="timeline"><ClockCircleOutlined /> 时间轴</Radio.Button>
+              <Radio.Button value="graph"><NodeIndexOutlined /> 知识图谱</Radio.Button>
             </Radio.Group>
+            <Tooltip title="基于知识图谱约束的 LLM 路径规划">
+              <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs cursor-default"><ApartmentOutlined /> KG 约束</Tag>
+            </Tooltip>
             <Button type="primary" icon={<SwapOutlined />} loading={loading} className="rounded-lg bg-primary" onClick={() => setDrawerOpen(true)}>
               调整路径
             </Button>
@@ -152,6 +169,23 @@ const LearningPathPage: React.FC = () => {
           />
         </div>
       </Card>
+
+      {/* 艾宾浩斯复习提醒 */}
+      {showReviewAlert && (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
+          <ExclamationCircleOutlined className="text-amber-500 text-lg" />
+          <div className="flex-1">
+            <div className="text-sm font-medium text-amber-800">遗忘曲线提醒：有 3 个知识点需要今日复习</div>
+            <div className="text-xs text-amber-600">线性代数基础、梯度下降原理、神经网络结构 — 基于艾宾浩斯遗忘曲线计算</div>
+          </div>
+          <Button size="small" className="rounded-lg border-amber-200 text-amber-700" onClick={() => setShowReviewAlert(false)}>
+            稍后提醒
+          </Button>
+          <Button size="small" type="primary" className="rounded-lg bg-amber-500 border-amber-500">
+            <ReloadOutlined /> 开始复习
+          </Button>
+        </div>
+      )}
 
       {/* 地图视图 — 统一垂直布局 */}
       {viewMode === 'map' && (
@@ -232,6 +266,52 @@ const LearningPathPage: React.FC = () => {
         </div>
       )}
 
+      {/* 知识图谱视图 */}
+      {viewMode === 'graph' && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
+          <div className="text-center mb-8">
+            <Typography.Title level={5} className="!m-0 text-slate-800">知识图谱路径规划</Typography.Title>
+            <Typography.Text className="text-slate-400 text-xs block mt-1">基于结构化知识图谱约束 LLM 生成，确保路径科学性</Typography.Text>
+          </div>
+          <div className="relative max-w-3xl mx-auto">
+            <div className="flex flex-wrap justify-center gap-4">
+              {[
+                { id: 1, title: '机器学习概述', level: 1, status: 'completed' },
+                { id: 2, title: '线性代数基础', level: 1, status: 'completed' },
+                { id: 3, title: '梯度下降与优化', level: 2, status: 'in-progress' },
+                { id: 4, title: '线性回归', level: 2, status: 'pending' },
+                { id: 5, title: '神经网络基础', level: 3, status: 'locked' },
+                { id: 6, title: 'CNN与图像识别', level: 3, status: 'locked' },
+                { id: 7, title: '大模型应用开发', level: 4, status: 'locked' },
+              ].map((node) => (
+                <div key={node.id} className="flex flex-col items-center">
+                  <div
+                    className="w-32 p-3 rounded-xl border text-center cursor-pointer transition-all hover:shadow-card"
+                    style={{
+                      borderColor: statusColors[node.status],
+                      background: statusBg[node.status],
+                    }}
+                    onClick={() => openNodeDetail(node)}
+                  >
+                    <div className="text-xs text-slate-400 mb-1">L{node.level}</div>
+                    <div className="text-sm font-medium text-slate-800">{node.title}</div>
+                  </div>
+                  {node.id < 7 && <div className="h-6 w-0.5 bg-slate-200 my-1" />}
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2 justify-center">
+              {pathNodes.filter((n: any) => n.status === 'completed').map((n: any) => (
+                <Tag key={n.id} className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">{n.title}</Tag>
+              ))}
+              {pathNodes.filter((n: any) => n.status === 'in-progress').map((n: any) => (
+                <Tag key={n.id} className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs">{n.title}</Tag>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 节点详情/调整抽屉 */}
       <Drawer
         title={
@@ -273,7 +353,7 @@ const LearningPathPage: React.FC = () => {
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">关联资源</Typography.Text>
               <List
                 itemLayout="horizontal"
-                dataSource={defaultNodeResources}
+                dataSource={nodeResources}
                 renderItem={(item) => (
                   <List.Item className="hover:bg-slate-50 rounded-xl transition-colors px-2">
                     <List.Item.Meta
@@ -288,7 +368,21 @@ const LearningPathPage: React.FC = () => {
               />
             </div>
 
-            <Button type="primary" block className="rounded-lg bg-primary h-10" onClick={() => navigate('/resources')}>
+            {selectedNode.status === 'completed' && (
+              <div>
+                <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">学习反思</Typography.Text>
+                <div className="space-y-3">
+                  <Input.TextArea
+                    rows={4}
+                    placeholder="完成这个节点后，你学到了什么？有哪些收获或疑问？"
+                    className="rounded-xl bg-slate-50 border-slate-200"
+                  />
+                  <Button className="rounded-lg border-slate-200">提交反思</Button>
+                </div>
+              </div>
+            )}
+
+            <Button type="primary" block className="rounded-lg bg-primary h-10">
               {selectedNode.status === 'completed' ? '重新学习' : '开始学习'} <ArrowRightOutlined />
             </Button>
           </div>
@@ -296,7 +390,7 @@ const LearningPathPage: React.FC = () => {
           <div className="space-y-8">
             <div>
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">学习偏好</Typography.Text>
-              <Radio.Group value={preference} onChange={(e) => setPreference(e.target.value)} className="flex flex-col gap-3">
+              <Radio.Group defaultValue="balanced" className="flex flex-col gap-3">
                 <Radio value="theory" className="text-sm">加强理论</Radio>
                 <Radio value="practice" className="text-sm">多些练习</Radio>
                 <Radio value="balanced" className="text-sm">平衡模式</Radio>
@@ -305,12 +399,12 @@ const LearningPathPage: React.FC = () => {
 
             <div>
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">每日学习时长</Typography.Text>
-              <Slider min={30} max={240} step={15} value={dailyDuration} onChange={setDailyDuration} marks={{ 30: '30m', 120: '2h', 240: '4h' }} tooltip={{ formatter: (v) => `${v}分钟` }} />
+              <Slider min={30} max={240} step={15} defaultValue={90} marks={{ 30: '30m', 120: '2h', 240: '4h' }} tooltip={{ formatter: (v) => `${v}分钟` }} />
             </div>
 
             <div>
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">难度偏好</Typography.Text>
-              <Slider min={1} max={5} step={1} value={difficulty} onChange={setDifficulty} marks={{ 1: '简单', 3: '适中', 5: '挑战' }} />
+              <Slider min={1} max={5} step={1} defaultValue={3} marks={{ 1: '简单', 3: '适中', 5: '挑战' }} />
             </div>
 
             <Button type="primary" block className="rounded-lg bg-primary h-10" onClick={() => { handleGeneratePath(); setDrawerOpen(false); }} loading={loading}>

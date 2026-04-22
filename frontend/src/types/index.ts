@@ -253,6 +253,14 @@ export interface TutorSessionHistoryResponse {
 export interface ChatMessage {
   role: 'user' | 'ai' | 'system'
   content: string | VisionContentItem[]
+  agent?: string
+}
+
+export interface ReflectionEntry {
+  id: string
+  date: string
+  content: string
+  topic: string
 }
 
 export interface ToastState {
