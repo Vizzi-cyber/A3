@@ -20,7 +20,7 @@ import {
   ReadOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { profileApi } from '../services/api'
+import { profileApi, tutorApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
 import { ChatPanel } from '../components/ChatPanel'
 import { PageCard } from '../components/PageCard'
@@ -44,7 +44,7 @@ const quickActions = [
 
 const Profile: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'ai', content: '你好！我是你的AI学习画像师。在学习《人工智能导论》之前，我想了解一下：你的数学基础如何？比如线性代数和概率论是否熟悉？这会影响我为你推荐的学习路径。', agent: '评估智能体' },
+    { role: 'ai', content: '你好！我是你的AI学习画像师。在学习编程之前，我想了解一下：你是否有编程基础？对C语言的指针和内存管理是否了解？这会影响我为你推荐的学习路径。', agent: '评估智能体' },
   ])
   const [profileData, setProfileData] = useState(buildRadarData(null))
   const [dimensions, setDimensions] = useState([
@@ -89,13 +89,30 @@ const Profile: React.FC = () => {
 
   const handleSend = async (content: string | VisionContentItem[]) => {
     const text = typeof content === 'string' ? content : ''
+    if (!text.trim()) return
     setMessages((prev) => [...prev, { role: 'user' as const, content: text }])
     setLoading(true)
     try {
+      // 先更新画像
       await profileApi.update(studentId, { dimension: 'interest', updates: { goals: [text] } })
-      const res = await profileApi.get(studentId)
-      if (res.data.data) updateVisuals(res.data.data)
-      setMessages((prev) => [...prev, { role: 'ai' as const, content: '收到！我会根据你的反馈更新画像数据。', agent: '评估智能体' }])
+      const pRes = await profileApi.get(studentId)
+      if (pRes.data?.data) updateVisuals(pRes.data.data)
+
+      // 尝试获取AI回复（带超时控制，避免长时间等待）
+      let aiReply = generateLocalProfileReply(text)
+      try {
+        const tutorRes = await Promise.race([
+          tutorApi.ask({ student_id: studentId, question: text, session_id: `${studentId}_profile` }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        ])
+        if (tutorRes.data?.response && !tutorRes.data.response.includes('思考时间')) {
+          aiReply = tutorRes.data.response
+        }
+      } catch {
+        // 超时或失败时使用本地回复
+      }
+
+      setMessages((prev) => [...prev, { role: 'ai' as const, content: aiReply, agent: '评估智能体' }])
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '更新失败'
       message.error(errMsg)
@@ -105,9 +122,26 @@ const Profile: React.FC = () => {
     }
   }
 
+  const generateLocalProfileReply = (text: string): string => {
+    const lower = text.toLowerCase()
+    if (lower.includes('指针') || lower.includes('内存')) {
+      return '你提到了指针和内存，这是C语言最核心的概念。我会在你的画像中加深「底层理解」维度，后续会多推荐指针图示和内存模型动画。'
+    }
+    if (lower.includes('困难') || lower.includes('不会') || lower.includes('不懂')) {
+      return '遇到困难是学习的必经阶段。根据你的反馈，我会调低推荐内容的难度梯度，增加基础练习和分步讲解。'
+    }
+    if (lower.includes('基础') || lower.includes('入门')) {
+      return '好的，我会在画像中标记你目前处于基础巩固阶段，系统会优先推送数据类型、控制结构等入门内容。'
+    }
+    if (lower.includes('数组') || lower.includes('函数')) {
+      return '收到！我会在你的学习路径中提前安排相关章节的强化训练，并生成针对性的练习题。'
+    }
+    return '感谢你的反馈！我已根据你的描述更新了学习画像，系统会据此优化后续的内容推荐和学习路径。'
+  }
+
   const handleInitProfile = async () => {
     try {
-      await profileApi.initialize(studentId, { inputs: ['我是一名计算机专业大二学生，对人工智能很感兴趣。线性代数有一定基础，但概率论和微积分比较薄弱。喜欢通过代码实践来学习，Python比较熟练。'] })
+      await profileApi.initialize(studentId, { inputs: ['我是一名计算机专业大二学生，对编程很感兴趣。有一定的高数基础，但数据结构和算法比较薄弱。喜欢通过代码实践来学习，想系统学习C语言。'] })
       const res = await profileApi.get(studentId)
       if (res.data.data) updateVisuals(res.data.data)
       message.success('画像初始化成功')
@@ -297,10 +331,10 @@ const Profile: React.FC = () => {
           <Col xs={24} lg={12}>
             <div className="space-y-3">
               {[
-                { topic: '梯度下降原理', retention: 85, nextReview: '明天' },
-                { topic: '线性代数基础', retention: 62, nextReview: '今天' },
-                { topic: '神经网络结构', retention: 45, nextReview: '今天' },
-                { topic: '反向传播算法', retention: 78, nextReview: '后天' },
+                { topic: '数据类型与变量', retention: 85, nextReview: '明天' },
+                { topic: '控制结构', retention: 62, nextReview: '今天' },
+                { topic: '指针与内存', retention: 45, nextReview: '今天' },
+                { topic: '函数与递归', retention: 78, nextReview: '后天' },
               ].map((item) => (
                 <div key={item.topic} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
                   <div className="flex-1">

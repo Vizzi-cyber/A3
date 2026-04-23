@@ -58,10 +58,10 @@ const typeIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
 }
 
 const pathNodes = [
-  { id: 1, title: '机器学习概述', status: 'completed', type: '入门' },
-  { id: 2, title: '线性代数基础', status: 'completed', type: '数学' },
-  { id: 3, title: '梯度下降与优化', status: 'in-progress', type: '核心' },
-  { id: 4, title: '线性回归与逻辑回归', status: 'pending', type: '算法' },
+  { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门' },
+  { id: 2, title: '数据类型与变量', status: 'completed', type: '基础' },
+  { id: 3, title: '控制结构', status: 'in-progress', type: '核心' },
+  { id: 4, title: '数组与字符串', status: 'pending', type: '核心' },
 ]
 
 const statusColors: Record<string, string> = {
@@ -137,9 +137,16 @@ const Dashboard: React.FC = () => {
 
   // Data fetching
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>
     const fetchData = async () => {
       setIsLoading(true)
       setSummaryLoading(true)
+      // 10秒超时兜底
+      timeoutId = setTimeout(() => {
+        setIsLoading(false)
+        setSummaryLoading(false)
+        message.warning('数据加载超时，请刷新重试')
+      }, 10000)
       try {
         const [profileRes, summaryRes] = await Promise.all([
           profileApi.get(studentId),
@@ -162,11 +169,13 @@ const Dashboard: React.FC = () => {
         console.error('Dashboard 数据加载失败:', e)
         message.error('获取数据失败，显示默认数据')
       } finally {
+        clearTimeout(timeoutId)
         setIsLoading(false)
         setSummaryLoading(false)
       }
     }
     fetchData()
+    return () => clearTimeout(timeoutId)
   }, [studentId])
 
   // 3D scroll-driven animations
@@ -333,7 +342,7 @@ const Dashboard: React.FC = () => {
           {/* === Scene 1: 学习路径（左） === */}
           <div ref={setSceneRef(0)} className="flex justify-start px-4 md:px-12" style={{ transformStyle: 'preserve-3d' }}>
             <div className="w-full max-w-xl">
-              <Card className="border border-slate-100 rounded-2xl shadow-card" bodyStyle={{ padding: '28px' }}>
+              <Card className="border border-slate-100 rounded-2xl shadow-card" styles={{ body: { padding: '28px' } }}>
                 <div className="flex items-center gap-2 mb-5">
                   <NodeIndexOutlined className="text-primary text-lg" />
                   <span className="font-semibold text-slate-800">当前学习路径</span>
@@ -373,7 +382,7 @@ const Dashboard: React.FC = () => {
           {/* === Scene 2: 番茄钟（右） === */}
           <div ref={setSceneRef(1)} className="flex justify-end px-4 md:px-12" style={{ transformStyle: 'preserve-3d' }}>
             <div className="w-full max-w-md">
-              <Card className="border border-slate-100 rounded-2xl shadow-card" bodyStyle={{ padding: '28px' }}>
+              <Card className="border border-slate-100 rounded-2xl shadow-card" styles={{ body: { padding: '28px' } }}>
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <ClockCircleOutlined className="text-primary text-lg" />
@@ -408,7 +417,7 @@ const Dashboard: React.FC = () => {
                     {tasks.length} 项待完成
                   </Tag>
                 }
-                bodyStyle={{ padding: '20px 24px' }}
+                styles={{ body: { padding: '20px 24px' } }}
               >
                 <Spin spinning={summaryLoading}>
                   <List
@@ -469,7 +478,7 @@ const Dashboard: React.FC = () => {
             <div className="w-full max-w-lg">
               <Card className="border border-slate-100 rounded-2xl shadow-card" title={<span className="font-semibold text-slate-800">今日挑战</span>}
                 extra={<Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-xs font-medium">+{challenges.filter(c => !c.completed).reduce((s, c) => s + c.reward, 0)} 经验待领取</Tag>}
-                bodyStyle={{ padding: '24px' }}>
+                styles={{ body: { padding: '24px' } }}>
                 <div className="flex flex-wrap gap-3">
                   {challenges.map((c, idx) => (
                     <div key={idx} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${c.completed ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-200 hover:border-primary hover:shadow-card cursor-pointer'}`}>
@@ -498,7 +507,7 @@ const Dashboard: React.FC = () => {
                     查看全部 <ArrowRightOutlined />
                   </Button>
                 }
-                bodyStyle={{ padding: '24px' }}
+                styles={{ body: { padding: '24px' } }}
               >
                 <Spin spinning={summaryLoading}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -539,29 +548,33 @@ const Dashboard: React.FC = () => {
             <div className="w-full max-w-md space-y-5">
               <Card className="border border-slate-100 rounded-2xl shadow-card" title={<Space><span className="font-semibold text-slate-800">画像摘要</span><Badge count="AI" style={{ backgroundColor: '#4f46e5', fontSize: 10 }} /></Space>}
                 extra={<Button type="link" className="text-primary font-medium" onClick={() => navigate('/profile')}>详情 <ArrowRightOutlined /></Button>}
-                bodyStyle={{ padding: '24px' }}>
+                styles={{ body: { padding: '24px' } }}>
                 <Spin spinning={isLoading}>
-                  <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={profileData}>
-                        <PolarGrid stroke="#e2e8f0" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                        <Radar name="当前画像" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.15} strokeWidth={2} />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex flex-wrap gap-2 justify-center mt-3">
-                    {profileData.map((item) => (
-                      <Tag key={item.subject} className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">{item.subject}: {Math.round(item.A)}</Tag>
-                    ))}
-                  </div>
+                  {!isLoading && (
+                    <>
+                      <div className="h-56">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={profileData}>
+                            <PolarGrid stroke="#e2e8f0" />
+                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
+                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                            <Radar name="当前画像" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.15} strokeWidth={2} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex flex-wrap gap-2 justify-center mt-3">
+                        {profileData.map((item) => (
+                          <Tag key={item.subject} className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">{item.subject}: {Math.round(item.A)}</Tag>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </Spin>
               </Card>
 
               <Card className="border border-slate-100 rounded-2xl shadow-card" title={<span className="font-semibold text-slate-800">成就徽章</span>}
                 extra={<Button type="link" className="text-primary font-medium" onClick={() => navigate('/personal')}>全部 <ArrowRightOutlined /></Button>}
-                bodyStyle={{ padding: '24px' }}>
+                styles={{ body: { padding: '24px' } }}>
                 <div className="grid grid-cols-4 gap-3">
                   {badges.map((b, idx) => (
                     <div key={idx} className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${b.unlocked ? 'bg-slate-50' : 'bg-slate-50 opacity-40'}`}>
@@ -577,7 +590,7 @@ const Dashboard: React.FC = () => {
           {/* === Scene 7: 知识图谱 + 算力适配（左，合并一行） === */}
           <div ref={setSceneRef(6)} className="flex justify-start px-4 md:px-12" style={{ transformStyle: 'preserve-3d' }}>
             <div className="w-full max-w-xl space-y-5">
-              <Card className="border border-slate-100 rounded-2xl shadow-card" title={<span className="font-semibold text-slate-800">知识图谱</span>} bodyStyle={{ padding: '24px' }}>
+              <Card className="border border-slate-100 rounded-2xl shadow-card" title={<span className="font-semibold text-slate-800">知识图谱</span>} styles={{ body: { padding: '24px' } }}>
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 cursor-pointer hover:shadow-card transition-all" onClick={() => setKgModalOpen(true)}>
                   <div className="w-12 h-12 rounded-xl bg-indigo-500 flex items-center justify-center text-white text-xl shrink-0"><NodeIndexOutlined /></div>
                   <div>
@@ -588,7 +601,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </Card>
 
-              <Card className="border border-slate-100 rounded-2xl shadow-card" title={<span className="font-semibold text-slate-800">算力适配</span>} bodyStyle={{ padding: '24px' }}>
+              <Card className="border border-slate-100 rounded-2xl shadow-card" title={<span className="font-semibold text-slate-800">算力适配</span>} styles={{ body: { padding: '24px' } }}>
                 <div className="flex flex-wrap gap-2">
                   <Tooltip title="已适配文心一言"><Tag icon={<FlagFilled />} className="rounded-full border-0 bg-blue-50 text-blue-600 text-xs">文心一言</Tag></Tooltip>
                   <Tooltip title="已适配通义千问"><Tag icon={<FlagFilled />} className="rounded-full border-0 bg-purple-50 text-purple-600 text-xs">通义千问</Tag></Tooltip>
@@ -617,9 +630,9 @@ const Dashboard: React.FC = () => {
       <Modal title={<span className="font-semibold text-slate-800">知识图谱概览</span>} open={kgModalOpen} onCancel={() => setKgModalOpen(false)} footer={null} width={720} className="rounded-2xl">
         <div className="space-y-4 py-2">
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-            <div className="font-semibold text-slate-800 mb-2">机器学习 · 核心知识网络</div>
+            <div className="font-semibold text-slate-800 mb-2">编程基础 · 核心知识网络</div>
             <div className="grid grid-cols-3 gap-3">
-              {['线性代数', '概率论', '梯度下降', '神经网络', 'CNN', 'RNN', 'Transformer', '强化学习', '大模型'].map((node) => (
+              {['变量与类型', '控制结构', '数组与字符串', '函数与递归', '指针与内存', '结构体', '文件操作', '预处理', '动态内存'].map((node) => (
                 <div key={node} className="p-3 rounded-lg bg-white border border-slate-200 text-center text-sm text-slate-700 hover:border-primary hover:shadow-sm transition-all cursor-pointer">{node}</div>
               ))}
             </div>

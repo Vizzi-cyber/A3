@@ -78,7 +78,7 @@ const Tutor: React.FC = () => {
           </div>
           <div>
             <Typography.Title level={5} className="!m-0 text-slate-800">智能辅导</Typography.Title>
-            <Typography.Text className="text-slate-400 text-xs">苏格拉底式教学法 · 机器学习专项</Typography.Text>
+            <Typography.Text className="text-slate-400 text-xs">苏格拉底式教学法 · 全学科辅导</Typography.Text>
           </div>
           <Space className="ml-auto" wrap>
             {multiAgentStep !== 'done' && (

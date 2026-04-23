@@ -148,6 +148,7 @@ export interface DocumentGenerationRequest {
   student_id: string
   topic: string
   difficulty?: string
+  kp_id?: string
 }
 
 export interface DocumentGenerationResponse {
@@ -177,6 +178,7 @@ export interface QuestionsGenerationRequest {
   student_id: string
   topic: string
   count?: number
+  kp_id?: string
 }
 
 export interface QuestionsGenerationResponse {
@@ -189,6 +191,7 @@ export interface QuestionsGenerationResponse {
 export interface MindmapGenerationRequest {
   student_id: string
   topic: string
+  kp_id?: string
 }
 
 export interface MindmapNode {
@@ -209,6 +212,7 @@ export interface CodeGenerationRequest {
   student_id: string
   topic: string
   language?: string
+  kp_id?: string
 }
 
 export interface CodeGenerationResponse {

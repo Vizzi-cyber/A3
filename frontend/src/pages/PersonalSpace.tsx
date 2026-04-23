@@ -42,17 +42,17 @@ const focusData = [
 ]
 
 const historyList = [
-  { title: '完成 2.1 线性代数基础 图文讲义', time: '今天 10:23', type: 'doc' },
-  { title: '提交 梯度下降原理练习题 x3', time: '今天 09:45', type: 'quiz' },
-  { title: '收藏 《神经网络PyTorch代码模板》', time: '昨天 16:30', type: 'code' },
-  { title: '更新学习画像：数学基础 +5', time: '昨天 14:20', type: 'profile' },
-  { title: '完成 1.2 监督学习与无监督学习 阅读', time: '昨天 10:00', type: 'doc' },
+  { title: '完成 2.1 数据类型与变量 图文讲义', time: '今天 10:23', type: 'doc' },
+  { title: '提交 控制结构练习题 x3', time: '今天 09:45', type: 'quiz' },
+  { title: '收藏 《C语言指针详解代码模板》', time: '昨天 16:30', type: 'code' },
+  { title: '更新学习画像：编程能力 +5', time: '昨天 14:20', type: 'profile' },
+  { title: '完成 1.2 第一个C程序 阅读', time: '昨天 10:00', type: 'doc' },
 ]
 
 const favorites = [
-  { title: '神经网络PyTorch代码模板', type: 'code', icon: <CodeOutlined />, color: '#3b82f6' },
-  { title: '李宏毅机器学习课程笔记', type: 'doc', icon: <FileTextOutlined />, color: '#10b981' },
-  { title: '反向传播算法3D动画', type: 'video', icon: <VideoCameraOutlined />, color: '#ef4444' },
+  { title: 'C语言指针详解代码模板', type: 'code', icon: <CodeOutlined />, color: '#3b82f6' },
+  { title: 'C语言程序设计课程笔记', type: 'doc', icon: <FileTextOutlined />, color: '#10b981' },
+  { title: '内存模型与指针动画', type: 'video', icon: <VideoCameraOutlined />, color: '#ef4444' },
 ]
 
 const typeMeta: Record<string, { icon: React.ReactNode; color: string; bg: string; label: string }> = {
@@ -82,8 +82,8 @@ const allBadges = [
 ]
 
 const defaultReflections: ReflectionEntry[] = [
-  { id: '1', date: '2026-04-19', content: '今天学习了梯度下降原理，理解了学习率对收敛的影响。下次需要多做一些调参练习。', topic: '梯度下降与优化' },
-  { id: '2', date: '2026-04-18', content: '线性代数基础部分矩阵运算已经比较熟练，但特征值分解还需要加强理解。', topic: '线性代数基础' },
+  { id: '1', date: '2026-04-19', content: '今天学习了指针的概念，理解了地址和值的关系。但指针运算还需要多加练习。', topic: '指针基础' },
+  { id: '2', date: '2026-04-18', content: '控制结构部分的 for 循环和 while 循环已经比较熟练，但嵌套循环还需要加强理解。', topic: '控制结构' },
 ]
 
 const PersonalSpace: React.FC = () => {
@@ -107,7 +107,7 @@ const PersonalSpace: React.FC = () => {
     load()
   }, [studentId])
 
-  const weakAreas = profile?.weak_areas || ['概率论', '梯度下降原理']
+  const weakAreas = profile?.weak_areas || ['指针与内存', '递归函数']
   const cognitivePrimary = profile?.cognitive_style?.primary || 'visual'
   const studySpeed = profile?.learning_tempo?.study_speed || 'moderate'
 
@@ -447,10 +447,10 @@ const PersonalSpace: React.FC = () => {
                       <div className="font-semibold text-slate-800 mb-4">待复习知识点</div>
                       <div className="space-y-3">
                         {[
-                          { topic: '线性代数基础', retention: 62, nextReview: '今天' },
-                          { topic: '梯度下降原理', retention: 85, nextReview: '明天' },
-                          { topic: '神经网络结构', retention: 45, nextReview: '今天' },
-                          { topic: '反向传播算法', retention: 78, nextReview: '后天' },
+                          { topic: '数据类型与变量', retention: 62, nextReview: '今天' },
+                          { topic: '控制结构', retention: 85, nextReview: '明天' },
+                          { topic: '指针与内存', retention: 45, nextReview: '今天' },
+                          { topic: '函数与递归', retention: 78, nextReview: '后天' },
                         ].map((item) => (
                           <div key={item.topic} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
                             <div className="flex-1">
@@ -484,10 +484,10 @@ const PersonalSpace: React.FC = () => {
                 <Typography.Title level={5} className="mb-5 font-semibold text-slate-800">画像数据解读</Typography.Title>
                 <div className="space-y-4 text-slate-600 leading-relaxed">
                   <div className="p-5 rounded-xl bg-slate-50 border border-slate-100">
-                    <p className="mb-2"><strong className="text-slate-800">认知风格：</strong> 你的主要认知风格为 <Tag className="rounded-full border-0 bg-purple-50 text-purple-600">{cognitivePrimary}</Tag>，系统会优先推送图表和动画类资源（如神经网络结构图、损失函数收敛曲线）。</p>
-                    <p className="mb-2"><strong className="text-slate-800">数学基础：</strong> 当前数学基础评估为 <Tag className="rounded-full border-0 bg-blue-50 text-blue-600">{studySpeed}</Tag>，系统在推荐内容时会自动补充线性代数和概率论的前置知识。</p>
-                    <p className="mb-2"><strong className="text-slate-800">薄弱点：</strong> {weakAreas.join('、') || '暂无'}，系统已自动增加相关练习推送和3D动画讲解。</p>
-                    <p><strong className="text-slate-800">兴趣方向：</strong> {profile?.interest_areas?.join('、') || '人工智能与机器学习'}。</p>
+                    <p className="mb-2"><strong className="text-slate-800">认知风格：</strong> 你的主要认知风格为 <Tag className="rounded-full border-0 bg-purple-50 text-purple-600">{cognitivePrimary}</Tag>，系统会优先推送图表和动画类资源（如内存模型图、指针示意图）。</p>
+                    <p className="mb-2"><strong className="text-slate-800">学习节奏：</strong> 当前学习节奏评估为 <Tag className="rounded-full border-0 bg-blue-50 text-blue-600">{studySpeed}</Tag>，系统在推荐内容时会自动调整讲解深度与练习量。</p>
+                    <p className="mb-2"><strong className="text-slate-800">薄弱点：</strong> {weakAreas.join('、') || '暂无'}，系统已自动增加相关练习推送和可视化讲解。</p>
+                    <p><strong className="text-slate-800">兴趣方向：</strong> {profile?.interest_areas?.join('、') || 'C语言程序设计与系统开发'}。</p>
                   </div>
                 </div>
                 <Button type="primary" className="mt-5 rounded-lg bg-primary">手动修正画像</Button>

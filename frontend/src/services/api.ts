@@ -79,6 +79,7 @@ export const profileApi = {
 export interface CodeExecuteRequest {
   code: string
   language?: string
+  kp_id?: string
 }
 
 export interface CodeExecuteResponse {

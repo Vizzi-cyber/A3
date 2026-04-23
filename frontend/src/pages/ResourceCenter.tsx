@@ -28,115 +28,33 @@ import {
   ThunderboltOutlined,
   StarOutlined,
   ReloadOutlined,
+  PictureOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { resourceApi, tutorApi } from '../services/api'
+import { resourceApi, tutorApi, imageApi, knowledgeApi } from '../services/api'
 import type { ChatMessage, QuestionItem, VisionContentItem } from '../types'
 import { ChatPanel } from '../components/ChatPanel'
 
-const { Panel } = Collapse
-
-const courseMenu = [
-  {
-    key: 'chapter1',
-    icon: <BookOutlined />,
-    label: '第一章：机器学习概述',
-    children: [
-      { key: '1-1', label: '1.1 什么是机器学习', completed: true },
-      { key: '1-2', label: '1.2 监督与无监督学习', completed: true },
-      { key: '1-3', label: '1.3 机器学习基本流程', completed: false },
-    ],
-  },
-  {
-    key: 'chapter2',
-    icon: <BookOutlined />,
-    label: '第二章：数学基础',
-    children: [
-      { key: '2-1', label: '2.1 线性代数基础', completed: false },
-      { key: '2-2', label: '2.2 概率论与统计', completed: false },
-      { key: '2-3', label: '2.3 梯度下降原理', completed: false },
-    ],
-  },
-  {
-    key: 'chapter3',
-    icon: <BookOutlined />,
-    label: '第三章：经典算法',
-    children: [
-      { key: '3-1', label: '3.1 线性回归', completed: false },
-      { key: '3-2', label: '3.2 逻辑回归', completed: false },
-      { key: '3-3', label: '3.3 神经网络基础', completed: false },
-    ],
-  },
-  {
-    key: 'chapter4',
-    icon: <BookOutlined />,
-    label: '第四章：深度学习进阶',
-    children: [
-      { key: '4-1', label: '4.1 反向传播算法', completed: false },
-      { key: '4-2', label: '4.2 CNN与图像识别', completed: false },
-      { key: '4-3', label: '4.3 大模型应用开发', completed: false },
-    ],
-  },
-]
+interface CourseMenuItem {
+  key: string
+  icon: React.ReactNode
+  label: string
+  children: { key: string; label: string; completed: boolean }[]
+}
 
 const ResourceCenter: React.FC = () => {
-  const [activeKey, setActiveKey] = useState('2-1')
+  const [activeKey, setActiveKey] = useState('')
+  const [courseMenu, setCourseMenu] = useState<CourseMenuItem[]>([])
+  const [menuLoading, setMenuLoading] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'ai', content: '你好！我正在和你一起学习《线性代数基础》。矩阵运算、特征值分解是后续理解神经网络的关键，有什么不懂的地方随时问我。', agent: '辅导助手' },
+    { role: 'ai', content: '你好！我正在和你一起学习《C语言基础》。C语言是计算机专业的入门语言，掌握它对于理解计算机底层原理至关重要。有什么不懂的地方随时问我。', agent: '辅导助手' },
   ])
   const [notes, setNotes] = useState('')
-  const [docContent, setDocContent] = useState(`
-## 什么是机器学习？
-
-机器学习（Machine Learning）是人工智能的一个分支，它让计算机通过**数据**自动学习和改进，而无需显式编程。
-
-### 核心思想
-传统编程：规则 + 数据 → 答案
-机器学习：数据 + 答案 → 规则
-
-### 三大类别
-- **监督学习（Supervised Learning）**：使用带标签的数据训练模型，如分类、回归
-- **无监督学习（Unsupervised Learning）**：从无标签数据中发现模式，如聚类、降维
-- **强化学习（Reinforcement Learning）**：通过与环境交互获得奖励来学习策略
-
-### 典型应用场景
-| 领域 | 应用示例 |
-|------|---------|
-| 计算机视觉 | 图像分类、目标检测、人脸识别 |
-| 自然语言处理 | 机器翻译、文本生成、情感分析 |
-| 推荐系统 | 商品推荐、内容个性化推送 |
-| 自动驾驶 | 环境感知、路径规划、决策控制 |
-
-> 💡 **关键洞察**：机器学习的本质是**函数拟合**——找一个函数 $f$，使得 $f(X) \approx Y$。
-`)
-  const [codeContent, setCodeContent] = useState(`import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-
-# 生成示例数据
-X = np.array([[1], [2], [3], [4], [5]])
-y = np.array([2.1, 4.0, 6.1, 7.8, 10.2])
-
-# 创建并训练模型
-model = LinearRegression()
-model.fit(X, y)
-
-# 预测
-X_test = np.array([[6]])
-prediction = model.predict(X_test)
-
-print(f"斜率: {model.coef_[0]:.2f}")
-print(f"截距: {model.intercept_:.2f}")
-print(f"x=6 时预测值: {prediction[0]:.2f}")
-
-# 可视化
-plt.scatter(X, y, color='blue', label='真实数据')
-plt.plot(X, model.predict(X), color='red', label='拟合直线')
-plt.legend()
-plt.show()`)
+  const [docContent, setDocContent] = useState('')
+  const [codeContent, setCodeContent] = useState('')
   const [questions, setQuestions] = useState<QuestionItem[]>([])
-  const [mindmap, setMindmap] = useState<{ root: string; children: { name: string }[] }>({ root: '机器学习概述', children: [] })
+  const [mindmap, setMindmap] = useState<{ root: string; children: { name: string }[] }>({ root: '', children: [] })
   const [loading, setLoading] = useState(false)
   const [resLoading, setResLoading] = useState(false)
   const [bottomTab, setBottomTab] = useState('code')
@@ -147,20 +65,72 @@ plt.show()`)
   const [ragActive, setRagActive] = useState(true)
   const [multiAgentStep, setMultiAgentStep] = useState<'planner' | 'worker' | 'critic' | 'done'>('done')
   const [ocrModalOpen, setOcrModalOpen] = useState(false)
+  const [codeResult, setCodeResult] = useState('')
+  const [codeRunning, setCodeRunning] = useState(false)
+  const [imagePrompt, setImagePrompt] = useState('')
+  const [generatedImage, setGeneratedImage] = useState('')
+  const [imageLoading, setImageLoading] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
 
-  const currentTopic = courseMenu.flatMap(c => c.children || []).find(c => c.key === activeKey)?.label || '线性代数基础'
+  const currentTopic = courseMenu.flatMap(c => c.children || []).find(c => c.key === activeKey)?.label || ''
+
+  // 加载课程目录
+  useEffect(() => {
+    let ignore = false
+    const loadMenu = async () => {
+      setMenuLoading(true)
+      try {
+        const res = await knowledgeApi.list()
+        if (ignore) return
+        const kps = res.data.data || []
+        // 按 subject 分组
+        const groups: Record<string, typeof kps> = {}
+        kps.forEach((kp: any) => {
+          const subject = kp.subject || '其他'
+          if (!groups[subject]) groups[subject] = []
+          groups[subject].push(kp)
+        })
+        // 构建 courseMenu
+        let chapterIndex = 1
+        const menu: CourseMenuItem[] = []
+        Object.entries(groups).forEach(([subject, items]) => {
+          menu.push({
+            key: `chapter_${subject}`,
+            icon: <BookOutlined />,
+            label: `第${chapterIndex}章：${subject}`,
+            children: items.map((kp: any, idx: number) => ({
+              key: kp.kp_id,
+              label: `${chapterIndex}.${idx + 1} ${kp.name}`,
+              completed: false,
+            })),
+          })
+          chapterIndex++
+        })
+        setCourseMenu(menu)
+        if (menu.length > 0 && menu[0].children.length > 0) {
+          setActiveKey(menu[0].children[0].key)
+        }
+      } catch (e) {
+        if (!ignore) message.error('课程目录加载失败')
+      } finally {
+        if (!ignore) setMenuLoading(false)
+      }
+    }
+    loadMenu()
+    return () => { ignore = true }
+  }, [])
 
   useEffect(() => {
+    if (!activeKey || !currentTopic) return
     let ignore = false
     const load = async () => {
       setResLoading(true)
       try {
         const [docRes, codeRes, qRes, mapRes] = await Promise.all([
-          resourceApi.generateDocument({ student_id: studentId, topic: currentTopic }),
-          resourceApi.generateCode({ student_id: studentId, topic: currentTopic, language: 'Python' }),
-          resourceApi.generateQuestions({ student_id: studentId, topic: currentTopic, count: 3 }),
-          resourceApi.generateMindmap({ student_id: studentId, topic: currentTopic }),
+          resourceApi.generateDocument({ student_id: studentId, topic: currentTopic, kp_id: activeKey }),
+          resourceApi.generateCode({ student_id: studentId, topic: currentTopic, language: 'C', kp_id: activeKey }),
+          resourceApi.generateQuestions({ student_id: studentId, topic: currentTopic, count: 3, kp_id: activeKey }),
+          resourceApi.generateMindmap({ student_id: studentId, topic: currentTopic, kp_id: activeKey }),
         ])
         if (ignore) return
         if (docRes.data.document) setDocContent(docRes.data.document)
@@ -204,10 +174,52 @@ plt.show()`)
     navigator.clipboard.writeText(codeContent).then(() => message.success('代码已复制'))
   }
 
+  const handleRunCode = async () => {
+    setCodeRunning(true)
+    setCodeResult('')
+    try {
+      const res = await resourceApi.executeCode({ code: codeContent, language: 'C' })
+      if (res.data.output) {
+        setCodeResult(res.data.output)
+      } else if (res.data.error) {
+        setCodeResult('错误：' + res.data.error)
+      } else {
+        setCodeResult('执行完成，无输出')
+      }
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '执行失败'
+      setCodeResult('执行出错：' + errMsg)
+    } finally {
+      setCodeRunning(false)
+    }
+  }
+
+  const handleGenerateImage = async () => {
+    if (!imagePrompt.trim()) {
+      message.warning('请输入图片描述')
+      return
+    }
+    setImageLoading(true)
+    try {
+      const res = await imageApi.generate({ prompt: imagePrompt })
+      if (res.data.image_urls && res.data.image_urls.length > 0) {
+        setGeneratedImage(res.data.image_urls[0])
+        message.success('图片生成成功')
+      } else {
+        message.info('图片生成中，请稍后查看')
+      }
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '生成失败'
+      message.error(errMsg)
+    } finally {
+      setImageLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* 顶部标题栏 */}
-      <Card className="border border-slate-100 rounded-2xl" bodyStyle={{ padding: '20px 24px' }}>
+      <Card className="border border-slate-100 rounded-2xl" styles={{ body: { padding: '20px 24px' } }}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <Space>
             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
@@ -215,7 +227,7 @@ plt.show()`)
             </div>
             <div>
               <Typography.Title level={4} className="!m-0 text-slate-800">{currentTopic}</Typography.Title>
-              <Typography.Text className="text-slate-400 text-xs">人工智能导论 · 机器学习基础</Typography.Text>
+              <Typography.Text className="text-slate-400 text-xs">C语言程序设计 · 编程基础</Typography.Text>
             </div>
           </Space>
           <Space>
@@ -238,27 +250,34 @@ plt.show()`)
 
       <div className="flex gap-5 items-start">
         {/* 左侧目录 */}
-        <Card className="border border-slate-100 rounded-2xl w-56 hidden xl:block flex-shrink-0" bodyStyle={{ padding: '20px 16px' }}>
+        <Card className="border border-slate-100 rounded-2xl w-56 hidden xl:block flex-shrink-0" styles={{ body: { padding: '20px 16px' } }}>
           <Typography.Text className="font-semibold text-slate-800 block mb-4 text-sm">课程目录</Typography.Text>
-          <Collapse defaultActiveKey={['chapter1', 'chapter2']} ghost expandIconPosition="end">
-            {courseMenu.map((chapter) => (
-              <Panel header={<span className="font-medium text-slate-700 text-sm">{chapter.label}</span>} key={chapter.key}>
-                <div className="flex flex-col gap-1">
-                  {chapter.children?.map((item) => (
-                    <Button
-                      key={item.key}
-                      type={activeKey === item.key ? 'primary' : 'text'}
-                      className={`justify-start text-left rounded-lg text-sm transition-all ${activeKey === item.key ? 'bg-primary' : 'text-slate-600 hover:bg-slate-50'}`}
-                      icon={item.completed ? <CheckCircleOutlined className="text-success text-xs" /> : <FileTextOutlined className={activeKey === item.key ? 'text-white text-xs' : 'text-slate-400 text-xs'} />}
-                      onClick={() => setActiveKey(item.key)}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
-                </div>
-              </Panel>
-            ))}
-          </Collapse>
+          <Spin spinning={menuLoading}>
+            <Collapse
+              defaultActiveKey={courseMenu.map(c => c.key)}
+              ghost
+              expandIconPosition="end"
+              items={courseMenu.map((chapter) => ({
+                key: chapter.key,
+                label: <span className="font-medium text-slate-700 text-sm">{chapter.label}</span>,
+                children: (
+                  <div className="flex flex-col gap-1">
+                    {chapter.children?.map((item) => (
+                      <Button
+                        key={item.key}
+                        type={activeKey === item.key ? 'primary' : 'text'}
+                        className={`justify-start text-left rounded-lg text-sm transition-all ${activeKey === item.key ? 'bg-primary' : 'text-slate-600 hover:bg-slate-50'}`}
+                        icon={item.completed ? <CheckCircleOutlined className="text-success text-xs" /> : <FileTextOutlined className={activeKey === item.key ? 'text-white text-xs' : 'text-slate-400 text-xs'} />}
+                        onClick={() => setActiveKey(item.key)}
+                      >
+                        {item.label}
+                      </Button>
+                    ))}
+                  </div>
+                ),
+              }))}
+            />
+          </Spin>
         </Card>
 
         {/* 中间主内容区 */}
@@ -281,13 +300,13 @@ plt.show()`)
             extra={
               <Space>
                 <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">{currentTopic}</Tag>
-                <Button.Group className="rounded-lg overflow-hidden">
+                <Space.Compact className="rounded-lg overflow-hidden">
                   <Button size="small" icon={<LikeOutlined />} className={resourceFeedback[currentTopic] === 'good' ? 'text-emerald-600' : ''} onClick={() => setResourceFeedback({ ...resourceFeedback, [currentTopic]: 'good' })} />
                   <Button size="small" icon={<DislikeOutlined />} className={resourceFeedback[currentTopic] === 'bad' ? 'text-red-500' : ''} onClick={() => setResourceFeedback({ ...resourceFeedback, [currentTopic]: 'bad' })} />
-                </Button.Group>
+                </Space.Compact>
               </Space>
             }
-            bodyStyle={{ padding: '40px' }}
+            styles={{ body: { padding: '40px' } }}
           >
             <Spin spinning={resLoading}>
               <div className="prose max-w-none text-slate-700 leading-relaxed text-[15px]">
@@ -302,7 +321,7 @@ plt.show()`)
           </Card>
 
           {/* 下方辅助功能区 */}
-          <Card className="border border-slate-100 rounded-2xl" bodyStyle={{ padding: '20px 24px' }}>
+          <Card className="border border-slate-100 rounded-2xl" styles={{ body: { padding: '20px 24px' } }}>
             <Tabs
               activeKey={bottomTab}
               onChange={setBottomTab}
@@ -323,12 +342,23 @@ plt.show()`)
                             <Button type="text" size="small" icon={<CopyOutlined className="text-slate-400 hover:text-white" />} onClick={copyCode} />
                           </Tooltip>
                         </div>
-                        <pre className="text-green-400"># 请在这里编写代码</pre>
-                        <pre className="text-slate-200 whitespace-pre-wrap mt-2">{codeContent}</pre>
+                        <Input.TextArea
+                          value={codeContent}
+                          onChange={(e) => setCodeContent(e.target.value)}
+                          rows={12}
+                          className="bg-slate-900 text-slate-200 border-slate-700 font-mono text-sm !p-0 !shadow-none !outline-none focus:!border-slate-700 focus:!shadow-none hover:!border-slate-700"
+                          style={{ resize: 'vertical', lineHeight: 1.6 }}
+                        />
                       </div>
-                      <Button type="primary" className="rounded-lg bg-primary">
+                      <Button type="primary" className="rounded-lg bg-primary" onClick={handleRunCode} loading={codeRunning}>
                         <ArrowRightOutlined /> 运行代码
                       </Button>
+                      {codeResult && (
+                        <div className="bg-slate-800 rounded-xl p-4 font-mono text-sm text-green-400 mt-2 whitespace-pre-wrap">
+                          <div className="text-slate-400 text-xs mb-2 border-b border-slate-600 pb-1">运行结果</div>
+                          {codeResult}
+                        </div>
+                      )}
                     </div>
                   ),
                 },
@@ -422,6 +452,26 @@ plt.show()`)
                     </div>
                   ),
                 },
+                {
+                  key: 'image',
+                  label: <span className="flex items-center gap-1.5 text-sm"><PictureOutlined /> AI 绘图</span>,
+                  children: (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-800">
+                        <strong>AI 绘图：</strong>输入图片描述，AI 将为你生成对应的学习插图或概念示意图。
+                      </div>
+                      <Input.TextArea rows={3} placeholder="例如：C语言内存模型示意图，展示栈区和堆区的区别..." value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} className="rounded-xl bg-slate-50 border-slate-200" />
+                      <Button type="primary" className="rounded-lg bg-primary" onClick={handleGenerateImage} loading={imageLoading}>
+                        <PictureOutlined /> 生成图片
+                      </Button>
+                      {generatedImage && (
+                        <div className="mt-3">
+                          <img src={generatedImage} alt="AI 生成图片" className="rounded-xl border border-slate-200 max-w-full" />
+                        </div>
+                      )}
+                    </div>
+                  ),
+                },
               ]}
             />
           </Card>
@@ -429,7 +479,7 @@ plt.show()`)
 
         {/* 右侧 AI 辅导 */}
         {chatOpen && (
-          <Card className="border border-slate-100 rounded-2xl w-72 flex-shrink-0 hidden lg:flex flex-col" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Card className="border border-slate-100 rounded-2xl w-72 flex-shrink-0 hidden lg:flex flex-col" styles={{ body: { padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' } }}>
             <ChatPanel
               messages={messages}
               loading={loading}

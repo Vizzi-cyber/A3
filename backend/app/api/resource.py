@@ -21,6 +21,7 @@ from ..schemas import (
     CodeExecuteResponse,
 )
 from ..agents import ResourceGeneratorAgent
+from ..services import content_library
 from .auth import get_current_student_id, require_auth
 
 router = APIRouter()
@@ -137,7 +138,20 @@ async def get_task_status(task_id: str):
 
 @router.post("/document/generate", response_model=DocumentGenerateResponse)
 async def generate_document(request: DocumentGenerateRequest, _current: str = Depends(require_auth)):
-    """生成讲解文档 —— 直接调用 ResourceGeneratorAgent，避免 LangGraph 多层路由延迟"""
+    """生成讲解文档 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
+    # 优先匹配内容库
+    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
+    if lib and lib.get("document"):
+        return {
+            "status": "success",
+            "document": lib["document"],
+            "metadata": {
+                "topic": request.topic,
+                "source": "content_library",
+                "generated_at": datetime.now().isoformat(),
+            },
+        }
+
     doc_content = f"# {request.topic}\n\n这里是生成的文档内容（fallback）。"
 
     try:
@@ -168,7 +182,18 @@ async def generate_document(request: DocumentGenerateRequest, _current: str = De
 
 @router.post("/questions/generate", response_model=QuestionsGenerateResponse)
 async def generate_questions(request: QuestionsGenerateRequest, _current: str = Depends(require_auth)):
-    """生成练习题 —— 直接调用 ResourceGeneratorAgent"""
+    """生成练习题 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
+    # 优先匹配内容库
+    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
+    if lib and lib.get("questions"):
+        questions = lib["questions"]
+        return {
+            "status": "success",
+            "topic": request.topic,
+            "count": len(questions),
+            "questions": questions,
+        }
+
     questions = [
         {
             "q_id": f"q_{i}",
@@ -214,7 +239,12 @@ async def generate_questions(request: QuestionsGenerateRequest, _current: str = 
 
 @router.post("/mindmap/generate", response_model=MindmapGenerateResponse)
 async def generate_mindmap(request: MindmapGenerateRequest, _current: str = Depends(require_auth)):
-    """生成思维导图 —— 直接调用 ResourceGeneratorAgent"""
+    """生成思维导图 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
+    # 优先匹配内容库
+    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
+    if lib and lib.get("mindmap"):
+        return {"status": "success", "mindmap": lib["mindmap"], "format": "json_tree"}
+
     mindmap = {"root": request.topic, "children": []}
 
     try:
@@ -239,7 +269,19 @@ async def generate_mindmap(request: MindmapGenerateRequest, _current: str = Depe
 
 @router.post("/code/generate", response_model=CodeGenerateResponse)
 async def generate_code(request: CodeGenerateRequest, _current: str = Depends(require_auth)):
-    """生成代码示例 —— 直接调用 ResourceGeneratorAgent"""
+    """生成代码示例 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
+    # 优先匹配内容库
+    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
+    if lib and lib.get("code"):
+        lang = request.language or "C"
+        ext = "c" if lang.lower() in ("c", "c语言") else lang.lower()
+        return {
+            "status": "success",
+            "code": lib["code"],
+            "language": lang,
+            "filename": f"{request.topic.lower().replace(' ', '_')}.{ext}",
+        }
+
     code = f"# {request.topic} - {request.language}\n\nprint('Hello, World!')"
 
     try:
@@ -268,16 +310,69 @@ async def generate_code(request: CodeGenerateRequest, _current: str = Depends(re
 
 @router.post("/code/execute", response_model=CodeExecuteResponse)
 async def execute_code(request: CodeExecuteRequest, _current: str = Depends(require_auth)):
-    """在服务器子进程中真实执行 Python 代码并返回结果"""
+    """在服务器子进程中执行代码（支持 Python 和 C）"""
     import subprocess
     import tempfile
     import os
+    import shutil
 
     code = request.code
+    language = (request.language or "Python").lower()
     if not code.strip():
         return {"status": "success", "output": "", "error": "代码为空", "explanation": ""}
 
-    # 简单黑名单过滤（禁止明显的危险操作）
+    # C语言执行：尝试 gcc 编译运行
+    if language in ("c", "c语言"):
+        if not shutil.which("gcc"):
+            return {
+                "status": "success",
+                "output": "",
+                "error": "当前服务器未安装 gcc，无法编译运行 C 代码。建议将代码复制到本地 IDE（如 Dev-C++、VS Code）中运行。",
+                "explanation": "C 代码需要 gcc 编译器，当前环境未提供。",
+            }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".c", delete=False, encoding="utf-8") as f:
+            f.write(code)
+            src_path = f.name
+        exe_path = src_path.replace(".c", ".exe" if os.name == "nt" else "")
+        try:
+            compile_res = subprocess.run(
+                ["gcc", src_path, "-o", exe_path],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if compile_res.returncode != 0:
+                return {
+                    "status": "success",
+                    "output": "",
+                    "error": compile_res.stderr[:2000] or "编译失败",
+                    "explanation": "C 代码编译出错，请检查语法。",
+                }
+            run_res = subprocess.run(
+                [exe_path],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            output = run_res.stdout[:5000]
+            error = run_res.stderr[:5000] if run_res.returncode != 0 else ""
+        except subprocess.TimeoutExpired:
+            output = ""
+            error = "代码执行超时（限制 10 秒）"
+        except Exception as e:
+            output = ""
+            error = f"执行异常: {str(e)}"
+        finally:
+            for p in (src_path, exe_path):
+                try:
+                    if p and os.path.exists(p):
+                        os.remove(p)
+                except Exception:
+                    pass
+        explanation = "代码执行成功，上方为输出结果。" if not error and output else ("代码执行过程中出现错误，请检查语法或逻辑。" if error else "")
+        return {"status": "success", "output": output, "error": error, "explanation": explanation}
+
+    # Python 执行
     blocked_keywords = ["__import__", "os.system", "os.popen", "subprocess.call", "subprocess.run",
                         "subprocess.Popen", "eval(", "exec(", "compile(", "open('/", "open(\"/",
                         "import os", "import sys", "import subprocess", "shutil", "socket",
@@ -287,7 +382,6 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
         if kw.lower() in lower_code:
             return {"status": "success", "output": "", "error": f"代码包含被禁止的关键字: {kw}", "explanation": "为了安全，部分系统级操作已被禁用。"}
 
-    # 创建临时文件执行代码
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
         f.write(code)
         tmp_path = f.name
@@ -299,7 +393,7 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
             text=True,
             timeout=10,
         )
-        output = result.stdout[:5000]  # 限制输出长度
+        output = result.stdout[:5000]
         error = result.stderr[:5000] if result.returncode != 0 else ""
     except subprocess.TimeoutExpired:
         output = ""
@@ -310,7 +404,7 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
     finally:
         try:
             os.remove(tmp_path)
-        except:
+        except Exception:
             pass
 
     explanation = ""

@@ -6,6 +6,7 @@ class DocumentGenerateRequest(BaseModel):
     student_id: str
     topic: str
     difficulty: str = "medium"
+    kp_id: Optional[str] = None
 
 
 class DocumentGenerateResponse(BaseModel):
@@ -18,6 +19,7 @@ class QuestionsGenerateRequest(BaseModel):
     student_id: str
     topic: str
     count: int = 5
+    kp_id: Optional[str] = None
 
 
 class QuestionsGenerateResponse(BaseModel):
@@ -30,6 +32,7 @@ class QuestionsGenerateResponse(BaseModel):
 class MindmapGenerateRequest(BaseModel):
     student_id: str
     topic: str
+    kp_id: Optional[str] = None
 
 
 class MindmapGenerateResponse(BaseModel):
@@ -42,6 +45,7 @@ class CodeGenerateRequest(BaseModel):
     student_id: str
     topic: str
     language: str = "Python"
+    kp_id: Optional[str] = None
 
 
 class CodeGenerateResponse(BaseModel):
@@ -54,6 +58,7 @@ class CodeGenerateResponse(BaseModel):
 class CodeExecuteRequest(BaseModel):
     code: str
     language: str = "Python"
+    kp_id: Optional[str] = None
 
 
 class CodeExecuteResponse(BaseModel):

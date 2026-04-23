@@ -44,10 +44,10 @@ const statusBg: Record<string, string> = {
 }
 
 const nodeResources = [
-  { title: '反向传播3D动画讲解', type: 'video', icon: <PlayCircleOutlined />, color: '#ef4444' },
-  { title: '神经网络PyTorch模板', type: 'code', icon: <CodeOutlined />, color: '#3b82f6' },
-  { title: '损失函数收敛曲线分析', type: 'doc', icon: <FileTextOutlined />, color: '#10b981' },
-  { title: 'CNN结构可视化练习 x10', type: 'quiz', icon: <BookOutlined />, color: '#f59e0b' },
+  { title: 'C语言基础视频讲解', type: 'video', icon: <PlayCircleOutlined />, color: '#ef4444' },
+  { title: '指针与内存代码示例', type: 'code', icon: <CodeOutlined />, color: '#3b82f6' },
+  { title: '数据结构学习笔记', type: 'doc', icon: <FileTextOutlined />, color: '#10b981' },
+  { title: '算法练习题 x10', type: 'quiz', icon: <BookOutlined />, color: '#f59e0b' },
 ]
 
 const LearningPathPage: React.FC = () => {
@@ -66,23 +66,23 @@ const LearningPathPage: React.FC = () => {
         const res: any = await pathApi.current(studentId)
         if (res.data) {
           const nodes = res.data.nodes || [
-            { id: 1, title: '机器学习概述', status: 'completed', type: '入门', resources: 5 },
-            { id: 2, title: '线性代数基础', status: 'completed', type: '数学', resources: 4 },
-            { id: 3, title: '梯度下降与优化', status: 'in-progress', type: '核心', resources: 8 },
-            { id: 4, title: '线性回归与逻辑回归', status: 'pending', type: '算法', resources: 6 },
+            { id: 1, title: 'C语言概述', status: 'completed', type: '入门', resources: 5 },
+            { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 4 },
+            { id: 3, title: '控制结构', status: 'in-progress', type: '核心', resources: 8 },
+            { id: 4, title: '数组与字符串', status: 'pending', type: '核心', resources: 6 },
           ]
           setPathData(res.data)
           setPathNodes(nodes)
         }
       } catch (e) {
         setPathNodes([
-          { id: 1, title: '机器学习概述', status: 'completed', type: '入门', resources: 5 },
-          { id: 2, title: '线性代数基础', status: 'completed', type: '数学', resources: 4 },
-          { id: 3, title: '梯度下降与优化', status: 'in-progress', type: '核心', resources: 8 },
-          { id: 4, title: '线性回归与逻辑回归', status: 'pending', type: '算法', resources: 6 },
-          { id: 5, title: '神经网络基础', status: 'locked', type: '核心', resources: 10 },
-          { id: 6, title: 'CNN与图像识别', status: 'locked', type: '深度学习', resources: 7 },
-          { id: 7, title: '大模型应用开发', status: 'locked', type: '前沿', resources: 6 },
+          { id: 1, title: 'C语言概述', status: 'completed', type: '入门', resources: 5 },
+          { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 4 },
+          { id: 3, title: '控制结构', status: 'in-progress', type: '核心', resources: 8 },
+          { id: 4, title: '数组与字符串', status: 'pending', type: '核心', resources: 6 },
+          { id: 5, title: '函数', status: 'locked', type: '核心', resources: 10 },
+          { id: 6, title: '指针', status: 'locked', type: '进阶', resources: 7 },
+          { id: 7, title: '结构体与文件操作', status: 'locked', type: '进阶', resources: 6 },
         ])
       }
     }
@@ -99,7 +99,7 @@ const LearningPathPage: React.FC = () => {
     try {
       const res: any = await pathApi.generate({
         student_id: studentId,
-        target_topic: '掌握 Python 机器学习与深度学习基础',
+        target_topic: '掌握 C语言程序设计与数据结构基础',
       })
       const stages = res.data?.path?.stages || []
       const nodes = stages.map((s: any, idx: number) => ({
@@ -125,15 +125,15 @@ const LearningPathPage: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* 顶部控制栏 */}
-      <Card className="border border-slate-100 rounded-2xl" bodyStyle={{ padding: '24px' }}>
+      <Card className="border border-slate-100 rounded-2xl" styles={{ body: { padding: '24px' } }}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Space>
             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
               <FlagOutlined />
             </div>
             <div>
-              <Typography.Title level={4} className="!m-0 text-slate-800">机器学习学习路径</Typography.Title>
-              <Typography.Text className="text-slate-400 text-xs">人工智能方向 · 共 {pathNodes.length} 个阶段</Typography.Text>
+              <Typography.Title level={4} className="!m-0 text-slate-800">C语言程序设计学习路径</Typography.Title>
+              <Typography.Text className="text-slate-400 text-xs">编程基础方向 · 共 {pathNodes.length} 个阶段</Typography.Text>
             </div>
           </Space>
           <Space>
@@ -176,7 +176,7 @@ const LearningPathPage: React.FC = () => {
           <ExclamationCircleOutlined className="text-amber-500 text-lg" />
           <div className="flex-1">
             <div className="text-sm font-medium text-amber-800">遗忘曲线提醒：有 3 个知识点需要今日复习</div>
-            <div className="text-xs text-amber-600">线性代数基础、梯度下降原理、神经网络结构 — 基于艾宾浩斯遗忘曲线计算</div>
+            <div className="text-xs text-amber-600">数据类型与变量、控制结构、指针与内存 — 基于艾宾浩斯遗忘曲线计算</div>
           </div>
           <Button size="small" className="rounded-lg border-amber-200 text-amber-700" onClick={() => setShowReviewAlert(false)}>
             稍后提醒
@@ -276,13 +276,13 @@ const LearningPathPage: React.FC = () => {
           <div className="relative max-w-3xl mx-auto">
             <div className="flex flex-wrap justify-center gap-4">
               {[
-                { id: 1, title: '机器学习概述', level: 1, status: 'completed' },
-                { id: 2, title: '线性代数基础', level: 1, status: 'completed' },
-                { id: 3, title: '梯度下降与优化', level: 2, status: 'in-progress' },
-                { id: 4, title: '线性回归', level: 2, status: 'pending' },
-                { id: 5, title: '神经网络基础', level: 3, status: 'locked' },
-                { id: 6, title: 'CNN与图像识别', level: 3, status: 'locked' },
-                { id: 7, title: '大模型应用开发', level: 4, status: 'locked' },
+                { id: 1, title: 'C语言概述', level: 1, status: 'completed' },
+                { id: 2, title: '数据类型与变量', level: 1, status: 'completed' },
+                { id: 3, title: '控制结构', level: 2, status: 'in-progress' },
+                { id: 4, title: '数组与字符串', level: 2, status: 'pending' },
+                { id: 5, title: '函数与递归', level: 3, status: 'locked' },
+                { id: 6, title: '指针与内存', level: 3, status: 'locked' },
+                { id: 7, title: '结构体与文件', level: 4, status: 'locked' },
               ].map((node) => (
                 <div key={node.id} className="flex flex-col items-center">
                   <div
