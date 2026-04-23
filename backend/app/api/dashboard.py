@@ -13,6 +13,8 @@ from ..models.knowledge import LearningRecordModel, QuizResultModel
 from ..models.gamification import PointsModel, AchievementModel, TaskModel
 from ..models.favorites import FavoriteModel
 from ..models.trend import TrendDataModel
+from ..algorithms.effect_evaluation import LearningEffectEvaluator
+from ..algorithms.trend_analysis import MultiFactorTrendAnalyzer
 
 router = APIRouter()
 
@@ -169,6 +171,50 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
             daily_duration[d] = daily_duration.get(d, 0) + (r.duration or 0)
         trend_data = [{"date": d, "value": round(v / 60, 1)} for d, v in daily_duration.items()]
 
+    # ---------- 算法分析 ----------
+    quiz_history = [
+        {
+            "score": q.score,
+            "total_questions": q.total_questions,
+            "correct_count": q.correct_count,
+            "weak_tags": q.weak_tags or [],
+            "created_at": q.created_at.isoformat() if q.created_at else "",
+        }
+        for q in db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id).order_by(QuizResultModel.created_at.asc()).all()
+    ]
+    learning_records_raw = [
+        {
+            "duration": r.duration,
+            "progress": r.progress,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+        }
+        for r in db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id).all()
+    ]
+    profile_dict = {
+        "learning_tempo": profile.learning_tempo or {} if profile else {},
+        "knowledge_base": profile.knowledge_base or {} if profile else {},
+        "weak_areas": weak_areas,
+        "cognitive_style": cognitive_style,
+        "learning_goals": profile.learning_goals or [] if profile else [],
+    }
+
+    effect_evaluator = LearningEffectEvaluator()
+    effect_result = effect_evaluator.evaluate(
+        student_id=student_id,
+        quiz_history=quiz_history,
+        learning_records=learning_records_raw,
+        weak_areas=weak_areas,
+    )
+
+    trend_analyzer = MultiFactorTrendAnalyzer()
+    trend_result = trend_analyzer.analyze(
+        student_id=student_id,
+        quiz_history=quiz_history,
+        learning_records=learning_records_raw,
+        weak_areas=weak_areas,
+        profile=profile_dict,
+    )
+
     return {
         "status": "success",
         "student_id": student_id,
@@ -184,4 +230,8 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
         "recommendations": recommendations,
         "profile_summary": profile_summary,
         "trend": trend_data,
+        "algorithm_analysis": {
+            "effect_evaluation": effect_result,
+            "trend_analysis": trend_result,
+        },
     }

@@ -153,14 +153,42 @@ const ResourceCenter: React.FC = () => {
     return () => { ignore = true }
   }, [activeKey, studentId])
 
+  const generateLocalResourceReply = (text: string, topic: string): string => {
+    const lower = text.toLowerCase()
+    if (lower.includes('指针') || lower.includes('内存')) {
+      return `${topic} 中指针的概念确实比较抽象。建议你结合右侧的代码编辑器，亲自运行一下指针相关的示例代码，观察内存地址的变化。实践是理解指针的最佳途径。`
+    }
+    if (lower.includes('数组')) {
+      return `数组在C语言中非常重要。你可以尝试修改代码编辑器中的数组示例，比如改变数组大小或初始化方式，看看输出会有什么变化。`
+    }
+    if (lower.includes('函数')) {
+      return `函数的学习重在理解参数传递和返回值。建议你先阅读讲义中的函数章节，然后尝试独立完成一个自定义函数的编写。`
+    }
+    if (lower.includes('困难') || lower.includes('不会') || lower.includes('不懂')) {
+      return `学习${topic}遇到难点很正常。你可以先回顾一下讲义中的基础概念，或者尝试用康奈尔笔记法整理一下思路。如果需要，我也可以帮你梳理知识脉络。`
+    }
+    return `关于${topic}的问题很有价值！建议你结合当前讲义内容和代码示例进行思考，有什么具体不理解的地方可以随时问我。`
+  }
+
   const handleSend = async (content: string | VisionContentItem[]) => {
     const question = typeof content === 'string' ? content : ''
     if (!question.trim()) return
     setMessages((prev) => [...prev, { role: 'user', content: question }])
     setLoading(true)
     try {
-      const res = await tutorApi.ask({ student_id: studentId, question, session_id: `${studentId}_resource` })
-      setMessages((prev) => [...prev, { role: 'ai', content: res.data.response || '让我再想想...', agent: '辅导助手' }])
+      let aiReply = generateLocalResourceReply(question, currentTopic)
+      try {
+        const res = await Promise.race([
+          tutorApi.ask({ student_id: studentId, question, session_id: `${studentId}_resource` }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        ])
+        if (res.data?.response && !res.data.response.includes('思考时间')) {
+          aiReply = res.data.response
+        }
+      } catch {
+        // 超时或失败时使用本地回复
+      }
+      setMessages((prev) => [...prev, { role: 'ai', content: aiReply, agent: '辅导助手' }])
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '请求失败'
       message.error(errMsg)

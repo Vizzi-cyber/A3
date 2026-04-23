@@ -114,6 +114,8 @@ export const pathApi = {
     api.get<CurrentPathResponse>(`/learning-path/${studentId}/current`),
   adjust: (studentId: string, data: PathAdjustmentRequest) =>
     api.post<{ status: string; message: string; data: LearningPath['path'] }>(`/learning-path/${studentId}/adjust`, data),
+  dagGenerate: (data: { student_id: string; target_kp_id: string; mastery_map?: Record<string, number> }) =>
+    api.post<{ status: string; data: any }>('/learning-path/dag/generate', data),
 }
 
 // ---------- 智能辅导 ----------

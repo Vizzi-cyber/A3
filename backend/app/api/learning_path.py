@@ -77,22 +77,70 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                 "profile": profile_dict,
                 "target": request.target_topic,
             }),
-            timeout=15.0,
+            timeout=10.0,
         )
         raw_path = result.get("path", {}) if isinstance(result, dict) else {}
     except asyncio.TimeoutError:
         raw_path = {}
-    except Exception as e:
+    except Exception:
         raw_path = {}
 
-    path_data = {
+    # 如果 agent 失败或超时，使用 DAG 算法生成路径
+    if not raw_path or not raw_path.get("stages"):
+        kps = db.query(KnowledgePointModel).all()
+        if kps:
+            planner = DAGPathPlanner()
+            planner.build_graph([
+                {
+                    "kp_id": k.kp_id,
+                    "name": k.name,
+                    "subject": k.subject,
+                    "difficulty": k.difficulty,
+                    "prerequisites": k.prerequisites or [],
+                    "description": k.description,
+                    "tags": k.tags,
+                }
+                for k in kps
+            ])
+            # 默认目标为最后一个知识点
+            target_kp_id = kps[-1].kp_id
+            mastery_map = {}
+            records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == request.student_id).all()
+            for r in records:
+                mastery_map[r.kp_id] = max(mastery_map.get(r.kp_id, 0.0), r.progress or 0.0)
+            dag_result = planner.plan_path(
+                student_id=request.student_id,
+                target_kp_id=target_kp_id,
+                mastery_map=mastery_map,
+                profile=profile_dict,
+            )
+            # 将 DAG 结果转换为前端期望的 stages 格式
+            stages = []
+            stage_names = ["基础巩固", "核心知识", "进阶深化", "综合实战"]
+            for idx, stage in enumerate(dag_result.get("stages", [])):
+                stages.append({
+                    "stage_no": idx + 1,
+                    "title": stage_names[idx] if idx < len(stage_names) else f"阶段 {idx + 1}",
+                    "topics": stage.get("kps", []),
+                    "hours": stage.get("estimated_hours", 5),
+                    "criteria": stage.get("criteria", "完成本阶段所有知识点学习"),
+                    "resources": stage.get("resources", []),
+                })
+            if stages:
+                raw_path = {
+                    "target": request.target_topic,
+                    "estimated_total_hours": sum(s.get("hours", 5) for s in stages),
+                    "stages": stages,
+                }
+
+    path_data = raw_path if raw_path and raw_path.get("stages") else {
         "target": request.target_topic,
         "estimated_total_hours": 20,
         "stages": [
             {
                 "stage_no": 1,
                 "title": "基础入门与概念理解",
-                "topics": [f"《{request.target_topic}》的基本概念与核心定义", "基础工具与环境搭建"],
+                "topics": ["C语言概述与开发环境搭建", "数据类型与变量"],
                 "hours": 5,
                 "criteria": "能够清晰阐述基本概念，并成功搭建学习环境。",
                 "resources": ["官方入门指南", "结构化在线课程"],
@@ -100,7 +148,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             {
                 "stage_no": 2,
                 "title": "核心技能与知识深化",
-                "topics": ["核心功能与模块详解", "常见问题与解决方案"],
+                "topics": ["控制结构", "数组与字符串", "函数与递归"],
                 "hours": 5,
                 "criteria": "能够独立运用核心功能解决中等难度的练习题。",
                 "resources": ["进阶教程或书籍", "官方技术文档"],
@@ -108,7 +156,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             {
                 "stage_no": 3,
                 "title": "实践应用与项目实战",
-                "topics": ["设计并实现一个基于该主题的小型项目", "项目中的问题排查与调试"],
+                "topics": ["指针与内存管理", "结构体与联合体"],
                 "hours": 5,
                 "criteria": "能够独立完成一个功能完整的小型项目。",
                 "resources": ["项目案例库", "开源代码仓库"],
@@ -116,17 +164,13 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             {
                 "stage_no": 4,
                 "title": "高级主题与综合提升",
-                "topics": ["高级特性与优化技巧", "与其他技术的集成应用"],
+                "topics": ["文件操作", "预处理指令", "动态内存管理"],
                 "hours": 5,
                 "criteria": "能够理解并应用高级特性，对项目进行性能优化。",
                 "resources": ["高级技术书籍或论文", "技术博客与会议演讲"],
             },
         ],
     }
-
-    # 只有取到有效 stages 时才覆盖 fallback
-    if raw_path and raw_path.get("stages"):
-        path_data = raw_path
 
     return {
         "status": "success",
@@ -139,27 +183,54 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 
 
 @router.get("/{student_id}/current")
-async def get_current_path(student_id: str):
-    """获取当前学习路径"""
+async def get_current_path(student_id: str, db: Session = Depends(get_db)):
+    """获取当前学习路径 —— 基于数据库知识点动态构建"""
+    kps = db.query(KnowledgePointModel).order_by(KnowledgePointModel.created_at.asc()).all()
+    # 查询学习记录计算每个KP的进度
+    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id).all()
+    kp_progress: Dict[str, float] = {}
+    for r in records:
+        kp_progress[r.kp_id] = max(kp_progress.get(r.kp_id, 0.0), r.progress or 0.0)
+
+    nodes = []
+    for idx, kp in enumerate(kps):
+        progress = kp_progress.get(kp.kp_id, 0.0)
+        if progress >= 0.8:
+            status = "completed"
+        elif progress > 0:
+            status = "in-progress"
+        else:
+            # 如果前置知识点都完成了，则pending；否则locked
+            prereqs = kp.prerequisites or []
+            if prereqs and any(kp_progress.get(p, 0.0) < 0.8 for p in prereqs):
+                status = "locked"
+            else:
+                status = "pending"
+        nodes.append({
+            "id": idx + 1,
+            "kp_id": kp.kp_id,
+            "title": kp.name,
+            "status": status,
+            "type": kp.subject or "核心",
+            "resources": 5,
+        })
+
+    completed_count = sum(1 for n in nodes if n["status"] == "completed")
+    in_progress_count = sum(1 for n in nodes if n["status"] == "in-progress")
+    current_step = completed_count + (1 if in_progress_count > 0 else 0)
+    next_node = next((n for n in nodes if n["status"] in ("in-progress", "pending")), None)
+
     return {
         "status": "success",
         "student_id": student_id,
-        "current_step": 2,
-        "progress": 0.25,
+        "current_step": current_step,
+        "progress": round(completed_count / len(nodes), 2) if nodes else 0,
         "next_task": {
-            "kp_id": "kp_002",
-            "name": "递归终止条件",
+            "kp_id": next_node["kp_id"] if next_node else "",
+            "name": next_node["title"] if next_node else "暂无",
             "action": "继续学习",
         },
-        "nodes": [
-            {"id": 1, "title": "机器学习概述", "status": "completed", "type": "入门", "resources": 5},
-            {"id": 2, "title": "线性代数基础", "status": "completed", "type": "数学", "resources": 4},
-            {"id": 3, "title": "梯度下降与优化", "status": "in-progress", "type": "核心", "resources": 8},
-            {"id": 4, "title": "线性回归与逻辑回归", "status": "pending", "type": "算法", "resources": 6},
-            {"id": 5, "title": "神经网络基础", "status": "locked", "type": "核心", "resources": 10},
-            {"id": 6, "title": "CNN与图像识别", "status": "locked", "type": "深度学习", "resources": 7},
-            {"id": 7, "title": "大模型应用开发", "status": "locked", "type": "前沿", "resources": 6},
-        ],
+        "nodes": nodes,
     }
 
 

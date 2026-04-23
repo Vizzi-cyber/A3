@@ -108,6 +108,7 @@ const Dashboard: React.FC = () => {
   const [isBreak, setIsBreak] = useState(false)
   const [pomodoroCount, setPomodoroCount] = useState(4)
   const [kgModalOpen, setKgModalOpen] = useState(false)
+  const [algorithmAnalysis, setAlgorithmAnalysis] = useState<any>(null)
 
   const studentId = useAppStore((s) => s.studentId)
   const journeyRef = useRef<HTMLDivElement>(null)
@@ -164,6 +165,7 @@ const Dashboard: React.FC = () => {
           setStats(d.stats || stats)
           setTasks(d.tasks || [])
           setRecommendations(d.recommendations || [])
+          setAlgorithmAnalysis(d.algorithm_analysis || null)
         }
       } catch (e) {
         console.error('Dashboard 数据加载失败:', e)
@@ -307,6 +309,96 @@ const Dashboard: React.FC = () => {
           </Col>
         ))}
       </Row>
+
+      {/* 算法分析结果 */}
+      {algorithmAnalysis && (
+        <Row gutter={[20, 20]}>
+          <Col xs={24} lg={12}>
+            <Card className="border border-slate-100 rounded-2xl shadow-card" title={
+              <Space><NodeIndexOutlined className="text-primary text-lg" /><span className="font-semibold text-slate-800">学习趋势分析</span></Space>
+            } styles={{ body: { padding: '24px' } }}>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">趋势状态</span>
+                  <Tag className={`rounded-full border-0 text-xs font-medium ${
+                    algorithmAnalysis.trend_analysis?.trend_state === 'growth' ? 'bg-emerald-50 text-emerald-600' :
+                    algorithmAnalysis.trend_analysis?.trend_state === 'warning' ? 'bg-red-50 text-red-600' :
+                    algorithmAnalysis.trend_analysis?.trend_state === 'decline' ? 'bg-amber-50 text-amber-600' :
+                    'bg-slate-100 text-slate-600'
+                  }`}>
+                    {algorithmAnalysis.trend_analysis?.trend_state === 'growth' ? '上升趋势' :
+                     algorithmAnalysis.trend_analysis?.trend_state === 'warning' ? '预警' :
+                     algorithmAnalysis.trend_analysis?.trend_state === 'decline' ? '下滑' : '平稳'}
+                  </Tag>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">综合趋势因子</span>
+                  <span className="text-sm font-bold text-slate-800">{algorithmAnalysis.trend_analysis?.trend_factor?.toFixed(2) ?? '--'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">3天后预测掌握度</span>
+                  <span className="text-sm font-bold text-primary">{algorithmAnalysis.trend_analysis?.predicted_mastery_3d?.toFixed(1) ?? '--'}%</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 leading-relaxed">
+                  <strong>干预建议：</strong>{algorithmAnalysis.trend_analysis?.intervention || '暂无建议'}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(algorithmAnalysis.trend_analysis?.dimensions || {}).map(([key, val]: [string, any]) => (
+                    <div key={key} className="p-2 rounded-lg bg-slate-50 text-center">
+                      <div className="text-xs text-slate-400">{key === 'mastery_trend' ? '掌握度趋势' : key === 'speed_ratio' ? '学习速度' : key === 'time_efficiency' ? '时间效率' : key === 'weakness_priority' ? '薄弱点优先' : '稳定性'}</div>
+                      <div className="text-sm font-bold text-slate-800">{(val * 100).toFixed(0)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card className="border border-slate-100 rounded-2xl shadow-card" title={
+              <Space><TrophyOutlined className="text-primary text-lg" /><span className="font-semibold text-slate-800">学习效果评估</span></Space>
+            } styles={{ body: { padding: '24px' } }}>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">总体正确率</span>
+                  <span className="text-sm font-bold text-slate-800">{algorithmAnalysis.effect_evaluation?.realtime_metrics?.accuracy?.toFixed(1) ?? '--'}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">掌握度</span>
+                  <span className="text-sm font-bold text-slate-800">{algorithmAnalysis.effect_evaluation?.realtime_metrics?.mastery?.toFixed(1) ?? '--'}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">提升速率</span>
+                  <span className={`text-sm font-bold ${(algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {(algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate || 0) >= 0 ? '+' : ''}{algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate?.toFixed(1) ?? '--'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">预测下次得分</span>
+                  <span className="text-sm font-bold text-primary">{algorithmAnalysis.effect_evaluation?.predictions?.next_score?.toFixed(1) ?? '--'}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-xs text-slate-500 mb-2 font-medium">潜在失分点 TOP3</div>
+                  <div className="space-y-1">
+                    {(algorithmAnalysis.effect_evaluation?.predictions?.potential_loss_points || []).slice(0, 3).map((p: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span className="text-slate-600">{p.tag}</span>
+                        <span className="text-slate-400">风险 {(p.risk_score * 100).toFixed(0)}%</span>
+                      </div>
+                    ))}
+                    {(algorithmAnalysis.effect_evaluation?.predictions?.potential_loss_points || []).length === 0 && (
+                      <span className="text-xs text-slate-400">暂无显著失分点</span>
+                    )}
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-xs text-indigo-700 leading-relaxed">
+                  <strong>干预策略（{algorithmAnalysis.effect_evaluation?.intervention?.priority === 'high' ? '高优先级' : '正常'}）：</strong>
+                  {(algorithmAnalysis.effect_evaluation?.intervention?.strategies || []).map((s: any) => s.action).join('；') || '继续保持'}
+                </div>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* ===== 3D 滚动旅程区 ===== */}
       <div
