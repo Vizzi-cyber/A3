@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Typography, Card, Button, Tag, Space, Timeline, Drawer, Slider, Radio, Progress, Avatar, List, message, Input, Badge, Tooltip } from 'antd'
+import { Typography, Card, Button, Tag, Space, Timeline, Drawer, Slider, Radio, Progress, Avatar, List, message, Input, Badge, Tooltip, Divider, Popconfirm, Checkbox } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -18,10 +18,17 @@ import {
   ReloadOutlined,
   ExclamationCircleOutlined,
   ApartmentOutlined,
+  BulbOutlined,
+  SaveOutlined,
+  StepForwardOutlined,
+  CloseCircleOutlined,
+  UndoOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store'
-import { pathApi } from '../services/api'
+import { pathApi, profileApi } from '../services/api'
+import { buildRadarData } from '../utils/profile'
 
 const statusColors: Record<string, string> = {
   completed: '#10b981',
@@ -62,8 +69,46 @@ const LearningPathPage: React.FC = () => {
   const [dailyDuration, setDailyDuration] = useState(90)
   const [difficulty, setDifficulty] = useState(3)
   const [learningPreference, setLearningPreference] = useState('balanced')
+  const [targetTopic, setTargetTopic] = useState('掌握 C语言程序设计与数据结构基础')
+  const [adjustFeedback, setAdjustFeedback] = useState('')
+  const [profileSuggestions, setProfileSuggestions] = useState<string[]>([])
+  const [activeAdjustTab, setActiveAdjustTab] = useState<'params' | 'nodes' | 'feedback'>('params')
   const studentId = useAppStore((s) => s.studentId)
   const navigate = useNavigate()
+
+  // 加载本地保存的偏好和路径数据
+  useEffect(() => {
+    const saved = localStorage.getItem(`path_prefs_${studentId}`)
+    if (saved) {
+      try {
+        const p = JSON.parse(saved)
+        setDailyDuration(p.dailyDuration ?? 90)
+        setDifficulty(p.difficulty ?? 3)
+        setLearningPreference(p.learningPreference ?? 'balanced')
+        setTargetTopic(p.targetTopic ?? '掌握 C语言程序设计与数据结构基础')
+      } catch {}
+    }
+  }, [studentId])
+
+  // 加载画像建议
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res: any = await profileApi.get(studentId)
+        const p = res.data?.data
+        if (p) {
+          const suggestions: string[] = []
+          if (p.weak_areas?.length) suggestions.push(`薄弱点：${p.weak_areas.slice(0, 3).join('、')} — 建议优先安排`)
+          if (p.learning_tempo?.study_speed === 'fast') suggestions.push('你的学习节奏较快，可适当提高难度或缩短每日时长')
+          if (p.learning_tempo?.study_speed === 'slow') suggestions.push('你的学习节奏较缓，建议降低难度并增加每日时长')
+          if (p.cognitive_style?.primary === 'kinesthetic') suggestions.push('你是动手实践型学习者，建议多选代码实战类资源')
+          if (p.practical_preferences?.overall_score < 0.5) suggestions.push('实践偏好分较低，建议增加练习比重')
+          setProfileSuggestions(suggestions)
+        }
+      } catch {}
+    }
+    loadProfile()
+  }, [studentId])
 
   useEffect(() => {
     const load = async () => {
@@ -132,6 +177,64 @@ const LearningPathPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSavePreferences = () => {
+    const prefs = { dailyDuration, difficulty, learningPreference, targetTopic }
+    localStorage.setItem(`path_prefs_${studentId}`, JSON.stringify(prefs))
+    message.success('偏好设置已保存')
+  }
+
+  const handleAdjustPath = async () => {
+    if (!adjustFeedback.trim()) {
+      message.warning('请输入调整反馈')
+      return
+    }
+    setLoading(true)
+    try {
+      const res: any = await pathApi.adjust(studentId, {
+        feedback: adjustFeedback,
+        current_path: pathData?.path,
+      })
+      const stages = res.data?.stages || []
+      if (stages.length) {
+        const nodes = stages.map((s: any, idx: number) => ({
+          id: idx + 1,
+          title: s.title,
+          status: idx === 0 ? 'in-progress' : 'pending',
+          type: s.resources?.[0] || '综合',
+          resources: s.topics?.length || 3,
+        }))
+        setPathNodes(nodes)
+        setPathData({ ...pathData, path: res.data })
+      }
+      message.success('路径已调整')
+      setAdjustFeedback('')
+    } catch (e: any) {
+      message.error(e.message || '调整失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleNodeAction = (nodeId: number, action: 'complete' | 'skip' | 'reset') => {
+    setPathNodes((prev) =>
+      prev.map((n) => {
+        if (n.id !== nodeId) return n
+        if (action === 'complete') return { ...n, status: 'completed' }
+        if (action === 'skip') return { ...n, status: 'pending', skipped: true }
+        if (action === 'reset') return { ...n, status: 'pending', skipped: false }
+        return n
+      })
+    )
+    message.success(action === 'complete' ? '已标记完成' : action === 'skip' ? '已跳过该节点' : '已重置进度')
+  }
+
+  const handleBatchComplete = (ids: number[]) => {
+    setPathNodes((prev) =>
+      prev.map((n) => (ids.includes(n.id) ? { ...n, status: 'completed' } : n))
+    )
+    message.success(`已批量标记 ${ids.length} 个节点为已完成`)
   }
 
   const completedCount = pathNodes.filter((n) => n.status === 'completed').length
@@ -416,29 +519,242 @@ const LearningPathPage: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="space-y-8">
-            <div>
-              <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">学习偏好</Typography.Text>
-              <Radio.Group value={learningPreference} onChange={(e) => setLearningPreference(e.target.value)} className="flex flex-col gap-3">
-                <Radio value="theory" className="text-sm">加强理论</Radio>
-                <Radio value="practice" className="text-sm">多些练习</Radio>
-                <Radio value="balanced" className="text-sm">平衡模式</Radio>
-              </Radio.Group>
+          <div className="space-y-6">
+            {/* 路径概览卡片 */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="flex items-center justify-between mb-3">
+                <Typography.Text className="font-semibold text-slate-800 text-sm">当前路径概览</Typography.Text>
+                <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs">{pathNodes.length} 个阶段</Tag>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-2 rounded-lg bg-white border border-slate-100">
+                  <div className="text-lg font-bold text-emerald-600">{completedCount}</div>
+                  <div className="text-xs text-slate-400">已完成</div>
+                </div>
+                <div className="p-2 rounded-lg bg-white border border-slate-100">
+                  <div className="text-lg font-bold text-indigo-600">{pathNodes.filter((n) => n.status === 'in-progress').length}</div>
+                  <div className="text-xs text-slate-400">进行中</div>
+                </div>
+                <div className="p-2 rounded-lg bg-white border border-slate-100">
+                  <div className="text-lg font-bold text-slate-600">{Math.max(1, Math.round((pathNodes.length - completedCount) * dailyDuration / 60))}h</div>
+                  <div className="text-xs text-slate-400">预计剩余</div>
+                </div>
+              </div>
+              <div className="mt-3">
+                <Progress percent={progress} strokeColor={{ from: '#4f46e5', to: '#0ea5e9' }} trailColor="#f1f5f9" size="small" showInfo={false} strokeLinecap="round" />
+                <div className="text-right text-xs text-slate-400 mt-1">总进度 {progress}%</div>
+              </div>
             </div>
 
-            <div>
-              <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">每日学习时长</Typography.Text>
-              <Slider min={30} max={240} step={15} value={dailyDuration} onChange={setDailyDuration} marks={{ 30: '30m', 120: '2h', 240: '4h' }} tooltip={{ formatter: (v) => `${v}分钟` }} />
-            </div>
+            {/* 画像个性化建议 */}
+            {profileSuggestions.length > 0 && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <BulbOutlined className="text-amber-500" />
+                  <Typography.Text className="font-semibold text-amber-800 text-sm">基于画像的建议</Typography.Text>
+                </div>
+                <div className="space-y-1.5">
+                  {profileSuggestions.map((s, i) => (
+                    <div key={i} className="text-xs text-amber-700 leading-relaxed flex items-start gap-1.5">
+                      <span className="shrink-0 mt-0.5 w-1 h-1 rounded-full bg-amber-400" />
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            <div>
-              <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">难度偏好</Typography.Text>
-              <Slider min={1} max={5} step={1} value={difficulty} onChange={setDifficulty} marks={{ 1: '简单', 3: '适中', 5: '挑战' }} />
-            </div>
+            {/* Tab 切换 */}
+            <Radio.Group
+              value={activeAdjustTab}
+              onChange={(e) => setActiveAdjustTab(e.target.value)}
+              buttonStyle="solid"
+              className="w-full flex rounded-lg overflow-hidden"
+            >
+              <Radio.Button value="params" className="flex-1 text-center text-xs">参数设置</Radio.Button>
+              <Radio.Button value="nodes" className="flex-1 text-center text-xs">节点管理</Radio.Button>
+              <Radio.Button value="feedback" className="flex-1 text-center text-xs">智能微调</Radio.Button>
+            </Radio.Group>
 
-            <Button type="primary" block className="rounded-lg bg-primary h-10" onClick={() => { handleGeneratePath(); setDrawerOpen(false); }} loading={loading}>
-              重新规划路径 <ArrowRightOutlined />
-            </Button>
+            {/* 参数设置 Tab */}
+            {activeAdjustTab === 'params' && (
+              <div className="space-y-6">
+                <div>
+                  <Typography.Text className="font-semibold text-slate-800 block mb-2 text-sm">学习目标主题</Typography.Text>
+                  <Input
+                    value={targetTopic}
+                    onChange={(e) => setTargetTopic(e.target.value)}
+                    placeholder="例如：掌握 C语言程序设计与数据结构基础"
+                    className="rounded-lg"
+                  />
+                  <Typography.Text className="text-xs text-slate-400 block mt-1">修改后点击「重新规划」生效</Typography.Text>
+                </div>
+
+                <div>
+                  <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">学习偏好</Typography.Text>
+                  <Radio.Group value={learningPreference} onChange={(e) => setLearningPreference(e.target.value)} className="flex flex-col gap-3">
+                    <Radio value="theory" className="text-sm">加强理论（更多文档、讲解视频）</Radio>
+                    <Radio value="practice" className="text-sm">多些练习（更多代码、算法题）</Radio>
+                    <Radio value="balanced" className="text-sm">平衡模式（理论+实践兼顾）</Radio>
+                  </Radio.Group>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <Typography.Text className="font-semibold text-slate-800 text-sm">每日学习时长</Typography.Text>
+                    <Typography.Text className="text-xs text-slate-500">{dailyDuration} 分钟</Typography.Text>
+                  </div>
+                  <Slider min={30} max={240} step={15} value={dailyDuration} onChange={setDailyDuration} marks={{ 30: '30m', 120: '2h', 240: '4h' }} tooltip={{ formatter: (v) => `${v}分钟` }} />
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <Typography.Text className="font-semibold text-slate-800 text-sm">难度偏好</Typography.Text>
+                    <Typography.Text className="text-xs text-slate-500">{difficulty === 1 ? '简单' : difficulty === 2 ? '较易' : difficulty === 3 ? '适中' : difficulty === 4 ? '较难' : '挑战'}</Typography.Text>
+                  </div>
+                  <Slider min={1} max={5} step={1} value={difficulty} onChange={setDifficulty} marks={{ 1: '简单', 3: '适中', 5: '挑战' }} />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button className="rounded-lg border-slate-200 flex-1" icon={<SaveOutlined />} onClick={handleSavePreferences}>
+                    保存偏好
+                  </Button>
+                  <Button type="primary" className="rounded-lg bg-primary flex-1" onClick={() => { handleGeneratePath(); setDrawerOpen(false); }} loading={loading}>
+                    重新规划 <ArrowRightOutlined />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* 节点管理 Tab */}
+            {activeAdjustTab === 'nodes' && (
+              <div className="space-y-4">
+                <Typography.Text className="font-semibold text-slate-800 block text-sm">节点状态管理</Typography.Text>
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  {pathNodes.map((node) => (
+                    <div
+                      key={node.id}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-all"
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0"
+                        style={{ background: statusColors[node.status] }}
+                      >
+                        {node.id}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-800 truncate">{node.title}</div>
+                        <div className="text-xs text-slate-400">{node.type} · {statusLabels[node.status]}{node.skipped ? ' · 已跳过' : ''}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        {node.status !== 'completed' && (
+                          <Tooltip title="标记完成">
+                            <Button
+                              size="small"
+                              className="rounded-lg border-emerald-200 text-emerald-600"
+                              icon={<CheckCircleOutlined />}
+                              onClick={() => handleNodeAction(node.id, 'complete')}
+                            />
+                          </Tooltip>
+                        )}
+                        {node.status !== 'completed' && !node.skipped && (
+                          <Tooltip title="跳过">
+                            <Button
+                              size="small"
+                              className="rounded-lg border-amber-200 text-amber-600"
+                              icon={<StepForwardOutlined />}
+                              onClick={() => handleNodeAction(node.id, 'skip')}
+                            />
+                          </Tooltip>
+                        )}
+                        {(node.status === 'completed' || node.skipped) && (
+                          <Tooltip title="重置">
+                            <Button
+                              size="small"
+                              className="rounded-lg border-slate-200 text-slate-500"
+                              icon={<UndoOutlined />}
+                              onClick={() => handleNodeAction(node.id, 'reset')}
+                            />
+                          </Tooltip>
+                        )}
+                        <Tooltip title="开始学习">
+                          <Button
+                            size="small"
+                            type="primary"
+                            className="rounded-lg bg-primary"
+                            icon={<EyeOutlined />}
+                            onClick={() => {
+                              navigate(`/resource/${node.kp_id || node.id}`)
+                              setDrawerOpen(false)
+                            }}
+                          />
+                        </Tooltip>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {pathNodes.some((n) => n.status === 'pending' && !n.skipped) && (
+                  <Popconfirm
+                    title="批量标记完成"
+                    description="将前几个未开始节点标记为已完成？"
+                    onConfirm={() => {
+                      const pendingIds = pathNodes.filter((n) => n.status === 'pending' && !n.skipped).slice(0, 3).map((n) => n.id)
+                      handleBatchComplete(pendingIds)
+                    }}
+                    okText="确认"
+                    cancelText="取消"
+                  >
+                    <Button block className="rounded-lg border-slate-200">
+                      批量标记前 3 个节点为已完成
+                    </Button>
+                  </Popconfirm>
+                )}
+              </div>
+            )}
+
+            {/* 智能微调 Tab */}
+            {activeAdjustTab === 'feedback' && (
+              <div className="space-y-6">
+                <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                  <Typography.Text className="text-xs text-indigo-700 block leading-relaxed">
+                    通过自然语言描述你的调整需求，AI 将在现有路径基础上做局部优化，而不会完全重置路径。
+                  </Typography.Text>
+                </div>
+
+                <div>
+                  <Typography.Text className="font-semibold text-slate-800 block mb-2 text-sm">调整反馈</Typography.Text>
+                  <Input.TextArea
+                    rows={4}
+                    value={adjustFeedback}
+                    onChange={(e) => setAdjustFeedback(e.target.value)}
+                    placeholder="例如：指针部分太难了，希望多加一些基础练习；或者我想跳过文件操作，直接学动态内存..."
+                    className="rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    '指针部分太难，多加点基础练习',
+                    '我想加快进度，减少理论讲解',
+                    '跳过文件操作，优先学动态内存',
+                    '增加更多实战项目',
+                  ].map((tip) => (
+                    <Tag
+                      key={tip}
+                      className="rounded-full border-slate-200 text-slate-600 text-xs cursor-pointer hover:border-primary hover:text-primary transition-all"
+                      onClick={() => setAdjustFeedback(tip)}
+                    >
+                      {tip}
+                    </Tag>
+                  ))}
+                </div>
+
+                <Button type="primary" block className="rounded-lg bg-primary h-10" onClick={handleAdjustPath} loading={loading}>
+                  智能微调路径 <ArrowRightOutlined />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Drawer>
