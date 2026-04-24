@@ -95,13 +95,49 @@ class ProfilerAgent(BaseAgent):
 
     async def _update_profile(self, inputs: List[str], current_profile: Dict[str, Any]) -> Dict[str, Any]:
         """增量更新画像"""
+        schema_example = {
+            "knowledge_base": {
+                "overall_score": 0.75,
+                "academic_level": "大二",
+                "subject_strengths": ["高数"],
+                "subject_weaknesses": ["数据结构"],
+            },
+            "cognitive_style": {
+                "primary": "visual",
+                "scores": {"visual": 0.8, "auditory": 0.4, "reading": 0.6, "kinesthetic": 0.7},
+            },
+            "weak_areas": ["指针", "内存管理"],
+            "error_patterns": [{"type": "概念混淆", "description": "指针与地址混淆"}],
+            "learning_goals": [{"topic": "系统学习C语言", "deadline": "3个月", "completed": False}],
+            "interest_areas": [{"area": "嵌入式开发", "level": 0.9}],
+            "learning_tempo": {
+                "study_speed": "moderate",
+                "optimal_session_duration": 45,
+                "weekly_study_capacity": 10,
+                "focus_score": 0.78,
+            },
+            "practical_preferences": {
+                "coding_proficiency": {"C": 0.4, "Python": 0.7},
+                "preferred_practice_types": ["实战项目", "算法题"],
+                "overall_score": 0.65,
+            },
+        }
         prompt = (
-            "请根据以下新的学习行为和反馈，更新现有学生画像。\n"
-            "仅对明显变化的维度进行更新，保持未变化维度的原有数据。\n"
-            "请严格返回 JSON 格式的完整更新后画像。\n\n"
+            "你是一位教育数据分析师。请根据学生的新输入，更新六维学生画像。\n"
+            "必须返回完整的六维画像 JSON，不允许省略任何维度。如果某个维度没有新变化，保持原有数据或给出合理默认值。\n\n"
+            "六维结构说明：\n"
+            "1. knowledge_base - 知识基础（overall_score: 0-1, academic_level, subject_strengths, subject_weaknesses）\n"
+            "2. cognitive_style - 认知风格（primary: visual/auditory/reading/kinesthetic, scores: 各维度0-1）\n"
+            "3. weak_areas - 薄弱知识点（字符串列表）\n"
+            "4. error_patterns - 错误模式（对象列表，含 type/description）\n"
+            "5. learning_goals - 学习目标（对象列表，含 topic/deadline/completed）\n"
+            "6. interest_areas - 兴趣领域（对象列表，含 area/level）\n"
+            "7. learning_tempo - 学习节奏（study_speed, optimal_session_duration, weekly_study_capacity, focus_score: 0-1）\n"
+            "8. practical_preferences - 实践偏好（coding_proficiency: 语言->0-1, preferred_practice_types, overall_score: 0-1）\n\n"
             f"当前画像：{current_profile}\n\n"
             f"新输入：{inputs}\n\n"
-            "返回格式：{\"profile\": {完整画像JSON}}"
+            f"Schema 示例：{schema_example}\n\n"
+            "请严格返回 JSON：{\"profile\": {完整画像}}"
         )
         prompt = SafetyGuard.sanitize_prompt(prompt)
         messages = [
@@ -110,6 +146,8 @@ class ProfilerAgent(BaseAgent):
         ]
         data = await self.llm.generate_json(messages, temperature=0.3)
         profile = data.get("profile", data) if data.get("status") != "error" else current_profile
+        # 如果 LLM 返回了不完整画像，做补齐
+        profile = self._ensure_complete_profile(profile, current_profile)
         return {"status": "success", "profile": profile, "llm_output": data if data.get("status") == "error" else None}
 
     async def _analyze_profile(self, inputs: List[str], current_profile: Dict[str, Any]) -> Dict[str, Any]:
@@ -131,12 +169,42 @@ class ProfilerAgent(BaseAgent):
     def _default_profile(self, student_id: str) -> Dict[str, Any]:
         return {
             "student_id": student_id,
-            "knowledge_base": {},
-            "cognitive_style": {"primary": "visual", "scores": {}},
+            "knowledge_base": {"overall_score": 0.5},
+            "cognitive_style": {
+                "primary": "visual",
+                "scores": {"visual": 0.6, "auditory": 0.4, "reading": 0.5, "kinesthetic": 0.5},
+            },
             "weak_areas": [],
             "error_patterns": [],
             "learning_goals": [],
             "interest_areas": [],
-            "learning_tempo": {"study_speed": "moderate", "optimal_session_duration": 45},
-            "practical_preferences": {"coding_proficiency": {}, "preferred_practice_types": []},
+            "learning_tempo": {
+                "study_speed": "moderate",
+                "optimal_session_duration": 45,
+                "weekly_study_capacity": 10,
+                "focus_score": 0.7,
+            },
+            "practical_preferences": {
+                "coding_proficiency": {},
+                "preferred_practice_types": [],
+                "overall_score": 0.5,
+            },
         }
+
+    def _ensure_complete_profile(self, profile: Dict[str, Any], fallback: Dict[str, Any]) -> Dict[str, Any]:
+        """确保画像包含所有必要维度，缺失时从 fallback 或默认值补齐"""
+        defaults = self._default_profile(profile.get("student_id", ""))
+        result = dict(profile)
+        for key in defaults:
+            if key not in result or result[key] is None:
+                result[key] = fallback.get(key, defaults[key])
+            elif isinstance(result[key], dict) and isinstance(defaults.get(key), dict):
+                # 深度补齐字典内部缺失字段
+                for sub_key, sub_default in defaults[key].items():
+                    if sub_key not in result[key] or result[key][sub_key] is None:
+                        fb_sub = fallback.get(key, {}).get(sub_key)
+                        result[key][sub_key] = fb_sub if fb_sub is not None else sub_default
+            elif isinstance(result[key], list) and isinstance(defaults.get(key), list):
+                if not result[key] and fallback.get(key):
+                    result[key] = fallback[key]
+        return result

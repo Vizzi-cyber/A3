@@ -601,7 +601,7 @@ const ResourceCenter: React.FC = () => {
                           value={codeContent}
                           onChange={(e) => setCodeContent(e.target.value)}
                           rows={12}
-                          className="bg-slate-900 text-slate-200 border-slate-700 font-mono text-sm !p-0 !shadow-none !outline-none focus:!border-slate-700 focus:!shadow-none hover:!border-slate-700"
+                          className="bg-slate-900 text-slate-200 border-slate-700 font-mono text-sm !p-0 !shadow-none !outline-none focus:!border-slate-700 focus:!shadow-none hover:!bg-slate-900 hover:!border-slate-700"
                           style={{ resize: 'vertical', lineHeight: 1.6 }}
                         />
                       </div>

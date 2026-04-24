@@ -80,8 +80,8 @@ const Profile: React.FC = () => {
       value: Math.round(item.A),
       color:
         item.subject === '知识基础' ? '#4f46e5' :
-        item.subject === '数学基础' ? '#0ea5e9' :
-        item.subject === '编程能力' ? '#10b981' :
+        item.subject === '认知风格' ? '#0ea5e9' :
+        item.subject === '学习偏好' ? '#10b981' :
         item.subject === '薄弱点' ? '#f59e0b' :
         item.subject === '学习进度' ? '#8b5cf6' : '#ec4899',
     })))
@@ -93,25 +93,37 @@ const Profile: React.FC = () => {
     setMessages((prev) => [...prev, { role: 'user' as const, content: text }])
     setLoading(true)
     try {
-      // 先更新画像
-      await profileApi.update(studentId, { dimension: 'interest', updates: { goals: [text] } })
-      const pRes = await profileApi.get(studentId)
-      if (pRes.data?.data) updateVisuals(pRes.data.data)
-
-      // 获取AI回复
+      // 1. 获取 AI 回复（先让画像师对话）
+      let aiReply = '服务暂时无响应，请稍后再试。'
       try {
         const tutorRes = await tutorApi.ask({ student_id: studentId, question: text, session_id: `${studentId}_profile` })
-        const aiReply = tutorRes.data?.response || '服务暂时无响应，请稍后再试。'
-        setMessages((prev) => [...prev, { role: 'ai' as const, content: aiReply, agent: '评估智能体' }])
+        aiReply = tutorRes.data?.response || aiReply
       } catch (e: unknown) {
         const errMsg = e instanceof Error ? e.message : '请求失败'
         message.error(errMsg)
-        setMessages((prev) => [...prev, { role: 'ai' as const, content: '服务暂时不可用，请稍后再试。', agent: '评估智能体' }])
+      }
+      setMessages((prev) => [...prev, { role: 'ai' as const, content: aiReply, agent: '评估智能体' }])
+
+      // 2. 调用 LLM 分析对话并更新画像（把最近几条对话作为上下文）
+      const recentMessages = [...messages.slice(-4), { role: 'user' as const, content: text }]
+      const conversationContext = recentMessages
+        .map((m) => `${m.role === 'user' ? '学生' : 'AI'}：${typeof m.content === 'string' ? m.content : ''}`)
+        .join('\n')
+
+      try {
+        const analyzeRes = await profileApi.analyzeConversation(studentId, conversationContext)
+        if (analyzeRes.data?.data) {
+          updateVisuals(analyzeRes.data.data)
+          message.success('画像已根据对话自动更新')
+        }
+      } catch (e: unknown) {
+        // 画像分析失败不影响对话体验
+        console.warn('画像分析失败', e)
       }
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '更新失败'
+      const errMsg = e instanceof Error ? e.message : '请求失败'
       message.error(errMsg)
-      setMessages((prev) => [...prev, { role: 'ai' as const, content: '更新画像时出了点小问题，但我已记录你的反馈。', agent: '评估智能体' }])
+      setMessages((prev) => [...prev, { role: 'ai' as const, content: '服务暂时不可用，请稍后再试。', agent: '评估智能体' }])
     } finally {
       setLoading(false)
     }
