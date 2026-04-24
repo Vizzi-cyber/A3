@@ -153,7 +153,7 @@ const PersonalSpace: React.FC = () => {
           }))
         )
       } catch (e) {
-        console.error(e)
+        // 静默处理加载失败
       }
     }
     load()

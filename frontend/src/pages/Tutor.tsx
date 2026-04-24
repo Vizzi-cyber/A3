@@ -42,6 +42,7 @@ const Tutor: React.FC = () => {
   const [modelProvider, setModelProvider] = useState<'bigmodel' | 'deepseek' | 'openai' | 'spark' | 'default'>('default')
   const [wsConnected, setWsConnected] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
+  const token = useAppStore((s) => s.token)
 
   const wsRef = useRef<WebSocket | null>(null)
   const sessionIdRef = useRef(`${studentId}_tutor`)
@@ -51,12 +52,13 @@ const Tutor: React.FC = () => {
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
     const sessionId = sessionIdRef.current
-    const wsUrl = `${WS_BASE_URL}/tutor/ws/${sessionId}`
+    const wsUrl = token
+      ? `${WS_BASE_URL}/tutor/ws/${sessionId}?token=${encodeURIComponent(token)}`
+      : `${WS_BASE_URL}/tutor/ws/${sessionId}`
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
       setWsConnected(true)
-      console.log('[Tutor] WebSocket connected')
     }
 
     ws.onmessage = (event) => {

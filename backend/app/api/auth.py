@@ -81,6 +81,13 @@ async def require_auth(credentials: HTTPAuthorizationCredentials | None = Depend
     return student_id
 
 
+def verify_token_for_websocket(token: str | None) -> str | None:
+    """用于WebSocket的token校验（不抛HTTP异常，返回None表示失败）"""
+    if not token:
+        return None
+    return _verify_token(token)
+
+
 @router.post("/register")
 async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
     """用户注册"""

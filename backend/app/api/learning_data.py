@@ -10,8 +10,45 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel
+from ..models.gamification import PointsModel, AchievementModel
 
 router = APIRouter()
+
+
+def _ensure_points(db: Session, student_id: str) -> PointsModel:
+    points = db.query(PointsModel).filter(PointsModel.student_id == student_id).first()
+    if not points:
+        points = PointsModel(student_id=student_id, total_points=0, daily_points=0, weekly_points=0)
+        db.add(points)
+        db.flush()
+    return points
+
+
+def _award_points(db: Session, student_id: str, amount: int, reason: str = "") -> int:
+    points = _ensure_points(db, student_id)
+    points.total_points += amount
+    points.daily_points += amount
+    points.weekly_points += amount
+    db.commit()
+    return points.total_points
+
+
+def _maybe_unlock_achievement(db: Session, student_id: str, achievement_id: str, name: str, description: str, icon: str = "trophy"):
+    existing = db.query(AchievementModel).filter(
+        AchievementModel.student_id == student_id,
+        AchievementModel.achievement_id == achievement_id,
+    ).first()
+    if existing:
+        return
+    ach = AchievementModel(
+        student_id=student_id,
+        achievement_id=achievement_id,
+        name=name,
+        description=description,
+        icon=icon,
+    )
+    db.add(ach)
+    db.commit()
 
 
 class LearningRecordRequest(BaseModel):
@@ -52,6 +89,23 @@ async def record_learning(request: LearningRecordRequest, db: Session = Depends(
     db.add(record)
     db.commit()
     db.refresh(record)
+
+    # ---------- 自动积分 ----------
+    awarded = 0
+    if request.action == "complete" or request.progress >= 1.0:
+        awarded += 10
+        _maybe_unlock_achievement(
+            db, request.student_id, "first_complete", "初次完成",
+            "首次完成一个知识点的学习，继续保持！", "check-circle"
+        )
+    elif request.action == "practice":
+        awarded += 5
+    elif request.action in ("read", "watch", "review"):
+        awarded += max(1, request.duration // 300)  # 每5分钟1分
+    if awarded > 0:
+        total = _award_points(db, request.student_id, awarded, f"action:{request.action}")
+        return {"status": "success", "record_id": record_id, "points_awarded": awarded, "total_points": total}
+
     return {"status": "success", "record_id": record_id}
 
 
@@ -73,6 +127,22 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db))
     db.add(quiz)
     db.commit()
     db.refresh(quiz)
+
+    # ---------- 自动积分 ----------
+    awarded = int(request.score * 2)  # 满分200分
+    if awarded > 0:
+        total = _award_points(db, request.student_id, awarded, "quiz")
+        _maybe_unlock_achievement(
+            db, request.student_id, "first_quiz", "初次测验",
+            "完成了第一次测验，继续挑战更高分数！", "file-done"
+        )
+        if request.score >= 100:
+            _maybe_unlock_achievement(
+                db, request.student_id, "perfect_score", "满分成就",
+                "在一次测验中获得了满分，太棒了！", "star"
+            )
+        return {"status": "success", "quiz_id": quiz_id, "points_awarded": awarded, "total_points": total}
+
     return {"status": "success", "quiz_id": quiz_id}
 
 

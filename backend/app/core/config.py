@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "AI Learning System"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    SECRET_KEY: str = "change-me-in-production-32-chars-min"
+    SECRET_KEY: str = ""
 
     # 服务器配置
     HOST: str = "0.0.0.0"
@@ -25,15 +25,10 @@ class Settings(BaseSettings):
     ]
 
     # 数据库配置
-    DATABASE_URL: str = "sqlite:///./ai_learning.db"
+    DATABASE_URL: str = "sqlite:///./ai_learning_v2.db"
 
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379/0"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        if not self.DEBUG and len(self.SECRET_KEY) < 32:
-            raise ValueError("SECRET_KEY must be at least 32 characters in production mode")
 
     # 大模型提供商选择: spark / deepseek / openai / bigmodel
     DEFAULT_LLM_PROVIDER: str = "bigmodel"
@@ -75,9 +70,29 @@ class Settings(BaseSettings):
     LANGCHAIN_API_KEY: Optional[str] = None
     LANGCHAIN_PROJECT: str = "ai-learning-system"
 
+    def model_post_init(self, __context):
+        """Pydantic v2 post-init: 校验安全关键配置"""
+        if not self.DEBUG:
+            if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
+                raise ValueError(
+                    "生产环境必须设置强SECRET_KEY（至少32字符）。"
+                    "建议运行: python -c \"import secrets; print(secrets.token_hex(32))\""
+                )
+        else:
+            # DEBUG模式：如果未设置，使用默认dev key并发出警告
+            if not self.SECRET_KEY:
+                import warnings
+                warnings.warn(
+                    "DEBUG模式使用默认SECRET_KEY，生产部署前务必设置环境变量！",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                object.__setattr__(self, 'SECRET_KEY', "dev-secret-32-chars-long-please-change-me!")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 # 全局配置实例

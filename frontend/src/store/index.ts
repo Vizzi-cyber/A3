@@ -55,7 +55,7 @@ export const useAppStore = create<AppState>((set) => ({
   logout: () => {
     localStorage.removeItem('token')
     localStorage.removeItem('student_id')
-    set({ token: null, isLoggedIn: false, userInfo: null, studentId: 'student_001' })
+    set({ token: null, isLoggedIn: false, userInfo: null, studentId: '' })
   },
   setUserInfo: (info) => set({ userInfo: info }),
 

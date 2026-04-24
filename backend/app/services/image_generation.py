@@ -72,6 +72,18 @@ _SERVICE = settings.VOLC_SERVICE
 _REQ_KEY = "high_aes_general_v30l_zt2i"
 
 
+def _ensure_chinese_prompt(prompt: str) -> str:
+    """如果用户输入包含中文，追加约束强制图片内文字使用中文"""
+    # 简单检测是否包含中文字符
+    has_chinese = any("\u4e00" <= ch <= "\u9fff" for ch in prompt)
+    if has_chinese:
+        # 避免重复追加
+        suffix = "图片内所有文字必须使用中文，不得出现任何英文字母或英文单词。"
+        if suffix not in prompt:
+            prompt = f"{prompt}，{suffix}"
+    return prompt
+
+
 async def submit_image_task(
     prompt: str,
     width: int = 1328,
@@ -83,6 +95,8 @@ async def submit_image_task(
     """提交文生图异步任务，返回 task_id"""
     if not settings.VOLC_ACCESS_KEY or not settings.VOLC_SECRET_KEY:
         raise ImageGenerationError("Missing VOLC_ACCESS_KEY or VOLC_SECRET_KEY in config")
+
+    prompt = _ensure_chinese_prompt(prompt)
 
     uri = "/"
     query = "Action=CVSync2AsyncSubmitTask&Version=2022-08-31"

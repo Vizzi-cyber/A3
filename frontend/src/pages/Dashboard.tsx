@@ -29,9 +29,12 @@ import {
   FlagFilled,
   EnvironmentOutlined,
   CheckCircleOutlined,
+  MenuOutlined,
+  DownOutlined,
+  UpOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { profileApi, dashboardApi } from '../services/api'
+import { profileApi, dashboardApi, pathApi, gamificationApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
 import { StatCard } from '../components/StatCard'
 
@@ -113,6 +116,23 @@ const Dashboard: React.FC = () => {
   const [pomodoroCount, setPomodoroCount] = useState(4)
   const [kgModalOpen, setKgModalOpen] = useState(false)
   const [algorithmAnalysis, setAlgorithmAnalysis] = useState<any>(null)
+  const [pathExpanded, setPathExpanded] = useState(false)
+  const [pathNodesState, setPathNodesState] = useState<any[]>([
+    { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门' },
+    { id: 2, title: '数据类型与变量', status: 'completed', type: '基础' },
+    { id: 3, title: '运算符与表达式', status: 'completed', type: '基础' },
+    { id: 4, title: '输入输出与顺序结构', status: 'in-progress', type: '基础' },
+    { id: 5, title: '选择结构', status: 'pending', type: '核心' },
+    { id: 6, title: '循环结构', status: 'pending', type: '核心' },
+    { id: 7, title: '数组', status: 'pending', type: '核心' },
+    { id: 8, title: '字符串', status: 'pending', type: '核心' },
+  ])
+  const [badgesState, setBadgesState] = useState([
+    { name: '初出茅庐', icon: <StarOutlined />, color: '#f59e0b', unlocked: true },
+    { name: '代码能手', icon: <CodeOutlined />, color: '#3b82f6', unlocked: true },
+    { name: '学习王者', icon: <CrownOutlined />, color: '#ef4444', unlocked: false },
+    { name: '全勤标兵', icon: <FireOutlined />, color: '#10b981', unlocked: false },
+  ])
 
   const studentId = useAppStore((s) => s.studentId)
   const journeyRef = useRef<HTMLDivElement>(null)
@@ -153,9 +173,11 @@ const Dashboard: React.FC = () => {
         message.warning('数据加载超时，请刷新重试')
       }, 10000)
       try {
-        const [profileRes, summaryRes] = await Promise.all([
+        const [profileRes, summaryRes, pathRes, achieveRes] = await Promise.all([
           profileApi.get(studentId),
-          dashboardApi.getSummary(studentId).catch((e) => { console.error('Dashboard 加载失败:', e); return null }),
+          dashboardApi.getSummary(studentId).catch((e) => { return null }),
+          pathApi.current(studentId).catch((e) => { return null }),
+          gamificationApi.getAchievements(studentId).catch((e) => { return null }),
         ])
 
         if (profileRes.data?.data) {
@@ -171,8 +193,37 @@ const Dashboard: React.FC = () => {
           setRecommendations(d.recommendations || [])
           setAlgorithmAnalysis(d.algorithm_analysis || null)
         }
+
+        if (pathRes?.data?.nodes?.length) {
+          setPathNodesState(pathRes.data.nodes.map((n: any, idx: number) => ({
+            id: n.id || idx + 1,
+            title: n.title || n.name || `节点${idx + 1}`,
+            status: n.status || 'pending',
+            type: n.type || '综合',
+          })))
+        }
+
+        if (achieveRes?.data?.data?.length) {
+          const iconMap: Record<string, React.ReactNode> = {
+            '初出茅庐': <StarOutlined />,
+            '代码能手': <CodeOutlined />,
+            '学习王者': <CrownOutlined />,
+            '全勤标兵': <FireOutlined />,
+          }
+          const colorMap: Record<string, string> = {
+            '初出茅庐': '#f59e0b',
+            '代码能手': '#3b82f6',
+            '学习王者': '#ef4444',
+            '全勤标兵': '#10b981',
+          }
+          setBadgesState(achieveRes.data.data.map((a: any) => ({
+            name: a.name || a.achievement_id,
+            icon: (iconMap[a.name || a.achievement_id] || <StarOutlined />) as JSX.Element,
+            color: colorMap[a.name || a.achievement_id] || '#f59e0b',
+            unlocked: !!a.unlocked_at,
+          })))
+        }
       } catch (e) {
-        console.error('Dashboard 数据加载失败:', e)
         message.error('获取数据失败，显示默认数据')
       } finally {
         clearTimeout(timeoutId)
@@ -439,38 +490,78 @@ const Dashboard: React.FC = () => {
           <div ref={setSceneRef(0)} className="flex justify-start px-4 md:px-12" style={{ transformStyle: 'preserve-3d' }}>
             <div className="w-full max-w-xl">
               <Card className="border border-slate-100 rounded-2xl shadow-card" styles={{ body: { padding: '28px' } }}>
-                <div className="flex items-center gap-2 mb-5">
+                <div
+                  className="flex items-center gap-2 cursor-pointer select-none"
+                  onClick={() => setPathExpanded(v => !v)}
+                >
                   <NodeIndexOutlined className="text-primary text-lg" />
                   <span className="font-semibold text-slate-800">当前学习路径</span>
-                  <Tag className="rounded-full border-0 bg-primary-50 text-primary text-xs ml-auto">共 {pathNodes.length} 个阶段</Tag>
+                  <Tag className="rounded-full border-0 bg-primary-50 text-primary text-xs ml-auto">共 {pathNodesState.length} 个阶段</Tag>
+                  {pathExpanded ? <UpOutlined className="text-slate-400 text-xs" /> : <DownOutlined className="text-slate-400 text-xs" />}
                 </div>
-                <div className="relative max-w-md mx-auto">
-                  <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-100" />
-                  <div className="space-y-6">
-                    {pathNodes.map((node) => (
-                      <div key={node.id} className="flex items-start gap-4 relative">
-                        <div
-                          className="relative z-10 w-12 h-12 rounded-full flex items-center justify-center text-white text-lg shrink-0 shadow-sm cursor-pointer"
-                          style={{ background: statusColors[node.status] }}
-                          onClick={() => navigate('/learning-path')}
-                        >
-                          {node.status === 'completed' ? <CheckCircleOutlined /> :
-                           node.status === 'in-progress' ? <ClockCircleOutlined /> :
-                           <EnvironmentOutlined />}
-                        </div>
-                        <div className="flex-1 p-4 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer" onClick={() => navigate('/learning-path')}>
-                          <div className="flex items-center justify-between mb-1">
-                            <Tag className="rounded-full border-0 text-xs font-medium" style={{ background: node.status === 'completed' ? '#ecfdf5' : node.status === 'in-progress' ? '#eef2ff' : '#f8fafc', color: statusColors[node.status] }}>
-                              {node.status === 'completed' ? '已完成' : node.status === 'in-progress' ? '进行中' : '未开始'}
-                            </Tag>
-                            <span className="text-xs text-slate-400">{node.type}</span>
+                {pathExpanded ? (
+                  <div className="relative max-w-md mx-auto mt-5">
+                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-100" />
+                    <div className="space-y-6">
+                      {pathNodesState.map((node) => (
+                        <div key={node.id} className="flex items-start gap-4 relative">
+                          <div
+                            className="relative z-10 w-12 h-12 rounded-full flex items-center justify-center text-white text-lg shrink-0 shadow-sm cursor-pointer"
+                            style={{ background: statusColors[node.status] }}
+                            onClick={() => navigate('/learning-path')}
+                          >
+                            {node.status === 'completed' ? <CheckCircleOutlined /> :
+                             node.status === 'in-progress' ? <ClockCircleOutlined /> :
+                             <EnvironmentOutlined />}
                           </div>
-                          <div className="font-bold text-slate-800">{node.title}</div>
+                          <div className="flex-1 p-4 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer" onClick={() => navigate('/learning-path')}>
+                            <div className="flex items-center justify-between mb-1">
+                              <Tag className="rounded-full border-0 text-xs font-medium" style={{ background: node.status === 'completed' ? '#ecfdf5' : node.status === 'in-progress' ? '#eef2ff' : '#f8fafc', color: statusColors[node.status] }}>
+                                {node.status === 'completed' ? '已完成' : node.status === 'in-progress' ? '进行中' : '未开始'}
+                              </Tag>
+                              <span className="text-xs text-slate-400">{node.type}</span>
+                            </div>
+                            <div className="font-bold text-slate-800">{node.title}</div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-5 space-y-3">
+                    {(() => {
+                      const nextNode = pathNodesState.find(n => n.status === 'in-progress') || pathNodesState.find(n => n.status === 'pending')
+                      const completedCount = pathNodesState.filter(n => n.status === 'completed').length
+                      return (
+                        <>
+                          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                              <MenuOutlined />
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-slate-800">已完成 {completedCount} / {pathNodesState.length} 个阶段</div>
+                              <div className="text-xs text-slate-400 mt-0.5">点击展开查看完整路径</div>
+                            </div>
+                            <Button type="primary" size="small" className="rounded-lg bg-primary" onClick={(e) => { e.stopPropagation(); navigate('/learning-path') }}>
+                              去学习
+                            </Button>
+                          </div>
+                          {nextNode && (
+                            <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: statusColors[nextNode.status] }}>
+                                {nextNode.status === 'in-progress' ? <ClockCircleOutlined /> : <EnvironmentOutlined />}
+                              </div>
+                              <div>
+                                <div className="text-xs text-slate-400">下一个目标</div>
+                                <div className="text-sm font-bold text-slate-800">{nextNode.title}</div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
+                )}
               </Card>
             </div>
           </div>
@@ -672,7 +763,7 @@ const Dashboard: React.FC = () => {
                 extra={<Button type="link" className="text-primary font-medium" onClick={() => navigate('/personal')}>全部 <ArrowRightOutlined /></Button>}
                 styles={{ body: { padding: '24px' } }}>
                 <div className="grid grid-cols-4 gap-3">
-                  {badges.map((b, idx) => (
+                  {badgesState.map((b, idx) => (
                     <div key={idx} className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${b.unlocked ? 'bg-slate-50' : 'bg-slate-50 opacity-40'}`}>
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg" style={{ background: b.unlocked ? b.color : '#cbd5e1' }}>{b.icon}</div>
                       <span className="text-xs text-slate-600 font-medium text-center">{b.name}</span>

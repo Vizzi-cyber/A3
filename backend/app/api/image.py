@@ -21,11 +21,11 @@ router = APIRouter()
 
 class ImageGenerateRequest(BaseModel):
     prompt: str
-    width: int = 1024
-    height: int = 1024
+    width: int = 1328
+    height: int = 1328
     seed: int = -1
     scale: float = 2.5
-    use_pre_llm: bool = False
+    use_pre_llm: bool = True
 
 
 class ImageGenerateResponse(BaseModel):
@@ -43,8 +43,35 @@ class ImageResultResponse(BaseModel):
     message: str
 
 
-# 内存任务状态缓存
+import json
+import os
+
+# 任务状态持久化（JSON 文件，避免重启丢失）
+_IMAGE_TASKS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "image_tasks.json")
 _image_tasks: dict[str, dict] = {}
+
+
+def _load_image_tasks():
+    global _image_tasks
+    if os.path.exists(_IMAGE_TASKS_PATH):
+        try:
+            with open(_IMAGE_TASKS_PATH, "r", encoding="utf-8") as f:
+                _image_tasks = json.load(f)
+        except Exception:
+            _image_tasks = {}
+    else:
+        _image_tasks = {}
+
+
+def _save_image_tasks():
+    try:
+        with open(_IMAGE_TASKS_PATH, "w", encoding="utf-8") as f:
+            json.dump(_image_tasks, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+_load_image_tasks()
 
 
 @router.post("/generate", response_model=ImageGenerateResponse)
@@ -87,6 +114,7 @@ async def generate_image(
             "status": "submitted",
             "created_at": datetime.now().isoformat(),
         }
+        _save_image_tasks()
         return ImageGenerateResponse(
             task_id=task_id,
             status="submitted",
@@ -114,6 +142,7 @@ async def get_image_result_api(task_id: str, _current: str = Depends(require_aut
 
         if task_id in _image_tasks:
             _image_tasks[task_id]["status"] = status
+            _save_image_tasks()
 
         return ImageResultResponse(
             task_id=task_id,

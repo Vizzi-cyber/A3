@@ -59,6 +59,9 @@ const LearningPathPage: React.FC = () => {
   const [pathNodes, setPathNodes] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [showReviewAlert, setShowReviewAlert] = useState(true)
+  const [dailyDuration, setDailyDuration] = useState(90)
+  const [difficulty, setDifficulty] = useState(3)
+  const [learningPreference, setLearningPreference] = useState('balanced')
   const studentId = useAppStore((s) => s.studentId)
   const navigate = useNavigate()
 
@@ -109,6 +112,9 @@ const LearningPathPage: React.FC = () => {
       const res: any = await pathApi.generate({
         student_id: studentId,
         target_topic: '掌握 C语言程序设计与数据结构基础',
+        daily_duration: dailyDuration,
+        difficulty: difficulty,
+        preference: learningPreference,
       })
       const stages = res.data?.path?.stages || []
       const nodes = stages.map((s: any, idx: number) => ({
@@ -413,7 +419,7 @@ const LearningPathPage: React.FC = () => {
           <div className="space-y-8">
             <div>
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">学习偏好</Typography.Text>
-              <Radio.Group defaultValue="balanced" className="flex flex-col gap-3">
+              <Radio.Group value={learningPreference} onChange={(e) => setLearningPreference(e.target.value)} className="flex flex-col gap-3">
                 <Radio value="theory" className="text-sm">加强理论</Radio>
                 <Radio value="practice" className="text-sm">多些练习</Radio>
                 <Radio value="balanced" className="text-sm">平衡模式</Radio>
@@ -422,12 +428,12 @@ const LearningPathPage: React.FC = () => {
 
             <div>
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">每日学习时长</Typography.Text>
-              <Slider min={30} max={240} step={15} defaultValue={90} marks={{ 30: '30m', 120: '2h', 240: '4h' }} tooltip={{ formatter: (v) => `${v}分钟` }} />
+              <Slider min={30} max={240} step={15} value={dailyDuration} onChange={setDailyDuration} marks={{ 30: '30m', 120: '2h', 240: '4h' }} tooltip={{ formatter: (v) => `${v}分钟` }} />
             </div>
 
             <div>
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">难度偏好</Typography.Text>
-              <Slider min={1} max={5} step={1} defaultValue={3} marks={{ 1: '简单', 3: '适中', 5: '挑战' }} />
+              <Slider min={1} max={5} step={1} value={difficulty} onChange={setDifficulty} marks={{ 1: '简单', 3: '适中', 5: '挑战' }} />
             </div>
 
             <Button type="primary" block className="rounded-lg bg-primary h-10" onClick={() => { handleGeneratePath(); setDrawerOpen(false); }} loading={loading}>

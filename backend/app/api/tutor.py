@@ -92,6 +92,14 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
     """WebSocket实时辅导，支持真实 LLM 流式输出与多模型切换"""
     from ..services.llm_factory import LLMFactory
     from ..core.safety import SafetyGuard
+    from .auth import verify_token_for_websocket
+
+    # WebSocket 认证：从 query param 读取 token
+    token = websocket.query_params.get("token")
+    student_id = verify_token_for_websocket(token)
+    if not student_id:
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
 
     await manager.connect(session_id, websocket)
 

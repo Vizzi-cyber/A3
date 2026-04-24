@@ -19,7 +19,7 @@ from app.models.gamification import PointsModel, AchievementModel, TaskModel, Le
 from app.models.log_reflection import LearningLogModel, ReflectionModel
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-engine = create_engine("sqlite:///./ai_learning.db", connect_args={"check_same_thread": False})
+engine = create_engine("sqlite:///./ai_learning_v2.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
@@ -1872,6 +1872,190 @@ KP_C14_QS = [
 
 KP_C14_MM = {"root": "动态内存管理", "children": [{"name": "malloc"}, {"name": "calloc"}, {"name": "realloc"}, {"name": "free"}, {"name": "内存泄漏"}, {"name": "动态数组"}]}
 
+# ---------- kp_c15: 预处理指令 ----------
+KP_C15_DOC = """# 预处理指令
+
+## 15.1 什么是预处理
+
+C语言的预处理发生在编译之前，由预处理器完成。所有以 `#` 开头的行都是预处理指令。
+
+## 15.2 文件包含 #include
+
+`#include` 用于将头文件的内容插入到当前位置。
+
+```c
+#include <stdio.h>   // 系统头文件，在标准库目录查找
+#include "myheader.h" // 用户头文件，先在当前目录查找
+```
+
+## 15.3 宏定义 #define
+
+宏分为不带参数的宏和带参数的宏。
+
+### 不带参数的宏
+```c
+#define PI 3.14159
+#define MAX_SIZE 100
+```
+
+### 带参数的宏（宏函数）
+```c
+#define SQUARE(x) ((x) * (x))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+```
+
+> **注意**：宏展开只是简单的文本替换，务必多加括号避免优先级错误。
+
+## 15.4 条件编译
+
+条件编译让代码可以根据条件选择性编译。
+
+```c
+#ifdef DEBUG
+    printf("Debug mode\\n");
+#else
+    printf("Release mode\\n");
+#endif
+```
+
+常用指令：
+- `#ifdef` / `#ifndef` —— 判断是否定义了某个宏
+- `#if` / `#elif` / `#else` / `#endif` —— 根据表达式条件编译
+- `#undef` —— 取消宏定义
+
+## 15.5 预定义宏
+
+C标准预定义了一些有用的宏：
+
+| 宏 | 含义 |
+|---|---|
+| `__FILE__` | 当前源文件名 |
+| `__LINE__` | 当前行号 |
+| `__DATE__` | 编译日期 |
+| `__TIME__` | 编译时间 |
+| `__func__` | 当前函数名 |
+
+> **学习建议**：善用条件编译可以实现跨平台代码和调试信息的灵活控制。
+"""
+
+KP_C15_CODE = '''#include <stdio.h>
+
+#define PI 3.14159
+#define SQUARE(x) ((x) * (x))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+// 条件编译示例
+#ifdef DEBUG
+    #define LOG(msg) printf("[DEBUG] %s:%d %s\\n", __FILE__, __LINE__, msg)
+#else
+    #define LOG(msg) // 空实现
+#endif
+
+int main() {
+    printf("编译日期: %s %s\\n", __DATE__, __TIME__);
+    printf("PI = %f\\n", PI);
+    printf("SQUARE(5) = %d\\n", SQUARE(5));
+    printf("MAX(3, 7) = %d\\n", MAX(3, 7));
+    LOG("程序启动");
+    return 0;
+}'''
+
+KP_C15_QS = [
+    {"q_id": "q_c15_1", "type": "single_choice", "content": "以下哪个预处理指令用于包含头文件？", "options": [{"id": "A", "text": "#define"}, {"id": "B", "text": "#include"}, {"id": "C", "text": "#ifdef"}, {"id": "D", "text": "#pragma"}], "correct_answer": "B", "explanation": "#include 用于将指定头文件的内容插入到当前源文件中。"},
+    {"q_id": "q_c15_2", "type": "single_choice", "content": "宏定义 #define SQUARE(x) x * x 调用 SQUARE(2+3) 的结果是多少？", "options": [{"id": "A", "text": "25"}, {"id": "B", "text": "11"}, {"id": "C", "text": "13"}, {"id": "D", "text": "编译错误"}], "correct_answer": "B", "explanation": "不加括号时，宏展开为 2+3*2+3 = 2+6+3 = 11，因此宏参数必须加括号。"},
+    {"q_id": "q_c15_3", "type": "single_choice", "content": "以下哪个预定义宏表示当前源文件名？", "options": [{"id": "A", "text": "__LINE__"}, {"id": "B", "text": "__FILE__"}, {"id": "C", "text": "__DATE__"}, {"id": "D", "text": "__TIME__"}], "correct_answer": "B", "explanation": "__FILE__ 是编译器预定义的宏，表示当前正在编译的源文件名称。"},
+]
+
+KP_C15_MM = {"root": "预处理指令", "children": [{"name": "#include"}, {"name": "#define"}, {"name": "宏函数"}, {"name": "条件编译"}, {"name": "预定义宏"}]}
+
+# ---------- kp_c16: 位运算 ----------
+KP_C16_DOC = """# 位运算
+
+## 16.1 位运算概述
+
+位运算直接对整数的二进制位进行操作，是C语言接近底层的重要特性，常用于嵌入式、图像处理、权限控制等领域。
+
+## 16.2 位运算符
+
+| 运算符 | 名称 | 示例 | 说明 |
+|---|---|---|---|
+| `&` | 按位与 | `a & b` | 两位都为1时结果为1 |
+| `\|` | 按位或 | `a \| b` | 两位至少一个为1时结果为1 |
+| `^` | 按位异或 | `a ^ b` | 两位不同时结果为1 |
+| `~` | 按位取反 | `~a` | 0变1，1变0 |
+| `<<` | 左移 | `a << 2` | 各位左移，右侧补0 |
+| `>>` | 右移 | `a >> 2` | 各位右移，左侧补符号位或0 |
+
+## 16.3 常见应用
+
+### 掩码操作（清零/置位）
+```c
+int flags = 0b1010;
+flags = flags | 0b0100;  // 置第2位为1
+flags = flags & ~0b0010; // 清第1位为0
+```
+
+### 判断奇偶
+```c
+if (n & 1) {
+    printf("奇数\\n");
+} else {
+    printf("偶数\\n");
+}
+```
+
+### 交换两个数（不用临时变量）
+```c
+a = a ^ b;
+b = a ^ b;
+a = a ^ b;
+```
+
+## 16.4 注意事项
+
+- 位运算只适用于整数类型
+- 右移时，有符号数的算术右移与逻辑右移结果可能不同
+- 避免移位超过数据类型的位数
+
+> **学习建议**：位运算在系统编程和算法优化中非常重要，建议多练习掩码操作。
+"""
+
+KP_C16_CODE = '''#include <stdio.h>
+
+int main() {
+    unsigned char a = 0b1010; // 10
+    unsigned char b = 0b1100; // 12
+
+    printf("a & b  = %d\\n", a & b);   // 8
+    printf("a | b  = %d\\n", a | b);   // 14
+    printf("a ^ b  = %d\\n", a ^ b);   // 6
+    printf("~a     = %d\\n", ~a);      // 按位取反
+    printf("a << 1 = %d\\n", a << 1); // 20
+    printf("a >> 1 = %d\\n", a >> 1); // 5
+
+    // 判断奇偶
+    int n = 7;
+    printf("%d 是%s\\n", n, (n & 1) ? "奇数" : "偶数");
+
+    // 交换两个数
+    int x = 5, y = 9;
+    printf("交换前: x=%d, y=%d\\n", x, y);
+    x = x ^ y;
+    y = x ^ y;
+    x = x ^ y;
+    printf("交换后: x=%d, y=%d\\n", x, y);
+
+    return 0;
+}'''
+
+KP_C16_QS = [
+    {"q_id": "q_c16_1", "type": "single_choice", "content": "以下哪个运算符表示按位异或？", "options": [{"id": "A", "text": "&"}, {"id": "B", "text": "|"}, {"id": "C", "text": "^"}, {"id": "D", "text": "~"}], "correct_answer": "C", "explanation": "^ 是按位异或运算符，当两位不同时结果为1。"},
+    {"q_id": "q_c16_2", "type": "single_choice", "content": "表达式 5 << 2 的结果是多少？", "options": [{"id": "A", "text": "10"}, {"id": "B", "text": "20"}, {"id": "C", "text": "7"}, {"id": "D", "text": "1"}], "correct_answer": "B", "explanation": "5 的二进制为 101，左移2位后为 10100，即十进制的 20。"},
+    {"q_id": "q_c16_3", "type": "single_choice", "content": "利用位运算判断整数 n 是否为奇数，正确的表达式是？", "options": [{"id": "A", "text": "n | 1"}, {"id": "B", "text": "n & 1"}, {"id": "C", "text": "n ^ 1"}, {"id": "D", "text": "n ~ 1"}], "correct_answer": "B", "explanation": "n & 1 用于判断最低位是否为1，若为1则是奇数。"},
+]
+
+KP_C16_MM = {"root": "位运算", "children": [{"name": "按位与"}, {"name": "按位或"}, {"name": "按位异或"}, {"name": "取反与移位"}, {"name": "掩码操作"}]}
+
 
 # ---------- 知识点（DAG）----------
 kps = [
@@ -1943,7 +2127,7 @@ kps = [
     ),
     KnowledgePointModel(
         kp_id="kp_c12", name="结构体与联合体", subject="结构体与文件", difficulty=0.5,
-        prerequisites=["kp_c02"], description="struct定义、typedef、结构体数组与嵌套、union",
+        prerequisites=["kp_c02", "kp_c07"], description="struct定义、typedef、结构体数组与嵌套、union",
         tags=["结构体", "联合体"],
         document=KP_C12_DOC, code_example=KP_C12_CODE, questions=KP_C12_QS, mindmap=KP_C12_MM,
     ),
@@ -1958,6 +2142,18 @@ kps = [
         prerequisites=["kp_c10"], description="malloc、calloc、realloc、free与内存泄漏防范",
         tags=["动态内存", "malloc"],
         document=KP_C14_DOC, code_example=KP_C14_CODE, questions=KP_C14_QS, mindmap=KP_C14_MM,
+    ),
+    KnowledgePointModel(
+        kp_id="kp_c15", name="预处理指令", subject="高级主题", difficulty=0.4,
+        prerequisites=["kp_c01"], description="宏定义、条件编译、文件包含与预处理原理",
+        tags=["预处理", "宏定义"],
+        document=KP_C15_DOC, code_example=KP_C15_CODE, questions=KP_C15_QS, mindmap=KP_C15_MM,
+    ),
+    KnowledgePointModel(
+        kp_id="kp_c16", name="位运算", subject="高级主题", difficulty=0.55,
+        prerequisites=["kp_c03", "kp_c06"], description="位运算符、位掩码、位域与底层数据操作",
+        tags=["位运算", "位掩码"],
+        document=KP_C16_DOC, code_example=KP_C16_CODE, questions=KP_C16_QS, mindmap=KP_C16_MM,
     ),
 ]
 db.add_all(kps)

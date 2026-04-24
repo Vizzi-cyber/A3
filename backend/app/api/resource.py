@@ -408,35 +408,53 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
             f.write(code)
             src_path = f.name
         exe_path = src_path.replace(".c", ".exe" if os.name == "nt" else "")
+        output = ""
+        error = ""
         try:
+            # 编译时声明源代码为 UTF-8，避免中文乱码
             compile_res = subprocess.run(
-                [gcc_path, src_path, "-o", exe_path],
+                [gcc_path, src_path, "-o", exe_path, "-finput-charset=UTF-8"],
                 capture_output=True,
                 text=True,
                 timeout=10,
                 env=env,
             )
+            compile_stderr = getattr(compile_res, 'stderr', None) or ""
             if compile_res.returncode != 0:
                 return {
                     "status": "success",
                     "output": "",
-                    "error": compile_res.stderr[:2000] or "编译失败",
+                    "error": compile_stderr[:2000] or "编译失败",
                     "explanation": "C 代码编译出错，请检查语法。",
                 }
+            # 运行时使用 UTF-8 解码 stdout，防止 Windows 管道编码导致输出丢失
             run_res = subprocess.run(
                 [exe_path],
-                capture_output=True,
-                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 timeout=10,
                 env=env,
             )
-            output = run_res.stdout[:5000]
-            error = run_res.stderr[:5000] if run_res.returncode != 0 else ""
+            # 先读取原始字节，再按 UTF-8 → GBK 顺序解码，防止 Windows 管道编码导致输出丢失
+            run_stdout_bytes = run_res.stdout or b""
+            run_stderr_bytes = run_res.stderr or b""
+
+            def _decode(b: bytes) -> str:
+                for enc in ("utf-8", "gbk", "gb2312"):
+                    try:
+                        return b.decode(enc)
+                    except UnicodeDecodeError:
+                        continue
+                return b.decode("utf-8", errors="replace")
+
+            run_stdout = _decode(run_stdout_bytes)
+            run_stderr = _decode(run_stderr_bytes)
+            output = run_stdout[:5000]
+            if run_res.returncode != 0:
+                error = run_stderr[:5000] or f"程序异常退出，返回码: {run_res.returncode}"
         except subprocess.TimeoutExpired:
-            output = ""
             error = "代码执行超时（限制 10 秒）"
         except Exception as e:
-            output = ""
             error = f"执行异常: {str(e)}"
         finally:
             for p in (src_path, exe_path):
@@ -445,7 +463,12 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
                         os.remove(p)
                 except Exception:
                     pass
-        explanation = "代码执行成功，上方为输出结果。" if not error and output else ("代码执行过程中出现错误，请检查语法或逻辑。" if error else "")
+        if error:
+            explanation = "代码执行过程中出现错误，请检查语法或逻辑。"
+        elif output:
+            explanation = "代码执行成功，上方为输出结果。"
+        else:
+            explanation = "代码执行完成，无输出。"
         return {"status": "success", "output": output, "error": error, "explanation": explanation}
 
     # Python 执行：先进行 AST 安全分析

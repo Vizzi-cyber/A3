@@ -14,6 +14,7 @@ import {
   MenuFoldOutlined,
   BookOutlined,
   CheckCircleOutlined,
+  CloseCircleOutlined,
   ReadOutlined,
   ArrowRightOutlined,
   CopyOutlined,
@@ -32,7 +33,7 @@ import {
   PictureOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { resourceApi, tutorApi, imageApi, knowledgeApi, ocrApi } from '../services/api'
+import { resourceApi, tutorApi, imageApi, knowledgeApi, ocrApi, learningDataApi, logReflectionApi } from '../services/api'
 import type { ChatMessage, QuestionItem, VisionContentItem } from '../types'
 import { ChatPanel } from '../components/ChatPanel'
 
@@ -56,6 +57,10 @@ const ResourceCenter: React.FC = () => {
   const [codeContent, setCodeContent] = useState('')
   const [codeLanguage, setCodeLanguage] = useState<'Python' | 'C'>('C')
   const [questions, setQuestions] = useState<QuestionItem[]>([])
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({})
+  const [quizSubmitted, setQuizSubmitted] = useState<Record<string, boolean>>({})
+  const [quizScore, setQuizScore] = useState<number | null>(null)
+  const [quizSubmitting, setQuizSubmitting] = useState(false)
   const [mindmap, setMindmap] = useState<{ root: string; children: { name: string }[] }>({ root: '', children: [] })
   const [loading, setLoading] = useState(false)
   const [resLoading, setResLoading] = useState(false)
@@ -75,6 +80,10 @@ const ResourceCenter: React.FC = () => {
   const [imagePrompt, setImagePrompt] = useState('')
   const [generatedImage, setGeneratedImage] = useState('')
   const [imageLoading, setImageLoading] = useState(false)
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [savingCornell, setSavingCornell] = useState(false)
+  const [savingFeynman, setSavingFeynman] = useState(false)
+  const [markingComplete, setMarkingComplete] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
   const location = useLocation()
 
@@ -136,6 +145,29 @@ const ResourceCenter: React.FC = () => {
     return () => { ignore = true }
   }, [])
 
+  // 加载已保存的笔记/反思
+  useEffect(() => {
+    if (!studentId) return
+    let ignore = false
+    const loadReflections = async () => {
+      try {
+        const res: any = await logReflectionApi.getReflections(studentId, 30)
+        if (ignore || !res.data?.data) return
+        const refs = res.data.data
+        const plainNote = refs.find((r: any) => r.tags?.includes('notes'))
+        if (plainNote) setNotes(plainNote.content)
+        const cornell = refs.find((r: any) => r.tags?.includes('cornell'))
+        if (cornell) {
+          try { setCornellNotes(JSON.parse(cornell.content)) } catch { setCornellNotes({ cues: cornell.content, notes: '', summary: '' }) }
+        }
+        const feynman = refs.find((r: any) => r.tags?.includes('feynman'))
+        if (feynman) setFeynmanInput(feynman.content)
+      } catch { /* ignore */ }
+    }
+    loadReflections()
+    return () => { ignore = true }
+  }, [studentId])
+
   // 切换代码语言时重新生成代码
   useEffect(() => {
     if (!activeKey || !currentTopic) return
@@ -169,6 +201,10 @@ const ResourceCenter: React.FC = () => {
         if (codeRes.data.code) setCodeContent(codeRes.data.code)
         const qs = Array.isArray(qRes.data.questions) ? qRes.data.questions : []
         if (qs.length) setQuestions(qs)
+        // 重置答题状态
+        setQuizAnswers({})
+        setQuizSubmitted({})
+        setQuizScore(null)
         if (mapRes.data.mindmap) {
           setMindmap({
             root: mapRes.data.mindmap.root || currentTopic,
@@ -216,12 +252,17 @@ const ResourceCenter: React.FC = () => {
     setCodeResult('')
     try {
       const res = await resourceApi.executeCode({ code: codeContent, language: codeLanguage })
-      if (res.data.output) {
-        setCodeResult(res.data.output)
-      } else if (res.data.error) {
-        setCodeResult('错误：' + res.data.error)
+      const data: any = res.data
+      const output = (data?.output ?? '') as string
+      const error = (data?.error ?? '') as string
+      const explanation = (data?.explanation ?? '') as string
+
+      if (output) {
+        setCodeResult(output)
+      } else if (error) {
+        setCodeResult(`【编译/运行错误】\n${error}${explanation ? '\n\n说明：' + explanation : ''}`)
       } else {
-        setCodeResult('执行完成，无输出')
+        setCodeResult(`执行完成，无标准输出。\n\n后端说明：${explanation || '程序已正常结束，但未产生 stdout。'}`)
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '执行失败'
@@ -277,6 +318,99 @@ const ResourceCenter: React.FC = () => {
     message.success('已导入笔记')
   }
 
+  const handleMarkComplete = async () => {
+    if (!activeKey) {
+      message.warning('请先选择一个知识点')
+      return
+    }
+    setMarkingComplete(true)
+    try {
+      await learningDataApi.record({
+        student_id: studentId,
+        kp_id: activeKey,
+        action: 'complete',
+        duration: 0,
+        progress: 1.0,
+      })
+      message.success('已标记完成')
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '标记失败'
+      message.error(errMsg)
+    } finally {
+      setMarkingComplete(false)
+    }
+  }
+
+  const handleSaveNotes = async () => {
+    if (!notes.trim()) {
+      message.warning('笔记内容为空')
+      return
+    }
+    setSavingNotes(true)
+    try {
+      await logReflectionApi.createReflection({
+        student_id: studentId,
+        date: new Date().toISOString().slice(0, 10),
+        content: notes.trim(),
+        mood: 'neutral',
+        tags: ['notes'],
+      })
+      message.success('笔记已保存')
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '保存失败'
+      message.error(errMsg)
+    } finally {
+      setSavingNotes(false)
+    }
+  }
+
+  const handleSaveCornell = async () => {
+    if (!cornellNotes.cues.trim() && !cornellNotes.notes.trim() && !cornellNotes.summary.trim()) {
+      message.warning('康奈尔笔记内容为空')
+      return
+    }
+    setSavingCornell(true)
+    try {
+      await logReflectionApi.createReflection({
+        student_id: studentId,
+        date: new Date().toISOString().slice(0, 10),
+        content: JSON.stringify(cornellNotes),
+        mood: 'neutral',
+        tags: ['cornell'],
+      })
+      message.success('康奈尔笔记已保存')
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '保存失败'
+      message.error(errMsg)
+    } finally {
+      setSavingCornell(false)
+    }
+  }
+
+  const handleSubmitFeynman = async () => {
+    if (!feynmanInput.trim()) {
+      message.warning('请先输入费曼练习内容')
+      return
+    }
+    setSavingFeynman(true)
+    try {
+      await logReflectionApi.createReflection({
+        student_id: studentId,
+        date: new Date().toISOString().slice(0, 10),
+        content: feynmanInput.trim(),
+        mood: 'neutral',
+        tags: ['feynman'],
+      })
+      message.success('费曼练习已保存')
+      setFeynmanInput('')
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '保存失败'
+      message.error(errMsg)
+    } finally {
+      setSavingFeynman(false)
+    }
+  }
+
   const handleGenerateImage = async () => {
     if (!imagePrompt.trim()) {
       message.warning('请输入图片描述')
@@ -285,15 +419,43 @@ const ResourceCenter: React.FC = () => {
     setImageLoading(true)
     try {
       const res = await imageApi.generate({ prompt: imagePrompt })
+      // 同步直接返回图片
       if (res.data.image_urls && res.data.image_urls.length > 0) {
         setGeneratedImage(res.data.image_urls[0])
         message.success('图片生成成功')
+        return
+      }
+      // 异步任务：轮询查询结果
+      const taskId = res.data.task_id
+      if (res.data.status === 'submitted' && taskId) {
+        message.info('图片生成中，请稍候…')
+        const poll = async (attempt: number): Promise<void> => {
+          if (attempt <= 0) {
+            message.error('图片生成超时，请稍后手动刷新')
+            throw new Error('timeout')
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2000))
+          const pollRes = await imageApi.getResult(taskId)
+          if (pollRes.data.status === 'done' && pollRes.data.image_urls && pollRes.data.image_urls.length > 0) {
+            setGeneratedImage(pollRes.data.image_urls[0])
+            message.success('图片生成成功')
+            return
+          }
+          if (pollRes.data.status === 'failed' || pollRes.data.status === 'error') {
+            message.error('图片生成失败：' + (pollRes.data.message || '未知错误'))
+            throw new Error('failed')
+          }
+          return poll(attempt - 1)
+        }
+        await poll(15)
       } else {
         message.info('图片生成中，请稍后查看')
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '生成失败'
-      message.error(errMsg)
+      if (errMsg !== 'timeout' && errMsg !== 'failed') {
+        message.error(errMsg)
+      }
     } finally {
       setImageLoading(false)
     }
@@ -324,7 +486,7 @@ const ResourceCenter: React.FC = () => {
                 <ApartmentOutlined /> {ragActive ? 'RAG 检索中' : 'RAG 关闭'}
               </Tag>
             </Tooltip>
-            <Button type="primary" className="rounded-lg bg-primary">
+            <Button type="primary" className="rounded-lg bg-primary" onClick={handleMarkComplete} loading={markingComplete}>
               <CheckCircleOutlined /> 标记完成
             </Button>
           </Space>
@@ -447,9 +609,20 @@ const ResourceCenter: React.FC = () => {
                         <ArrowRightOutlined /> 运行{codeLanguage}代码
                       </Button>
                       {codeResult && (
-                        <div className="bg-slate-800 rounded-xl p-4 font-mono text-sm text-green-400 mt-2 whitespace-pre-wrap">
-                          <div className="text-slate-400 text-xs mb-2 border-b border-slate-600 pb-1">运行结果</div>
-                          {codeResult}
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-slate-400 text-xs">运行结果</span>
+                            <Button type="link" size="small" className="text-xs text-primary" onClick={() => { navigator.clipboard.writeText(codeResult).then(() => message.success('结果已复制')) }}>
+                              复制结果
+                            </Button>
+                          </div>
+                          <Input.TextArea
+                            value={codeResult}
+                            readOnly
+                            rows={8}
+                            className="bg-slate-800 text-green-400 border-slate-700 font-mono text-sm !shadow-none !outline-none focus:!border-slate-700 hover:!border-slate-700"
+                            style={{ resize: 'vertical', lineHeight: 1.6 }}
+                          />
                         </div>
                       )}
                     </div>
@@ -461,21 +634,99 @@ const ResourceCenter: React.FC = () => {
                   children: (
                     <div className="space-y-3">
                       {questions.length === 0 && <Typography.Text className="text-slate-400">暂无练习题</Typography.Text>}
-                      {questions.map((q, idx) => (
-                        <Card key={idx} size="small" className="rounded-xl border-slate-100">
-                          <Typography.Text className="font-medium text-slate-800 block mb-3">{idx + 1}. {q.content}</Typography.Text>
-                          {q.options && (
-                            <div className="space-y-2">
-                              {q.options.map((opt) => (
-                                <div key={opt.id} className="text-slate-600 px-3 py-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-primary transition-colors cursor-pointer text-sm">
-                                  {opt.id}. {opt.text}
-                                </div>
-                              ))}
-                            </div>
+                      {questions.length > 0 && (
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm text-slate-500">
+                            已答 {Object.keys(quizSubmitted).length} / {questions.length} 题
+                            {quizScore !== null && (
+                              <Tag className="ml-2 rounded-full border-0 bg-primary-50 text-primary text-xs font-bold">
+                                得分: {quizScore} 分
+                              </Tag>
+                            )}
+                          </div>
+                          {Object.keys(quizSubmitted).length > 0 && (
+                            <Button size="small" className="rounded-lg text-xs" onClick={() => { setQuizAnswers({}); setQuizSubmitted({}); setQuizScore(null); }}>
+                              重新作答
+                            </Button>
                           )}
-                          <Tag className="mt-3 rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">答案：{q.correct_answer}</Tag>
-                        </Card>
-                      ))}
+                        </div>
+                      )}
+                      {questions.map((q, idx) => {
+                        const submitted = quizSubmitted[q.q_id]
+                        const selected = quizAnswers[q.q_id]
+                        const isCorrect = submitted && selected === q.correct_answer
+                        return (
+                          <Card key={q.q_id} size="small" className={`rounded-xl border-slate-100 ${submitted ? (isCorrect ? 'border-emerald-200 bg-emerald-50/30' : 'border-red-200 bg-red-50/30') : ''}`}>
+                            <div className="flex items-start gap-2 mb-3">
+                              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                              <Typography.Text className="font-medium text-slate-800">{q.content}</Typography.Text>
+                            </div>
+                            {q.options && (
+                              <div className="space-y-2 pl-8">
+                                {q.options.map((opt) => {
+                                  const isSelected = selected === opt.id
+                                  const isCorrectOpt = opt.id === q.correct_answer
+                                  let optClass = 'px-3 py-2 rounded-lg text-sm border transition-all '
+                                  if (submitted) {
+                                    if (isCorrectOpt) {
+                                      optClass += 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                                    } else if (isSelected && !isCorrectOpt) {
+                                      optClass += 'bg-red-100 border-red-300 text-red-700'
+                                    } else {
+                                      optClass += 'bg-slate-50 border-slate-100 text-slate-400'
+                                    }
+                                  } else {
+                                    optClass += isSelected
+                                      ? 'bg-primary-50 border-primary-200 text-primary cursor-pointer'
+                                      : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-primary cursor-pointer'
+                                  }
+                                  return (
+                                    <div key={opt.id} className={optClass} onClick={() => {
+                                      if (!submitted) setQuizAnswers(prev => ({ ...prev, [q.q_id]: opt.id }))
+                                    }}>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-primary text-white' : 'bg-white border border-slate-300 text-slate-500'}`}>
+                                          {opt.id}
+                                        </span>
+                                        <span>{opt.text}</span>
+                                        {submitted && isCorrectOpt && <CheckCircleOutlined className="text-emerald-500 ml-auto" />}
+                                        {submitted && isSelected && !isCorrectOpt && <CloseCircleOutlined className="text-red-500 ml-auto" />}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                            {submitted && (
+                              <div className="mt-3 pl-8">
+                                <div className={`text-xs font-medium mb-1 ${isCorrect ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  {isCorrect ? '回答正确！' : `回答错误，正确答案是 ${q.correct_answer}`}
+                                </div>
+                                <div className="text-xs text-slate-500 bg-white/60 rounded-lg p-2 border border-slate-100">
+                                  <span className="font-medium text-slate-600">解析：</span>{q.explanation}
+                                </div>
+                              </div>
+                            )}
+                            {!submitted && selected && (
+                              <div className="mt-3 pl-8">
+                                <Button type="primary" size="small" className="rounded-lg bg-primary text-xs" loading={quizSubmitting} onClick={() => {
+                                  setQuizSubmitted(prev => ({ ...prev, [q.q_id]: true }))
+                                  // 自动计算总分
+                                  const newSubmitted = { ...quizSubmitted, [q.q_id]: true }
+                                  const newAnswers = { ...quizAnswers, [q.q_id]: selected }
+                                  const total = questions.reduce((sum, qq) => {
+                                    if (newSubmitted[qq.q_id] && newAnswers[qq.q_id] === qq.correct_answer) return sum + 1
+                                    return sum
+                                  }, 0)
+                                  setQuizScore(total)
+                                }}>
+                                  提交答案
+                                </Button>
+                              </div>
+                            )}
+                          </Card>
+                        )
+                      })}
                     </div>
                   ),
                 },
@@ -499,7 +750,7 @@ const ResourceCenter: React.FC = () => {
                   children: (
                     <div className="space-y-3">
                       <Input.TextArea rows={8} placeholder="在这里记录学习笔记，数据会同步到画像分析..." value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-xl bg-slate-50 border-slate-200" />
-                      <Button type="primary" className="rounded-lg bg-primary">
+                      <Button type="primary" className="rounded-lg bg-primary" onClick={handleSaveNotes} loading={savingNotes}>
                         <CheckCircleOutlined /> 保存笔记
                       </Button>
                     </div>
@@ -524,7 +775,7 @@ const ResourceCenter: React.FC = () => {
                         <div className="text-xs font-medium text-slate-500">总结栏 (Summary)</div>
                         <Input.TextArea rows={3} placeholder="用一句话总结本页核心内容..." value={cornellNotes.summary} onChange={(e) => setCornellNotes({ ...cornellNotes, summary: e.target.value })} className="rounded-xl bg-slate-50 border-slate-200" />
                       </div>
-                      <Button type="primary" className="rounded-lg bg-primary">
+                      <Button type="primary" className="rounded-lg bg-primary" onClick={handleSaveCornell} loading={savingCornell}>
                         <CheckCircleOutlined /> 保存康奈尔笔记
                       </Button>
                     </div>
@@ -539,7 +790,7 @@ const ResourceCenter: React.FC = () => {
                         <strong>费曼学习法：</strong>尝试用最简单的语言向一个"小孩"解释你学到的概念。如果你卡住了，就回到材料中重新学习。
                       </div>
                       <Input.TextArea rows={6} placeholder="用你自己的话，尝试向一个外行解释当前知识点..." value={feynmanInput} onChange={(e) => setFeynmanInput(e.target.value)} className="rounded-xl bg-slate-50 border-slate-200" />
-                      <Button type="primary" className="rounded-lg bg-primary" onClick={() => { if (feynmanInput.trim()) { message.success('费曼练习已保存，AI 将帮你检查理解盲点'); setFeynmanInput(''); } }}>
+                      <Button type="primary" className="rounded-lg bg-primary" onClick={handleSubmitFeynman} loading={savingFeynman}>
                         <ThunderboltOutlined /> 提交费曼练习
                       </Button>
                     </div>
@@ -550,10 +801,13 @@ const ResourceCenter: React.FC = () => {
                   label: <span className="flex items-center gap-1.5 text-sm"><PictureOutlined /> AI 绘图</span>,
                   children: (
                     <div className="space-y-3">
-                      <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-800">
-                        <strong>AI 绘图：</strong>输入图片描述，AI 将为你生成对应的学习插图或概念示意图。
+                      <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-800 space-y-1">
+                        <div><strong>AI 绘图：</strong>输入图片描述，AI 将为你生成对应的学习插图或概念示意图。</div>
+                        <div className="text-xs text-indigo-600">
+                          提示：描述请使用中文；如需图中出现特定文字，请用双引号括起，如栈区、堆区。
+                        </div>
                       </div>
-                      <Input.TextArea rows={3} placeholder="例如：C语言内存模型示意图，展示栈区和堆区的区别..." value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} className="rounded-xl bg-slate-50 border-slate-200" />
+                      <Input.TextArea rows={3} placeholder="例如：C语言内存模型示意图，展示栈区和堆区的区别，图中所有文字使用中文..." value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} className="rounded-xl bg-slate-50 border-slate-200" />
                       <Button type="primary" className="rounded-lg bg-primary" onClick={handleGenerateImage} loading={imageLoading}>
                         <PictureOutlined /> 生成图片
                       </Button>

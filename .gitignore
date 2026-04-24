@@ -41,6 +41,14 @@ logs/
 *.sqlite
 *.sqlite3
 
+# Process IDs
+*.pid
+
+# Test results
+test-results/
+playwright-report/
+
+
 # Environment variables
 .env
 
@@ -56,3 +64,4 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+image_tasks.json
