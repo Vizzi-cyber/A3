@@ -135,6 +135,29 @@ code {
   border-radius: 100px !important;
 }
 
+/* ===== Block Reveal 动画 ===== */
+.block-line-wrapper {
+  position: relative;
+  width: max-content;
+  display: block;
+}
+
+.block-line {
+  position: relative;
+  display: block;
+}
+
+.block-revealer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 101%;
+  height: 101%;
+  pointer-events: none;
+  will-change: transform;
+  z-index: 1;
+}
+
 /* ===== 移动端适配 ===== */
 @media (max-width: 768px) {
   body {
