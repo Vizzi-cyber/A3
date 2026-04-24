@@ -24,6 +24,7 @@ class ProfilerAgent(BaseAgent):
         return (
             "你是一位专业的教育数据分析师，擅长从学生的学习行为、测试表现和交互记录中"
             "提取特征，构建精准的学生画像。"
+            "重要：不要输出思考过程、分析步骤或'让我想想'之类的内心独白，直接输出最终分析结果。"
         )
 
     async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:

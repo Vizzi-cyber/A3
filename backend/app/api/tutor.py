@@ -20,6 +20,7 @@ class TutorRequest(BaseModel):
     question: Union[str, List[Dict[str, Any]]]
     context: Optional[Dict[str, Any]] = None
     session_id: Optional[str] = None
+    provider: Optional[str] = None  # bigmodel / deepseek / openai / spark
 
 
 class TutorResponse(BaseModel):
@@ -66,15 +67,18 @@ async def ask_tutor(request: TutorRequest, _current: str = Depends(require_auth)
                 "session_id": session_id,
                 "question": request.question,
                 "profile": {},
+                "llm_provider": request.provider,
             }),
             timeout=15.0,
         )
         if result.get("status") == "success":
             answer = result.get("answer", "很抱歉，我没有理解你的问题，可以再说一遍吗？")
+        elif result.get("status") == "blocked":
+            answer = result.get("reason", "内容被安全过滤，请换种方式提问。")
         else:
             answer = "服务暂时不可用，请稍后再试。"
     except asyncio.TimeoutError:
-        answer = "思考时间较长，请稍后再试或简化问题。"
+        answer = "模型响应超时，请重试或切换到WebSocket流式模式。"
 
     return TutorResponse(
         response=answer,
@@ -85,7 +89,10 @@ async def ask_tutor(request: TutorRequest, _current: str = Depends(require_auth)
 
 @router.websocket("/ws/{session_id}")
 async def tutor_websocket(websocket: WebSocket, session_id: str):
-    """WebSocket实时辅导，支持流式输出"""
+    """WebSocket实时辅导，支持真实 LLM 流式输出与多模型切换"""
+    from ..services.llm_factory import LLMFactory
+    from ..core.safety import SafetyGuard
+
     await manager.connect(session_id, websocket)
 
     try:
@@ -96,35 +103,68 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
             if message_type == "message":
                 question = data.get("content", "")
                 student_id = data.get("student_id", "anonymous")
+                provider = data.get("provider")
 
-                # 调用 TutorAgent 获取回答（带超时保护）
-                try:
-                    result = await asyncio.wait_for(
-                        _tutor_agent.process({
-                            "task": "answer_question",
-                            "session_id": session_id,
-                            "question": question,
-                            "profile": {},
-                        }),
-                        timeout=15.0,
-                    )
-                    answer = result.get("answer", "") if result.get("status") == "success" else "服务暂时不可用"
-                except asyncio.TimeoutError:
-                    answer = "思考时间较长，请稍后再试或简化问题。"
-
-                # 模拟流式输出（按句子拆分）
-                parts = answer.replace("。", "。\n").replace("？", "？\n").replace("！", "！\n").split("\n")
-                parts = [p.strip() for p in parts if p.strip()]
-                if len(parts) <= 1:
-                    parts = [answer[i:i+30] for i in range(0, len(answer), 30)]
-
-                for part in parts:
+                # 输入安全校验
+                safety = SafetyGuard.check_input(question)
+                if not safety["safe"]:
                     await manager.send_message(session_id, {
                         "type": "chunk",
-                        "content": part,
+                        "content": "【内容安全提醒】输入包含敏感内容，请修改后重试。",
                         "timestamp": datetime.now().isoformat(),
                     })
-                    await __import__("asyncio").sleep(0.2)
+                    await manager.send_message(session_id, {"type": "complete", "timestamp": datetime.now().isoformat()})
+                    continue
+
+                # 获取 LLM 实例（支持动态切换）
+                try:
+                    llm = LLMFactory.get_llm(provider) if provider else _tutor_agent.llm
+                except Exception as e:
+                    await manager.send_message(session_id, {
+                        "type": "chunk",
+                        "content": f"模型加载失败：{e}",
+                        "timestamp": datetime.now().isoformat(),
+                    })
+                    await manager.send_message(session_id, {"type": "complete", "timestamp": datetime.now().isoformat()})
+                    continue
+
+                # 构建消息历史
+                history = _tutor_agent.session_histories.setdefault(session_id, [])
+                prompt = SafetyGuard.sanitize_prompt(
+                    f"学生提问：{question}\n请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
+                )
+                messages = [
+                    {"role": "system", "content": _tutor_agent.get_system_prompt()},
+                    *history,
+                    {"role": "user", "content": prompt},
+                ]
+
+                # 真实流式输出
+                full_answer = ""
+                try:
+                    async for chunk in llm.astream(messages, temperature=0.6, max_tokens=1024):
+                        if not chunk:
+                            continue
+                        full_answer += chunk
+                        await manager.send_message(session_id, {
+                            "type": "chunk",
+                            "content": chunk,
+                            "timestamp": datetime.now().isoformat(),
+                        })
+                except Exception as e:
+                    if not full_answer:
+                        full_answer = f"流式输出异常：{str(e)}"
+                        await manager.send_message(session_id, {
+                            "type": "chunk",
+                            "content": full_answer,
+                            "timestamp": datetime.now().isoformat(),
+                        })
+
+                # 更新会话历史
+                history.append({"role": "user", "content": question})
+                history.append({"role": "assistant", "content": full_answer})
+                if len(history) > 20:
+                    history[:] = history[-20:]
 
                 await manager.send_message(session_id, {
                     "type": "complete",

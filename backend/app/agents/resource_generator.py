@@ -24,6 +24,7 @@ class ResourceGeneratorAgent(BaseAgent):
         return (
             "你是一位资深的教育内容设计师，精通教学设计、习题编写和代码示例撰写。"
             "你能根据学生的学习风格和知识水平，生成难度适中、结构清晰的学习资源。"
+            "重要：不要输出思考过程、分析步骤或'让我想想'之类的内心独白，直接输出最终生成的内容。"
         )
 
     async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:

@@ -230,6 +230,24 @@ export interface DashboardSummaryResponse {
     interest_areas: string[]
   }
   trend: Array<{ date: string; value: number }>
+  algorithm_analysis?: {
+    trend_analysis?: {
+      trend_state: string
+      trend_factor: number
+      predicted_mastery_3d: number
+      dimensions: Record<string, number>
+    }
+    effect_evaluation?: {
+      realtime_metrics: {
+        accuracy: number
+        mastery: number
+        improvement_rate: number
+        next_predicted_score: number
+      }
+      loss_points: Array<{ kp_id: string; loss: number }>
+      intervention_strategies: string[]
+    }
+  }
 }
 
 export const dashboardApi = {
@@ -254,6 +272,33 @@ export const favoritesApi = {
     api.post<{ status: string; id: string }>(`/favorites/${studentId}`, data),
   remove: (studentId: string, favoriteId: string) =>
     api.delete<{ status: string; message: string }>(`/favorites/${studentId}/${favoriteId}`),
+}
+
+// ---------- OCR ----------
+export interface OCRRequest {
+  image_base64: string
+  prompt?: string
+  provider?: string
+}
+
+export interface OCRResponse {
+  status: string
+  text: string
+  note_type?: string
+}
+
+export const ocrApi = {
+  recognize: (data: OCRRequest) =>
+    api.post<OCRResponse>('/ocr/recognize', data),
+  upload: (file: File, prompt?: string, provider?: string) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (prompt) form.append('prompt', prompt)
+    if (provider) form.append('provider', provider)
+    return api.post<OCRResponse>('/ocr/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 // ---------- Gamification ----------
@@ -282,6 +327,18 @@ export const learningDataApi = {
     api.get<{ status: string; student_id: string; records: any[]; quizzes: any[] }>(`/learning-data/${studentId}/history?limit=${limit || 50}`),
   record: (data: LearningRecordRequest) =>
     api.post<{ status: string; record_id: string }>('/learning-data/record', data),
+}
+
+// ---------- 反思与日志 ----------
+export const logReflectionApi = {
+  getReflections: (studentId: string, limit?: number) =>
+    api.get<{ status: string; data: Array<{ reflection_id: string; date: string; content: string; mood: string; tags: string[]; ai_feedback?: string }> }>(`/log-reflection/${studentId}/reflections?limit=${limit || 30}`),
+  createReflection: (data: { student_id: string; date: string; content: string; mood?: string; tags?: string[]; ai_feedback?: string }) =>
+    api.post<{ status: string; message?: string; reflection_id: string }>('/log-reflection/reflections/create', data),
+  getLogs: (studentId: string, date?: string) =>
+    api.get<{ status: string; data: Array<{ log_id: string; date: string; total_duration: number; kp_count: number; quiz_count: number; avg_score: number; mistakes: string[]; path_progress: number; completed_tasks: string[]; timeline: any[] }> }>(`/log-reflection/${studentId}/logs${date ? `?date=${date}` : ''}`),
+  getReview: (studentId: string) =>
+    api.get<{ status: string; student_id: string; summary: any; daily_logs: any[]; reflections: any[] }>(`/log-reflection/${studentId}/review`),
 }
 
 // ---------- Trend ----------

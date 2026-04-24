@@ -72,7 +72,9 @@ class CourseDesignerAgent(BaseAgent):
     "execution_order": ["执行顺序"],
     "quality_criteria": {"质量标准"},
     "estimated_time": "预估时间"
-}"""
+}
+
+重要：不要输出思考过程、分析步骤或'让我想想'之类的内心独白，直接输出最终JSON结果。"""
 
     async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """

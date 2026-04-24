@@ -18,6 +18,7 @@ from .monitoring import router as monitoring_router
 from .image import router as image_router
 from .dashboard import router as dashboard_router
 from .favorites import router as favorites_router
+from .ocr import router as ocr_router
 
 router = APIRouter()
 
@@ -34,5 +35,6 @@ router.include_router(gamification_router, prefix="/gamification", tags=["游戏
 router.include_router(log_reflection_router, prefix="/log-reflection", tags=["学习日志与反思"])
 router.include_router(monitoring_router, prefix="/monitoring", tags=["系统监控"])
 router.include_router(image_router, prefix="/image", tags=["文生图"])
+router.include_router(ocr_router, prefix="/ocr", tags=["OCR识图"])
 router.include_router(dashboard_router, prefix="/dashboard", tags=["仪表盘"])
 router.include_router(favorites_router, prefix="/favorites", tags=["收藏夹"])

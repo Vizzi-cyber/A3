@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 
 from sqlalchemy.orm import Session
 from ..models.database import get_db
-from ..models.knowledge import KnowledgePointModel
+from ..models.knowledge import KnowledgePointModel, LearningRecordModel
 from ..models.student import StudentProfileModel
 from ..algorithms import DAGPathPlanner
 from ..agents import PathPlannerAgent
@@ -120,9 +120,9 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             for idx, stage in enumerate(dag_result.get("stages", [])):
                 stages.append({
                     "stage_no": idx + 1,
-                    "title": stage_names[idx] if idx < len(stage_names) else f"阶段 {idx + 1}",
-                    "topics": stage.get("kps", []),
-                    "hours": stage.get("estimated_hours", 5),
+                    "title": stage.get("title") or (stage_names[idx] if idx < len(stage_names) else f"阶段 {idx + 1}"),
+                    "topics": stage.get("topics", stage.get("kp_ids", [])),
+                    "hours": stage.get("hours", 5),
                     "criteria": stage.get("criteria", "完成本阶段所有知识点学习"),
                     "resources": stage.get("resources", []),
                 })

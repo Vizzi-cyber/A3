@@ -19,6 +19,7 @@ import {
   ExclamationCircleOutlined,
   ApartmentOutlined,
 } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store'
 import { pathApi } from '../services/api'
 
@@ -59,6 +60,7 @@ const LearningPathPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [showReviewAlert, setShowReviewAlert] = useState(true)
   const studentId = useAppStore((s) => s.studentId)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const load = async () => {
@@ -66,23 +68,30 @@ const LearningPathPage: React.FC = () => {
         const res: any = await pathApi.current(studentId)
         if (res.data) {
           const nodes = res.data.nodes || [
-            { id: 1, title: 'C语言概述', status: 'completed', type: '入门', resources: 5 },
-            { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 4 },
-            { id: 3, title: '控制结构', status: 'in-progress', type: '核心', resources: 8 },
-            { id: 4, title: '数组与字符串', status: 'pending', type: '核心', resources: 6 },
+            { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门', resources: 5 },
+            { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 5 },
+            { id: 3, title: '运算符与表达式', status: 'in-progress', type: '基础', resources: 5 },
+            { id: 4, title: '输入输出与顺序结构', status: 'pending', type: '基础', resources: 5 },
           ]
           setPathData(res.data)
           setPathNodes(nodes)
         }
       } catch (e) {
         setPathNodes([
-          { id: 1, title: 'C语言概述', status: 'completed', type: '入门', resources: 5 },
-          { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 4 },
-          { id: 3, title: '控制结构', status: 'in-progress', type: '核心', resources: 8 },
-          { id: 4, title: '数组与字符串', status: 'pending', type: '核心', resources: 6 },
-          { id: 5, title: '函数', status: 'locked', type: '核心', resources: 10 },
-          { id: 6, title: '指针', status: 'locked', type: '进阶', resources: 7 },
-          { id: 7, title: '结构体与文件操作', status: 'locked', type: '进阶', resources: 6 },
+          { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门', resources: 5 },
+          { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 5 },
+          { id: 3, title: '运算符与表达式', status: 'in-progress', type: '基础', resources: 5 },
+          { id: 4, title: '输入输出与顺序结构', status: 'pending', type: '基础', resources: 5 },
+          { id: 5, title: '选择结构', status: 'locked', type: '核心', resources: 5 },
+          { id: 6, title: '循环结构', status: 'locked', type: '核心', resources: 5 },
+          { id: 7, title: '数组', status: 'locked', type: '核心', resources: 5 },
+          { id: 8, title: '字符串', status: 'locked', type: '核心', resources: 5 },
+          { id: 9, title: '函数与递归', status: 'locked', type: '核心', resources: 5 },
+          { id: 10, title: '指针基础', status: 'locked', type: '进阶', resources: 5 },
+          { id: 11, title: '指针与数组', status: 'locked', type: '进阶', resources: 5 },
+          { id: 12, title: '结构体与联合体', status: 'locked', type: '进阶', resources: 5 },
+          { id: 13, title: '文件操作', status: 'locked', type: '进阶', resources: 5 },
+          { id: 14, title: '动态内存管理', status: 'locked', type: '高级', resources: 5 },
         ])
       }
     }
@@ -278,11 +287,16 @@ const LearningPathPage: React.FC = () => {
               {[
                 { id: 1, title: 'C语言概述', level: 1, status: 'completed' },
                 { id: 2, title: '数据类型与变量', level: 1, status: 'completed' },
-                { id: 3, title: '控制结构', level: 2, status: 'in-progress' },
-                { id: 4, title: '数组与字符串', level: 2, status: 'pending' },
-                { id: 5, title: '函数与递归', level: 3, status: 'locked' },
-                { id: 6, title: '指针与内存', level: 3, status: 'locked' },
-                { id: 7, title: '结构体与文件', level: 4, status: 'locked' },
+                { id: 3, title: '运算符与表达式', level: 2, status: 'in-progress' },
+                { id: 4, title: '输入输出', level: 2, status: 'pending' },
+                { id: 5, title: '选择结构', level: 2, status: 'locked' },
+                { id: 6, title: '循环结构', level: 3, status: 'locked' },
+                { id: 7, title: '数组', level: 3, status: 'locked' },
+                { id: 8, title: '字符串', level: 3, status: 'locked' },
+                { id: 9, title: '函数与递归', level: 4, status: 'locked' },
+                { id: 10, title: '指针基础', level: 4, status: 'locked' },
+                { id: 11, title: '结构体', level: 4, status: 'locked' },
+                { id: 12, title: '文件操作', level: 5, status: 'locked' },
               ].map((node) => (
                 <div key={node.id} className="flex flex-col items-center">
                   <div
@@ -296,7 +310,7 @@ const LearningPathPage: React.FC = () => {
                     <div className="text-xs text-slate-400 mb-1">L{node.level}</div>
                     <div className="text-sm font-medium text-slate-800">{node.title}</div>
                   </div>
-                  {node.id < 7 && <div className="h-6 w-0.5 bg-slate-200 my-1" />}
+                  {node.id < 12 && <div className="h-6 w-0.5 bg-slate-200 my-1" />}
                 </div>
               ))}
             </div>
@@ -382,7 +396,16 @@ const LearningPathPage: React.FC = () => {
               </div>
             )}
 
-            <Button type="primary" block className="rounded-lg bg-primary h-10">
+            <Button
+              type="primary"
+              block
+              className="rounded-lg bg-primary h-10"
+              onClick={() => {
+                const kpId = selectedNode.kp_id || selectedNode.id
+                navigate('/resource', { state: { kpId, title: selectedNode.title } })
+                setDrawerOpen(false)
+              }}
+            >
               {selectedNode.status === 'completed' ? '重新学习' : '开始学习'} <ArrowRightOutlined />
             </Button>
           </div>

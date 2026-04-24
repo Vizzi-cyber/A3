@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "AI Learning System"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    SECRET_KEY: str = "your-secret-key"
+    SECRET_KEY: str = "change-me-in-production-32-chars-min"
 
     # 服务器配置
     HOST: str = "0.0.0.0"
@@ -35,14 +35,13 @@ class Settings(BaseSettings):
         if not self.DEBUG and len(self.SECRET_KEY) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters in production mode")
 
-    # 科大讯飞配置
-    SPARK_APP_ID: Optional[str] = None
-    SPARK_API_KEY: Optional[str] = None
-    SPARK_API_SECRET: Optional[str] = None
-    SPARK_MODEL_ENDPOINT: str = "wss://spark-api.xf-yun.com/v3.1/chat"
-
     # 大模型提供商选择: spark / deepseek / openai / bigmodel
     DEFAULT_LLM_PROVIDER: str = "bigmodel"
+
+    # 科大讯飞配置（支持 HTTP OpenAI 兼容接口）
+    SPARK_API_KEY: Optional[str] = None
+    SPARK_HTTP_BASE_URL: str = "https://spark-api-open.xf-yun.com/v1"
+    SPARK_MODEL: str = "generalv3.5"
 
     # DeepSeek配置（可选）
     DEEPSEEK_API_KEY: Optional[str] = None
@@ -51,6 +50,8 @@ class Settings(BaseSettings):
 
     # OpenAI配置（可选）
     OPENAI_API_KEY: Optional[str] = None
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_MODEL: str = "gpt-4o"
 
     # 智谱AI (BigModel) 配置（可选，支持 GLM-4V 等图文模型）
     BIGMODEL_API_KEY: Optional[str] = None

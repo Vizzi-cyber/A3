@@ -60,8 +60,12 @@ const typeIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
 const pathNodes = [
   { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门' },
   { id: 2, title: '数据类型与变量', status: 'completed', type: '基础' },
-  { id: 3, title: '控制结构', status: 'in-progress', type: '核心' },
-  { id: 4, title: '数组与字符串', status: 'pending', type: '核心' },
+  { id: 3, title: '运算符与表达式', status: 'completed', type: '基础' },
+  { id: 4, title: '输入输出与顺序结构', status: 'in-progress', type: '基础' },
+  { id: 5, title: '选择结构', status: 'pending', type: '核心' },
+  { id: 6, title: '循环结构', status: 'pending', type: '核心' },
+  { id: 7, title: '数组', status: 'pending', type: '核心' },
+  { id: 8, title: '字符串', status: 'pending', type: '核心' },
 ]
 
 const statusColors: Record<string, string> = {
@@ -724,7 +728,7 @@ const Dashboard: React.FC = () => {
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
             <div className="font-semibold text-slate-800 mb-2">编程基础 · 核心知识网络</div>
             <div className="grid grid-cols-3 gap-3">
-              {['变量与类型', '控制结构', '数组与字符串', '函数与递归', '指针与内存', '结构体', '文件操作', '预处理', '动态内存'].map((node) => (
+              {['C语言概述', '数据类型与变量', '运算符与表达式', '输入输出', '选择结构', '循环结构', '数组', '字符串', '函数与递归', '指针基础', '指针与数组', '结构体', '文件操作', '动态内存'].map((node) => (
                 <div key={node} className="p-3 rounded-lg bg-white border border-slate-200 text-center text-sm text-slate-700 hover:border-primary hover:shadow-sm transition-all cursor-pointer">{node}</div>
               ))}
             </div>

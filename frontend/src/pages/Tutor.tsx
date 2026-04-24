@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Typography, Tag, message, Space, Badge, Tooltip } from 'antd'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Typography, Tag, message, Space, Tooltip } from 'antd'
 import {
   RobotOutlined,
   BulbOutlined,
@@ -17,6 +17,9 @@ import { ChatPanel } from '../components/ChatPanel'
 import { PageCard } from '../components/PageCard'
 
 import type { ChatMessage, VisionContentItem } from '../types'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws')
 
 const initialMessages: ChatMessage[] = [
   {
@@ -36,28 +39,82 @@ const Tutor: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [multiAgentStep, setMultiAgentStep] = useState<'planner' | 'worker' | 'critic' | 'done'>('done')
   const [ragActive, setRagActive] = useState(true)
-  const [modelProvider, setModelProvider] = useState<'wenxin' | 'qwen' | 'default'>('default')
+  const [modelProvider, setModelProvider] = useState<'bigmodel' | 'deepseek' | 'openai' | 'spark' | 'default'>('default')
+  const [wsConnected, setWsConnected] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
 
-  const generateLocalTutorReply = (text: string): string => {
-    const lower = text.toLowerCase()
-    if (lower.includes('指针') || lower.includes('内存')) {
-      return '指针是C语言的核心概念。可以把指针想象成一个「门牌号」，它告诉你某个数据住在内存的哪个房间。学习指针时，建议先理解「变量地址」和「解引用」这两个基础操作。'
+  const wsRef = useRef<WebSocket | null>(null)
+  const sessionIdRef = useRef(`${studentId}_tutor`)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 建立 WebSocket 连接
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return
+    const sessionId = sessionIdRef.current
+    const wsUrl = `${WS_BASE_URL}/tutor/ws/${sessionId}`
+    const ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      setWsConnected(true)
+      console.log('[Tutor] WebSocket connected')
     }
-    if (lower.includes('数组')) {
-      return '数组是一组相同类型数据的集合。在C语言中，数组名本质上是指向首元素的常量指针。理解这一点，对后续学习指针运算非常有帮助。'
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'chunk') {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1]
+            if (last && last.role === 'ai') {
+              const newContent = typeof last.content === 'string' ? last.content + data.content : data.content
+              return [...prev.slice(0, -1), { ...last, content: newContent }]
+            }
+            return [...prev, { role: 'ai' as const, content: data.content }]
+          })
+        } else if (data.type === 'complete') {
+          setLoading(false)
+          setMultiAgentStep('done')
+        } else if (data.type === 'pong') {
+          // keepalive
+        }
+      } catch {
+        // ignore non-json
+      }
     }
-    if (lower.includes('函数')) {
-      return '函数是C语言模块化编程的基础。要注意形参和实参的区别，以及「值传递」的本质——C语言中所有参数传递都是按值传递的，包括指针本身。'
+
+    ws.onerror = () => {
+      setWsConnected(false)
     }
-    if (lower.includes('递归')) {
-      return '递归的关键在于找到「终止条件」和「递归关系」。写递归时，先在纸上画出调用栈的变化，能帮助你理解程序的执行流程。'
+
+    ws.onclose = () => {
+      setWsConnected(false)
+      // 自动重连
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = setTimeout(() => {
+        connectWebSocket()
+      }, 3000)
     }
-    if (lower.includes('困难') || lower.includes('不会') || lower.includes('不懂')) {
-      return '遇到困难是学习过程中的正常现象。你可以尝试把大问题拆解成更小的子问题，或者回到上一个已掌握的知识点，寻找理解上的断层。需要我帮你梳理一下当前的知识脉络吗？'
+
+    wsRef.current = ws
+  }, [])
+
+  useEffect(() => {
+    connectWebSocket()
+    return () => {
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+      wsRef.current?.close()
     }
-    return '这是一个很好的问题！在深入探讨之前，我想先请你用自己的话描述一下你对这个问题的理解。这样我可以更精准地找到你的理解盲点。'
-  }
+  }, [connectWebSocket])
+
+  // 定期 ping 保持连接
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSend = async (content: string | VisionContentItem[]) => {
     setMessages((prev) => [...prev, { role: 'user' as const, content }])
@@ -65,24 +122,28 @@ const Tutor: React.FC = () => {
     setMultiAgentStep('planner')
     setTimeout(() => setMultiAgentStep('worker'), 600)
     setTimeout(() => setMultiAgentStep('critic'), 1200)
+
+    // 优先使用 WebSocket 流式
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'message',
+        content: typeof content === 'string' ? content : JSON.stringify(content),
+        student_id: studentId,
+        provider: modelProvider === 'default' ? undefined : modelProvider,
+      }))
+      // 不在这里 setLoading(false)，等待 complete 消息
+      return
+    }
+
+    // Fallback: HTTP POST
     try {
-      const question = typeof content === 'string' ? content : ''
-      let aiReply = generateLocalTutorReply(question)
-      try {
-        const res = await Promise.race([
-          tutorApi.ask({
-            student_id: studentId,
-            question: content,
-            session_id: `${studentId}_tutor`,
-          }),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
-        ])
-        if (res.data?.response && !res.data.response.includes('思考时间')) {
-          aiReply = res.data.response
-        }
-      } catch {
-        // 超时或失败时使用本地回复
-      }
+      const res = await tutorApi.ask({
+        student_id: studentId,
+        question: content,
+        session_id: sessionIdRef.current,
+        provider: modelProvider === 'default' ? undefined : modelProvider,
+      })
+      const aiReply = res.data?.response || '服务暂时无响应，请稍后再试。'
       setMultiAgentStep('done')
       setMessages((prev) => [
         ...prev,
@@ -125,14 +186,20 @@ const Tutor: React.FC = () => {
               </Tag>
             </Tooltip>
             <Tooltip title="切换大模型">
-              <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs cursor-pointer" onClick={() => setModelProvider(modelProvider === 'default' ? 'wenxin' : modelProvider === 'wenxin' ? 'qwen' : 'default')}>
+              <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs cursor-pointer" onClick={() => {
+                const providers: Array<'bigmodel' | 'deepseek' | 'openai' | 'spark' | 'default'> = ['default', 'bigmodel', 'deepseek', 'openai', 'spark']
+                const idx = providers.indexOf(modelProvider)
+                setModelProvider(providers[(idx + 1) % providers.length])
+              }}>
                 <FlagFilled className="mr-1" />
-                {modelProvider === 'wenxin' ? '文心一言' : modelProvider === 'qwen' ? '通义千问' : '默认模型'}
+                {modelProvider === 'bigmodel' ? '智谱AI' : modelProvider === 'deepseek' ? 'DeepSeek' : modelProvider === 'openai' ? 'OpenAI' : modelProvider === 'spark' ? '讯飞星火' : '默认模型'}
               </Tag>
             </Tooltip>
-            <Tag color="success" className="rounded-full border-0 bg-emerald-50 text-emerald-600 font-medium">
-              在线
-            </Tag>
+            <Tooltip title={wsConnected ? 'WebSocket 已连接，支持流式输出' : 'WebSocket 未连接，使用 HTTP 模式'}>
+              <Tag color={wsConnected ? 'success' : 'warning'} className="rounded-full border-0 bg-emerald-50 text-emerald-600 font-medium">
+                {wsConnected ? '流式在线' : 'HTTP 模式'}
+              </Tag>
+            </Tooltip>
           </Space>
         </div>
         <div className="flex-1 min-h-0">

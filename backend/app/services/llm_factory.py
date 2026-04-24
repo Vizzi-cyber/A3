@@ -24,7 +24,7 @@ class BaseLLM(ABC):
         self,
         messages: List[Dict[str, Any]],
         temperature: float = 0.7,
-        max_tokens: int = 4096,
+        max_tokens: int = 1024,
     ) -> str:
         pass
 
@@ -33,7 +33,7 @@ class BaseLLM(ABC):
         self,
         messages: List[Dict[str, Any]],
         temperature: float = 0.7,
-        max_tokens: int = 4096,
+        max_tokens: int = 1024,
     ) -> AsyncIterator[str]:
         pass
 
@@ -41,7 +41,7 @@ class BaseLLM(ABC):
         self,
         messages: List[Dict[str, Any]],
         temperature: float = 0.3,
-        max_tokens: int = 4096,
+        max_tokens: int = 1024,
     ) -> Dict[str, Any]:
         """强制 JSON 输出"""
         text = await self.ainvoke(messages, temperature, max_tokens)
@@ -85,8 +85,8 @@ class OpenAICompatibleLLM(BaseLLM):
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self.model = model
 
-    async def ainvoke(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=4096, thinking: bool = False) -> str:
-        """非流式调用，支持智谱 thinking 深度思考"""
+    async def ainvoke(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> str:
+        """非流式调用，默认关闭智谱 thinking 以加快响应"""
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -94,17 +94,18 @@ class OpenAICompatibleLLM(BaseLLM):
             "max_tokens": max_tokens,
             "stream": False,
         }
-        # 智谱 GLM-4.6v 支持 thinking 参数
-        if thinking and "bigmodel" in self.client.base_url.host:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+        # 智谱 GLM-4.6v 支持 thinking 参数：默认禁用深度思考，只有显式开启才启用
+        if "bigmodel" in self.client.base_url.host:
+            kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
         response = await self.client.chat.completions.create(**kwargs)
         msg = response.choices[0].message
-        # 只返回正式回答内容，隐藏 reasoning_content 思考过程
-        return msg.content or ""
+        # 只返回正式回答 content，忽略 reasoning_content（思考过程）
+        content = msg.content or ""
+        return content
 
-    async def astream(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=4096, thinking: bool = False) -> AsyncIterator[str]:
-        """流式调用，只输出正式回答内容，不输出 reasoning_content"""
+    async def astream(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> AsyncIterator[str]:
+        """流式调用，关闭 thinking，只输出正式回答 content"""
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -112,51 +113,72 @@ class OpenAICompatibleLLM(BaseLLM):
             "max_tokens": max_tokens,
             "stream": True,
         }
-        if thinking and "bigmodel" in self.client.base_url.host:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+        if "bigmodel" in self.client.base_url.host:
+            kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
         response = await self.client.chat.completions.create(**kwargs)
         async for chunk in response:
             delta = chunk.choices[0].delta
-            # 过滤掉智谱特有的 reasoning_content，只输出正式回答
+            # 只取 content，不输出 reasoning_content（思考过程）
             content = delta.content
             if content:
                 yield content
 
 
 class LLMFactory:
-    """大模型工厂 — 当前仅支持智谱AI"""
+    """大模型工厂 — 统一支持 spark / deepseek / openai / bigmodel"""
 
     _cache: Dict[str, BaseLLM] = {}
 
     @classmethod
     def get_llm(cls, provider: Optional[str] = None) -> BaseLLM:
-        """获取指定提供商的 LLM 实例（当前固定 bigmodel）"""
+        """获取指定提供商的 LLM 实例"""
         provider = (provider or settings.DEFAULT_LLM_PROVIDER).lower().strip()
-
-        # 强制映射到 bigmodel
-        if provider in ("spark", "deepseek", "openai"):
-            logger.warning(f"Provider '{provider}' is not available, falling back to bigmodel")
-            provider = "bigmodel"
-
-        # 强制清除任何残留的 spark 缓存
-        if "spark" in cls._cache:
-            del cls._cache["spark"]
 
         if provider in cls._cache:
             return cls._cache[provider]
 
         if provider == "bigmodel":
+            api_key = settings.BIGMODEL_API_KEY or ""
+            if not api_key:
+                logger.warning("BIGMODEL_API_KEY is not configured. LLM calls will fail.")
             llm = OpenAICompatibleLLM(
-                api_key=settings.BIGMODEL_API_KEY or "",
+                api_key=api_key,
                 base_url=settings.BIGMODEL_BASE_URL,
                 model=settings.BIGMODEL_MODEL,
             )
+        elif provider == "deepseek":
+            api_key = settings.DEEPSEEK_API_KEY or ""
+            if not api_key:
+                logger.warning("DEEPSEEK_API_KEY is not configured. LLM calls will fail.")
+            llm = OpenAICompatibleLLM(
+                api_key=api_key,
+                base_url=settings.DEEPSEEK_BASE_URL,
+                model=settings.DEEPSEEK_MODEL,
+            )
+        elif provider == "openai":
+            api_key = settings.OPENAI_API_KEY or ""
+            if not api_key:
+                logger.warning("OPENAI_API_KEY is not configured. LLM calls will fail.")
+            llm = OpenAICompatibleLLM(
+                api_key=api_key,
+                base_url=settings.OPENAI_BASE_URL,
+                model=settings.OPENAI_MODEL,
+            )
+        elif provider == "spark":
+            api_key = settings.SPARK_API_KEY or ""
+            if not api_key:
+                logger.warning("SPARK_API_KEY is not configured. LLM calls will fail.")
+            llm = OpenAICompatibleLLM(
+                api_key=api_key,
+                base_url=settings.SPARK_HTTP_BASE_URL,
+                model=settings.SPARK_MODEL,
+            )
         else:
-            raise ValueError(f"Unsupported LLM provider: {provider}")
+            raise ValueError(f"Unsupported LLM provider: {provider}. Supported: bigmodel, deepseek, openai, spark")
 
         cls._cache[provider] = llm
-        logger.info(f"LLM provider initialized: {provider}")
+        logger.info(f"LLM provider initialized: {provider} (model={llm.model})")
         return llm
 
     @classmethod

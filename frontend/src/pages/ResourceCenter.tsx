@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -31,7 +32,7 @@ import {
   PictureOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { resourceApi, tutorApi, imageApi, knowledgeApi } from '../services/api'
+import { resourceApi, tutorApi, imageApi, knowledgeApi, ocrApi } from '../services/api'
 import type { ChatMessage, QuestionItem, VisionContentItem } from '../types'
 import { ChatPanel } from '../components/ChatPanel'
 
@@ -53,6 +54,7 @@ const ResourceCenter: React.FC = () => {
   const [notes, setNotes] = useState('')
   const [docContent, setDocContent] = useState('')
   const [codeContent, setCodeContent] = useState('')
+  const [codeLanguage, setCodeLanguage] = useState<'Python' | 'C'>('C')
   const [questions, setQuestions] = useState<QuestionItem[]>([])
   const [mindmap, setMindmap] = useState<{ root: string; children: { name: string }[] }>({ root: '', children: [] })
   const [loading, setLoading] = useState(false)
@@ -65,12 +67,16 @@ const ResourceCenter: React.FC = () => {
   const [ragActive, setRagActive] = useState(true)
   const [multiAgentStep, setMultiAgentStep] = useState<'planner' | 'worker' | 'critic' | 'done'>('done')
   const [ocrModalOpen, setOcrModalOpen] = useState(false)
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrImage, setOcrImage] = useState('')
+  const [ocrResult, setOcrResult] = useState('')
   const [codeResult, setCodeResult] = useState('')
   const [codeRunning, setCodeRunning] = useState(false)
   const [imagePrompt, setImagePrompt] = useState('')
   const [generatedImage, setGeneratedImage] = useState('')
   const [imageLoading, setImageLoading] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
+  const location = useLocation()
 
   const currentTopic = courseMenu.flatMap(c => c.children || []).find(c => c.key === activeKey)?.label || ''
 
@@ -107,7 +113,17 @@ const ResourceCenter: React.FC = () => {
           chapterIndex++
         })
         setCourseMenu(menu)
-        if (menu.length > 0 && menu[0].children.length > 0) {
+
+        // 优先使用路由传入的 kpId（从学习路径跳转过来）
+        const navKpId = (location.state as any)?.kpId
+        if (navKpId) {
+          const found = menu.flatMap(m => m.children || []).find(c => c.key === navKpId)
+          if (found) {
+            setActiveKey(navKpId)
+          } else if (menu.length > 0 && menu[0].children.length > 0) {
+            setActiveKey(menu[0].children[0].key)
+          }
+        } else if (menu.length > 0 && menu[0].children.length > 0) {
           setActiveKey(menu[0].children[0].key)
         }
       } catch (e) {
@@ -120,6 +136,22 @@ const ResourceCenter: React.FC = () => {
     return () => { ignore = true }
   }, [])
 
+  // 切换代码语言时重新生成代码
+  useEffect(() => {
+    if (!activeKey || !currentTopic) return
+    let ignore = false
+    const loadCode = async () => {
+      try {
+        const codeRes = await resourceApi.generateCode({ student_id: studentId, topic: currentTopic, language: codeLanguage, kp_id: activeKey })
+        if (!ignore && codeRes.data.code) setCodeContent(codeRes.data.code)
+      } catch {
+        // ignore
+      }
+    }
+    loadCode()
+    return () => { ignore = true }
+  }, [codeLanguage, activeKey, studentId, currentTopic])
+
   useEffect(() => {
     if (!activeKey || !currentTopic) return
     let ignore = false
@@ -128,7 +160,7 @@ const ResourceCenter: React.FC = () => {
       try {
         const [docRes, codeRes, qRes, mapRes] = await Promise.all([
           resourceApi.generateDocument({ student_id: studentId, topic: currentTopic, kp_id: activeKey }),
-          resourceApi.generateCode({ student_id: studentId, topic: currentTopic, language: 'C', kp_id: activeKey }),
+          resourceApi.generateCode({ student_id: studentId, topic: currentTopic, language: codeLanguage, kp_id: activeKey }),
           resourceApi.generateQuestions({ student_id: studentId, topic: currentTopic, count: 3, kp_id: activeKey }),
           resourceApi.generateMindmap({ student_id: studentId, topic: currentTopic, kp_id: activeKey }),
         ])
@@ -153,41 +185,18 @@ const ResourceCenter: React.FC = () => {
     return () => { ignore = true }
   }, [activeKey, studentId])
 
-  const generateLocalResourceReply = (text: string, topic: string): string => {
-    const lower = text.toLowerCase()
-    if (lower.includes('指针') || lower.includes('内存')) {
-      return `${topic} 中指针的概念确实比较抽象。建议你结合右侧的代码编辑器，亲自运行一下指针相关的示例代码，观察内存地址的变化。实践是理解指针的最佳途径。`
-    }
-    if (lower.includes('数组')) {
-      return `数组在C语言中非常重要。你可以尝试修改代码编辑器中的数组示例，比如改变数组大小或初始化方式，看看输出会有什么变化。`
-    }
-    if (lower.includes('函数')) {
-      return `函数的学习重在理解参数传递和返回值。建议你先阅读讲义中的函数章节，然后尝试独立完成一个自定义函数的编写。`
-    }
-    if (lower.includes('困难') || lower.includes('不会') || lower.includes('不懂')) {
-      return `学习${topic}遇到难点很正常。你可以先回顾一下讲义中的基础概念，或者尝试用康奈尔笔记法整理一下思路。如果需要，我也可以帮你梳理知识脉络。`
-    }
-    return `关于${topic}的问题很有价值！建议你结合当前讲义内容和代码示例进行思考，有什么具体不理解的地方可以随时问我。`
-  }
-
   const handleSend = async (content: string | VisionContentItem[]) => {
     const question = typeof content === 'string' ? content : ''
     if (!question.trim()) return
     setMessages((prev) => [...prev, { role: 'user', content: question }])
     setLoading(true)
     try {
-      let aiReply = generateLocalResourceReply(question, currentTopic)
-      try {
-        const res = await Promise.race([
-          tutorApi.ask({ student_id: studentId, question, session_id: `${studentId}_resource` }),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
-        ])
-        if (res.data?.response && !res.data.response.includes('思考时间')) {
-          aiReply = res.data.response
-        }
-      } catch {
-        // 超时或失败时使用本地回复
-      }
+      const res = await tutorApi.ask({
+        student_id: studentId,
+        question,
+        session_id: `${studentId}_resource`,
+      })
+      const aiReply = res.data?.response || '服务暂时无响应，请稍后再试。'
       setMessages((prev) => [...prev, { role: 'ai', content: aiReply, agent: '辅导助手' }])
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '请求失败'
@@ -206,7 +215,7 @@ const ResourceCenter: React.FC = () => {
     setCodeRunning(true)
     setCodeResult('')
     try {
-      const res = await resourceApi.executeCode({ code: codeContent, language: 'C' })
+      const res = await resourceApi.executeCode({ code: codeContent, language: codeLanguage })
       if (res.data.output) {
         setCodeResult(res.data.output)
       } else if (res.data.error) {
@@ -220,6 +229,52 @@ const ResourceCenter: React.FC = () => {
     } finally {
       setCodeRunning(false)
     }
+  }
+
+  const handleOcrFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      message.warning('请上传图片文件')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string
+      if (result) setOcrImage(result)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const handleOcrRecognize = async () => {
+    if (!ocrImage) {
+      message.warning('请先上传图片')
+      return
+    }
+    setOcrLoading(true)
+    try {
+      const res = await ocrApi.recognize({
+        image_base64: ocrImage,
+        prompt: '请识别这张图片中的所有文字内容，保持原有的段落和格式。如果是数学公式，请用 LaTeX 表示。如果是错题，请标注题号和答案区域。',
+      })
+      setOcrResult(res.data.text)
+      message.success('识别成功')
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '识别失败'
+      message.error(errMsg)
+    } finally {
+      setOcrLoading(false)
+    }
+  }
+
+  const handleOcrToNotes = () => {
+    if (!ocrResult) return
+    setNotes((prev) => prev + '\n\n【OCR识别结果】\n' + ocrResult)
+    setOcrModalOpen(false)
+    setOcrImage('')
+    setOcrResult('')
+    message.success('已导入笔记')
   }
 
   const handleGenerateImage = async () => {
@@ -361,10 +416,20 @@ const ResourceCenter: React.FC = () => {
                     <div className="space-y-3">
                       <div className="bg-slate-900 rounded-xl p-5 font-mono text-sm text-slate-200 relative">
                         <div className="flex items-center justify-between mb-4">
-                          <div className="flex gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-400" />
-                            <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                            <div className="w-3 h-3 rounded-full bg-green-400" />
+                          <div className="flex items-center gap-3">
+                            <div className="flex gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-400" />
+                              <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                              <div className="w-3 h-3 rounded-full bg-green-400" />
+                            </div>
+                            <Tag
+                              className={`cursor-pointer rounded-full text-xs ${codeLanguage === 'Python' ? 'bg-blue-500 text-white border-blue-500' : 'bg-slate-700 text-slate-300 border-slate-600'}`}
+                              onClick={() => { setCodeLanguage('Python'); setCodeResult('') }}
+                            >Python</Tag>
+                            <Tag
+                              className={`cursor-pointer rounded-full text-xs ${codeLanguage === 'C' ? 'bg-blue-500 text-white border-blue-500' : 'bg-slate-700 text-slate-300 border-slate-600'}`}
+                              onClick={() => { setCodeLanguage('C'); setCodeResult('') }}
+                            >C</Tag>
                           </div>
                           <Tooltip title="复制代码">
                             <Button type="text" size="small" icon={<CopyOutlined className="text-slate-400 hover:text-white" />} onClick={copyCode} />
@@ -379,7 +444,7 @@ const ResourceCenter: React.FC = () => {
                         />
                       </div>
                       <Button type="primary" className="rounded-lg bg-primary" onClick={handleRunCode} loading={codeRunning}>
-                        <ArrowRightOutlined /> 运行代码
+                        <ArrowRightOutlined /> 运行{codeLanguage}代码
                       </Button>
                       {codeResult && (
                         <div className="bg-slate-800 rounded-xl p-4 font-mono text-sm text-green-400 mt-2 whitespace-pre-wrap">
@@ -528,20 +593,48 @@ const ResourceCenter: React.FC = () => {
       <Modal
         title={<span className="font-semibold text-slate-800">OCR 拍照上传</span>}
         open={ocrModalOpen}
-        onCancel={() => setOcrModalOpen(false)}
+        onCancel={() => { setOcrModalOpen(false); setOcrImage(''); setOcrResult('') }}
         footer={null}
-        width={520}
+        width={560}
         className="rounded-2xl"
       >
         <div className="space-y-4 py-2">
-          <div className="p-6 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center cursor-pointer hover:border-primary transition-all">
-            <CameraOutlined className="text-3xl text-slate-300 mb-2" />
-            <div className="text-sm text-slate-600">点击或拖拽上传纸质笔记 / 错题照片</div>
-            <div className="text-xs text-slate-400 mt-1">支持 JPG、PNG，基于 PaddleOCR 识别</div>
-          </div>
+          {!ocrImage ? (
+            <label className="block p-6 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center cursor-pointer hover:border-primary transition-all">
+              <CameraOutlined className="text-3xl text-slate-300 mb-2" />
+              <div className="text-sm text-slate-600">点击上传纸质笔记 / 错题照片</div>
+              <div className="text-xs text-slate-400 mt-1">支持 JPG、PNG，基于大模型 Vision 识别</div>
+              <input type="file" accept="image/*" className="hidden" onChange={handleOcrFileChange} />
+            </label>
+          ) : (
+            <div className="space-y-3">
+              <img src={ocrImage} alt="ocr" className="w-full max-h-64 object-contain rounded-lg border border-slate-200" />
+              <div className="flex gap-2">
+                <Button loading={ocrLoading} type="primary" className="bg-primary rounded-lg flex-1" onClick={handleOcrRecognize}>
+                  {ocrLoading ? '识别中...' : '开始识别'}
+                </Button>
+                <Button className="rounded-lg" onClick={() => { setOcrImage(''); setOcrResult('') }}>
+                  重新上传
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {ocrResult && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-slate-700">识别结果</div>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                {ocrResult}
+              </div>
+              <Button type="primary" className="bg-primary rounded-lg w-full" onClick={handleOcrToNotes}>
+                导入笔记
+              </Button>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <SafetyOutlined />
-            <span>端云协同：本地 Edge 端完成 OCR 识别，原始图片不上传云端</span>
+            <span>端云协同：图片通过 HTTPS 上传，识别结果本地展示</span>
           </div>
         </div>
       </Modal>

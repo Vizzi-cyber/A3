@@ -39,9 +39,9 @@ export interface StudentProfile {
   knowledge_base: KnowledgeBase
   cognitive_style: CognitiveStyle
   weak_areas: string[]
-  error_patterns: Record<string, unknown>[]
-  learning_goals: Record<string, unknown>[]
-  interest_areas: Record<string, unknown>[]
+  error_patterns: unknown[]
+  learning_goals: unknown[]
+  interest_areas: unknown[]
   learning_tempo: LearningTempo
   practical_preferences: PracticalPreferences
   created_at?: string
@@ -185,7 +185,7 @@ export interface QuestionsGenerationResponse {
   status: string
   topic: string
   count: number
-  questions: QuestionItem[] | QuestionItem
+  questions: QuestionItem[]
 }
 
 export interface MindmapGenerationRequest {
@@ -228,6 +228,7 @@ export interface TutorRequest {
   question: string | VisionContentItem[]
   context?: Record<string, unknown>
   session_id?: string
+  provider?: 'bigmodel' | 'deepseek' | 'openai' | 'spark'
 }
 
 export interface TutorResponse {

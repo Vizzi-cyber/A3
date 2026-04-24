@@ -98,21 +98,16 @@ const Profile: React.FC = () => {
       const pRes = await profileApi.get(studentId)
       if (pRes.data?.data) updateVisuals(pRes.data.data)
 
-      // 尝试获取AI回复（带超时控制，避免长时间等待）
-      let aiReply = generateLocalProfileReply(text)
+      // 获取AI回复
       try {
-        const tutorRes = await Promise.race([
-          tutorApi.ask({ student_id: studentId, question: text, session_id: `${studentId}_profile` }),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
-        ])
-        if (tutorRes.data?.response && !tutorRes.data.response.includes('思考时间')) {
-          aiReply = tutorRes.data.response
-        }
-      } catch {
-        // 超时或失败时使用本地回复
+        const tutorRes = await tutorApi.ask({ student_id: studentId, question: text, session_id: `${studentId}_profile` })
+        const aiReply = tutorRes.data?.response || '服务暂时无响应，请稍后再试。'
+        setMessages((prev) => [...prev, { role: 'ai' as const, content: aiReply, agent: '评估智能体' }])
+      } catch (e: unknown) {
+        const errMsg = e instanceof Error ? e.message : '请求失败'
+        message.error(errMsg)
+        setMessages((prev) => [...prev, { role: 'ai' as const, content: '服务暂时不可用，请稍后再试。', agent: '评估智能体' }])
       }
-
-      setMessages((prev) => [...prev, { role: 'ai' as const, content: aiReply, agent: '评估智能体' }])
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '更新失败'
       message.error(errMsg)
@@ -120,23 +115,6 @@ const Profile: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
-
-  const generateLocalProfileReply = (text: string): string => {
-    const lower = text.toLowerCase()
-    if (lower.includes('指针') || lower.includes('内存')) {
-      return '你提到了指针和内存，这是C语言最核心的概念。我会在你的画像中加深「底层理解」维度，后续会多推荐指针图示和内存模型动画。'
-    }
-    if (lower.includes('困难') || lower.includes('不会') || lower.includes('不懂')) {
-      return '遇到困难是学习的必经阶段。根据你的反馈，我会调低推荐内容的难度梯度，增加基础练习和分步讲解。'
-    }
-    if (lower.includes('基础') || lower.includes('入门')) {
-      return '好的，我会在画像中标记你目前处于基础巩固阶段，系统会优先推送数据类型、控制结构等入门内容。'
-    }
-    if (lower.includes('数组') || lower.includes('函数')) {
-      return '收到！我会在你的学习路径中提前安排相关章节的强化训练，并生成针对性的练习题。'
-    }
-    return '感谢你的反馈！我已根据你的描述更新了学习画像，系统会据此优化后续的内容推荐和学习路径。'
   }
 
   const handleInitProfile = async () => {

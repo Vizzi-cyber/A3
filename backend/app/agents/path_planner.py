@@ -24,6 +24,7 @@ class PathPlannerAgent(BaseAgent):
         return (
             "你是一位经验丰富的学习路径规划专家，擅长根据学生的知识基础、目标和时间安排，"
             "设计分阶段、可执行的学习路径。路径应包含明确的知识点、预计时长和达成标准。"
+            "重要：不要输出思考过程、分析步骤或'让我想想'之类的内心独白，直接输出最终规划结果。"
         )
 
     async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:

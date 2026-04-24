@@ -308,6 +308,68 @@ async def generate_code(request: CodeGenerateRequest, _current: str = Depends(re
     }
 
 
+# ---------- 代码安全分析 ----------
+
+import ast
+
+_DANGEROUS_MODULES = {
+    "os", "sys", "subprocess", "shutil", "socket", "ctypes",
+    "urllib", "http", "ftplib", "telnetlib", " pathlib",
+    "pickle", "marshal", "base64", "platform", "multiprocessing",
+}
+
+_DANGEROUS_CALLS = {
+    "eval", "exec", "compile", "open", "input", "raw_input",
+    "__import__", "breakpoint", "exit", "quit",
+}
+
+
+def _analyze_python_security(source: str) -> tuple[bool, str]:
+    """使用 AST 分析 Python 代码中的危险操作"""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as e:
+        return False, f"Python 语法错误: {e.msg} (第{e.lineno}行)"
+
+    for node in ast.walk(tree):
+        # 禁止危险导入
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = alias.name.split(".")[0]
+                if root in _DANGEROUS_MODULES:
+                    return False, f"禁止导入系统级模块: {alias.name}"
+        # 禁止 from xx import yy
+        if isinstance(node, ast.ImportFrom):
+            root = node.module.split(".")[0] if node.module else ""
+            if root in _DANGEROUS_MODULES:
+                return False, f"禁止从系统级模块导入: {node.module}"
+            for alias in node.names:
+                if alias.name in _DANGEROUS_CALLS:
+                    return False, f"禁止导入危险函数: {alias.name}"
+        # 禁止危险函数调用
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in _DANGEROUS_CALLS:
+                return False, f"禁止调用危险函数: {node.func.id}()"
+            # 禁止 os.system / os.popen / subprocess.run 等
+            if isinstance(node.func, ast.Attribute):
+                # 简单的属性链检测：只检测一层如 os.system
+                if isinstance(node.func.value, ast.Name):
+                    if node.func.value.id in _DANGEROUS_MODULES and node.func.attr in {
+                        "system", "popen", "call", "run", "Popen", "fork", "kill",
+                        "remove", "rmdir", "unlink", "rename", "replace",
+                    }:
+                        return False, f"禁止调用危险方法: {node.func.value.id}.{node.func.attr}()"
+        # 禁止访问 __subclasses__ / __bases__ / __globals__ 等双下划线魔法属性（常用于沙箱逃逸）
+        if isinstance(node, ast.Attribute):
+            if node.attr.startswith("__") and node.attr.endswith("__") and node.attr not in {
+                "__init__", "__str__", "__repr__", "__len__", "__eq__", "__name__", "__doc__",
+                "__file__", "__class__", "__module__", "__dict__", "__slots__",
+            }:
+                return False, f"禁止访问魔法属性: {node.attr}"
+
+    return True, ""
+
+
 @router.post("/code/execute", response_model=CodeExecuteResponse)
 async def execute_code(request: CodeExecuteRequest, _current: str = Depends(require_auth)):
     """在服务器子进程中执行代码（支持 Python 和 C）"""
@@ -323,23 +385,36 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
 
     # C语言执行：尝试 gcc 编译运行
     if language in ("c", "c语言"):
-        if not shutil.which("gcc"):
+        # 查找 gcc（支持常见安装路径）
+        gcc_path = shutil.which("gcc")
+        msys2_gcc = r"C:\msys64\mingw64\bin\gcc.exe"
+        if not gcc_path and os.path.exists(msys2_gcc):
+            gcc_path = msys2_gcc
+        if not gcc_path:
             return {
                 "status": "success",
                 "output": "",
                 "error": "当前服务器未安装 gcc，无法编译运行 C 代码。建议将代码复制到本地 IDE（如 Dev-C++、VS Code）中运行。",
                 "explanation": "C 代码需要 gcc 编译器，当前环境未提供。",
             }
+
+        # 确保 gcc 依赖的 DLL 能被找到（如 MSYS2 路径）
+        env = os.environ.copy()
+        msys2_bin = r"C:\msys64\mingw64\bin"
+        if msys2_bin not in env.get("PATH", ""):
+            env["PATH"] = msys2_bin + os.pathsep + env.get("PATH", "")
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".c", delete=False, encoding="utf-8") as f:
             f.write(code)
             src_path = f.name
         exe_path = src_path.replace(".c", ".exe" if os.name == "nt" else "")
         try:
             compile_res = subprocess.run(
-                ["gcc", src_path, "-o", exe_path],
+                [gcc_path, src_path, "-o", exe_path],
                 capture_output=True,
                 text=True,
                 timeout=10,
+                env=env,
             )
             if compile_res.returncode != 0:
                 return {
@@ -353,6 +428,7 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
                 capture_output=True,
                 text=True,
                 timeout=10,
+                env=env,
             )
             output = run_res.stdout[:5000]
             error = run_res.stderr[:5000] if run_res.returncode != 0 else ""
@@ -372,11 +448,14 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
         explanation = "代码执行成功，上方为输出结果。" if not error and output else ("代码执行过程中出现错误，请检查语法或逻辑。" if error else "")
         return {"status": "success", "output": output, "error": error, "explanation": explanation}
 
-    # Python 执行
+    # Python 执行：先进行 AST 安全分析
+    safe, reason = _analyze_python_security(code)
+    if not safe:
+        return {"status": "success", "output": "", "error": f"代码安全检查未通过: {reason}", "explanation": "为了安全，部分系统级操作已被禁用。"}
+
+    # 保留字符串黑名单作为二次防线（防止 AST 未覆盖的拼接绕过）
     blocked_keywords = ["__import__", "os.system", "os.popen", "subprocess.call", "subprocess.run",
-                        "subprocess.Popen", "eval(", "exec(", "compile(", "open('/", "open(\"/",
-                        "import os", "import sys", "import subprocess", "shutil", "socket",
-                        "ctypes", "urllib.request", "http.client", "ftp", "telnetlib"]
+                        "subprocess.Popen", "eval(", "exec(", "compile("]
     lower_code = code.lower()
     for kw in blocked_keywords:
         if kw.lower() in lower_code:
