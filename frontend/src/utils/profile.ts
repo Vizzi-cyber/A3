@@ -42,7 +42,13 @@ export const buildRadarData = (profile: StudentProfile | null): RadarDataItem[] 
   const weakScore = weak.length > 0 ? Math.max(30, 100 - weak.length * 10) : 85
 
   const goals = p.learning_goals || []
-  const completedGoals = goals.filter((g: any) => g?.completed || g?.status === 'completed').length
+  const completedGoals = goals.filter((g: unknown) => {
+    if (typeof g === 'object' && g !== null) {
+      const obj = g as Record<string, unknown>
+      return !!obj.completed || obj.status === 'completed'
+    }
+    return false
+  }).length
   const progressScore = Math.min(100, (goals.length > 0 ? 60 : 50) + completedGoals * 8)
 
   const tempo = p.learning_tempo || {}

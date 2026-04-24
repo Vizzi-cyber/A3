@@ -35,6 +35,7 @@ async def get_favorites(student_id: str, db: Session = Depends(get_db)):
         db.query(FavoriteModel)
         .filter(FavoriteModel.student_id == student_id)
         .order_by(FavoriteModel.created_at.desc())
+        .limit(200)
         .all()
     )
     return {

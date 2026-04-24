@@ -149,6 +149,7 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db))
 @router.get("/{student_id}/history")
 async def get_learning_history(student_id: str, limit: int = 50, db: Session = Depends(get_db)):
     """获取学生学习历史"""
+    limit = min(max(limit, 1), 200)
     records = (
         db.query(LearningRecordModel)
         .filter(LearningRecordModel.student_id == student_id)

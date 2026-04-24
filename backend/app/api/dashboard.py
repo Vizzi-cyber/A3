@@ -52,16 +52,20 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
     weekly_duration_h = round(sum(r.duration or 0 for r in week_records) / 3600, 1)
 
     # ---------- 连续打卡（简化：最近有学习记录的天数） ----------
-    all_records = (
+    year_ago = today_start - timedelta(days=365)
+    recent_records = (
         db.query(LearningRecordModel)
-        .filter(LearningRecordModel.student_id == student_id)
+        .filter(
+            LearningRecordModel.student_id == student_id,
+            LearningRecordModel.created_at >= year_ago,
+        )
         .order_by(LearningRecordModel.created_at.desc())
         .all()
     )
     streak = 0
-    if all_records:
+    if recent_records:
         seen_days = set()
-        for r in all_records:
+        for r in recent_records:
             day = r.created_at.date() if r.created_at else None
             if day:
                 seen_days.add(day)
@@ -75,7 +79,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
 
     # ---------- 掌握知识点数（进度 >= 0.8 的去重 kp_id） ----------
     mastered_kps = set()
-    for r in all_records:
+    for r in recent_records:
         if (r.progress or 0) >= 0.8:
             mastered_kps.add(r.kp_id)
 
@@ -171,7 +175,8 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
             daily_duration[d] = daily_duration.get(d, 0) + (r.duration or 0)
         trend_data = [{"date": d, "value": round(v / 60, 1)} for d, v in daily_duration.items()]
 
-    # ---------- 算法分析 ----------
+    # ---------- 算法分析（限制最近 90 天数据，避免全表扫描） ----------
+    analyze_start = today_start - timedelta(days=90)
     quiz_history = [
         {
             "score": q.score,
@@ -180,7 +185,10 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
             "weak_tags": q.weak_tags or [],
             "created_at": q.created_at.isoformat() if q.created_at else "",
         }
-        for q in db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id).order_by(QuizResultModel.created_at.asc()).all()
+        for q in db.query(QuizResultModel)
+        .filter(QuizResultModel.student_id == student_id, QuizResultModel.created_at >= analyze_start)
+        .order_by(QuizResultModel.created_at.asc())
+        .all()
     ]
     learning_records_raw = [
         {
@@ -188,7 +196,9 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
             "progress": r.progress,
             "created_at": r.created_at.isoformat() if r.created_at else "",
         }
-        for r in db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id).all()
+        for r in db.query(LearningRecordModel)
+        .filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= analyze_start)
+        .all()
     ]
     profile_dict = {
         "learning_tempo": profile.learning_tempo or {} if profile else {},

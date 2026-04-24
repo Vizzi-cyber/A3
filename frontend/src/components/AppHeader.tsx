@@ -28,6 +28,14 @@ interface SearchResult {
   tags: string[]
 }
 
+interface NotificationItem {
+  id: string
+  title: string
+  desc?: string
+  type: string
+  time: string
+}
+
 const AppHeader: React.FC = () => {
   const navigate = useNavigate()
   const userInfo = useAppStore((s) => s.userInfo)
@@ -42,7 +50,7 @@ const AppHeader: React.FC = () => {
   const searchRef = useRef<HTMLDivElement>(null)
 
   // 通知
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
 
@@ -100,23 +108,23 @@ const AppHeader: React.FC = () => {
     try {
       const res = await dashboardApi.getSummary(studentId)
       const d = res.data
-      const list: any[] = []
+      const list: NotificationItem[] = []
       if (d.tasks?.length) {
-        d.tasks.forEach((t: any) => {
+        d.tasks.forEach((t: Record<string, unknown>) => {
           list.push({
-            id: t.task_id,
-            title: t.title,
-            desc: t.description,
+            id: String(t.task_id || ''),
+            title: String(t.title || ''),
+            desc: String(t.description || ''),
             type: 'task',
             time: '刚刚',
           })
         })
       }
       if (d.recommendations?.length) {
-        d.recommendations.slice(0, 2).forEach((r: any, i: number) => {
+        d.recommendations.slice(0, 2).forEach((r: Record<string, unknown>, i: number) => {
           list.push({
             id: `rec_${i}`,
-            title: r.title,
+            title: String(r.title || ''),
             desc: '为你推荐的新资源',
             type: 'recommend',
             time: '今天',

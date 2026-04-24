@@ -5,7 +5,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 from ..models.database import get_db
@@ -26,9 +26,10 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
     """多因素趋势分析"""
     student_id = request.student_id
 
-    # 查询数据
-    quizzes = db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id).order_by(QuizResultModel.created_at).all()
-    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id).order_by(LearningRecordModel.created_at).all()
+    # 查询数据（限制最近 90 天，避免全表扫描）
+    since = datetime.now() - timedelta(days=90)
+    quizzes = db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id, QuizResultModel.created_at >= since).order_by(QuizResultModel.created_at).all()
+    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= since).order_by(LearningRecordModel.created_at).all()
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
 
     quiz_history = [
@@ -100,8 +101,9 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
 @router.get("/{student_id}/report")
 async def get_eval_report(student_id: str, db: Session = Depends(get_db)):
     """学习效果评估报告"""
-    quizzes = db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id).order_by(QuizResultModel.created_at).all()
-    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id).order_by(LearningRecordModel.created_at).all()
+    since = datetime.now() - timedelta(days=90)
+    quizzes = db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id, QuizResultModel.created_at >= since).order_by(QuizResultModel.created_at).all()
+    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= since).order_by(LearningRecordModel.created_at).all()
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
     weak_areas = profile.weak_areas or [] if profile else []
 

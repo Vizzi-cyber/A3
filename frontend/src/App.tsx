@@ -1,21 +1,28 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
-import { Layout } from 'antd'
+import { Layout, Spin } from 'antd'
 import AppHeader from './components/AppHeader'
 import Sidebar from './components/Sidebar'
 import GlobalToast from './components/GlobalToast'
-import Dashboard from './pages/Dashboard'
-import Profile from './pages/Profile'
-import LearningPath from './pages/LearningPath'
-import ResourceCenter from './pages/ResourceCenter'
-import ResourceDetail from './pages/ResourceDetail'
-import PersonalSpace from './pages/PersonalSpace'
-import Tutor from './pages/Tutor'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import { useAppStore } from './store'
 import { authApi } from './services/api'
 import './App.css'
+
+const Dashboard = React.lazy(() => import('./pages/Dashboard'))
+const Profile = React.lazy(() => import('./pages/Profile'))
+const LearningPath = React.lazy(() => import('./pages/LearningPath'))
+const ResourceCenter = React.lazy(() => import('./pages/ResourceCenter'))
+const ResourceDetail = React.lazy(() => import('./pages/ResourceDetail'))
+const PersonalSpace = React.lazy(() => import('./pages/PersonalSpace'))
+const Tutor = React.lazy(() => import('./pages/Tutor'))
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <Spin size="large" />
+  </div>
+)
 
 const { Content } = Layout
 
@@ -44,16 +51,18 @@ const PrivateLayout: React.FC = () => {
             key={location.pathname}
             className={mounted ? 'page-enter' : 'opacity-0'}
           >
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/learning-path" element={<LearningPath />} />
-              <Route path="/resources" element={<ResourceCenter />} />
-              <Route path="/resource/:kpId" element={<ResourceDetail />} />
-              <Route path="/personal" element={<PersonalSpace />} />
-              <Route path="/tutor" element={<Tutor />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/learning-path" element={<LearningPath />} />
+                <Route path="/resources" element={<ResourceCenter />} />
+                <Route path="/resource/:kpId" element={<ResourceDetail />} />
+                <Route path="/personal" element={<PersonalSpace />} />
+                <Route path="/tutor" element={<Tutor />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </div>
         </Content>
       </Layout>

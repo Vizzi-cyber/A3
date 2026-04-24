@@ -117,7 +117,7 @@ async def get_tasks(student_id: str, task_type: Optional[str] = None, db: Sessio
     query = db.query(TaskModel).filter(TaskModel.student_id == student_id)
     if task_type:
         query = query.filter(TaskModel.task_type == task_type)
-    tasks = query.all()
+    tasks = query.limit(100).all()
     return {
         "status": "success",
         "data": [

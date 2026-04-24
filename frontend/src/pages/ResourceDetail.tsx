@@ -68,8 +68,9 @@ const ResourceDetail: React.FC = () => {
       try {
         const res = await knowledgeApi.get(kpId)
         if (!ignore && res.data?.data) {
-          setKpName(res.data.data.name || '')
-          setKpSubject(res.data.data.subject || '')
+          const kp = res.data.data as Record<string, unknown>
+          setKpName(String(kp.name || ''))
+          setKpSubject(String(kp.subject || ''))
         }
       } catch {
         if (!ignore) {
@@ -121,8 +122,8 @@ const ResourceDetail: React.FC = () => {
     try {
       const res = await resourceApi.executeCode({ code: codeContent, language: codeLanguage.toLowerCase(), kp_id: kpId })
       setCodeResult(res.data.output || res.data.error || '无输出')
-    } catch (e: any) {
-      setCodeResult(e.message || '运行失败')
+    } catch (e) {
+      setCodeResult((e as Error).message || '运行失败')
     } finally {
       setCodeRunning(false)
     }

@@ -26,8 +26,43 @@ import {
   ReloadOutlined,
   BookOutlined,
 } from '@ant-design/icons'
-import type { ReflectionEntry } from '../types'
+import type { ReflectionEntry, StudentProfile, DashboardStats, Achievement } from '../types'
 import { useAppStore } from '../store'
+
+interface FavoriteItem {
+  id?: string
+  title: string
+  resource_type: string
+  url?: string
+}
+
+interface HistoryItem {
+  title: string
+  time: string
+  type: string
+}
+
+interface FocusItem {
+  day: string
+  focus: number
+  duration: number
+}
+
+interface ReviewTopic {
+  topic: string
+  retention: number
+  nextReview: string
+}
+
+interface BadgeItemLocal {
+  id: string
+  name: string
+  desc: string
+  icon: React.ReactNode
+  color: string
+  unlocked: boolean
+  unlocked_at?: string
+}
 import {
   profileApi,
   dashboardApi,
@@ -51,19 +86,19 @@ const typeMeta: Record<string, { icon: React.ReactNode; color: string; bg: strin
 
 const PersonalSpace: React.FC = () => {
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<any>(null)
-  const [dashboardStats, setDashboardStats] = useState<any>(null)
-  const [points, setPoints] = useState<any>(null)
-  const [achievements, setAchievements] = useState<any[]>([])
+  const [profile, setProfile] = useState<StudentProfile | null>(null)
+  const [dashboardStats, setDashboardStats] = useState<Record<string, unknown> | null>(null)
+  const [points, setPoints] = useState<Record<string, unknown> | null>(null)
+  const [achievements, setAchievements] = useState<Achievement[]>([])
   const [reflections, setReflections] = useState<ReflectionEntry[]>([])
   const [newReflection, setNewReflection] = useState('')
-  const [favorites, setFavorites] = useState<any[]>([])
-  const [learningHistory, setLearningHistory] = useState<any[]>([])
-  const [focusData, setFocusData] = useState<any[]>([])
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([])
+  const [learningHistory, setLearningHistory] = useState<HistoryItem[]>([])
+  const [focusData, setFocusData] = useState<FocusItem[]>([])
   const [pomodoroStats, setPomodoroStats] = useState({ total: 42, today: 4, streak: 5 })
   const [cornellNotes, setCornellNotes] = useState({ cues: '', notes: '', summary: '' })
   const [feynmanInput, setFeynmanInput] = useState('')
-  const [reviewTopics, setReviewTopics] = useState<any[]>([])
+  const [reviewTopics, setReviewTopics] = useState<ReviewTopic[]>([])
   const studentId = useAppStore((s) => s.studentId)
 
   useEffect(() => {
@@ -71,73 +106,73 @@ const PersonalSpace: React.FC = () => {
       if (!studentId) return
       try {
         // Profile
-        const pRes: any = await profileApi.get(studentId)
+        const pRes = await profileApi.get(studentId)
         if (pRes.data?.data) setProfile(pRes.data.data)
 
         // Dashboard stats
-        const dRes: any = await dashboardApi.getSummary(studentId)
-        if (dRes.data) setDashboardStats(dRes.data)
+        const dRes = await dashboardApi.getSummary(studentId)
+        if (dRes.data) setDashboardStats(dRes.data as unknown as Record<string, unknown>)
 
         // Points
-        const ptRes: any = await gamificationApi.getPoints(studentId)
+        const ptRes = await gamificationApi.getPoints(studentId)
         if (ptRes.data?.data) setPoints(ptRes.data.data)
 
         // Achievements
-        const aRes: any = await gamificationApi.getAchievements(studentId)
+        const aRes = await gamificationApi.getAchievements(studentId)
         if (aRes.data?.data) setAchievements(aRes.data.data)
 
         // Learning history
-        const hRes: any = await learningDataApi.getHistory(studentId, 10)
+        const hRes = await learningDataApi.getHistory(studentId, 10)
         if (hRes.data?.records) {
-          const mapped = hRes.data.records.slice(0, 5).map((r: any) => ({
+          const mapped = (hRes.data.records as unknown as Record<string, unknown>[]).slice(0, 5).map((r) => ({
             title: `${r.action || '学习'} ${r.kp_id || ''}`,
-            time: r.created_at ? new Date(r.created_at).toLocaleString() : '近期',
-            type: r.action?.includes('代码') ? 'code' : r.action?.includes('测验') ? 'quiz' : 'doc',
+            time: r.created_at ? new Date(String(r.created_at)).toLocaleString() : '近期',
+            type: String(r.action || '').includes('代码') ? 'code' : String(r.action || '').includes('测验') ? 'quiz' : 'doc',
           }))
           setLearningHistory(mapped.length ? mapped : [])
         }
 
         // Favorites
-        const fRes: any = await favoritesApi.get(studentId)
-        if (fRes.data?.data) setFavorites(fRes.data.data)
+        const fRes = await favoritesApi.get(studentId)
+        if (fRes.data?.data) setFavorites(fRes.data.data as FavoriteItem[])
 
         // Reflections
-        const rRes: any = await logReflectionApi.getReflections(studentId, 30)
+        const rRes = await logReflectionApi.getReflections(studentId, 30)
         if (rRes.data?.data) {
-          const refs = rRes.data.data
-            .filter((r: any) => !r.tags?.includes('cornell') && !r.tags?.includes('feynman'))
-            .map((r: any) => ({
-              id: r.reflection_id,
-              date: r.date,
-              content: r.content,
-              topic: r.tags?.[0] || '今日学习',
+          const refs = (rRes.data.data as Record<string, unknown>[])
+            .filter((r) => !String(r.tags || '').includes('cornell') && !String(r.tags || '').includes('feynman'))
+            .map((r) => ({
+              id: String(r.reflection_id || `ref_${Date.now()}`),
+              date: String(r.date || ''),
+              content: String(r.content || ''),
+              topic: (r.tags as string[])?.[0] || '今日学习',
             }))
           setReflections(refs)
 
           // Load cornell / feynman from reflections
-          const cornell = rRes.data.data.find((r: any) => r.tags?.includes('cornell'))
+          const cornell = (rRes.data.data as Record<string, unknown>[]).find((r) => String(r.tags || '').includes('cornell'))
           if (cornell) {
             try {
-              setCornellNotes(JSON.parse(cornell.content))
+              setCornellNotes(JSON.parse(String(cornell.content)))
             } catch {
-              setCornellNotes({ cues: cornell.content, notes: '', summary: '' })
+              setCornellNotes({ cues: String(cornell.content), notes: '', summary: '' })
             }
           }
-          const feynman = rRes.data.data.find((r: any) => r.tags?.includes('feynman'))
-          if (feynman) setFeynmanInput(feynman.content)
+          const feynman = (rRes.data.data as Record<string, unknown>[]).find((r) => String(r.tags || '').includes('feynman'))
+          if (feynman) setFeynmanInput(String(feynman.content))
         }
 
         // Logs for focus chart
-        const lRes: any = await logReflectionApi.getLogs(studentId)
+        const lRes = await logReflectionApi.getLogs(studentId)
         if (lRes.data?.data) {
-          const logs = lRes.data.data.slice(-7)
+          const logs = (lRes.data.data as Record<string, unknown>[]).slice(-7)
           const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-          const mapped = logs.map((log: any) => {
-            const d = new Date(log.date)
+          const mapped = logs.map((log) => {
+            const d = new Date(String(log.date || ''))
             return {
-              day: days[d.getDay()] || log.date,
-              focus: Math.min(100, Math.round((log.avg_score || 0.7) * 100)),
-              duration: Math.round((log.total_duration || 0) / 60),
+              day: days[d.getDay()] || String(log.date || ''),
+              focus: Math.min(100, Math.round((Number(log.avg_score) || 0.7) * 100)),
+              duration: Math.round((Number(log.total_duration) || 0) / 60),
             }
           })
           if (mapped.length) setFocusData(mapped)
@@ -218,7 +253,7 @@ const PersonalSpace: React.FC = () => {
     }
   }
 
-  const handleFavoriteClick = (item: any) => {
+  const handleFavoriteClick = (item: FavoriteItem) => {
     if (item.resource_type === 'code' || item.resource_type === 'document' || item.resource_type === 'doc') {
       navigate(`/resources?topic=${encodeURIComponent(item.title)}`)
     } else {
@@ -226,24 +261,25 @@ const PersonalSpace: React.FC = () => {
     }
   }
 
+  const statsRecord = (dashboardStats?.stats || {}) as Record<string, unknown>
   const statCardsData = [
     {
       title: '累计学习时长',
-      value: Math.round((dashboardStats?.stats?.weekly_hours || 0) * 10) / 10,
+      value: Math.round((Number(statsRecord.weekly_hours) || 0) * 10) / 10,
       suffix: 'h',
       color: '#4f46e5',
       icon: <ClockCircleOutlined />,
     },
     {
       title: '最长连续打卡',
-      value: dashboardStats?.stats?.streak_days || 0,
+      value: Number(statsRecord.streak_days) || 0,
       suffix: '天',
       color: '#f59e0b',
       icon: <FireOutlined />,
     },
     {
       title: '获得勋章',
-      value: achievements.filter((a: any) => a.unlocked_at).length,
+      value: achievements.filter((a) => a.unlocked_at).length,
       suffix: '枚',
       color: '#10b981',
       icon: <TrophyOutlined />,
@@ -269,7 +305,7 @@ const PersonalSpace: React.FC = () => {
   ]
 
   const badgeList = defaultBadges.map((db) => {
-    const unlocked = achievements.find((a: any) => a.name === db.name)
+    const unlocked = achievements.find((a) => a.name === db.name)
     return { ...db, unlocked: !!unlocked, unlocked_at: unlocked?.unlocked_at }
   })
 
@@ -392,7 +428,7 @@ const PersonalSpace: React.FC = () => {
                         ? learningHistory
                         : [{ title: '暂无学习记录', time: '-', type: 'doc' }]
                     }
-                    renderItem={(item: any) => {
+                    renderItem={(item: HistoryItem) => {
                       const meta = typeMeta[item.type] || typeMeta.doc
                       return (
                         <List.Item className="hover:bg-slate-50 rounded-xl transition-colors px-2">
@@ -441,7 +477,7 @@ const PersonalSpace: React.FC = () => {
                 <div className="font-semibold text-slate-800 mb-5">我的收藏</div>
                 <Row gutter={[20, 20]}>
                   {favorites.length ? (
-                    favorites.map((item: any, idx: number) => (
+                    favorites.map((item, idx: number) => (
                       <Col xs={24} sm={12} lg={8} key={item.id || idx}>
                         <div
                           className="p-5 rounded-xl bg-slate-50 hover:bg-white hover:shadow-card transition-all cursor-pointer border border-slate-100 hover:border-slate-200"
@@ -491,7 +527,7 @@ const PersonalSpace: React.FC = () => {
                   </Tag>
                 </div>
                 <Row gutter={[20, 20]}>
-                  {badgeList.map((badge: any) => (
+                  {badgeList.map((badge: BadgeItemLocal) => (
                     <Col xs={12} sm={8} lg={6} key={badge.id}>
                       <div
                         className={`flex flex-col items-center gap-3 p-5 rounded-xl border transition-all ${
@@ -708,7 +744,7 @@ const PersonalSpace: React.FC = () => {
                       <div className="font-semibold text-slate-800 mb-4">待复习知识点</div>
                       <div className="space-y-3">
                         {reviewTopics.length ? (
-                          reviewTopics.map((item: any) => (
+                          reviewTopics.map((item: ReviewTopic) => (
                             <div
                               key={item.topic}
                               className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100"

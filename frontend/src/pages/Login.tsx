@@ -25,7 +25,7 @@ const Login: React.FC = () => {
     const descEl = descRef.current
     if (!section || !titleEl) return
 
-    const splits: any[] = []
+    const splits: Array<{ revert: () => void; lines: Element[] }> = []
     const allBlocks: HTMLDivElement[] = []
     const allLines: HTMLElement[] = []
 

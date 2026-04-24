@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store'
 import { pathApi, profileApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
+import type { PathNode, PathStage, StudentProfile, LearningPathData } from '../types'
 
 const statusColors: Record<string, string> = {
   completed: '#10b981',
@@ -61,9 +62,9 @@ const nodeResources = [
 const LearningPathPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'map' | 'timeline' | 'graph'>('map')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [selectedNode, setSelectedNode] = useState<any | null>(null)
-  const [pathData, setPathData] = useState<any>(null)
-  const [pathNodes, setPathNodes] = useState<any[]>([])
+  const [selectedNode, setSelectedNode] = useState<PathNode | null>(null)
+  const [pathData, setPathData] = useState<Record<string, unknown> | null>(null)
+  const [pathNodes, setPathNodes] = useState<PathNode[]>([])
   const [loading, setLoading] = useState(false)
   const [showReviewAlert, setShowReviewAlert] = useState(true)
   const [dailyDuration, setDailyDuration] = useState(90)
@@ -94,7 +95,7 @@ const LearningPathPage: React.FC = () => {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const res: any = await profileApi.get(studentId)
+        const res = await profileApi.get(studentId)
         const p = res.data?.data
         if (p) {
           const suggestions: string[] = []
@@ -102,7 +103,7 @@ const LearningPathPage: React.FC = () => {
           if (p.learning_tempo?.study_speed === 'fast') suggestions.push('你的学习节奏较快，可适当提高难度或缩短每日时长')
           if (p.learning_tempo?.study_speed === 'slow') suggestions.push('你的学习节奏较缓，建议降低难度并增加每日时长')
           if (p.cognitive_style?.primary === 'kinesthetic') suggestions.push('你是动手实践型学习者，建议多选代码实战类资源')
-          if (p.practical_preferences?.overall_score < 0.5) suggestions.push('实践偏好分较低，建议增加练习比重')
+          if ((p.practical_preferences?.overall_score ?? 1) < 0.5) suggestions.push('实践偏好分较低，建议增加练习比重')
           setProfileSuggestions(suggestions)
         }
       } catch {}
@@ -113,16 +114,16 @@ const LearningPathPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const res: any = await pathApi.current(studentId)
+        const res = await pathApi.current(studentId)
         if (res.data) {
-          const nodes = res.data.nodes || [
+          const nodes: PathNode[] = res.data.nodes || [
             { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门', resources: 5 },
             { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 5 },
             { id: 3, title: '运算符与表达式', status: 'in-progress', type: '基础', resources: 5 },
             { id: 4, title: '输入输出与顺序结构', status: 'pending', type: '基础', resources: 5 },
           ]
-          setPathData(res.data)
-          setPathNodes(nodes)
+          setPathData(res.data as unknown as Record<string, unknown>)
+          setPathNodes(nodes as PathNode[])
         }
       } catch (e) {
         setPathNodes([
@@ -146,7 +147,7 @@ const LearningPathPage: React.FC = () => {
     load()
   }, [studentId])
 
-  const openNodeDetail = (node: any) => {
+  const openNodeDetail = (node: PathNode) => {
     setSelectedNode(node)
     setDrawerOpen(true)
   }
@@ -154,26 +155,28 @@ const LearningPathPage: React.FC = () => {
   const handleGeneratePath = async () => {
     setLoading(true)
     try {
-      const res: any = await pathApi.generate({
+      const res = await pathApi.generate({
         student_id: studentId,
         target_topic: '掌握 C语言程序设计与数据结构基础',
         daily_duration: dailyDuration,
         difficulty: difficulty,
         preference: learningPreference,
       })
-      const stages = res.data?.path?.stages || []
-      const nodes = stages.map((s: any, idx: number) => ({
+      const responseData = res.data as unknown as Record<string, unknown>
+      const pathPayload = (responseData.data as Record<string, unknown> | undefined)?.path as Record<string, unknown> | undefined
+      const stages: PathStage[] = (pathPayload?.stages as PathStage[] | undefined) || []
+      const nodes: PathNode[] = stages.map((s, idx) => ({
         id: idx + 1,
         title: s.title,
-        status: idx === 0 ? 'in-progress' : 'pending',
+        status: (idx === 0 ? 'in-progress' : 'pending') as PathNode['status'],
         type: s.resources?.[0] || '综合',
         resources: s.topics?.length || 3,
       }))
       setPathNodes(nodes)
-      setPathData(res.data)
+      setPathData(responseData.data as Record<string, unknown>)
       message.success('路径生成成功')
-    } catch (e: any) {
-      message.error(e.message || '生成失败')
+    } catch (e) {
+      message.error((e as Error).message || '生成失败')
     } finally {
       setLoading(false)
     }
@@ -192,26 +195,27 @@ const LearningPathPage: React.FC = () => {
     }
     setLoading(true)
     try {
-      const res: any = await pathApi.adjust(studentId, {
+      const res = await pathApi.adjust(studentId, {
         feedback: adjustFeedback,
-        current_path: pathData?.path,
+        current_path: pathData?.path as LearningPathData | undefined,
       })
-      const stages = res.data?.stages || []
+      const adjustData = (res.data as unknown as Record<string, unknown>).data as Record<string, unknown> | undefined
+      const stages: PathStage[] = (adjustData?.stages as PathStage[] | undefined) || []
       if (stages.length) {
-        const nodes = stages.map((s: any, idx: number) => ({
+        const nodes: PathNode[] = stages.map((s, idx) => ({
           id: idx + 1,
           title: s.title,
-          status: idx === 0 ? 'in-progress' : 'pending',
+          status: (idx === 0 ? 'in-progress' : 'pending') as PathNode['status'],
           type: s.resources?.[0] || '综合',
           resources: s.topics?.length || 3,
         }))
         setPathNodes(nodes)
-        setPathData({ ...pathData, path: res.data })
+        setPathData({ ...pathData, path: adjustData })
       }
       message.success('路径已调整')
       setAdjustFeedback('')
-    } catch (e: any) {
-      message.error(e.message || '调整失败')
+    } catch (e) {
+      message.error((e as Error).message || '调整失败')
     } finally {
       setLoading(false)
     }
@@ -394,18 +398,18 @@ const LearningPathPage: React.FC = () => {
           <div className="relative max-w-3xl mx-auto">
             <div className="flex flex-wrap justify-center gap-4">
               {[
-                { id: 1, title: 'C语言概述', level: 1, status: 'completed' },
-                { id: 2, title: '数据类型与变量', level: 1, status: 'completed' },
-                { id: 3, title: '运算符与表达式', level: 2, status: 'in-progress' },
-                { id: 4, title: '输入输出', level: 2, status: 'pending' },
-                { id: 5, title: '选择结构', level: 2, status: 'locked' },
-                { id: 6, title: '循环结构', level: 3, status: 'locked' },
-                { id: 7, title: '数组', level: 3, status: 'locked' },
-                { id: 8, title: '字符串', level: 3, status: 'locked' },
-                { id: 9, title: '函数与递归', level: 4, status: 'locked' },
-                { id: 10, title: '指针基础', level: 4, status: 'locked' },
-                { id: 11, title: '结构体', level: 4, status: 'locked' },
-                { id: 12, title: '文件操作', level: 5, status: 'locked' },
+                { id: 1, title: 'C语言概述', level: 1, status: 'completed', type: '基础' },
+                { id: 2, title: '数据类型与变量', level: 1, status: 'completed', type: '基础' },
+                { id: 3, title: '运算符与表达式', level: 2, status: 'in-progress', type: '基础' },
+                { id: 4, title: '输入输出', level: 2, status: 'pending', type: '基础' },
+                { id: 5, title: '选择结构', level: 2, status: 'locked', type: '核心' },
+                { id: 6, title: '循环结构', level: 3, status: 'locked', type: '核心' },
+                { id: 7, title: '数组', level: 3, status: 'locked', type: '核心' },
+                { id: 8, title: '字符串', level: 3, status: 'locked', type: '核心' },
+                { id: 9, title: '函数与递归', level: 4, status: 'locked', type: '进阶' },
+                { id: 10, title: '指针基础', level: 4, status: 'locked', type: '进阶' },
+                { id: 11, title: '结构体', level: 4, status: 'locked', type: '进阶' },
+                { id: 12, title: '文件操作', level: 5, status: 'locked', type: '高级' },
               ].map((node) => (
                 <div key={node.id} className="flex flex-col items-center">
                   <div
@@ -414,7 +418,7 @@ const LearningPathPage: React.FC = () => {
                       borderColor: statusColors[node.status],
                       background: statusBg[node.status],
                     }}
-                    onClick={() => openNodeDetail(node)}
+                    onClick={() => openNodeDetail(node as PathNode)}
                   >
                     <div className="text-xs text-slate-400 mb-1">L{node.level}</div>
                     <div className="text-sm font-medium text-slate-800">{node.title}</div>
@@ -424,10 +428,10 @@ const LearningPathPage: React.FC = () => {
               ))}
             </div>
             <div className="mt-6 flex flex-wrap gap-2 justify-center">
-              {pathNodes.filter((n: any) => n.status === 'completed').map((n: any) => (
+              {pathNodes.filter((n) => n.status === 'completed').map((n) => (
                 <Tag key={n.id} className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">{n.title}</Tag>
               ))}
-              {pathNodes.filter((n: any) => n.status === 'in-progress').map((n: any) => (
+              {pathNodes.filter((n) => n.status === 'in-progress').map((n) => (
                 <Tag key={n.id} className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs">{n.title}</Tag>
               ))}
             </div>

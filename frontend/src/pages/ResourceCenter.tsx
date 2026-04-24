@@ -97,11 +97,11 @@ const ResourceCenter: React.FC = () => {
       try {
         const res = await knowledgeApi.list()
         if (ignore) return
-        const kps = res.data.data || []
+        const kps: Record<string, unknown>[] = res.data.data || []
         // 按 subject 分组
-        const groups: Record<string, typeof kps> = {}
-        kps.forEach((kp: any) => {
-          const subject = kp.subject || '其他'
+        const groups: Record<string, Record<string, unknown>[]> = {}
+        kps.forEach((kp) => {
+          const subject = String(kp.subject || '其他')
           if (!groups[subject]) groups[subject] = []
           groups[subject].push(kp)
         })
@@ -113,9 +113,9 @@ const ResourceCenter: React.FC = () => {
             key: `chapter_${subject}`,
             icon: <BookOutlined />,
             label: `第${chapterIndex}章：${subject}`,
-            children: items.map((kp: any, idx: number) => ({
-              key: kp.kp_id,
-              label: `${chapterIndex}.${idx + 1} ${kp.name}`,
+            children: items.map((kp, idx) => ({
+              key: String(kp.kp_id || `kp_${idx}`),
+              label: `${chapterIndex}.${idx + 1} ${String(kp.name || '未命名')}`,
               completed: false,
             })),
           })
@@ -124,7 +124,7 @@ const ResourceCenter: React.FC = () => {
         setCourseMenu(menu)
 
         // 优先使用路由传入的 kpId（从学习路径跳转过来）
-        const navKpId = (location.state as any)?.kpId
+        const navKpId = (location.state as Record<string, unknown> | null)?.kpId as string | undefined
         if (navKpId) {
           const found = menu.flatMap(m => m.children || []).find(c => c.key === navKpId)
           if (found) {
@@ -151,17 +151,17 @@ const ResourceCenter: React.FC = () => {
     let ignore = false
     const loadReflections = async () => {
       try {
-        const res: any = await logReflectionApi.getReflections(studentId, 30)
+        const res = await logReflectionApi.getReflections(studentId, 30)
         if (ignore || !res.data?.data) return
-        const refs = res.data.data
-        const plainNote = refs.find((r: any) => r.tags?.includes('notes'))
-        if (plainNote) setNotes(plainNote.content)
-        const cornell = refs.find((r: any) => r.tags?.includes('cornell'))
+        const refs = res.data.data as Record<string, unknown>[]
+        const plainNote = refs.find((r) => String(r.tags || '').includes('notes'))
+        if (plainNote) setNotes(String(plainNote.content || ''))
+        const cornell = refs.find((r) => String(r.tags || '').includes('cornell'))
         if (cornell) {
-          try { setCornellNotes(JSON.parse(cornell.content)) } catch { setCornellNotes({ cues: cornell.content, notes: '', summary: '' }) }
+          try { setCornellNotes(JSON.parse(String(cornell.content || '{}'))) } catch { setCornellNotes({ cues: String(cornell.content || ''), notes: '', summary: '' }) }
         }
-        const feynman = refs.find((r: any) => r.tags?.includes('feynman'))
-        if (feynman) setFeynmanInput(feynman.content)
+        const feynman = refs.find((r) => String(r.tags || '').includes('feynman'))
+        if (feynman) setFeynmanInput(String(feynman.content || ''))
       } catch { /* ignore */ }
     }
     loadReflections()
@@ -252,10 +252,10 @@ const ResourceCenter: React.FC = () => {
     setCodeResult('')
     try {
       const res = await resourceApi.executeCode({ code: codeContent, language: codeLanguage })
-      const data: any = res.data
-      const output = (data?.output ?? '') as string
-      const error = (data?.error ?? '') as string
-      const explanation = (data?.explanation ?? '') as string
+      const data = res.data as unknown as Record<string, unknown>
+      const output = String(data.output ?? '')
+      const error = String(data.error ?? '')
+      const explanation = String(data.explanation ?? '')
 
       if (output) {
         setCodeResult(output)

@@ -116,9 +116,8 @@ const Profile: React.FC = () => {
           updateVisuals(analyzeRes.data.data)
           message.success('画像已根据对话自动更新')
         }
-      } catch (e: unknown) {
+      } catch {
         // 画像分析失败不影响对话体验
-        console.warn('画像分析失败', e)
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '请求失败'
@@ -226,10 +225,10 @@ const Profile: React.FC = () => {
                     { key: 'video', icon: <VideoCameraOutlined />, label: '视频' },
                     { key: 'text', icon: <ReadOutlined />, label: '图文' },
                     { key: 'audio', icon: <AudioOutlined />, label: '语音' },
-                  ].map((item: any) => (
+                  ].map((item) => (
                     <button
                       key={item.key}
-                      onClick={() => setInteractionPref(item.key)}
+                      onClick={() => setInteractionPref(item.key as 'video' | 'text' | 'audio')}
                       className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${interactionPref === item.key ? 'bg-primary-50 border-primary text-primary' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
                     >
                       <div className="text-lg">{item.icon}</div>
@@ -250,7 +249,7 @@ const Profile: React.FC = () => {
                     { key: 'planner', icon: <NodeIndexOutlined />, label: 'Planner', desc: '拆解学习目标', active: multiAgentStatus.planner },
                     { key: 'worker', icon: <ToolOutlined />, label: 'Worker', desc: '生成导图与习题', active: multiAgentStatus.worker },
                     { key: 'critic', icon: <SafetyOutlined />, label: 'Critic', desc: '防幻觉过滤', active: multiAgentStatus.critic },
-                  ].map((agent: any) => (
+                  ].map((agent) => (
                     <div key={agent.key} className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${agent.active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ${agent.active ? 'bg-primary' : 'bg-slate-300'}`}>
                         {agent.icon}

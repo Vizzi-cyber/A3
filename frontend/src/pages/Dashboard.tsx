@@ -37,6 +37,7 @@ import { useAppStore } from '../store'
 import { profileApi, dashboardApi, pathApi, gamificationApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
 import { StatCard } from '../components/StatCard'
+import type { DashboardTask, DashboardRecommendation, DashboardStats, AlgorithmAnalysis, PathNode, Achievement } from '../types'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -98,9 +99,9 @@ const Dashboard: React.FC = () => {
   const [profileData, setProfileData] = useState(buildRadarData(null))
   const [isLoading, setIsLoading] = useState(false)
   const [summaryLoading, setSummaryLoading] = useState(false)
-  const [tasks, setTasks] = useState<any[]>([])
-  const [recommendations, setRecommendations] = useState<any[]>([])
-  const [stats, setStats] = useState({
+  const [tasks, setTasks] = useState<DashboardTask[]>([])
+  const [recommendations, setRecommendations] = useState<DashboardRecommendation[]>([])
+  const [stats, setStats] = useState<DashboardStats>({
     weekly_hours: 0,
     streak_days: 0,
     achievements: 0,
@@ -115,9 +116,9 @@ const Dashboard: React.FC = () => {
   const [isBreak, setIsBreak] = useState(false)
   const [pomodoroCount, setPomodoroCount] = useState(4)
   const [kgModalOpen, setKgModalOpen] = useState(false)
-  const [algorithmAnalysis, setAlgorithmAnalysis] = useState<any>(null)
+  const [algorithmAnalysis, setAlgorithmAnalysis] = useState<AlgorithmAnalysis | null>(null)
   const [pathExpanded, setPathExpanded] = useState(false)
-  const [pathNodesState, setPathNodesState] = useState<any[]>([
+  const [pathNodesState, setPathNodesState] = useState<PathNode[]>([
     { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门' },
     { id: 2, title: '数据类型与变量', status: 'completed', type: '基础' },
     { id: 3, title: '运算符与表达式', status: 'completed', type: '基础' },
@@ -141,7 +142,7 @@ const Dashboard: React.FC = () => {
 
   // Pomodoro timer
   useEffect(() => {
-    let timer: any
+    let timer: ReturnType<typeof setInterval> | undefined
     if (isPomodoroRunning && pomodoroTime > 0) {
       timer = setInterval(() => setPomodoroTime((t) => t - 1), 1000)
     } else if (isPomodoroRunning && pomodoroTime === 0) {
@@ -195,7 +196,7 @@ const Dashboard: React.FC = () => {
         }
 
         if (pathRes?.data?.nodes?.length) {
-          setPathNodesState(pathRes.data.nodes.map((n: any, idx: number) => ({
+          setPathNodesState(pathRes.data.nodes.map((n: PathNode & { name?: string }, idx: number) => ({
             id: n.id || idx + 1,
             title: n.title || n.name || `节点${idx + 1}`,
             status: n.status || 'pending',
@@ -216,7 +217,7 @@ const Dashboard: React.FC = () => {
             '学习王者': '#ef4444',
             '全勤标兵': '#10b981',
           }
-          setBadgesState(achieveRes.data.data.map((a: any) => ({
+          setBadgesState(achieveRes.data.data.map((a: Achievement) => ({
             name: a.name || a.achievement_id,
             icon: (iconMap[a.name || a.achievement_id] || <StarOutlined />) as JSX.Element,
             color: colorMap[a.name || a.achievement_id] || '#f59e0b',
@@ -398,7 +399,7 @@ const Dashboard: React.FC = () => {
                   <strong>干预建议：</strong>{algorithmAnalysis.trend_analysis?.intervention || '暂无建议'}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(algorithmAnalysis.trend_analysis?.dimensions || {}).map(([key, val]: [string, any]) => (
+                  {Object.entries(algorithmAnalysis.trend_analysis?.dimensions || {}).map(([key, val]: [string, number]) => (
                     <div key={key} className="p-2 rounded-lg bg-slate-50 text-center">
                       <div className="text-xs text-slate-400">{key === 'mastery_trend' ? '掌握度趋势' : key === 'speed_ratio' ? '学习速度' : key === 'time_efficiency' ? '时间效率' : key === 'weakness_priority' ? '薄弱点优先' : '稳定性'}</div>
                       <div className="text-sm font-bold text-slate-800">{(val * 100).toFixed(0)}%</div>
@@ -434,7 +435,7 @@ const Dashboard: React.FC = () => {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                   <div className="text-xs text-slate-500 mb-2 font-medium">潜在失分点 TOP3</div>
                   <div className="space-y-1">
-                    {(algorithmAnalysis.effect_evaluation?.predictions?.potential_loss_points || []).slice(0, 3).map((p: any, i: number) => (
+                    {(algorithmAnalysis.effect_evaluation?.predictions?.potential_loss_points || []).slice(0, 3).map((p: { tag: string; risk_score: number }, i: number) => (
                       <div key={i} className="flex items-center justify-between text-xs">
                         <span className="text-slate-600">{p.tag}</span>
                         <span className="text-slate-400">风险 {(p.risk_score * 100).toFixed(0)}%</span>
@@ -447,7 +448,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-xs text-indigo-700 leading-relaxed">
                   <strong>干预策略（{algorithmAnalysis.effect_evaluation?.intervention?.priority === 'high' ? '高优先级' : '正常'}）：</strong>
-                  {(algorithmAnalysis.effect_evaluation?.intervention?.strategies || []).map((s: any) => s.action).join('；') || '继续保持'}
+                  {(algorithmAnalysis.effect_evaluation?.intervention?.strategies || []).map((s: { action: string }) => s.action).join('；') || '继续保持'}
                 </div>
               </div>
             </Card>
@@ -611,7 +612,7 @@ const Dashboard: React.FC = () => {
                     itemLayout="horizontal"
                     dataSource={tasks.length > 0 ? tasks : []}
                     locale={{ emptyText: '暂无任务，去学习中心看看吧' }}
-                    renderItem={(item: any) => {
+                    renderItem={(item: DashboardTask) => {
                       const meta = taskTypeMeta[item.type || 'doc'] || taskTypeMeta.doc
                       return (
                         <List.Item
@@ -698,7 +699,7 @@ const Dashboard: React.FC = () => {
               >
                 <Spin spinning={summaryLoading}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(recommendations.length > 0 ? recommendations : []).map((res: any, idx: number) => {
+                    {(recommendations.length > 0 ? recommendations : []).map((res: DashboardRecommendation, idx: number) => {
                       const iconMeta = typeIconMap[res.type || '推荐'] || typeIconMap['推荐']
                       return (
                         <div

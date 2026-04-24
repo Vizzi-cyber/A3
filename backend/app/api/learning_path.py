@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from datetime import datetime, timedelta
 from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel, LearningRecordModel
 from ..models.student import StudentProfileModel
@@ -104,10 +106,18 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             ])
             # 默认目标为最后一个知识点
             target_kp_id = kps[-1].kp_id
-            mastery_map = {}
-            records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == request.student_id).all()
-            for r in records:
-                mastery_map[r.kp_id] = max(mastery_map.get(r.kp_id, 0.0), r.progress or 0.0)
+            # 使用聚合查询直接获取每个知识点的最大进度，避免加载全部记录
+            since = datetime.now() - timedelta(days=365)
+            mastery_rows = (
+                db.query(LearningRecordModel.kp_id, func.max(LearningRecordModel.progress).label("max_progress"))
+                .filter(
+                    LearningRecordModel.student_id == request.student_id,
+                    LearningRecordModel.created_at >= since,
+                )
+                .group_by(LearningRecordModel.kp_id)
+                .all()
+            )
+            mastery_map = {row.kp_id: row.max_progress or 0.0 for row in mastery_rows}
             dag_result = planner.plan_path(
                 student_id=request.student_id,
                 target_kp_id=target_kp_id,
@@ -186,11 +196,18 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 async def get_current_path(student_id: str, db: Session = Depends(get_db)):
     """获取当前学习路径 —— 基于数据库知识点动态构建"""
     kps = db.query(KnowledgePointModel).order_by(KnowledgePointModel.created_at.asc()).all()
-    # 查询学习记录计算每个KP的进度
-    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id).all()
-    kp_progress: Dict[str, float] = {}
-    for r in records:
-        kp_progress[r.kp_id] = max(kp_progress.get(r.kp_id, 0.0), r.progress or 0.0)
+    # 使用聚合查询计算每个KP的最大进度，避免加载全部记录
+    since = datetime.now() - timedelta(days=365)
+    progress_rows = (
+        db.query(LearningRecordModel.kp_id, func.max(LearningRecordModel.progress).label("max_progress"))
+        .filter(
+            LearningRecordModel.student_id == student_id,
+            LearningRecordModel.created_at >= since,
+        )
+        .group_by(LearningRecordModel.kp_id)
+        .all()
+    )
+    kp_progress: Dict[str, float] = {row.kp_id: row.max_progress or 0.0 for row in progress_rows}
 
     nodes = []
     for idx, kp in enumerate(kps):

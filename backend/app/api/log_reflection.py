@@ -24,7 +24,7 @@ async def get_learning_logs(student_id: str, date: Optional[str] = None, db: Ses
     query = db.query(LearningLogModel).filter(LearningLogModel.student_id == student_id)
     if date:
         query = query.filter(LearningLogModel.date == date)
-    logs = query.order_by(LearningLogModel.date.desc()).all()
+    logs = query.order_by(LearningLogModel.date.desc()).limit(100).all()
     return {
         "status": "success",
         "data": [

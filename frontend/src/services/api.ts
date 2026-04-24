@@ -117,7 +117,7 @@ export const pathApi = {
   adjust: (studentId: string, data: PathAdjustmentRequest) =>
     api.post<{ status: string; message: string; data: LearningPath['path'] }>(`/learning-path/${studentId}/adjust`, data),
   dagGenerate: (data: { student_id: string; target_kp_id: string; mastery_map?: Record<string, number> }) =>
-    api.post<{ status: string; data: any }>('/learning-path/dag/generate', data),
+    api.post<{ status: string; data: unknown }>('/learning-path/dag/generate', data),
 }
 
 // ---------- 智能辅导 ----------
@@ -189,7 +189,7 @@ export const imageApi = {
   getResult: (taskId: string) =>
     api.get<ImageResultResponse>(`/image/result/${taskId}`),
   listTasks: () =>
-    api.get<{ status: string; tasks: any[] }>('/image/tasks'),
+    api.get<{ status: string; tasks: unknown[] }>('/image/tasks'),
 }
 
 export const authApi = {
@@ -326,7 +326,7 @@ export interface LearningRecordRequest {
 // ---------- Learning Data ----------
 export const learningDataApi = {
   getHistory: (studentId: string, limit?: number) =>
-    api.get<{ status: string; student_id: string; records: any[]; quizzes: any[] }>(`/learning-data/${studentId}/history?limit=${limit || 50}`),
+    api.get<{ status: string; student_id: string; records: unknown[]; quizzes: unknown[] }>(`/learning-data/${studentId}/history?limit=${limit || 50}`),
   record: (data: LearningRecordRequest) =>
     api.post<{ status: string; record_id: string }>('/learning-data/record', data),
 }
@@ -338,9 +338,9 @@ export const logReflectionApi = {
   createReflection: (data: { student_id: string; date: string; content: string; mood?: string; tags?: string[]; ai_feedback?: string }) =>
     api.post<{ status: string; message?: string; reflection_id: string }>('/log-reflection/reflections/create', data),
   getLogs: (studentId: string, date?: string) =>
-    api.get<{ status: string; data: Array<{ log_id: string; date: string; total_duration: number; kp_count: number; quiz_count: number; avg_score: number; mistakes: string[]; path_progress: number; completed_tasks: string[]; timeline: any[] }> }>(`/log-reflection/${studentId}/logs${date ? `?date=${date}` : ''}`),
+    api.get<{ status: string; data: Array<{ log_id: string; date: string; total_duration: number; kp_count: number; quiz_count: number; avg_score: number; mistakes: string[]; path_progress: number; completed_tasks: string[]; timeline: unknown[] }> }>(`/log-reflection/${studentId}/logs${date ? `?date=${date}` : ''}`),
   getReview: (studentId: string) =>
-    api.get<{ status: string; student_id: string; summary: any; daily_logs: any[]; reflections: any[] }>(`/log-reflection/${studentId}/review`),
+    api.get<{ status: string; student_id: string; summary: unknown; daily_logs: unknown[]; reflections: unknown[] }>(`/log-reflection/${studentId}/review`),
 }
 
 // ---------- Trend ----------
@@ -348,7 +348,7 @@ export const trendApi = {
   getHistory: (studentId: string, days?: number) =>
     api.get<{ status: string; student_id: string; data: Array<{ date: string; trend_factor: number; trend_state: string; dimensions: Record<string, number>; predicted_mastery_3d: number; intervention: string }> }>(`/trend/${studentId}/history?days=${days || 30}`),
   analyze: (studentId: string) =>
-    api.post<{ status: string; data: any }>('/trend/analyze', { student_id: studentId }),
+    api.post<{ status: string; data: unknown }>('/trend/analyze', { student_id: studentId }),
 }
 
 // ---------- 知识点 ----------
@@ -356,7 +356,7 @@ export const knowledgeApi = {
   list: (subject?: string) =>
     api.get<{ status: string; data: Array<{ kp_id: string; name: string; subject: string; difficulty: number; prerequisites: string[]; tags: string[] }> }>(`/knowledge/list${subject ? `?subject=${subject}` : ''}`),
   get: (kpId: string) =>
-    api.get<{ status: string; data: any }>(`/knowledge/${kpId}`),
+    api.get<{ status: string; data: unknown }>(`/knowledge/${kpId}`),
   search: (q: string) =>
     api.get<{ status: string; data: Array<{ kp_id: string; name: string; subject: string; difficulty: number; prerequisites: string[]; tags: string[] }> }>(`/knowledge/search?q=${encodeURIComponent(q)}`),
 }

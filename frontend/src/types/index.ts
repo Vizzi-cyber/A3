@@ -106,14 +106,6 @@ export interface PathAdjustmentRequest {
   current_path?: LearningPathData
 }
 
-export interface PathNode {
-  id: number
-  title: string
-  status: string
-  type: string
-  resources: number
-}
-
 export interface CurrentPathResponse {
   status: string
   student_id: string
@@ -271,4 +263,96 @@ export interface ReflectionEntry {
 export interface ToastState {
   type: 'success' | 'error' | 'info'
   message: string
+}
+
+// ---------- Dashboard ----------
+export interface DashboardTask {
+  task_id: string
+  title: string
+  description?: string
+  progress: number
+  type: string
+  duration?: number
+}
+
+export interface DashboardRecommendation {
+  title: string
+  type: string
+  url?: string | null
+}
+
+export interface DashboardStats {
+  weekly_hours: number
+  streak_days: number
+  achievements: number
+  favorites: number
+  mastered_kps: number
+  today_duration_min: number
+}
+
+export interface TrendAnalysis {
+  trend_state: string
+  trend_factor: number
+  predicted_mastery_3d: number
+  dimensions: Record<string, number>
+  intervention?: string
+}
+
+export interface EffectEvaluation {
+  realtime_metrics: {
+    accuracy: number
+    mastery: number
+    improvement_rate: number
+    next_predicted_score: number
+  }
+  loss_points: Array<{ kp_id: string; loss: number }>
+  intervention_strategies: string[]
+  predictions?: {
+    next_score: number
+    potential_loss_points: Array<{ tag: string; risk_score: number }>
+  }
+  intervention?: {
+    priority: string
+    strategies: Array<{ action: string }>
+  }
+}
+
+export interface AlgorithmAnalysis {
+  trend_analysis?: TrendAnalysis
+  effect_evaluation?: EffectEvaluation
+}
+
+// ---------- 学习路径 ----------
+export interface PathNode {
+  id: number
+  title: string
+  status: 'completed' | 'in-progress' | 'pending' | 'locked'
+  type: string
+  resources?: number
+  kp_id?: string
+  skipped?: boolean
+}
+
+// ---------- 游戏化 ----------
+export interface Achievement {
+  achievement_id: string
+  name: string
+  description?: string
+  icon?: string
+  unlocked_at?: string
+}
+
+export interface BadgeItem {
+  name: string
+  icon: React.ReactNode
+  color: string
+  unlocked: boolean
+}
+
+// ---------- 资源 ----------
+export interface ResourceItem {
+  title: string
+  type: string
+  icon?: React.ReactNode
+  color?: string
 }
