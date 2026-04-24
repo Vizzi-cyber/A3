@@ -61,6 +61,11 @@ class ProfileInitRequest(BaseModel):
     initial_data: Optional[Dict[str, Any]] = None
 
 
+class ProfileAnalyzeRequest(BaseModel):
+    """对话分析请求"""
+    conversation: str
+
+
 def _profile_to_dict(profile: StudentProfileModel) -> Dict[str, Any]:
     return {
         "student_id": profile.student_id,
@@ -224,5 +229,123 @@ async def initialize_profile(
     return {
         "status": "success",
         "message": "Profile initialized",
+        "data": _profile_to_dict(profile),
+    }
+
+
+def _deep_merge(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+    """深度合并两个字典，update 优先级更高，但保留 base 中独有的字段"""
+    result = dict(base)
+    for key, value in update.items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _deep_merge(result.get(key, {}), value)
+        else:
+            result[key] = value
+    return result
+
+
+def _merge_list_unique(base: List[Any], update: List[Any]) -> List[Any]:
+    """合并两个列表并去重（对可序列化元素）"""
+    import json
+    seen = set()
+    result = []
+    for item in (base or []) + (update or []):
+        try:
+            key = json.dumps(item, sort_keys=True, ensure_ascii=False)
+        except (TypeError, ValueError):
+            key = str(item)
+        if key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
+
+
+def _fill_profile_defaults(profile: Dict[str, Any]) -> Dict[str, Any]:
+    """确保画像包含所有必要维度的完整字段"""
+    defaults = {
+        "knowledge_base": {
+            "overall_score": 0.5,
+            "academic_level": "未知",
+            "subject_strengths": [],
+            "subject_weaknesses": [],
+        },
+        "cognitive_style": {
+            "primary": "visual",
+            "scores": {"visual": 0.6, "auditory": 0.4, "reading": 0.5, "kinesthetic": 0.5},
+        },
+        "weak_areas": [],
+        "error_patterns": [],
+        "learning_goals": [],
+        "interest_areas": [],
+        "learning_tempo": {
+            "study_speed": "moderate",
+            "optimal_session_duration": 45,
+            "weekly_study_capacity": 10,
+            "focus_score": 0.7,
+        },
+        "practical_preferences": {
+            "coding_proficiency": {},
+            "preferred_practice_types": [],
+            "overall_score": 0.5,
+        },
+    }
+    result = dict(profile)
+    for key, default_val in defaults.items():
+        if key not in result or result[key] is None:
+            result[key] = default_val
+        elif isinstance(result[key], dict) and isinstance(default_val, dict):
+            for sub_key, sub_default in default_val.items():
+                if sub_key not in result[key] or result[key][sub_key] is None:
+                    result[key][sub_key] = sub_default
+    return result
+
+
+@router.post("/{student_id}/analyze-conversation")
+async def analyze_conversation(
+    student_id: str,
+    request: ProfileAnalyzeRequest,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
+    """分析学生对话内容，自动更新六维画像"""
+    profile = _get_or_create_profile(db, student_id)
+    current = _profile_to_dict(profile)
+
+    llm_profile = None
+    try:
+        llm_result = await asyncio.wait_for(
+            _profiler_agent.process({
+                "action": "update",
+                "student_id": student_id,
+                "inputs": [request.conversation],
+                "current_profile": current,
+            }),
+            timeout=18.0,
+        )
+        if llm_result.get("status") == "success":
+            llm_profile = llm_result.get("profile")
+    except asyncio.TimeoutError:
+        pass
+    except Exception:
+        pass
+
+    if llm_profile and isinstance(llm_profile, dict):
+        # 先补齐 LLM 可能缺失的字段
+        llm_profile = _fill_profile_defaults(llm_profile)
+        # 将 LLM 分析结果安全合并到数据库
+        profile.knowledge_base = _deep_merge(profile.knowledge_base or {}, llm_profile.get("knowledge_base", {}))
+        profile.cognitive_style = _deep_merge(profile.cognitive_style or {}, llm_profile.get("cognitive_style", {}))
+        profile.weak_areas = _merge_list_unique(profile.weak_areas, llm_profile.get("weak_areas", []))
+        profile.error_patterns = _merge_list_unique(profile.error_patterns, llm_profile.get("error_patterns", []))
+        profile.learning_goals = _merge_list_unique(profile.learning_goals, llm_profile.get("learning_goals", []))
+        profile.interest_areas = _merge_list_unique(profile.interest_areas, llm_profile.get("interest_areas", []))
+        profile.learning_tempo = _deep_merge(profile.learning_tempo or {}, llm_profile.get("learning_tempo", {}))
+        profile.practical_preferences = _deep_merge(profile.practical_preferences or {}, llm_profile.get("practical_preferences", {}))
+        db.commit()
+        db.refresh(profile)
+
+    return {
+        "status": "success",
+        "message": "画像已根据对话更新" if llm_profile else "画像未变更（LLM 未返回有效数据）",
         "data": _profile_to_dict(profile),
     }

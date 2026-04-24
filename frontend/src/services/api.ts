@@ -73,6 +73,8 @@ export const profileApi = {
     api.get<{ status: string; summary: ProfileSummary }>(`/profile/${studentId}/summary`),
   initialize: (studentId: string, data: ProfileInitRequest) =>
     api.post<{ status: string; message: string; data: StudentProfile }>(`/profile/${studentId}/initialize`, data),
+  analyzeConversation: (studentId: string, conversation: string) =>
+    api.post<{ status: string; message: string; data: StudentProfile }>(`/profile/${studentId}/analyze-conversation`, { conversation }),
 }
 
 // ---------- 资源生成 ----------
