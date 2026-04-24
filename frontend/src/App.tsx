@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import LearningPath from './pages/LearningPath'
 import ResourceCenter from './pages/ResourceCenter'
+import ResourceDetail from './pages/ResourceDetail'
 import PersonalSpace from './pages/PersonalSpace'
 import Tutor from './pages/Tutor'
 import Login from './pages/Login'
@@ -48,6 +49,7 @@ const PrivateLayout: React.FC = () => {
               <Route path="/profile" element={<Profile />} />
               <Route path="/learning-path" element={<LearningPath />} />
               <Route path="/resources" element={<ResourceCenter />} />
+              <Route path="/resource/:kpId" element={<ResourceDetail />} />
               <Route path="/personal" element={<PersonalSpace />} />
               <Route path="/tutor" element={<Tutor />} />
               <Route path="*" element={<NotFound />} />

@@ -407,8 +407,8 @@ const LearningPathPage: React.FC = () => {
               block
               className="rounded-lg bg-primary h-10"
               onClick={() => {
-                const kpId = selectedNode.kp_id || selectedNode.id
-                navigate('/resource', { state: { kpId, title: selectedNode.title } })
+                const nodeKpId = selectedNode.kp_id || selectedNode.id
+                navigate(`/resource/${nodeKpId}`)
                 setDrawerOpen(false)
               }}
             >
