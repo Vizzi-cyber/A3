@@ -37,9 +37,9 @@ logs/
 *.log
 
 # Database
-*.db
-*.sqlite
-*.sqlite3
+# *.db
+# *.sqlite
+# *.sqlite3
 
 # Process IDs
 *.pid
