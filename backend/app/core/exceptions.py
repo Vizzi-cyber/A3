@@ -54,8 +54,8 @@ async def http_exception_handler(request: Request, exc):
 
 async def global_exception_handler(request: Request, exc: Exception):
     """处理所有未捕获的异常"""
-    import os
-    debug = os.getenv("DEBUG", "true").lower() == "true"
+    from .config import settings
+    debug = settings.DEBUG
     # 对不可序列化的异常对象做安全转换
     try:
         detail = str(exc)

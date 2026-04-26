@@ -3,7 +3,7 @@
 直接调用 TutorAgent，避免 LangGraph 多层路由延迟
 """
 import asyncio
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
@@ -80,6 +80,7 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
         except Exception:
             profile_for_prompt = {}
 
+    result: Optional[Dict[str, Any]] = None
     try:
         result = await asyncio.wait_for(
             _tutor_agent.process({
@@ -99,6 +100,8 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
             answer = "服务暂时不可用，请稍后再试。"
     except asyncio.TimeoutError:
         answer = "模型响应超时，请重试或切换到WebSocket流式模式。"
+    except Exception:
+        answer = "服务暂时不可用，请稍后再试。"
 
     # 持久化问答记录
     try:
@@ -113,8 +116,8 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
             question_meta=meta,
             profile_snapshot=profile_for_prompt or None,
             response_type="explanation",
-            blocked=result.get("status") == "blocked",
-            block_reason=result.get("reason") if result.get("status") == "blocked" else None,
+            blocked=result.get("status") == "blocked" if result else False,
+            block_reason=result.get("reason") if result and result.get("status") == "blocked" else None,
             llm_provider=request.provider,
         )
         db.add(qa)
