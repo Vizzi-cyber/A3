@@ -27,7 +27,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store'
-import { pathApi, profileApi } from '../services/api'
+import { pathApi, profileApi, learningDataApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
 import type { PathNode, PathStage, StudentProfile, LearningPathData } from '../types'
 
@@ -66,13 +66,19 @@ const LearningPathPage: React.FC = () => {
   const [pathData, setPathData] = useState<Record<string, unknown> | null>(null)
   const [pathNodes, setPathNodes] = useState<PathNode[]>([])
   const [loading, setLoading] = useState(false)
-  const [showReviewAlert, setShowReviewAlert] = useState(true)
+  const [showReviewAlert, setShowReviewAlert] = useState(() => {
+    // 当天稍后提醒后保持隐藏；新一天自动恢复
+    if (typeof window === 'undefined') return true
+    const today = new Date().toISOString().slice(0, 10)
+    return localStorage.getItem('review_alert_dismissed') !== today
+  })
   const [dailyDuration, setDailyDuration] = useState(90)
   const [difficulty, setDifficulty] = useState(3)
   const [learningPreference, setLearningPreference] = useState('balanced')
   const [targetTopic, setTargetTopic] = useState('掌握 C语言程序设计与数据结构基础')
   const [adjustFeedback, setAdjustFeedback] = useState('')
   const [profileSuggestions, setProfileSuggestions] = useState<string[]>([])
+  const [weakReviewTopics, setWeakReviewTopics] = useState<string[]>([])
   const [activeAdjustTab, setActiveAdjustTab] = useState<'params' | 'nodes' | 'feedback'>('params')
   const studentId = useAppStore((s) => s.studentId)
   const navigate = useNavigate()
@@ -105,6 +111,8 @@ const LearningPathPage: React.FC = () => {
           if (p.cognitive_style?.primary === 'kinesthetic') suggestions.push('你是动手实践型学习者，建议多选代码实战类资源')
           if ((p.practical_preferences?.overall_score ?? 1) < 0.5) suggestions.push('实践偏好分较低，建议增加练习比重')
           setProfileSuggestions(suggestions)
+          // 复习提醒来自薄弱点列表（取前 5 条）
+          setWeakReviewTopics((p.weak_areas || []).slice(0, 5))
         }
       } catch {}
     }
@@ -147,9 +155,45 @@ const LearningPathPage: React.FC = () => {
     load()
   }, [studentId])
 
+  // 从后端同步已完成节点（避免刷新后丢失）
+  useEffect(() => {
+    if (!studentId || pathNodes.length === 0) return
+    let ignore = false
+    const syncCompleted = async () => {
+      try {
+        const res = await learningDataApi.getCompleted(studentId)
+        const completedKps = res.data?.completed_kps || []
+        if (!ignore && completedKps.length) {
+          setPathNodes((prev) =>
+            prev.map((n) => {
+              const nodeKp = nodeKpId(n)
+              return completedKps.includes(nodeKp) ? { ...n, status: 'completed' } : n
+            })
+          )
+        }
+      } catch {
+        // 静默失败
+      }
+    }
+    syncCompleted()
+    return () => { ignore = true }
+    // 只在 studentId 变化或首次拿到 nodes 时执行
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId, pathNodes.length])
+
   const openNodeDetail = (node: PathNode) => {
     setSelectedNode(node)
     setDrawerOpen(true)
+  }
+
+  // 节点 -> kp_id 映射（保留 kp_id；缺失时退化为 kp_c01..14）
+  const nodeKpId = (node: PathNode): string => {
+    if (node.kp_id) return String(node.kp_id)
+    const idNum = Number(node.id)
+    if (Number.isFinite(idNum) && idNum >= 1 && idNum <= 16) {
+      return `kp_c${String(idNum).padStart(2, '0')}`
+    }
+    return String(node.id)
   }
 
   const handleGeneratePath = async () => {
@@ -221,7 +265,23 @@ const LearningPathPage: React.FC = () => {
     }
   }
 
-  const handleNodeAction = (nodeId: number, action: 'complete' | 'skip' | 'reset') => {
+  const handleNodeAction = async (nodeId: number, action: 'complete' | 'skip' | 'reset') => {
+    const node = pathNodes.find((n) => n.id === nodeId)
+    // 标记完成：写入后端
+    if (action === 'complete' && node) {
+      try {
+        await learningDataApi.record({
+          student_id: studentId,
+          kp_id: nodeKpId(node),
+          action: 'complete',
+          duration: 0,
+          progress: 1,
+        })
+      } catch (e) {
+        message.error((e as Error).message || '同步后端失败')
+        return
+      }
+    }
     setPathNodes((prev) =>
       prev.map((n) => {
         if (n.id !== nodeId) return n
@@ -234,7 +294,24 @@ const LearningPathPage: React.FC = () => {
     message.success(action === 'complete' ? '已标记完成' : action === 'skip' ? '已跳过该节点' : '已重置进度')
   }
 
-  const handleBatchComplete = (ids: number[]) => {
+  const handleBatchComplete = async (ids: number[]) => {
+    const targets = pathNodes.filter((n) => ids.includes(n.id))
+    try {
+      await Promise.all(
+        targets.map((n) =>
+          learningDataApi.record({
+            student_id: studentId,
+            kp_id: nodeKpId(n),
+            action: 'complete',
+            duration: 0,
+            progress: 1,
+          })
+        )
+      )
+    } catch (e) {
+      message.error((e as Error).message || '批量同步失败')
+      return
+    }
     setPathNodes((prev) =>
       prev.map((n) => (ids.includes(n.id) ? { ...n, status: 'completed' } : n))
     )
@@ -293,17 +370,34 @@ const LearningPathPage: React.FC = () => {
       </Card>
 
       {/* 艾宾浩斯复习提醒 */}
-      {showReviewAlert && (
+      {showReviewAlert && weakReviewTopics.length > 0 && (
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
           <ExclamationCircleOutlined className="text-amber-500 text-lg" />
           <div className="flex-1">
-            <div className="text-sm font-medium text-amber-800">遗忘曲线提醒：有 3 个知识点需要今日复习</div>
-            <div className="text-xs text-amber-600">数据类型与变量、控制结构、指针与内存 — 基于艾宾浩斯遗忘曲线计算</div>
+            <div className="text-sm font-medium text-amber-800">
+              遗忘曲线提醒：有 {weakReviewTopics.length} 个知识点需要今日复习
+            </div>
+            <div className="text-xs text-amber-600">
+              {weakReviewTopics.slice(0, 3).join('、')} — 基于画像薄弱点与艾宾浩斯遗忘曲线计算
+            </div>
           </div>
-          <Button size="small" className="rounded-lg border-amber-200 text-amber-700" onClick={() => setShowReviewAlert(false)}>
+          <Button
+            size="small"
+            className="rounded-lg border-amber-200 text-amber-700"
+            onClick={() => {
+              const today = new Date().toISOString().slice(0, 10)
+              localStorage.setItem('review_alert_dismissed', today)
+              setShowReviewAlert(false)
+            }}
+          >
             稍后提醒
           </Button>
-          <Button size="small" type="primary" className="rounded-lg bg-amber-500 border-amber-500">
+          <Button
+            size="small"
+            type="primary"
+            className="rounded-lg bg-amber-500 border-amber-500"
+            onClick={() => navigate('/personal?tab=forgetting')}
+          >
             <ReloadOutlined /> 开始复习
           </Button>
         </div>
@@ -514,8 +608,7 @@ const LearningPathPage: React.FC = () => {
               block
               className="rounded-lg bg-primary h-10"
               onClick={() => {
-                const nodeKpId = selectedNode.kp_id || selectedNode.id
-                navigate(`/resource/${nodeKpId}`)
+                navigate(`/resource/${nodeKpId(selectedNode)}`)
                 setDrawerOpen(false)
               }}
             >
@@ -688,7 +781,7 @@ const LearningPathPage: React.FC = () => {
                             className="rounded-lg bg-primary"
                             icon={<EyeOutlined />}
                             onClick={() => {
-                              navigate(`/resource/${node.kp_id || node.id}`)
+                              navigate(`/resource/${nodeKpId(node)}`)
                               setDrawerOpen(false)
                             }}
                           />

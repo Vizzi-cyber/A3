@@ -328,15 +328,21 @@ export const learningDataApi = {
   getHistory: (studentId: string, limit?: number) =>
     api.get<{ status: string; student_id: string; records: unknown[]; quizzes: unknown[] }>(`/learning-data/${studentId}/history?limit=${limit || 50}`),
   record: (data: LearningRecordRequest) =>
-    api.post<{ status: string; record_id: string }>('/learning-data/record', data),
+    api.post<{ status: string; record_id: string; points_awarded?: number; total_points?: number }>('/learning-data/record', data),
+  getCompleted: (studentId: string) =>
+    api.get<{ status: string; student_id: string; completed_kps: string[]; count: number }>(`/learning-data/${studentId}/completed`),
 }
 
 // ---------- 反思与日志 ----------
 export const logReflectionApi = {
   getReflections: (studentId: string, limit?: number) =>
-    api.get<{ status: string; data: Array<{ reflection_id: string; date: string; content: string; mood: string; tags: string[]; ai_feedback?: string }> }>(`/log-reflection/${studentId}/reflections?limit=${limit || 30}`),
+    api.get<{ status: string; data: Array<{ reflection_id: string; date: string; content: string; mood: string; tags: string[]; ai_feedback?: string; created_at?: string }> }>(`/log-reflection/${studentId}/reflections?limit=${limit || 30}`),
   createReflection: (data: { student_id: string; date: string; content: string; mood?: string; tags?: string[]; ai_feedback?: string }) =>
     api.post<{ status: string; message?: string; reflection_id: string }>('/log-reflection/reflections/create', data),
+  updateReflection: (reflectionId: string, data: { content?: string; mood?: string; tags?: string[]; ai_feedback?: string }) =>
+    api.put<{ status: string; reflection_id: string }>(`/log-reflection/reflections/${reflectionId}`, data),
+  deleteReflection: (reflectionId: string) =>
+    api.delete<{ status: string; reflection_id: string }>(`/log-reflection/reflections/${reflectionId}`),
   getLogs: (studentId: string, date?: string) =>
     api.get<{ status: string; data: Array<{ log_id: string; date: string; total_duration: number; kp_count: number; quiz_count: number; avg_score: number; mistakes: string[]; path_progress: number; completed_tasks: string[]; timeline: unknown[] }> }>(`/log-reflection/${studentId}/logs${date ? `?date=${date}` : ''}`),
   getReview: (studentId: string) =>

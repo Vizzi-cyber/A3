@@ -192,3 +192,27 @@ async def get_learning_history(student_id: str, limit: int = 50, db: Session = D
             for q in quizzes
         ],
     }
+
+
+@router.get("/{student_id}/completed")
+async def get_completed_kps(student_id: str, db: Session = Depends(get_db)):
+    """
+    返回该学生已标记完成的所有 kp_id（去重）。
+    供前端 ResourceDetail / LearningPath 在加载时同步完成状态。
+    """
+    rows = (
+        db.query(LearningRecordModel.kp_id)
+        .filter(
+            LearningRecordModel.student_id == student_id,
+            LearningRecordModel.action == "complete",
+        )
+        .distinct()
+        .all()
+    )
+    kp_ids = [r[0] for r in rows if r[0]]
+    return {
+        "status": "success",
+        "student_id": student_id,
+        "completed_kps": kp_ids,
+        "count": len(kp_ids),
+    }

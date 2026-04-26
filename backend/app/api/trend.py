@@ -34,6 +34,7 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
 
     quiz_history = [
         {
+            "kp_id": q.kp_id,
             "score": q.score,
             "correct_count": q.correct_count,
             "total_questions": q.total_questions,
@@ -44,6 +45,7 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
     ]
     learning_history = [
         {
+            "kp_id": r.kp_id,
             "duration": r.duration,
             "progress": r.progress,
             "action": r.action,
@@ -78,6 +80,7 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
         existing.stability = result["dimensions"]["stability"]
         existing.predicted_mastery_3d = result["predicted_mastery_3d"]
         existing.intervention = result["intervention"]
+        existing.details = {"completion_rate": result["dimensions"]["completion_rate"]}
     else:
         trend = TrendDataModel(
             student_id=student_id,
@@ -91,6 +94,7 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
             stability=result["dimensions"]["stability"],
             predicted_mastery_3d=result["predicted_mastery_3d"],
             intervention=result["intervention"],
+            details={"completion_rate": result["dimensions"]["completion_rate"]},
         )
         db.add(trend)
     db.commit()
@@ -158,6 +162,7 @@ async def get_trend_history(student_id: str, days: int = 30, db: Session = Depen
                     "time_efficiency": t.time_efficiency,
                     "weakness_priority": t.weakness_priority,
                     "stability": t.stability,
+                    "completion_rate": (t.details or {}).get("completion_rate", 0.0) if t.details else 0.0,
                 },
                 "predicted_mastery_3d": t.predicted_mastery_3d,
                 "intervention": t.intervention,

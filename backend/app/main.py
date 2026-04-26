@@ -11,6 +11,7 @@ import os
 from .api import router as api_router
 from .core.config import settings
 from .core.logger import setup_logger
+from .core.rate_limiter import RateLimiter
 from .core.exceptions import validation_exception_handler, http_exception_handler, global_exception_handler
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.exceptions import RequestValidationError
@@ -64,6 +65,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 请求限流
+app.add_middleware(RateLimiter, default_limit=60, window_seconds=60)
 
 # 注册异常处理器
 app.add_exception_handler(RequestValidationError, validation_exception_handler)

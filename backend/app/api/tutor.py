@@ -8,7 +8,11 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
 
+from sqlalchemy.orm import Session
+
 from ..agents import TutorAgent
+from ..models.database import get_db
+from ..models.tutor_qa import TutorQAModel
 from .auth import get_current_student_id, require_auth
 
 router = APIRouter()
@@ -56,7 +60,7 @@ _tutor_agent = TutorAgent()
 
 
 @router.post("/ask", response_model=TutorResponse)
-async def ask_tutor(request: TutorRequest, _current: str = Depends(require_auth)):
+async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """向AI辅导助手提问（苏格拉底式教学）—— 直接调用 TutorAgent，避免 LangGraph 多层路由延迟"""
     session_id = request.session_id or f"{request.student_id}_default"
 
@@ -79,6 +83,24 @@ async def ask_tutor(request: TutorRequest, _current: str = Depends(require_auth)
             answer = "服务暂时不可用，请稍后再试。"
     except asyncio.TimeoutError:
         answer = "模型响应超时，请重试或切换到WebSocket流式模式。"
+
+    # 持久化问答记录
+    try:
+        qa = TutorQAModel(
+            student_id=request.student_id,
+            session_id=session_id,
+            question=str(request.question) if isinstance(request.question, str) else "[多模态输入]",
+            answer=answer,
+            question_meta={"raw": request.question} if not isinstance(request.question, str) else None,
+            response_type="explanation",
+            blocked=result.get("status") == "blocked",
+            block_reason=result.get("reason") if result.get("status") == "blocked" else None,
+            llm_provider=request.provider,
+        )
+        db.add(qa)
+        db.commit()
+    except Exception:
+        db.rollback()
 
     return TutorResponse(
         response=answer,
@@ -174,6 +196,24 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 if len(history) > 20:
                     history[:] = history[-20:]
 
+                # 持久化问答记录
+                try:
+                    from ..models.database import SessionLocal
+                    db = SessionLocal()
+                    qa = TutorQAModel(
+                        student_id=student_id,
+                        session_id=session_id,
+                        question=question,
+                        answer=full_answer,
+                        response_type="explanation",
+                        llm_provider=provider,
+                    )
+                    db.add(qa)
+                    db.commit()
+                    db.close()
+                except Exception:
+                    pass
+
                 await manager.send_message(session_id, {
                     "type": "complete",
                     "timestamp": datetime.now().isoformat(),
@@ -188,8 +228,28 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
 
 
 @router.get("/session/{session_id}/history")
-async def get_session_history(session_id: str):
-    """获取辅导会话历史"""
+async def get_session_history(session_id: str, db: Session = Depends(get_db)):
+    """获取辅导会话历史（优先从数据库读取持久化记录）"""
+    # 从数据库读取该 session 的问答记录
+    records = (
+        db.query(TutorQAModel)
+        .filter(TutorQAModel.session_id == session_id)
+        .order_by(TutorQAModel.created_at.asc())
+        .limit(100)
+        .all()
+    )
+    if records:
+        messages = []
+        for r in records:
+            messages.append({"role": "user", "content": r.question})
+            messages.append({"role": "assistant", "content": r.answer})
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "source": "database",
+            "messages": messages,
+        }
+    # fallback 到内存历史
     history = _tutor_agent.session_histories.get(session_id, [])
     messages = []
     for h in history:
@@ -197,5 +257,55 @@ async def get_session_history(session_id: str):
     return {
         "status": "success",
         "session_id": session_id,
+        "source": "memory",
         "messages": messages,
     }
+
+
+@router.get("/qa-history/{student_id}")
+async def get_student_qa_history(
+    student_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
+    """获取学生的辅导问答历史（用于后续分析和优化）"""
+    query = db.query(TutorQAModel).filter(TutorQAModel.student_id == student_id)
+    if session_id:
+        query = query.filter(TutorQAModel.session_id == session_id)
+    records = query.order_by(TutorQAModel.created_at.desc()).limit(limit).all()
+    return {
+        "status": "success",
+        "student_id": student_id,
+        "count": len(records),
+        "data": [
+            {
+                "id": r.id,
+                "session_id": r.session_id,
+                "question": r.question,
+                "answer": r.answer,
+                "response_type": r.response_type,
+                "blocked": r.blocked,
+                "llm_provider": r.llm_provider,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }
+
+
+@router.post("/qa-feedback/{qa_id}")
+async def submit_qa_feedback(
+    qa_id: int,
+    feedback: str,  # like / dislike
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
+    """学生对问答记录提交反馈（点赞/点踩）"""
+    qa = db.query(TutorQAModel).filter(TutorQAModel.id == qa_id).first()
+    if not qa:
+        raise HTTPException(status_code=404, detail="QA record not found")
+    qa.feedback = feedback
+    db.commit()
+    return {"status": "success", "message": "Feedback recorded"}

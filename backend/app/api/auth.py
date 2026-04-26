@@ -4,7 +4,7 @@
 - JWT身份校验
 """
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
@@ -22,11 +22,22 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
 
+import re
+
 class UserRegisterRequest(BaseModel):
     student_id: str = Field(..., min_length=3, max_length=64)
     username: str = Field(..., min_length=1, max_length=128)
     email: Optional[str] = None
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Za-z]", v):
+            raise ValueError("密码必须包含至少一个字母")
+        if not re.search(r"\d", v):
+            raise ValueError("密码必须包含至少一个数字")
+        return v
 
 
 class UserLoginRequest(BaseModel):
@@ -106,6 +117,17 @@ async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return {"status": "success", "message": "User registered", "student_id": user.student_id}
+
+
+# 临时调试端点：验证 Pydantic 模型行为
+@router.post("/_debug/validate-password")
+async def debug_validate(password: str):
+    from pydantic import ValidationError
+    try:
+        req = UserRegisterRequest(student_id="debug", username="debug", password=password)
+        return {"valid": True, "password": req.password}
+    except ValidationError as e:
+        return {"valid": False, "errors": e.errors()}
 
 
 @router.post("/login", response_model=TokenResponse)

@@ -7,6 +7,7 @@ from .gamification import PointsModel, AchievementModel, TaskModel, LeaderboardM
 from .log_reflection import LearningLogModel, ReflectionModel
 from .favorites import FavoriteModel
 from .monitor import ApiMonitorModel, LlmCallModel, SystemHealthModel
+from .tutor_qa import TutorQAModel
 
 __all__ = [
     "Base", "engine", "get_db",
@@ -17,4 +18,5 @@ __all__ = [
     "LearningLogModel", "ReflectionModel",
     "FavoriteModel",
     "ApiMonitorModel", "LlmCallModel", "SystemHealthModel",
+    "TutorQAModel",
 ]

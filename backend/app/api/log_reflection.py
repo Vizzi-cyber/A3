@@ -107,16 +107,19 @@ class ReflectionCreateRequest(BaseModel):
 
 @router.post("/reflections/create")
 async def create_reflection(request: ReflectionCreateRequest, db: Session = Depends(get_db)):
-    """创建反思记录"""
-    reflection_id = f"ref_{request.student_id}_{request.date}"
-    existing = db.query(ReflectionModel).filter(ReflectionModel.reflection_id == reflection_id).first()
-    if existing:
-        existing.content = request.content
-        existing.mood = request.mood
-        existing.tags = request.tags
-        existing.ai_feedback = request.ai_feedback
-        db.commit()
-        return {"status": "success", "message": "Reflection updated", "reflection_id": reflection_id}
+    """
+    创建反思 / 笔记记录。
+    每次调用都会生成新的 reflection_id（含毫秒时间戳 + 主标签），
+    避免 cornell / feynman / 普通反思同日互相覆盖。
+    """
+    # 主标签：tags 中第一个非通用值，或 'reflection'
+    primary_tag = "reflection"
+    for t in (request.tags or []):
+        if t and t not in ("notes",):
+            primary_tag = str(t)
+            break
+    ts_ms = int(datetime.now().timestamp() * 1000)
+    reflection_id = f"ref_{request.student_id}_{request.date}_{primary_tag}_{ts_ms}"
     ref = ReflectionModel(
         reflection_id=reflection_id,
         student_id=request.student_id,
@@ -131,13 +134,49 @@ async def create_reflection(request: ReflectionCreateRequest, db: Session = Depe
     return {"status": "success", "reflection_id": reflection_id}
 
 
+class ReflectionUpdateRequest(BaseModel):
+    content: Optional[str] = None
+    mood: Optional[str] = None
+    tags: Optional[List[str]] = None
+    ai_feedback: Optional[str] = None
+
+
+@router.put("/reflections/{reflection_id}")
+async def update_reflection(reflection_id: str, request: ReflectionUpdateRequest, db: Session = Depends(get_db)):
+    """更新指定反思 / 笔记"""
+    ref = db.query(ReflectionModel).filter(ReflectionModel.reflection_id == reflection_id).first()
+    if not ref:
+        raise HTTPException(status_code=404, detail="reflection not found")
+    if request.content is not None:
+        ref.content = request.content
+    if request.mood is not None:
+        ref.mood = request.mood
+    if request.tags is not None:
+        ref.tags = request.tags
+    if request.ai_feedback is not None:
+        ref.ai_feedback = request.ai_feedback
+    db.commit()
+    return {"status": "success", "reflection_id": reflection_id}
+
+
+@router.delete("/reflections/{reflection_id}")
+async def delete_reflection(reflection_id: str, db: Session = Depends(get_db)):
+    """删除指定反思 / 笔记"""
+    ref = db.query(ReflectionModel).filter(ReflectionModel.reflection_id == reflection_id).first()
+    if not ref:
+        raise HTTPException(status_code=404, detail="reflection not found")
+    db.delete(ref)
+    db.commit()
+    return {"status": "success", "reflection_id": reflection_id}
+
+
 @router.get("/{student_id}/reflections")
 async def get_reflections(student_id: str, limit: int = 30, db: Session = Depends(get_db)):
     """获取反思记录列表"""
     refs = (
         db.query(ReflectionModel)
         .filter(ReflectionModel.student_id == student_id)
-        .order_by(ReflectionModel.date.desc())
+        .order_by(ReflectionModel.date.desc(), ReflectionModel.created_at.desc())
         .limit(limit)
         .all()
     )
@@ -151,6 +190,7 @@ async def get_reflections(student_id: str, limit: int = 30, db: Session = Depend
                 "mood": r.mood,
                 "tags": r.tags,
                 "ai_feedback": r.ai_feedback,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
             }
             for r in refs
         ],

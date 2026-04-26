@@ -82,6 +82,24 @@ const ResourceDetail: React.FC = () => {
     return () => { ignore = true }
   }, [kpId])
 
+  // 加载完成状态（从后端同步，避免刷新丢失）
+  useEffect(() => {
+    if (!kpId || !studentId) return
+    let ignore = false
+    const checkCompleted = async () => {
+      try {
+        const res = await learningDataApi.getCompleted(studentId)
+        if (!ignore && res.data?.completed_kps?.includes(kpId)) {
+          setCompleted(true)
+        }
+      } catch {
+        // 静默失败
+      }
+    }
+    checkCompleted()
+    return () => { ignore = true }
+  }, [kpId, studentId])
+
   // 加载讲义 + 代码 + 练习
   useEffect(() => {
     if (!kpId) return
@@ -284,7 +302,7 @@ const ResourceDetail: React.FC = () => {
             value={codeContent}
             onChange={(e) => setCodeContent(e.target.value)}
             rows={14}
-            className="font-mono text-sm rounded-xl bg-slate-900 text-slate-50 border-0"
+            className="font-mono text-sm rounded-xl !bg-slate-900 !text-slate-50 border-0 hover:!bg-slate-900 hover:!text-slate-50 focus:!bg-slate-900 focus:!text-slate-50 focus:!shadow-none"
           />
           {codeResult && (
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-sm whitespace-pre-wrap">
