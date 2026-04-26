@@ -34,7 +34,7 @@ import {
   UpOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { profileApi, dashboardApi, pathApi, gamificationApi } from '../services/api'
+import { profileApi, dashboardApi, pathApi, gamificationApi, knowledgeApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
 import { StatCard } from '../components/StatCard'
 import type { DashboardTask, DashboardRecommendation, DashboardStats, AlgorithmAnalysis, PathNode, Achievement } from '../types'
@@ -61,17 +61,6 @@ const typeIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
   工具: { icon: <ApartmentOutlined />, color: '#3b82f6' },
 }
 
-const pathNodes = [
-  { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门' },
-  { id: 2, title: '数据类型与变量', status: 'completed', type: '基础' },
-  { id: 3, title: '运算符与表达式', status: 'completed', type: '基础' },
-  { id: 4, title: '输入输出与顺序结构', status: 'in-progress', type: '基础' },
-  { id: 5, title: '选择结构', status: 'pending', type: '核心' },
-  { id: 6, title: '循环结构', status: 'pending', type: '核心' },
-  { id: 7, title: '数组', status: 'pending', type: '核心' },
-  { id: 8, title: '字符串', status: 'pending', type: '核心' },
-]
-
 const statusColors: Record<string, string> = {
   completed: '#10b981',
   'in-progress': '#4f46e5',
@@ -80,19 +69,30 @@ const statusColors: Record<string, string> = {
 
 const POMODORO_FOCUS = 25 * 60
 const POMODORO_BREAK = 5 * 60
+const XP_PER_LEVEL = 500
 
-const challenges = [
-  { title: '完成今日图文讲义阅读', reward: 20, completed: false },
-  { title: '提交1份代码实操', reward: 30, completed: true },
-  { title: '连续打卡满7天', reward: 50, completed: false },
-]
+// 徽章 / 成就 图标映射（按名称关键字模糊匹配，不再硬编码具体徽章列表）
+const badgeIcon = (name: string): { icon: React.ReactNode; color: string } => {
+  if (/code|代码|编程/i.test(name)) return { icon: <CodeOutlined />, color: '#3b82f6' }
+  if (/king|王|大师|高级/i.test(name)) return { icon: <CrownOutlined />, color: '#ef4444' }
+  if (/streak|全勤|连续|打卡/i.test(name)) return { icon: <FireOutlined />, color: '#10b981' }
+  if (/star|新人|入门|出茅庐/i.test(name)) return { icon: <StarOutlined />, color: '#f59e0b' }
+  return { icon: <TrophyOutlined />, color: '#8b5cf6' }
+}
 
-const badges = [
-  { name: '初出茅庐', icon: <StarOutlined />, color: '#f59e0b', unlocked: true },
-  { name: '代码能手', icon: <CodeOutlined />, color: '#3b82f6', unlocked: true },
-  { name: '学习王者', icon: <CrownOutlined />, color: '#ef4444', unlocked: false },
-  { name: '全勤标兵', icon: <FireOutlined />, color: '#10b981', unlocked: false },
-]
+interface ChallengeView {
+  id: string
+  title: string
+  reward: number
+  completed: boolean
+}
+
+interface BadgeView {
+  name: string
+  icon: React.ReactNode
+  color: string
+  unlocked: boolean
+}
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate()
@@ -114,52 +114,55 @@ const Dashboard: React.FC = () => {
   const [pomodoroTime, setPomodoroTime] = useState(POMODORO_FOCUS)
   const [isPomodoroRunning, setIsPomodoroRunning] = useState(false)
   const [isBreak, setIsBreak] = useState(false)
-  const [pomodoroCount, setPomodoroCount] = useState(4)
+  const [pomodoroCount, setPomodoroCount] = useState(0)
   const [kgModalOpen, setKgModalOpen] = useState(false)
   const [algorithmAnalysis, setAlgorithmAnalysis] = useState<AlgorithmAnalysis | null>(null)
   const [pathExpanded, setPathExpanded] = useState(false)
-  const [pathNodesState, setPathNodesState] = useState<PathNode[]>([
-    { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门' },
-    { id: 2, title: '数据类型与变量', status: 'completed', type: '基础' },
-    { id: 3, title: '运算符与表达式', status: 'completed', type: '基础' },
-    { id: 4, title: '输入输出与顺序结构', status: 'in-progress', type: '基础' },
-    { id: 5, title: '选择结构', status: 'pending', type: '核心' },
-    { id: 6, title: '循环结构', status: 'pending', type: '核心' },
-    { id: 7, title: '数组', status: 'pending', type: '核心' },
-    { id: 8, title: '字符串', status: 'pending', type: '核心' },
-  ])
-  const [badgesState, setBadgesState] = useState([
-    { name: '初出茅庐', icon: <StarOutlined />, color: '#f59e0b', unlocked: true },
-    { name: '代码能手', icon: <CodeOutlined />, color: '#3b82f6', unlocked: true },
-    { name: '学习王者', icon: <CrownOutlined />, color: '#ef4444', unlocked: false },
-    { name: '全勤标兵', icon: <FireOutlined />, color: '#10b981', unlocked: false },
-  ])
+  const [pathNodesState, setPathNodesState] = useState<PathNode[]>([])
+  const [badgesState, setBadgesState] = useState<BadgeView[]>([])
+  const [challenges, setChallenges] = useState<ChallengeView[]>([])
+  const [pointsInfo, setPointsInfo] = useState<{ total: number; level: number; current: number; need: number; percent: number } | null>(null)
+  const [kgNodes, setKgNodes] = useState<string[]>([])
 
   const studentId = useAppStore((s) => s.studentId)
   const journeyRef = useRef<HTMLDivElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  // Pomodoro timer
+  // Pomodoro timer —— 用 Date.now() 差值计算剩余秒数，避免后台标签页被节流时不能按时结束
+  const pomodoroEndRef = useRef<number | null>(null)
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | undefined
-    if (isPomodoroRunning && pomodoroTime > 0) {
-      timer = setInterval(() => setPomodoroTime((t) => t - 1), 1000)
-    } else if (isPomodoroRunning && pomodoroTime === 0) {
-      setIsPomodoroRunning(false)
-      if (!isBreak) {
-        setPomodoroCount((c) => c + 1)
-        message.success('专注时间结束！休息一下吧')
-        setIsBreak(true)
-        setPomodoroTime(POMODORO_BREAK)
-      } else {
-        message.success('休息结束，继续专注！')
-        setIsBreak(false)
-        setPomodoroTime(POMODORO_FOCUS)
+    if (!isPomodoroRunning) {
+      pomodoroEndRef.current = null
+      return
+    }
+    if (pomodoroEndRef.current == null) {
+      pomodoroEndRef.current = Date.now() + pomodoroTime * 1000
+    }
+    const tick = () => {
+      const end = pomodoroEndRef.current
+      if (end == null) return
+      const remain = Math.max(0, Math.round((end - Date.now()) / 1000))
+      setPomodoroTime(remain)
+      if (remain <= 0) {
+        setIsPomodoroRunning(false)
+        pomodoroEndRef.current = null
+        if (!isBreak) {
+          setPomodoroCount((c) => c + 1)
+          message.success('专注时间结束！休息一下吧')
+          setIsBreak(true)
+          setPomodoroTime(POMODORO_BREAK)
+        } else {
+          message.success('休息结束，继续专注！')
+          setIsBreak(false)
+          setPomodoroTime(POMODORO_FOCUS)
+        }
       }
     }
+    const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
-  }, [isPomodoroRunning, pomodoroTime, isBreak])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPomodoroRunning, isBreak])
 
   // Data fetching
   useEffect(() => {
@@ -174,11 +177,14 @@ const Dashboard: React.FC = () => {
         message.warning('数据加载超时，请刷新重试')
       }, 10000)
       try {
-        const [profileRes, summaryRes, pathRes, achieveRes] = await Promise.all([
+        const [profileRes, summaryRes, pathRes, achieveRes, pointsRes, tasksRes, kgRes] = await Promise.all([
           profileApi.get(studentId),
-          dashboardApi.getSummary(studentId).catch((e) => { return null }),
-          pathApi.current(studentId).catch((e) => { return null }),
-          gamificationApi.getAchievements(studentId).catch((e) => { return null }),
+          dashboardApi.getSummary(studentId).catch(() => null),
+          pathApi.current(studentId).catch(() => null),
+          gamificationApi.getAchievements(studentId).catch(() => null),
+          gamificationApi.getPoints(studentId).catch(() => null),
+          gamificationApi.getTasks(studentId).catch(() => null),
+          knowledgeApi.list().catch(() => null),
         ])
 
         if (profileRes.data?.data) {
@@ -204,28 +210,49 @@ const Dashboard: React.FC = () => {
           })))
         }
 
-        if (achieveRes?.data?.data?.length) {
-          const iconMap: Record<string, React.ReactNode> = {
-            '初出茅庐': <StarOutlined />,
-            '代码能手': <CodeOutlined />,
-            '学习王者': <CrownOutlined />,
-            '全勤标兵': <FireOutlined />,
-          }
-          const colorMap: Record<string, string> = {
-            '初出茅庐': '#f59e0b',
-            '代码能手': '#3b82f6',
-            '学习王者': '#ef4444',
-            '全勤标兵': '#10b981',
-          }
-          setBadgesState(achieveRes.data.data.map((a: Achievement) => ({
-            name: a.name || a.achievement_id,
-            icon: (iconMap[a.name || a.achievement_id] || <StarOutlined />) as JSX.Element,
-            color: colorMap[a.name || a.achievement_id] || '#f59e0b',
-            unlocked: !!a.unlocked_at,
+        if (achieveRes?.data?.data) {
+          setBadgesState(achieveRes.data.data.map((a: Achievement) => {
+            const name = a.name || a.achievement_id
+            const meta = badgeIcon(name)
+            return {
+              name,
+              icon: meta.icon,
+              color: meta.color,
+              unlocked: !!a.unlocked_at,
+            }
+          }))
+        }
+
+        // 等级 / 经验值 —— 由总积分推算（每 500 XP 升一级）
+        if (pointsRes?.data?.data) {
+          const total = pointsRes.data.data.total_points || 0
+          const level = Math.floor(total / XP_PER_LEVEL) + 1
+          const current = total % XP_PER_LEVEL
+          setPointsInfo({
+            total,
+            level,
+            current,
+            need: XP_PER_LEVEL,
+            percent: Math.min(100, Math.round((current / XP_PER_LEVEL) * 100)),
+          })
+        }
+
+        // 今日挑战 —— 来自 gamification tasks
+        if (tasksRes?.data?.data) {
+          setChallenges(tasksRes.data.data.slice(0, 3).map((t) => ({
+            id: t.task_id,
+            title: t.title,
+            reward: t.reward_points || 0,
+            completed: !!t.completed,
           })))
         }
-      } catch (e) {
-        message.error('获取数据失败，显示默认数据')
+
+        // 知识图谱节点 —— 来自后端 knowledge.list
+        if (kgRes?.data?.data?.length) {
+          setKgNodes(kgRes.data.data.slice(0, 14).map((k) => k.name))
+        }
+      } catch {
+        message.error('部分数据加载失败')
       } finally {
         clearTimeout(timeoutId)
         setIsLoading(false)
@@ -307,7 +334,7 @@ const Dashboard: React.FC = () => {
       pathTween.kill()
       ScrollTrigger.getAll().forEach((t) => t.kill())
     }
-  }, [])
+  }, [pathNodesState.length, recommendations.length, tasks.length])
 
   const statCards = [
     { title: '本周学习', value: stats.weekly_hours, suffix: 'h', icon: <ClockCircleOutlined />, color: '#4f46e5', path: '/personal' },
@@ -335,14 +362,14 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 px-6 py-4">
           <div className="text-center">
             <div className="text-xs text-slate-500 mb-1">当前等级</div>
-            <div className="text-xl font-bold text-primary">Lv.5</div>
+            <div className="text-xl font-bold text-primary">Lv.{pointsInfo?.level ?? 1}</div>
           </div>
           <div className="flex-1 w-40">
             <div className="flex justify-between text-xs text-slate-500 mb-1">
               <span>经验值</span>
-              <span>340 / 500</span>
+              <span>{pointsInfo?.current ?? 0} / {pointsInfo?.need ?? XP_PER_LEVEL}</span>
             </div>
-            <Progress percent={68} showInfo={false} strokeColor="#4f46e5" trailColor="#f1f5f9" size="small" />
+            <Progress percent={pointsInfo?.percent ?? 0} showInfo={false} strokeColor="#4f46e5" trailColor="#f1f5f9" size="small" />
           </div>
           <Button type="primary" className="rounded-xl bg-primary" onClick={() => navigate('/resources')}>
             继续学习 <ArrowRightOutlined />
@@ -818,12 +845,16 @@ const Dashboard: React.FC = () => {
       <Modal title={<span className="font-semibold text-slate-800">知识图谱概览</span>} open={kgModalOpen} onCancel={() => setKgModalOpen(false)} footer={null} width={720} className="rounded-2xl">
         <div className="space-y-4 py-2">
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-            <div className="font-semibold text-slate-800 mb-2">编程基础 · 核心知识网络</div>
-            <div className="grid grid-cols-3 gap-3">
-              {['C语言概述', '数据类型与变量', '运算符与表达式', '输入输出', '选择结构', '循环结构', '数组', '字符串', '函数与递归', '指针基础', '指针与数组', '结构体', '文件操作', '动态内存'].map((node) => (
-                <div key={node} className="p-3 rounded-lg bg-white border border-slate-200 text-center text-sm text-slate-700 hover:border-primary hover:shadow-sm transition-all cursor-pointer">{node}</div>
-              ))}
-            </div>
+            <div className="font-semibold text-slate-800 mb-2">核心知识网络</div>
+            {kgNodes.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {kgNodes.map((node) => (
+                  <div key={node} className="p-3 rounded-lg bg-white border border-slate-200 text-center text-sm text-slate-700 hover:border-primary hover:shadow-sm transition-all cursor-pointer">{node}</div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-slate-400 text-center py-6">暂无知识点数据</div>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-400"><NodeIndexOutlined /><span>知识图谱确保学习路径科学性，减少大模型幻觉影响</span></div>
         </div>
