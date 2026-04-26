@@ -12,6 +12,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.log_reflection import LearningLogModel, ReflectionModel
+from .auth import require_auth
 
 router = APIRouter()
 
@@ -59,7 +60,7 @@ class UpsertLogRequest(BaseModel):
 
 
 @router.post("/logs/upsert")
-async def upsert_learning_log(request: UpsertLogRequest, db: Session = Depends(get_db)):
+async def upsert_learning_log(request: UpsertLogRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """创建或更新学习日志"""
     existing = db.query(LearningLogModel).filter(
         LearningLogModel.student_id == request.student_id,

@@ -119,9 +119,12 @@ async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
     return {"status": "success", "message": "User registered", "student_id": user.student_id}
 
 
-# 临时调试端点：验证 Pydantic 模型行为
+# 临时调试端点：仅 DEBUG 模式可用
 @router.post("/_debug/validate-password")
 async def debug_validate(password: str):
+    from ..core.config import settings
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
     from pydantic import ValidationError
     try:
         req = UserRegisterRequest(student_id="debug", username="debug", password=password)

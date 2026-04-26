@@ -25,14 +25,18 @@ class RateLimiter(BaseHTTPMiddleware):
         self._records: Dict[str, list[float]] = {}
 
     async def dispatch(self, request: Request, call_next):
-        # 获取客户端标识（优先 X-Forwarded-For，其次直接IP）
-        client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+        # 获取客户端标识（优先 X-Forwarded-For 第一个 IP，其次直接IP）
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else "unknown"
         path = request.url.path
 
-        # 根据路径确定限制策略
+        # 根据路径确定限制策略（使用精确路径匹配）
         if path.startswith("/api/v1/auth/login") or path.startswith("/api/v1/auth/register"):
             limit = 10
-        elif any(p in path for p in ["/tutor/", "/resource/generate", "/image/generate", "/learning-path/generate"]):
+        elif any(path.startswith(p) for p in ["/api/v1/tutor/", "/api/v1/resource/generate", "/api/v1/image/generate", "/api/v1/learning-path/generate"]):
             limit = 20
         else:
             limit = self.default_limit
