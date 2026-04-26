@@ -143,27 +143,26 @@ const PersonalSpace: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       if (!studentId) return
+      // 8 个独立接口并发拉取，单个失败不影响其它（fallback 到 null）
+      const [pRes, dRes, ptRes, aRes, hRes, thRes, fRes, rRes] = await Promise.all([
+        profileApi.get(studentId).catch(() => null),
+        dashboardApi.getSummary(studentId).catch(() => null),
+        gamificationApi.getPoints(studentId).catch(() => null),
+        gamificationApi.getAchievements(studentId).catch(() => null),
+        learningDataApi.getHistory(studentId, 200).catch(() => null),
+        trendApi.getHistory(studentId, 7).catch(() => null),
+        favoritesApi.get(studentId).catch(() => null),
+        logReflectionApi.getReflections(studentId, 100).catch(() => null),
+      ])
+
       try {
-        // Profile
-        const pRes = await profileApi.get(studentId)
-        if (pRes.data?.data) setProfile(pRes.data.data)
+        if (pRes?.data?.data) setProfile(pRes.data.data)
+        if (dRes?.data) setDashboardStats(dRes.data as unknown as Record<string, unknown>)
+        if (ptRes?.data?.data) setPoints(ptRes.data.data)
+        if (aRes?.data?.data) setAchievements(aRes.data.data)
 
-        // Dashboard stats
-        const dRes = await dashboardApi.getSummary(studentId)
-        if (dRes.data) setDashboardStats(dRes.data as unknown as Record<string, unknown>)
-
-        // Points
-        const ptRes = await gamificationApi.getPoints(studentId)
-        if (ptRes.data?.data) setPoints(ptRes.data.data)
-
-        // Achievements
-        const aRes = await gamificationApi.getAchievements(studentId)
-        if (aRes.data?.data) setAchievements(aRes.data.data)
-
-        // Learning history（取最近 200 条用于按天聚合）
-        const hRes = await learningDataApi.getHistory(studentId, 200)
-        const recordsRaw = (hRes.data?.records as unknown as Record<string, unknown>[]) || []
-        const quizzesRaw = (hRes.data?.quizzes as unknown as Record<string, unknown>[]) || []
+        const recordsRaw = (hRes?.data?.records as unknown as Record<string, unknown>[]) || []
+        const quizzesRaw = (hRes?.data?.quizzes as unknown as Record<string, unknown>[]) || []
 
         // 最近列表（前 5 条）展示
         if (recordsRaw.length) {
@@ -186,13 +185,11 @@ const PersonalSpace: React.FC = () => {
         const dayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
         const focusAgg: Record<string, { progressSum: number; count: number; durationSum: number; quizScoreSum: number; quizCount: number; pomodoros: number }> = {}
         dayKeys.forEach((d) => { focusAgg[d] = { progressSum: 0, count: 0, durationSum: 0, quizScoreSum: 0, quizCount: 0, pomodoros: 0 } })
-        // 全量统计 pomodoro（不限本周）
         let totalPomodoros = 0
         recordsRaw.forEach((r) => {
           const dateStr = String(r.created_at || '').slice(0, 10)
           const dur = Number(r.duration) || 0
           const action = String(r.action || '')
-          // 番茄钟近似：单条 duration ≥ 20 分钟 OR 完成型 action 计 1 个
           const isPomodoro = dur >= 20 * 60 || action === 'complete' || action === 'practice' || action === 'quiz'
           if (isPomodoro) totalPomodoros += 1
           if (focusAgg[dateStr]) {
@@ -212,21 +209,14 @@ const PersonalSpace: React.FC = () => {
 
         // ---- 趋势历史（驱动专注度折线）----
         const trendByDate: Record<string, number> = {}
-        try {
-          const thRes = await trendApi.getHistory(studentId, 7)
-          const trendList = (thRes.data?.data as Array<{ date: string; trend_factor: number }> | undefined) || []
-          trendList.forEach((tp) => {
-            // 后端 trend_factor 大致在 [-1, 1]，映射到 [0, 100]
-            const f = Math.max(-1, Math.min(1, Number(tp.trend_factor) || 0))
-            trendByDate[String(tp.date).slice(0, 10)] = Math.round((f + 1) * 50)
-          })
-        } catch {
-          // 趋势接口不可用时使用 quiz/进度回退
-        }
+        const trendList = (thRes?.data?.data as Array<{ date: string; trend_factor: number }> | undefined) || []
+        trendList.forEach((tp) => {
+          const f = Math.max(-1, Math.min(1, Number(tp.trend_factor) || 0))
+          trendByDate[String(tp.date).slice(0, 10)] = Math.round((f + 1) * 50)
+        })
 
         const aggregated: FocusItem[] = dayKeys.map((d) => {
           const agg = focusAgg[d]
-          // 专注度优先使用后端 trend_factor；其次 quiz 平均；再次 progress 均值；都无则 0
           let focus = 0
           if (trendByDate[d] !== undefined) {
             focus = trendByDate[d]
@@ -245,10 +235,9 @@ const PersonalSpace: React.FC = () => {
           setFocusData(aggregated)
         }
 
-        // ---- 番茄钟统计（从 records 计算）----
+        // ---- 番茄钟统计 ----
         const todayKey = dayKeys[dayKeys.length - 1]
         const todayPomos = focusAgg[todayKey]?.pomodoros || 0
-        // streak：从今天往前数连续有 pomodoro 的天数
         let streak = 0
         for (let i = dayKeys.length - 1; i >= 0; i--) {
           if ((focusAgg[dayKeys[i]]?.pomodoros || 0) > 0) streak += 1
@@ -256,8 +245,8 @@ const PersonalSpace: React.FC = () => {
         }
         setPomodoroStats({ total: totalPomodoros, today: todayPomos, streak })
 
-        // ---- 待复习知识点：基于 weak_areas + 最近 quiz 分数推测 retention ----
-        const weakList: string[] = (pRes.data?.data?.weak_areas as string[] | undefined) || []
+        // ---- 待复习知识点 ----
+        const weakList: string[] = (pRes?.data?.data?.weak_areas as string[] | undefined) || []
         const tagScoreMap: Record<string, { sum: number; n: number }> = {}
         quizzesRaw.forEach((q) => {
           const tags = (q.weak_tags as string[] | undefined) || []
@@ -269,12 +258,11 @@ const PersonalSpace: React.FC = () => {
           })
         })
         if (weakList.length) {
-          // 按"最近无练习天数"安排下次复习（艾宾浩斯简化）
           const reviews: ReviewTopic[] = weakList.slice(0, 6).map((w, i) => {
             const stat = tagScoreMap[w]
             const baseRetention = stat && stat.n > 0
               ? Math.round(stat.sum / stat.n)
-              : Math.max(30, 70 - i * 8)  // 没数据按位置估算
+              : Math.max(30, 70 - i * 8)
             const retention = Math.max(20, Math.min(95, baseRetention))
             const nextReview = retention < 50 ? '今天' : retention < 70 ? '明天' : '3天后'
             return { topic: w, retention, nextReview }
@@ -283,14 +271,11 @@ const PersonalSpace: React.FC = () => {
         }
 
         // Favorites
-        const fRes = await favoritesApi.get(studentId)
-        if (fRes.data?.data) setFavorites(fRes.data.data as FavoriteItem[])
+        if (fRes?.data?.data) setFavorites(fRes.data.data as FavoriteItem[])
 
         // Reflections
-        const rRes = await logReflectionApi.getReflections(studentId, 100)
-        if (rRes.data?.data) {
+        if (rRes?.data?.data) {
           const all = rRes.data.data as Record<string, unknown>[]
-          // 普通反思（排除 cornell/feynman/notes）
           const refs = all
             .filter((r) => {
               const tags = String(r.tags || '')
@@ -304,7 +289,6 @@ const PersonalSpace: React.FC = () => {
             }))
           setReflections(refs)
 
-          // 加载最新一份 cornell 笔记
           const cornellList = all.filter((r) => (r.tags as string[] | undefined)?.includes('cornell'))
           const cornell = cornellList[0]
           if (cornell) {
@@ -314,11 +298,9 @@ const PersonalSpace: React.FC = () => {
               setCornellNotes({ cues: String(cornell.content), notes: '', summary: '' })
             }
           }
-          // 加载最新一份 feynman
           const feynman = all.find((r) => (r.tags as string[] | undefined)?.includes('feynman'))
           if (feynman) setFeynmanInput(String(feynman.content))
 
-          // ---- 笔记时间线（cornell + notes + feynman 标签） ----
           const noteEntries = all
             .filter((r) => {
               const tags = (r.tags as string[] | undefined) || []
@@ -355,7 +337,7 @@ const PersonalSpace: React.FC = () => {
           setNotesHistory(noteEntries)
         }
 
-        // ---- 趋势分析（驱动画像数据解读）----
+        // ---- 趋势分析（POST /trend/analyze 是写操作，不并发，放在最后单独跑）----
         try {
           const tRes = await trendApi.analyze(studentId)
           const td = tRes.data?.data as Record<string, unknown> | undefined
@@ -370,8 +352,8 @@ const PersonalSpace: React.FC = () => {
         } catch {
           // 趋势分析失败时静默
         }
-      } catch (e) {
-        // 静默处理加载失败
+      } catch {
+        // 静默处理聚合错误
       }
     }
     load()
