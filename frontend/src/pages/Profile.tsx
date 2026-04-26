@@ -20,21 +20,11 @@ import {
   ReadOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
-import { profileApi, tutorApi } from '../services/api'
+import { profileApi, tutorApi, trendApi, dashboardApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
 import { ChatPanel } from '../components/ChatPanel'
 import { PageCard } from '../components/PageCard'
 import type { ChatMessage, StudentProfile, VisionContentItem } from '../types'
-
-const historyData = [
-  { date: '周一', value: 68 },
-  { date: '周二', value: 70 },
-  { date: '周三', value: 72 },
-  { date: '周四', value: 75 },
-  { date: '周五', value: 78 },
-  { date: '周六', value: 80 },
-  { date: '周日', value: 82 },
-]
 
 const quickActions = [
   { icon: <PlayCircleOutlined />, title: '开始评估', desc: '对话式画像评估', color: '#4f46e5' },
@@ -47,25 +37,59 @@ const Profile: React.FC = () => {
     { role: 'ai', content: '你好！我是你的AI学习画像师。在学习编程之前，我想了解一下：你是否有编程基础？对C语言的指针和内存管理是否了解？这会影响我为你推荐的学习路径。', agent: '评估智能体' },
   ])
   const [profileData, setProfileData] = useState(buildRadarData(null))
-  const [dimensions, setDimensions] = useState([
-    { label: '知识基础', value: 85, color: '#4f46e5' },
-    { label: '数学基础', value: 65, color: '#0ea5e9' },
-    { label: '编程能力', value: 80, color: '#10b981' },
-    { label: '薄弱点识别', value: 60, color: '#f59e0b' },
-    { label: '学习进度', value: 75, color: '#8b5cf6' },
-    { label: '专注度', value: 80, color: '#ec4899' },
-  ])
+  const [dimensions, setDimensions] = useState<{ label: string; value: number; color: string }[]>([])
   const [interactionPref, setInteractionPref] = useState<'video' | 'text' | 'audio'>('text')
-  const [multiAgentStatus, setMultiAgentStatus] = useState({ planner: true, worker: true, critic: false })
+  const [multiAgentStatus, setMultiAgentStatus] = useState({ planner: false, worker: false, critic: false })
+  const [historyData, setHistoryData] = useState<{ date: string; value: number }[]>([])
+  const [retentionItems, setRetentionItems] = useState<{ topic: string; retention: number; nextReview: string }[]>([])
   const [loading, setLoading] = useState(false)
   const studentId = useAppStore((s) => s.studentId)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await profileApi.get(studentId)
-        if (res.data.data) updateVisuals(res.data.data)
-      } catch (e) {
+        const [profileRes, trendRes, summaryRes] = await Promise.all([
+          profileApi.get(studentId),
+          trendApi.getHistory(studentId, 7).catch(() => null),
+          dashboardApi.getSummary(studentId).catch(() => null),
+        ])
+
+        if (profileRes.data.data) {
+          updateVisuals(profileRes.data.data)
+          // 由 weak_areas 派生「遗忘曲线 · 知识点衰减」列表
+          const weak = profileRes.data.data.weak_areas || []
+          if (weak.length) {
+            setRetentionItems(
+              weak.slice(0, 4).map((topic, i) => ({
+                topic,
+                // 越靠前越薄弱 -> retention 越低（35% ~ 80%）
+                retention: Math.max(30, 80 - i * 12),
+                nextReview: i === 0 ? '今天' : i === 1 ? '今天' : i === 2 ? '明天' : '后天',
+              }))
+            )
+          }
+        }
+
+        // 画像历史变化 = trend_factor 序列（×100 转成 0~100）
+        if (trendRes?.data?.data?.length) {
+          setHistoryData(
+            trendRes.data.data.slice(-7).map((d) => ({
+              date: d.date.slice(5),
+              value: Math.round(d.trend_factor * 100),
+            }))
+          )
+        }
+
+        // 多智能体状态 —— 后端有 trend_analysis -> planner; effect_evaluation -> worker; intervention_strategies -> critic
+        if (summaryRes?.data?.algorithm_analysis) {
+          const algo = summaryRes.data.algorithm_analysis
+          setMultiAgentStatus({
+            planner: !!algo.trend_analysis,
+            worker: !!algo.effect_evaluation,
+            critic: !!(algo.effect_evaluation?.intervention_strategies?.length),
+          })
+        }
+      } catch {
         message.error('获取画像失败，显示默认数据')
       }
     }
@@ -205,15 +229,19 @@ const Profile: React.FC = () => {
             <Col xs={24} md={12}>
               <PageCard title={<span className="font-semibold text-slate-800">维度详情</span>}>
                 <div className="space-y-3">
-                  {dimensions.map((dim) => (
-                    <div key={dim.label}>
-                      <div className="flex justify-between mb-1">
-                        <Typography.Text className="text-sm text-slate-600 font-medium">{dim.label}</Typography.Text>
-                        <Typography.Text className="text-sm font-bold" style={{ color: dim.color }}>{dim.value}</Typography.Text>
+                  {dimensions.length === 0 ? (
+                    <div className="text-xs text-slate-400 py-3 text-center">尚未生成画像，可在左侧对话或点击「重新画像」</div>
+                  ) : (
+                    dimensions.map((dim) => (
+                      <div key={dim.label}>
+                        <div className="flex justify-between mb-1">
+                          <Typography.Text className="text-sm text-slate-600 font-medium">{dim.label}</Typography.Text>
+                          <Typography.Text className="text-sm font-bold" style={{ color: dim.color }}>{dim.value}</Typography.Text>
+                        </div>
+                        <Progress percent={dim.value} showInfo={false} strokeColor={dim.color} trailColor="#f1f5f9" size="small" />
                       </div>
-                      <Progress percent={dim.value} showInfo={false} strokeColor={dim.color} trailColor="#f1f5f9" size="small" />
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </PageCard>
             </Col>
@@ -275,18 +303,22 @@ const Profile: React.FC = () => {
         extra={<Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">近7天</Tag>}
       >
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={historyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <YAxis domain={[60, 100]} tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
-                cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
-              />
-              <Line type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: '#fff', stroke: '#4f46e5', strokeWidth: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {historyData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-slate-400 text-sm">暂无趋势数据，完成几道练习后再来看</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={historyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                  cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
+                />
+                <Line type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: '#fff', stroke: '#4f46e5', strokeWidth: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </PageCard>
 
@@ -319,25 +351,24 @@ const Profile: React.FC = () => {
           </Col>
           <Col xs={24} lg={12}>
             <div className="space-y-3">
-              {[
-                { topic: '数据类型与变量', retention: 85, nextReview: '明天' },
-                { topic: '控制结构', retention: 62, nextReview: '今天' },
-                { topic: '指针与内存', retention: 45, nextReview: '今天' },
-                { topic: '函数与递归', retention: 78, nextReview: '后天' },
-              ].map((item) => (
-                <div key={item.topic} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-slate-800">{item.topic}</div>
-                    <div className="text-xs text-slate-400">下次复习: {item.nextReview}</div>
+              {retentionItems.length === 0 ? (
+                <div className="text-sm text-slate-400 text-center py-10">画像中尚无薄弱点，继续学习几个知识点后这里会自动生成复习计划</div>
+              ) : (
+                retentionItems.map((item) => (
+                  <div key={item.topic} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-slate-800">{item.topic}</div>
+                      <div className="text-xs text-slate-400">下次复习: {item.nextReview}</div>
+                    </div>
+                    <div className="w-24">
+                      <Progress percent={item.retention} size="small" strokeColor={item.retention > 70 ? '#10b981' : item.retention > 50 ? '#f59e0b' : '#ef4444'} trailColor="#f1f5f9" showInfo={false} />
+                    </div>
+                    <Tag className={`rounded-full border-0 text-xs ${item.retention > 70 ? 'bg-emerald-50 text-emerald-600' : item.retention > 50 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
+                      {item.retention}%
+                    </Tag>
                   </div>
-                  <div className="w-24">
-                    <Progress percent={item.retention} size="small" strokeColor={item.retention > 70 ? '#10b981' : item.retention > 50 ? '#f59e0b' : '#ef4444'} trailColor="#f1f5f9" showInfo={false} />
-                  </div>
-                  <Tag className={`rounded-full border-0 text-xs ${item.retention > 70 ? 'bg-emerald-50 text-emerald-600' : item.retention > 50 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
-                    {item.retention}%
-                  </Tag>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Col>
         </Row>
