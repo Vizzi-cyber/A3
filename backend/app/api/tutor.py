@@ -25,6 +25,7 @@ class TutorRequest(BaseModel):
     context: Optional[Dict[str, Any]] = None
     session_id: Optional[str] = None
     provider: Optional[str] = None  # bigmodel / deepseek / openai / spark
+    rag_active: bool = True  # 是否启用画像/知识库检索增强
 
 
 class TutorResponse(BaseModel):
@@ -64,13 +65,28 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
     """向AI辅导助手提问（苏格拉底式教学）—— 直接调用 TutorAgent，避免 LangGraph 多层路由延迟"""
     session_id = request.session_id or f"{request.student_id}_default"
 
+    # rag_active=True 时拉取学生画像，向 prompt 注入薄弱点与认知风格
+    profile_for_prompt: Dict[str, Any] = {}
+    if request.rag_active:
+        try:
+            from ..models.student import StudentProfileModel
+            p = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
+            if p:
+                profile_for_prompt = {
+                    "weak_areas": p.weak_areas or [],
+                    "cognitive_style": p.cognitive_style or {},
+                    "interest_areas": p.interest_areas or [],
+                }
+        except Exception:
+            profile_for_prompt = {}
+
     try:
         result = await asyncio.wait_for(
             _tutor_agent.process({
                 "task": "answer_question",
                 "session_id": session_id,
                 "question": request.question,
-                "profile": {},
+                "profile": profile_for_prompt,
                 "llm_provider": request.provider,
             }),
             timeout=15.0,
@@ -86,12 +102,16 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
 
     # 持久化问答记录
     try:
+        meta: Dict[str, Any] = {"rag_active": request.rag_active}
+        if not isinstance(request.question, str):
+            meta["raw"] = request.question
         qa = TutorQAModel(
             student_id=request.student_id,
             session_id=session_id,
             question=str(request.question) if isinstance(request.question, str) else "[多模态输入]",
             answer=answer,
-            question_meta={"raw": request.question} if not isinstance(request.question, str) else None,
+            question_meta=meta,
+            profile_snapshot=profile_for_prompt or None,
             response_type="explanation",
             blocked=result.get("status") == "blocked",
             block_reason=result.get("reason") if result.get("status") == "blocked" else None,
@@ -134,6 +154,14 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 question = data.get("content", "")
                 student_id = data.get("student_id", "anonymous")
                 provider = data.get("provider")
+                rag_active = bool(data.get("rag_active", True))
+
+                # Step 1: planner —— 任务拆解 / 安全检查
+                await manager.send_message(session_id, {
+                    "type": "agent_step",
+                    "step": "planner",
+                    "timestamp": datetime.now().isoformat(),
+                })
 
                 # 输入安全校验
                 safety = SafetyGuard.check_input(question)
@@ -158,16 +186,51 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                     await manager.send_message(session_id, {"type": "complete", "timestamp": datetime.now().isoformat()})
                     continue
 
+                # rag_active=True 时拉取学生画像注入 prompt
+                profile_snippet = ""
+                profile_snapshot: Optional[Dict[str, Any]] = None
+                if rag_active:
+                    try:
+                        from ..models.database import SessionLocal as _SL
+                        from ..models.student import StudentProfileModel
+                        _db = _SL()
+                        try:
+                            p = _db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
+                            if p:
+                                weak = (p.weak_areas or [])[:5]
+                                style = (p.cognitive_style or {}).get("primary", "visual")
+                                interests = (p.interest_areas or [])[:3]
+                                profile_snapshot = {
+                                    "weak_areas": weak,
+                                    "cognitive_style": p.cognitive_style or {},
+                                    "interest_areas": interests,
+                                }
+                                profile_snippet = (
+                                    f"\n[RAG 画像参考] 薄弱点：{weak}；认知风格：{style}；兴趣领域：{interests}\n"
+                                    "请在引导式提问中针对薄弱点出题，措辞贴合该认知风格。"
+                                )
+                        finally:
+                            _db.close()
+                    except Exception:
+                        profile_snippet = ""
+
                 # 构建消息历史
                 history = _tutor_agent.session_histories.setdefault(session_id, [])
                 prompt = SafetyGuard.sanitize_prompt(
-                    f"学生提问：{question}\n请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
+                    f"学生提问：{question}\n{profile_snippet}请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
                 )
                 messages = [
                     {"role": "system", "content": _tutor_agent.get_system_prompt()},
                     *history,
                     {"role": "user", "content": prompt},
                 ]
+
+                # Step 2: worker —— 调用 LLM 真实流式生成
+                await manager.send_message(session_id, {
+                    "type": "agent_step",
+                    "step": "worker",
+                    "timestamp": datetime.now().isoformat(),
+                })
 
                 # 真实流式输出
                 full_answer = ""
@@ -190,6 +253,21 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                             "timestamp": datetime.now().isoformat(),
                         })
 
+                # Step 3: critic —— 输出安全审核
+                await manager.send_message(session_id, {
+                    "type": "agent_step",
+                    "step": "critic",
+                    "timestamp": datetime.now().isoformat(),
+                })
+                out_safe = SafetyGuard.check_output(full_answer)
+                if not out_safe.get("safe", True):
+                    full_answer = "[内容已拦截] 回答包含不适宜内容，请换种方式提问。"
+                    await manager.send_message(session_id, {
+                        "type": "chunk",
+                        "content": "\n" + full_answer,
+                        "timestamp": datetime.now().isoformat(),
+                    })
+
                 # 更新会话历史
                 history.append({"role": "user", "content": question})
                 history.append({"role": "assistant", "content": full_answer})
@@ -205,6 +283,8 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                         session_id=session_id,
                         question=question,
                         answer=full_answer,
+                        question_meta={"rag_active": rag_active},
+                        profile_snapshot=profile_snapshot,
                         response_type="explanation",
                         llm_provider=provider,
                     )

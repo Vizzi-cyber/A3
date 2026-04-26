@@ -47,6 +47,7 @@ const Tutor: React.FC = () => {
   const wsRef = useRef<WebSocket | null>(null)
   const sessionIdRef = useRef(`${studentId}_tutor`)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reconnectAttemptRef = useRef(0)
 
   // 建立 WebSocket 连接
   const connectWebSocket = useCallback(() => {
@@ -59,6 +60,7 @@ const Tutor: React.FC = () => {
 
     ws.onopen = () => {
       setWsConnected(true)
+      reconnectAttemptRef.current = 0
     }
 
     ws.onmessage = (event) => {
@@ -73,6 +75,12 @@ const Tutor: React.FC = () => {
             }
             return [...prev, { role: 'ai' as const, content: data.content }]
           })
+        } else if (data.type === 'agent_step') {
+          // 后端真实多智能体阶段事件：planner / worker / critic
+          const step = data.step
+          if (step === 'planner' || step === 'worker' || step === 'critic') {
+            setMultiAgentStep(step)
+          }
         } else if (data.type === 'complete') {
           setLoading(false)
           setMultiAgentStep('done')
@@ -90,17 +98,25 @@ const Tutor: React.FC = () => {
 
     ws.onclose = () => {
       setWsConnected(false)
-      // 自动重连
+      // 指数退避重连：1s → 2s → 5s → 10s（封顶）
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+      const backoff = [1000, 2000, 5000, 10000]
+      const delay = backoff[Math.min(reconnectAttemptRef.current, backoff.length - 1)]
+      reconnectAttemptRef.current += 1
       reconnectTimerRef.current = setTimeout(() => {
         connectWebSocket()
-      }, 3000)
+      }, delay)
     }
 
     wsRef.current = ws
-  }, [])
+  }, [token])
 
   useEffect(() => {
+    // token 变化时关闭旧连接，重新建立
+    if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
     connectWebSocket()
     return () => {
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
@@ -121,9 +137,8 @@ const Tutor: React.FC = () => {
   const handleSend = async (content: string | VisionContentItem[]) => {
     setMessages((prev) => [...prev, { role: 'user' as const, content }])
     setLoading(true)
+    // 标记进入 planner，后续阶段由后端 agent_step 事件驱动（不再 setTimeout 假装）
     setMultiAgentStep('planner')
-    setTimeout(() => setMultiAgentStep('worker'), 600)
-    setTimeout(() => setMultiAgentStep('critic'), 1200)
 
     // 优先使用 WebSocket 流式
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -132,6 +147,7 @@ const Tutor: React.FC = () => {
         content: typeof content === 'string' ? content : JSON.stringify(content),
         student_id: studentId,
         provider: modelProvider === 'default' ? undefined : modelProvider,
+        rag_active: ragActive,
       }))
       // 不在这里 setLoading(false)，等待 complete 消息
       return
@@ -144,6 +160,7 @@ const Tutor: React.FC = () => {
         question: content,
         session_id: sessionIdRef.current,
         provider: modelProvider === 'default' ? undefined : modelProvider,
+        rag_active: ragActive,
       })
       const aiReply = res.data?.response || '服务暂时无响应，请稍后再试。'
       setMultiAgentStep('done')

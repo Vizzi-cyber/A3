@@ -221,6 +221,7 @@ export interface TutorRequest {
   context?: Record<string, unknown>
   session_id?: string
   provider?: 'bigmodel' | 'deepseek' | 'openai' | 'spark'
+  rag_active?: boolean
 }
 
 export interface TutorResponse {
