@@ -52,12 +52,18 @@ const statusBg: Record<string, string> = {
   locked: '#f1f5f9',
 }
 
-const nodeResources = [
-  { title: 'C语言基础视频讲解', type: 'video', icon: <PlayCircleOutlined />, color: '#ef4444' },
-  { title: '指针与内存代码示例', type: 'code', icon: <CodeOutlined />, color: '#3b82f6' },
-  { title: '数据结构学习笔记', type: 'doc', icon: <FileTextOutlined />, color: '#10b981' },
-  { title: '算法练习题 x10', type: 'quiz', icon: <BookOutlined />, color: '#f59e0b' },
-]
+const resourceTypeMeta: Record<string, { icon: React.ReactNode; color: string }> = {
+  video: { icon: <PlayCircleOutlined />, color: '#ef4444' },
+  code: { icon: <CodeOutlined />, color: '#3b82f6' },
+  doc: { icon: <FileTextOutlined />, color: '#10b981' },
+  quiz: { icon: <BookOutlined />, color: '#f59e0b' },
+  document: { icon: <FileTextOutlined />, color: '#10b981' },
+  视频: { icon: <PlayCircleOutlined />, color: '#ef4444' },
+  代码: { icon: <CodeOutlined />, color: '#3b82f6' },
+  文档: { icon: <FileTextOutlined />, color: '#10b981' },
+  练习: { icon: <BookOutlined />, color: '#f59e0b' },
+  题目: { icon: <BookOutlined />, color: '#f59e0b' },
+}
 
 const LearningPathPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'map' | 'timeline' | 'graph'>('map')
@@ -65,6 +71,7 @@ const LearningPathPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<PathNode | null>(null)
   const [pathData, setPathData] = useState<Record<string, unknown> | null>(null)
   const [pathNodes, setPathNodes] = useState<PathNode[]>([])
+  const [pathStages, setPathStages] = useState<PathStage[]>([])
   const [loading, setLoading] = useState(false)
   const [showReviewAlert, setShowReviewAlert] = useState(() => {
     // 当天稍后提醒后保持隐藏；新一天自动恢复
@@ -124,32 +131,18 @@ const LearningPathPage: React.FC = () => {
       try {
         const res = await pathApi.current(studentId)
         if (res.data) {
-          const nodes: PathNode[] = res.data.nodes || [
-            { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门', resources: 5 },
-            { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 5 },
-            { id: 3, title: '运算符与表达式', status: 'in-progress', type: '基础', resources: 5 },
-            { id: 4, title: '输入输出与顺序结构', status: 'pending', type: '基础', resources: 5 },
-          ]
+          const nodes: PathNode[] = res.data.nodes || []
+          // 后端 current 接口可能挂载 path.stages，方便后续给节点详情显示资源类型
+          const respAny = res.data as unknown as { path?: { stages?: PathStage[] } }
+          const stages: PathStage[] = respAny.path?.stages || []
           setPathData(res.data as unknown as Record<string, unknown>)
           setPathNodes(nodes as PathNode[])
+          setPathStages(stages)
         }
-      } catch (e) {
-        setPathNodes([
-          { id: 1, title: 'C语言概述与开发环境', status: 'completed', type: '入门', resources: 5 },
-          { id: 2, title: '数据类型与变量', status: 'completed', type: '基础', resources: 5 },
-          { id: 3, title: '运算符与表达式', status: 'in-progress', type: '基础', resources: 5 },
-          { id: 4, title: '输入输出与顺序结构', status: 'pending', type: '基础', resources: 5 },
-          { id: 5, title: '选择结构', status: 'locked', type: '核心', resources: 5 },
-          { id: 6, title: '循环结构', status: 'locked', type: '核心', resources: 5 },
-          { id: 7, title: '数组', status: 'locked', type: '核心', resources: 5 },
-          { id: 8, title: '字符串', status: 'locked', type: '核心', resources: 5 },
-          { id: 9, title: '函数与递归', status: 'locked', type: '核心', resources: 5 },
-          { id: 10, title: '指针基础', status: 'locked', type: '进阶', resources: 5 },
-          { id: 11, title: '指针与数组', status: 'locked', type: '进阶', resources: 5 },
-          { id: 12, title: '结构体与联合体', status: 'locked', type: '进阶', resources: 5 },
-          { id: 13, title: '文件操作', status: 'locked', type: '进阶', resources: 5 },
-          { id: 14, title: '动态内存管理', status: 'locked', type: '高级', resources: 5 },
-        ])
+      } catch {
+        // 路径未生成或后端异常时不再回退到硬编码 14 节点，由空状态 UI 提示
+        setPathNodes([])
+        setPathStages([])
       }
     }
     load()
@@ -196,12 +189,30 @@ const LearningPathPage: React.FC = () => {
     return String(node.id)
   }
 
+  // 取节点对应阶段的真实资源类型（来自后端 path.stages[idx].resources）
+  const getNodeResources = (node: PathNode): { title: string; type: string; icon: React.ReactNode; color: string }[] => {
+    const idx = pathNodes.findIndex((n) => n.id === node.id)
+    const stage = pathStages[idx]
+    if (!stage?.resources?.length) return []
+    return stage.resources.map((r, i) => {
+      const meta = resourceTypeMeta[r] || { icon: <FileTextOutlined />, color: '#64748b' }
+      return {
+        title: `${stage.title}：${r}`,
+        type: r,
+        icon: meta.icon,
+        color: meta.color,
+        // 强制 key
+        ...{ _i: i },
+      }
+    })
+  }
+
   const handleGeneratePath = async () => {
     setLoading(true)
     try {
       const res = await pathApi.generate({
         student_id: studentId,
-        target_topic: '掌握 C语言程序设计与数据结构基础',
+        target_topic: targetTopic,
         daily_duration: dailyDuration,
         difficulty: difficulty,
         preference: learningPreference,
@@ -217,6 +228,7 @@ const LearningPathPage: React.FC = () => {
         resources: s.topics?.length || 3,
       }))
       setPathNodes(nodes)
+      setPathStages(stages)
       setPathData(responseData.data as Record<string, unknown>)
       message.success('路径生成成功')
     } catch (e) {
@@ -254,6 +266,7 @@ const LearningPathPage: React.FC = () => {
           resources: s.topics?.length || 3,
         }))
         setPathNodes(nodes)
+        setPathStages(stages)
         setPathData({ ...pathData, path: adjustData })
       }
       message.success('路径已调整')
@@ -331,8 +344,8 @@ const LearningPathPage: React.FC = () => {
               <FlagOutlined />
             </div>
             <div>
-              <Typography.Title level={4} className="!m-0 text-slate-800">C语言程序设计学习路径</Typography.Title>
-              <Typography.Text className="text-slate-400 text-xs">编程基础方向 · 共 {pathNodes.length} 个阶段</Typography.Text>
+              <Typography.Title level={4} className="!m-0 text-slate-800">{targetTopic || '学习路径'}</Typography.Title>
+              <Typography.Text className="text-slate-400 text-xs">个性化路径 · 共 {pathNodes.length} 个阶段</Typography.Text>
             </div>
           </Space>
           <Space>
@@ -406,6 +419,15 @@ const LearningPathPage: React.FC = () => {
       {/* 地图视图 — 统一垂直布局 */}
       {viewMode === 'map' && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
+          {pathNodes.length === 0 ? (
+            <div className="text-center py-12">
+              <RocketOutlined className="text-3xl text-slate-300 mb-3" />
+              <Typography.Text className="text-slate-400 text-sm block">暂无学习路径</Typography.Text>
+              <Button type="primary" className="rounded-lg bg-primary mt-4" onClick={handleGeneratePath} loading={loading}>
+                立即生成 <ArrowRightOutlined />
+              </Button>
+            </div>
+          ) : (
           <div className="relative max-w-2xl mx-auto">
             <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-100" />
             <div className="space-y-8">
@@ -441,6 +463,7 @@ const LearningPathPage: React.FC = () => {
               ))}
             </div>
           </div>
+          )}
         </div>
       )}
 
@@ -490,37 +513,31 @@ const LearningPathPage: React.FC = () => {
             <Typography.Text className="text-slate-400 text-xs block mt-1">基于结构化知识图谱约束 LLM 生成，确保路径科学性</Typography.Text>
           </div>
           <div className="relative max-w-3xl mx-auto">
-            <div className="flex flex-wrap justify-center gap-4">
-              {[
-                { id: 1, title: 'C语言概述', level: 1, status: 'completed', type: '基础' },
-                { id: 2, title: '数据类型与变量', level: 1, status: 'completed', type: '基础' },
-                { id: 3, title: '运算符与表达式', level: 2, status: 'in-progress', type: '基础' },
-                { id: 4, title: '输入输出', level: 2, status: 'pending', type: '基础' },
-                { id: 5, title: '选择结构', level: 2, status: 'locked', type: '核心' },
-                { id: 6, title: '循环结构', level: 3, status: 'locked', type: '核心' },
-                { id: 7, title: '数组', level: 3, status: 'locked', type: '核心' },
-                { id: 8, title: '字符串', level: 3, status: 'locked', type: '核心' },
-                { id: 9, title: '函数与递归', level: 4, status: 'locked', type: '进阶' },
-                { id: 10, title: '指针基础', level: 4, status: 'locked', type: '进阶' },
-                { id: 11, title: '结构体', level: 4, status: 'locked', type: '进阶' },
-                { id: 12, title: '文件操作', level: 5, status: 'locked', type: '高级' },
-              ].map((node) => (
-                <div key={node.id} className="flex flex-col items-center">
-                  <div
-                    className="w-32 p-3 rounded-xl border text-center cursor-pointer transition-all hover:shadow-card"
-                    style={{
-                      borderColor: statusColors[node.status],
-                      background: statusBg[node.status],
-                    }}
-                    onClick={() => openNodeDetail(node as PathNode)}
-                  >
-                    <div className="text-xs text-slate-400 mb-1">L{node.level}</div>
-                    <div className="text-sm font-medium text-slate-800">{node.title}</div>
-                  </div>
-                  {node.id < 12 && <div className="h-6 w-0.5 bg-slate-200 my-1" />}
-                </div>
-              ))}
-            </div>
+            {pathNodes.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-sm">尚未生成学习路径，请先在右上角点击「重新生成」</div>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-4">
+                {pathNodes.map((node, idx) => {
+                  const level = Math.floor(idx / 3) + 1
+                  return (
+                    <div key={node.id} className="flex flex-col items-center">
+                      <div
+                        className="w-32 p-3 rounded-xl border text-center cursor-pointer transition-all hover:shadow-card"
+                        style={{
+                          borderColor: statusColors[node.status],
+                          background: statusBg[node.status],
+                        }}
+                        onClick={() => openNodeDetail(node)}
+                      >
+                        <div className="text-xs text-slate-400 mb-1">L{level}</div>
+                        <div className="text-sm font-medium text-slate-800 truncate">{node.title}</div>
+                      </div>
+                      {idx < pathNodes.length - 1 && <div className="h-6 w-0.5 bg-slate-200 my-1" />}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
             <div className="mt-6 flex flex-wrap gap-2 justify-center">
               {pathNodes.filter((n) => n.status === 'completed').map((n) => (
                 <Tag key={n.id} className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">{n.title}</Tag>
@@ -572,21 +589,29 @@ const LearningPathPage: React.FC = () => {
 
             <div>
               <Typography.Text className="font-semibold text-slate-800 block mb-3 text-sm">关联资源</Typography.Text>
-              <List
-                itemLayout="horizontal"
-                dataSource={nodeResources}
-                renderItem={(item) => (
-                  <List.Item className="hover:bg-slate-50 rounded-xl transition-colors px-2">
-                    <List.Item.Meta
-                      avatar={
-                        <Avatar style={{ background: item.color + '12', color: item.color }} icon={item.icon} className="text-xs" />
-                      }
-                      title={<Typography.Text className="text-slate-700 font-medium text-sm">{item.title}</Typography.Text>}
-                      description={<Tag className="rounded-full text-xs border-0 bg-slate-100 text-slate-500">{item.type}</Tag>}
-                    />
-                  </List.Item>
-                )}
-              />
+              {(() => {
+                const items = getNodeResources(selectedNode)
+                if (items.length === 0) {
+                  return <div className="text-xs text-slate-400 px-2 py-3">该节点尚无资源数据，可点击下方按钮去资源中心生成</div>
+                }
+                return (
+                  <List
+                    itemLayout="horizontal"
+                    dataSource={items}
+                    renderItem={(item) => (
+                      <List.Item className="hover:bg-slate-50 rounded-xl transition-colors px-2">
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar style={{ background: item.color + '12', color: item.color }} icon={item.icon} className="text-xs" />
+                          }
+                          title={<Typography.Text className="text-slate-700 font-medium text-sm">{item.title}</Typography.Text>}
+                          description={<Tag className="rounded-full text-xs border-0 bg-slate-100 text-slate-500">{item.type}</Tag>}
+                        />
+                      </List.Item>
+                    )}
+                  />
+                )
+              })()}
             </div>
 
             {selectedNode.status === 'completed' && (
