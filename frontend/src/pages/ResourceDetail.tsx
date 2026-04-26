@@ -60,6 +60,12 @@ const ResourceDetail: React.FC = () => {
   const [completed, setCompleted] = useState(false)
   const [completing, setCompleting] = useState(false)
 
+  // 页面停留时长追踪（秒）—— 进入页面时记录起点，标记完成时计算 elapsed
+  const enterTimeRef = useRef<number>(Date.now())
+  useEffect(() => {
+    enterTimeRef.current = Date.now()
+  }, [kpId])
+
   // 加载知识点信息
   useEffect(() => {
     if (!kpId) return
@@ -213,11 +219,13 @@ const ResourceDetail: React.FC = () => {
     if (!kpId) return
     setCompleting(true)
     try {
+      // 实际页面停留时长（秒），最少 30 秒
+      const elapsedSec = Math.max(30, Math.round((Date.now() - enterTimeRef.current) / 1000))
       await learningDataApi.record({
         student_id: studentId,
         kp_id: kpId,
         action: 'complete',
-        duration: 30,
+        duration: elapsedSec,
         progress: 1,
         score: quizScore ?? undefined,
       })

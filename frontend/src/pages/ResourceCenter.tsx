@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -46,6 +46,11 @@ interface CourseMenuItem {
 
 const ResourceCenter: React.FC = () => {
   const [activeKey, setActiveKey] = useState('')
+  // 知识点切换时记录起点，标记完成时上报真实停留时长
+  const enterTimeRef = useRef<number>(Date.now())
+  useEffect(() => {
+    enterTimeRef.current = Date.now()
+  }, [activeKey])
   const [courseMenu, setCourseMenu] = useState<CourseMenuItem[]>([])
   const [menuLoading, setMenuLoading] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
@@ -325,11 +330,12 @@ const ResourceCenter: React.FC = () => {
     }
     setMarkingComplete(true)
     try {
+      const elapsedSec = Math.max(30, Math.round((Date.now() - enterTimeRef.current) / 1000))
       await learningDataApi.record({
         student_id: studentId,
         kp_id: activeKey,
         action: 'complete',
-        duration: 0,
+        duration: elapsedSec,
         progress: 1.0,
       })
       message.success('已标记完成')
