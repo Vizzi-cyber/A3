@@ -22,6 +22,7 @@ import {
 import { useAppStore } from '../store'
 import { profileApi, tutorApi, trendApi, dashboardApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
+import { extractApiError } from '../utils/error'
 import { ChatPanel } from '../components/ChatPanel'
 import { PageCard } from '../components/PageCard'
 import type { ChatMessage, StudentProfile, VisionContentItem } from '../types'
@@ -123,8 +124,7 @@ const Profile: React.FC = () => {
         const tutorRes = await tutorApi.ask({ student_id: studentId, question: text, session_id: `${studentId}_profile` })
         aiReply = tutorRes.data?.response || aiReply
       } catch (e: unknown) {
-        const errMsg = e instanceof Error ? e.message : '请求失败'
-        message.error(errMsg)
+        message.error(extractApiError(e, '请求失败'))
       }
       setMessages((prev) => [...prev, { role: 'ai' as const, content: aiReply, agent: '评估智能体' }])
 
@@ -144,8 +144,7 @@ const Profile: React.FC = () => {
         // 画像分析失败不影响对话体验
       }
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '请求失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '请求失败'))
       setMessages((prev) => [...prev, { role: 'ai' as const, content: '服务暂时不可用，请稍后再试。', agent: '评估智能体' }])
     } finally {
       setLoading(false)
@@ -159,8 +158,7 @@ const Profile: React.FC = () => {
       if (res.data.data) updateVisuals(res.data.data)
       message.success('画像初始化成功')
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '初始化失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '初始化失败'))
     }
   }
 

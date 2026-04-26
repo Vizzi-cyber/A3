@@ -18,6 +18,7 @@ import {
   resourceApi, tutorApi, knowledgeApi, learningDataApi, logReflectionApi,
 } from '../services/api'
 import type { ChatMessage, QuestionItem, QuestionOption } from '../types'
+import { useElapsedTime } from '../hooks/useElapsedTime'
 
 const ResourceDetail: React.FC = () => {
   const { kpId } = useParams<{ kpId: string }>()
@@ -60,11 +61,8 @@ const ResourceDetail: React.FC = () => {
   const [completed, setCompleted] = useState(false)
   const [completing, setCompleting] = useState(false)
 
-  // 页面停留时长追踪（秒）—— 进入页面时记录起点，标记完成时计算 elapsed
-  const enterTimeRef = useRef<number>(Date.now())
-  useEffect(() => {
-    enterTimeRef.current = Date.now()
-  }, [kpId])
+  // 页面停留时长追踪
+  const getElapsed = useElapsedTime([kpId])
 
   // 加载知识点信息
   useEffect(() => {
@@ -220,7 +218,7 @@ const ResourceDetail: React.FC = () => {
     setCompleting(true)
     try {
       // 实际页面停留时长（秒），最少 30 秒
-      const elapsedSec = Math.max(30, Math.round((Date.now() - enterTimeRef.current) / 1000))
+      const elapsedSec = getElapsed()
       await learningDataApi.record({
         student_id: studentId,
         kp_id: kpId,

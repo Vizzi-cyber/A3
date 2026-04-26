@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
 import { tutorApi } from '../services/api'
+import { extractApiError } from '../utils/error'
 import { ChatPanel } from '../components/ChatPanel'
 import { PageCard } from '../components/PageCard'
 
@@ -169,8 +170,7 @@ const Tutor: React.FC = () => {
         { role: 'ai' as const, content: aiReply },
       ])
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '请求失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '请求失败'))
       setMultiAgentStep('done')
       setMessages((prev) => [
         ...prev,

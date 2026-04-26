@@ -35,6 +35,8 @@ import {
 import { useAppStore } from '../store'
 import { resourceApi, tutorApi, imageApi, knowledgeApi, ocrApi, learningDataApi, logReflectionApi } from '../services/api'
 import type { ChatMessage, QuestionItem, VisionContentItem } from '../types'
+import { extractApiError } from '../utils/error'
+import { useElapsedTime } from '../hooks/useElapsedTime'
 import { ChatPanel } from '../components/ChatPanel'
 
 interface CourseMenuItem {
@@ -47,10 +49,7 @@ interface CourseMenuItem {
 const ResourceCenter: React.FC = () => {
   const [activeKey, setActiveKey] = useState('')
   // 知识点切换时记录起点，标记完成时上报真实停留时长
-  const enterTimeRef = useRef<number>(Date.now())
-  useEffect(() => {
-    enterTimeRef.current = Date.now()
-  }, [activeKey])
+  const getElapsed = useElapsedTime([activeKey])
   const [courseMenu, setCourseMenu] = useState<CourseMenuItem[]>([])
   const [menuLoading, setMenuLoading] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
@@ -240,8 +239,7 @@ const ResourceCenter: React.FC = () => {
       const aiReply = res.data?.response || '服务暂时无响应，请稍后再试。'
       setMessages((prev) => [...prev, { role: 'ai', content: aiReply, agent: '辅导助手' }])
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '请求失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '请求失败'))
       setMessages((prev) => [...prev, { role: 'ai', content: '服务暂时不可用。', agent: '辅导助手' }])
     } finally {
       setLoading(false)
@@ -270,8 +268,7 @@ const ResourceCenter: React.FC = () => {
         setCodeResult(`执行完成，无标准输出。\n\n后端说明：${explanation || '程序已正常结束，但未产生 stdout。'}`)
       }
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '执行失败'
-      setCodeResult('执行出错：' + errMsg)
+      setCodeResult('执行出错：' + extractApiError(e, '执行失败'))
     } finally {
       setCodeRunning(false)
     }
@@ -307,8 +304,7 @@ const ResourceCenter: React.FC = () => {
       setOcrResult(res.data.text)
       message.success('识别成功')
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '识别失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '识别失败'))
     } finally {
       setOcrLoading(false)
     }
@@ -330,7 +326,7 @@ const ResourceCenter: React.FC = () => {
     }
     setMarkingComplete(true)
     try {
-      const elapsedSec = Math.max(30, Math.round((Date.now() - enterTimeRef.current) / 1000))
+      const elapsedSec = getElapsed()
       await learningDataApi.record({
         student_id: studentId,
         kp_id: activeKey,
@@ -340,8 +336,7 @@ const ResourceCenter: React.FC = () => {
       })
       message.success('已标记完成')
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '标记失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '标记失败'))
     } finally {
       setMarkingComplete(false)
     }
@@ -363,8 +358,7 @@ const ResourceCenter: React.FC = () => {
       })
       message.success('笔记已保存')
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '保存失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '保存失败'))
     } finally {
       setSavingNotes(false)
     }
@@ -386,8 +380,7 @@ const ResourceCenter: React.FC = () => {
       })
       message.success('康奈尔笔记已保存')
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '保存失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '保存失败'))
     } finally {
       setSavingCornell(false)
     }
@@ -410,8 +403,7 @@ const ResourceCenter: React.FC = () => {
       message.success('费曼练习已保存')
       setFeynmanInput('')
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '保存失败'
-      message.error(errMsg)
+      message.error(extractApiError(e, '保存失败'))
     } finally {
       setSavingFeynman(false)
     }
@@ -458,7 +450,7 @@ const ResourceCenter: React.FC = () => {
         message.info('图片生成中，请稍后查看')
       }
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : '生成失败'
+      const errMsg = extractApiError(e, '生成失败')
       if (errMsg !== 'timeout' && errMsg !== 'failed') {
         message.error(errMsg)
       }

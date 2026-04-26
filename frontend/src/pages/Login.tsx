@@ -6,6 +6,7 @@ import gsap from 'gsap'
 import { SplitText } from 'gsap/SplitText'
 import { authApi } from '../services/api'
 import { useAppStore } from '../store'
+import { extractApiError } from '../utils/error'
 
 const Login: React.FC = () => {
   const navigate = useNavigate()
@@ -106,8 +107,7 @@ const Login: React.FC = () => {
       message.success('登录成功')
       navigate('/')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '登录失败'
-      message.error(msg)
+      message.error(extractApiError(e, '登录失败'))
     } finally {
       setLoading(false)
     }
@@ -120,8 +120,7 @@ const Login: React.FC = () => {
       message.success('注册成功，请登录')
       setActiveTab('login')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '注册失败'
-      message.error(msg)
+      message.error(extractApiError(e, '注册失败'))
     } finally {
       setLoading(false)
     }
