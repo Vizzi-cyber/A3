@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import {
   Typography, Card, Button, Input, Space, Tabs, Tag, Collapse,
   FloatButton, message, Spin, Tooltip, Badge, Modal
@@ -38,6 +36,8 @@ import type { ChatMessage, QuestionItem, VisionContentItem } from '../types'
 import { extractApiError } from '../utils/error'
 import { useElapsedTime } from '../hooks/useElapsedTime'
 import { ChatPanel } from '../components/ChatPanel'
+import { MarkdownViewer } from '../components/MarkdownViewer'
+import '../styles/markdown-content.css'
 
 interface CourseMenuItem {
   key: string
@@ -552,9 +552,7 @@ const ResourceCenter: React.FC = () => {
             styles={{ body: { padding: '40px' } }}
           >
             <Spin spinning={resLoading}>
-              <div className="prose max-w-none text-slate-700 leading-relaxed text-[15px]">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{docContent}</ReactMarkdown>
-              </div>
+              <MarkdownViewer content={docContent} />
             </Spin>
             {resourceFeedback[currentTopic] === 'bad' && (
               <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600">

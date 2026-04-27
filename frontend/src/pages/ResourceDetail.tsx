@@ -4,8 +4,6 @@ import {
   Typography, Card, Button, Tag, Space, Tabs, Input, List, Avatar, Spin,
   message, Badge, Tooltip, Progress, Radio
 } from 'antd'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import {
   CodeOutlined, MessageOutlined, CheckCircleOutlined,
   ArrowLeftOutlined, SendOutlined, PlayCircleOutlined, TrophyOutlined,
@@ -19,6 +17,8 @@ import {
 } from '../services/api'
 import type { ChatMessage, QuestionItem, QuestionOption } from '../types'
 import { useElapsedTime } from '../hooks/useElapsedTime'
+import { MarkdownViewer } from '../components/MarkdownViewer'
+import '../styles/markdown-content.css'
 
 const ResourceDetail: React.FC = () => {
   const { kpId } = useParams<{ kpId: string }>()
@@ -259,9 +259,9 @@ const ResourceDetail: React.FC = () => {
       ),
       children: (
         <Spin spinning={loading}>
-          <div className="prose prose-slate max-w-none">
+          <div>
             {docContent ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{docContent}</ReactMarkdown>
+              <MarkdownViewer content={docContent} />
             ) : (
               <div className="text-slate-400 text-center py-12">讲义内容加载中...</div>
             )}
