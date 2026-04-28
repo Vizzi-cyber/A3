@@ -6,7 +6,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
+import asyncio
 
 from .auth import require_auth
 from ..services.image_generation import (
@@ -63,7 +64,22 @@ def _load_image_tasks():
         _image_tasks = {}
 
 
+def _cleanup_image_tasks():
+    """清理过期任务，只保留最近 100 条，防止内存/文件无限膨胀"""
+    global _image_tasks
+    if len(_image_tasks) <= 100:
+        return
+    # 按 created_at 排序，保留最近的 100 个
+    sorted_tasks = sorted(
+        _image_tasks.items(),
+        key=lambda x: x[1].get("created_at", ""),
+        reverse=True,
+    )
+    _image_tasks = dict(sorted_tasks[:100])
+
+
 def _save_image_tasks():
+    _cleanup_image_tasks()
     try:
         with open(_IMAGE_TASKS_PATH, "w", encoding="utf-8") as f:
             json.dump(_image_tasks, f, ensure_ascii=False, indent=2)
@@ -112,9 +128,9 @@ async def generate_image(
         _image_tasks[task_id] = {
             "task_id": task_id,
             "status": "submitted",
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        _save_image_tasks()
+        await asyncio.to_thread(_save_image_tasks)
         return ImageGenerateResponse(
             task_id=task_id,
             status="submitted",
@@ -142,7 +158,7 @@ async def get_image_result_api(task_id: str, _current: str = Depends(require_aut
 
         if task_id in _image_tasks:
             _image_tasks[task_id]["status"] = status
-            _save_image_tasks()
+            await asyncio.to_thread(_save_image_tasks)
 
         return ImageResultResponse(
             task_id=task_id,

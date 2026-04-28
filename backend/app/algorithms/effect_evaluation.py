@@ -5,7 +5,7 @@
 - 输出：评估报告、数据看板、干预策略
 """
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 
 
@@ -37,7 +37,7 @@ class LearningEffectEvaluator:
 
         return {
             "student_id": student_id,
-            "evaluated_at": datetime.now().isoformat(),
+            "evaluated_at": datetime.now(timezone.utc).isoformat(),
             "realtime_metrics": {
                 "accuracy": round(accuracy, 4),
                 "mastery": round(mastery, 4),

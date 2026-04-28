@@ -4,12 +4,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime
-
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel
+from .auth import require_auth
 
 router = APIRouter()
 
@@ -25,7 +24,7 @@ class KnowledgePointCreate(BaseModel):
 
 
 @router.post("/create")
-async def create_kp(request: KnowledgePointCreate, db: Session = Depends(get_db)):
+async def create_kp(request: KnowledgePointCreate, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """创建知识点"""
     existing = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == request.kp_id).first()
     if existing:
@@ -70,8 +69,9 @@ async def list_kps(subject: Optional[str] = None, db: Session = Depends(get_db))
 
 @router.get("/search")
 async def search_kps(q: str, limit: int = 10, db: Session = Depends(get_db)):
-    """搜索知识点（按名称、学科、标签模糊匹配）"""
+    """搜索知识点（按名称、学科、描述、标签模糊匹配）—— 单次查询避免重复加载"""
     keyword = f"%{q}%"
+    # 放宽 limit 给标签过滤留余量，避免二次查询
     kps = (
         db.query(KnowledgePointModel)
         .filter(
@@ -81,23 +81,12 @@ async def search_kps(q: str, limit: int = 10, db: Session = Depends(get_db)):
                 KnowledgePointModel.description.ilike(keyword),
             )
         )
-        .limit(limit)
+        .limit(limit * 3)
         .all()
     )
-    # 再按标签过滤（JSON 字段不同数据库语法不同，这里简化：查出全部再过滤）
-    all_kps = (
-        db.query(KnowledgePointModel)
-        .filter(
-            or_(
-                KnowledgePointModel.name.ilike(keyword),
-                KnowledgePointModel.subject.ilike(keyword),
-                KnowledgePointModel.description.ilike(keyword),
-            )
-        )
-        .all()
-    )
-    tag_kps = [k for k in all_kps if q.lower() in " ".join(k.tags or []).lower()]
-    combined = {k.kp_id: k for k in list(all_kps) + tag_kps}
+    # 补充标签匹配（同一结果集内过滤，无需再次查询数据库）
+    tag_kps = [k for k in kps if q.lower() in " ".join(k.tags or []).lower()]
+    combined = {k.kp_id: k for k in list(kps) + tag_kps}
     result = list(combined.values())[:limit]
     return {
         "status": "success",

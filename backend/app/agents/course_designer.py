@@ -4,7 +4,7 @@
 现在可以直接调用真实子智能体实例执行子任务
 """
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 from .base import BaseAgent, AgentMessage
@@ -110,7 +110,7 @@ class CourseDesignerAgent(BaseAgent):
                 "task_plan": task_plan,
                 "results": results,
                 "final_output": final_output,
-                "completed_at": datetime.now().isoformat()
+                "completed_at": datetime.now(timezone.utc).isoformat()
             }
 
         except Exception as e:
@@ -386,7 +386,7 @@ class CourseDesignerAgent(BaseAgent):
         return {
             "status": "success",
             "content_type": requirements["request_type"],
-            "assembled_at": datetime.now().isoformat(),
+            "assembled_at": datetime.now(timezone.utc).isoformat(),
             "components": list(results.keys()),
             "summary": self._generate_summary(results)
         }

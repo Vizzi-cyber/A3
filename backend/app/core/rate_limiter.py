@@ -27,10 +27,12 @@ class RateLimiter(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # 获取客户端标识（优先 X-Forwarded-For 第一个 IP，其次直接IP）
         forwarded = request.headers.get("x-forwarded-for")
+        client_ip = "unknown"
         if forwarded:
-            client_ip = forwarded.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
+            client_ip = forwarded.split(",")[0].strip() or "unknown"
+        if client_ip == "unknown" and request.client:
+            client_ip = request.client.host or "unknown"
+
         path = request.url.path
 
         # 根据路径确定限制策略（使用精确路径匹配）
@@ -47,7 +49,10 @@ class RateLimiter(BaseHTTPMiddleware):
         # 清理过期记录
         records = self._records.get(key, [])
         records = [t for t in records if now - t < self.window_seconds]
-        self._records[key] = records
+        if records:
+            self._records[key] = records
+        else:
+            self._records.pop(key, None)
 
         if len(records) >= limit:
             reset_after = int(self.window_seconds - (now - records[0])) if records else self.window_seconds

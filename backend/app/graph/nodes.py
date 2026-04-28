@@ -3,7 +3,7 @@ LangGraph 节点实现
 每个节点对应一个子智能体的实际执行
 """
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -200,7 +200,7 @@ async def assembler_node(state: AgentState) -> Dict[str, Any]:
         "status": "partial_failure" if failed else "success",
         "task_type": task_type,
         "student_id": state["student_id"],
-        "assembled_at": datetime.now().isoformat(),
+        "assembled_at": datetime.now(timezone.utc).isoformat(),
         "completed_agents": list(results.keys()),
         "failed_agents": failed,
         "summary": f"成功执行 {success_count}/{len(results)} 个智能体",

@@ -4,7 +4,7 @@
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import json
 
@@ -25,8 +25,8 @@ class AgentMessage:
         priority: str = "normal",  # low / normal / high / urgent
         requires_response: bool = True
     ):
-        self.message_id = f"msg_{datetime.now().timestamp()}"
-        self.timestamp = datetime.now().isoformat()
+        self.message_id = f"msg_{datetime.now(timezone.utc).timestamp()}"
+        self.timestamp = datetime.now(timezone.utc).isoformat()
         self.from_agent = from_agent
         self.to_agent = to_agent
         self.message_type = message_type

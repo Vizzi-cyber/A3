@@ -157,17 +157,17 @@ const AppHeader: React.FC = () => {
       logout()
       message.success('已退出登录')
       setTimeout(() => {
-        window.location.href = '/login'
+        navigate('/login')
       }, 300)
     }
   }
 
-  const items = [
+  const items = React.useMemo(() => [
     { key: 'profile', icon: <UserOutlined />, label: '个人中心' },
     { key: 'settings', icon: <SettingOutlined />, label: '设置' },
     { type: 'divider' as const },
     { key: 'logout', icon: <LogoutOutlined />, label: '退出登录' },
-  ]
+  ], [])
 
   const displayName = userInfo?.username || '学习者'
 

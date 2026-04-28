@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Typography, Card, Row, Col, Button, Tag, Avatar, List, Space, Progress, message, Spin, Badge, Tooltip, Modal
@@ -178,7 +178,7 @@ const Dashboard: React.FC = () => {
       }, 10000)
       try {
         const [profileRes, summaryRes, pathRes, achieveRes, pointsRes, tasksRes, kgRes] = await Promise.all([
-          profileApi.get(studentId),
+          profileApi.get(studentId).catch(() => null),
           dashboardApi.getSummary(studentId).catch(() => null),
           pathApi.current(studentId).catch(() => null),
           gamificationApi.getAchievements(studentId).catch(() => null),
@@ -187,7 +187,7 @@ const Dashboard: React.FC = () => {
           knowledgeApi.list().catch(() => null),
         ])
 
-        if (profileRes.data?.data) {
+        if (profileRes?.data?.data) {
           setProfileData(buildRadarData(profileRes.data.data))
           const interests = profileRes.data.data.interest_areas || []
           if (interests.length > 0) setWelcomeTopic(String(interests[0]))
@@ -334,14 +334,14 @@ const Dashboard: React.FC = () => {
       pathTween.kill()
       ScrollTrigger.getAll().forEach((t) => t.kill())
     }
-  }, [pathNodesState.length, recommendations.length, tasks.length])
+  }, [pathNodesState.length])
 
-  const statCards = [
+  const statCards = useMemo(() => [
     { title: '本周学习', value: stats.weekly_hours, suffix: 'h', icon: <ClockCircleOutlined />, color: '#4f46e5', path: '/personal' },
     { title: '连续打卡', value: stats.streak_days, suffix: '天', icon: <FireOutlined />, color: '#f59e0b', path: '/personal' },
     { title: '掌握知识点', value: stats.mastered_kps, suffix: '个', icon: <TrophyOutlined />, color: '#10b981', path: '/profile' },
     { title: '待完成任务', value: tasks.length, suffix: '项', icon: <RocketOutlined />, color: '#0ea5e9', path: '/learning-path' },
-  ]
+  ], [stats.weekly_hours, stats.streak_days, stats.mastered_kps, tasks.length])
 
   const setSceneRef = (idx: number) => (el: HTMLDivElement | null) => {
     sceneRefs.current[idx] = el

@@ -64,57 +64,44 @@ const ResourceDetail: React.FC = () => {
   // 页面停留时长追踪
   const getElapsed = useElapsedTime([kpId])
 
-  // 加载知识点信息
-  useEffect(() => {
-    if (!kpId) return
-    let ignore = false
-    const load = async () => {
-      try {
-        const res = await knowledgeApi.get(kpId)
-        if (!ignore && res.data?.data) {
-          const kp = res.data.data as Record<string, unknown>
-          setKpName(String(kp.name || ''))
-          setKpSubject(String(kp.subject || ''))
-        }
-      } catch {
-        if (!ignore) {
-          setKpName(`知识点 ${kpId}`)
-        }
-      }
-    }
-    load()
-    return () => { ignore = true }
-  }, [kpId])
-
-  // 加载完成状态（从后端同步，避免刷新丢失）
+  // 加载知识点信息 + 完成状态 + 资源（合并为一个 useEffect，避免 kpName 异步竞态导致重复请求）
   useEffect(() => {
     if (!kpId || !studentId) return
     let ignore = false
-    const checkCompleted = async () => {
-      try {
-        const res = await learningDataApi.getCompleted(studentId)
-        if (!ignore && res.data?.completed_kps?.includes(kpId)) {
-          setCompleted(true)
-        }
-      } catch {
-        // 静默失败
-      }
-    }
-    checkCompleted()
-    return () => { ignore = true }
-  }, [kpId, studentId])
+    const loadAll = async () => {
+      // 1) 并行获取知识点名称与完成状态
+      const [kpRes, completedRes] = await Promise.allSettled([
+        knowledgeApi.get(kpId),
+        learningDataApi.getCompleted(studentId),
+      ])
 
-  // 加载讲义 + 代码 + 练习
-  useEffect(() => {
-    if (!kpId) return
-    let ignore = false
-    const load = async () => {
-      setLoading(true)
+      let name = `知识点 ${kpId}`
+      let subject = ''
+      if (kpRes.status === 'fulfilled' && kpRes.value.data?.data) {
+        const kp = kpRes.value.data.data as Record<string, unknown>
+        name = String(kp.name || '')
+        subject = String(kp.subject || '')
+      }
+
+      if (!ignore) {
+        setKpName(name)
+        setKpSubject(subject)
+      }
+
+      if (
+        completedRes.status === 'fulfilled' &&
+        completedRes.value.data?.completed_kps?.includes(kpId)
+      ) {
+        if (!ignore) setCompleted(true)
+      }
+
+      // 2) 加载讲义 / 代码 / 练习
+      if (!ignore) setLoading(true)
       try {
         const [docRes, codeRes, qRes] = await Promise.all([
-          resourceApi.generateDocument({ student_id: studentId, topic: kpName, kp_id: kpId }),
-          resourceApi.generateCode({ student_id: studentId, topic: kpName, language: codeLanguage, kp_id: kpId }),
-          resourceApi.generateQuestions({ student_id: studentId, topic: kpName, count: 5, kp_id: kpId }),
+          resourceApi.generateDocument({ student_id: studentId, topic: name, kp_id: kpId }),
+          resourceApi.generateCode({ student_id: studentId, topic: name, language: codeLanguage, kp_id: kpId }),
+          resourceApi.generateQuestions({ student_id: studentId, topic: name, count: 5, kp_id: kpId }),
         ])
         if (!ignore) {
           setDocContent(docRes.data.document || '')
@@ -127,9 +114,10 @@ const ResourceDetail: React.FC = () => {
         if (!ignore) setLoading(false)
       }
     }
-    load()
+
+    loadAll()
     return () => { ignore = true }
-  }, [kpId, kpName, studentId, codeLanguage])
+  }, [kpId, studentId, codeLanguage])
 
   // 自动滚动到聊天底部
   useEffect(() => {

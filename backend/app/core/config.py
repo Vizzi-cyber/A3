@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # 应用信息
     APP_NAME: str = "AI Learning System"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
     SECRET_KEY: str = ""
 
     # 服务器配置
@@ -23,6 +23,32 @@ class Settings(BaseSettings):
         "http://localhost:5175",
         "http://localhost:3000",
     ]
+
+    def model_post_init(self, __context):
+        """Pydantic v2 post-init: 校验安全关键配置并合并动态 CORS 域名"""
+        # 合并环境变量中的 CORS 域名（逗号分隔）
+        import os
+        cors_env = os.getenv("CORS_ORIGINS")
+        if cors_env:
+            extra = [o.strip() for o in cors_env.split(",") if o.strip()]
+            object.__setattr__(self, 'ALLOWED_ORIGINS', self.ALLOWED_ORIGINS + extra)
+
+        if not self.DEBUG:
+            if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
+                raise ValueError(
+                    "生产环境必须设置强SECRET_KEY（至少32字符）。"
+                    "建议运行: python -c \"import secrets; print(secrets.token_hex(32))\""
+                )
+        else:
+            # DEBUG模式：如果未设置，使用默认dev key并发出警告
+            if not self.SECRET_KEY:
+                import warnings
+                warnings.warn(
+                    "DEBUG模式使用默认SECRET_KEY，生产部署前务必设置环境变量！",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                object.__setattr__(self, 'SECRET_KEY', "dev-secret-32-chars-long-please-change-me!")
 
     # 数据库配置
     DATABASE_URL: str = "sqlite:///./ai_learning_v2.db"
@@ -69,25 +95,6 @@ class Settings(BaseSettings):
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_API_KEY: Optional[str] = None
     LANGCHAIN_PROJECT: str = "ai-learning-system"
-
-    def model_post_init(self, __context):
-        """Pydantic v2 post-init: 校验安全关键配置"""
-        if not self.DEBUG:
-            if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
-                raise ValueError(
-                    "生产环境必须设置强SECRET_KEY（至少32字符）。"
-                    "建议运行: python -c \"import secrets; print(secrets.token_hex(32))\""
-                )
-        else:
-            # DEBUG模式：如果未设置，使用默认dev key并发出警告
-            if not self.SECRET_KEY:
-                import warnings
-                warnings.warn(
-                    "DEBUG模式使用默认SECRET_KEY，生产部署前务必设置环境变量！",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                object.__setattr__(self, 'SECRET_KEY', "dev-secret-32-chars-long-please-change-me!")
 
     class Config:
         env_file = ".env"

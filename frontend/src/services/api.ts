@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
+import { useAppStore } from '../store'
 import type {
   StudentProfile,
   ProfileUpdateRequest,
@@ -37,7 +38,7 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = useAppStore.getState().token
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -54,9 +55,8 @@ api.interceptors.response.use(
     const data = error.response?.data
     const message = data?.message || data?.detail || error.message || '请求失败'
     if (status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('student_id')
-      window.location.href = '/login'
+      useAppStore.getState().logout()
+      window.dispatchEvent(new CustomEvent('auth:expired'))
       return Promise.reject(new Error('登录已过期，请重新登录'))
     }
     return Promise.reject(new Error(message))
@@ -326,7 +326,7 @@ export interface LearningRecordRequest {
 // ---------- Learning Data ----------
 export const learningDataApi = {
   getHistory: (studentId: string, limit?: number) =>
-    api.get<{ status: string; student_id: string; records: unknown[]; quizzes: unknown[] }>(`/learning-data/${studentId}/history?limit=${limit || 50}`),
+    api.get<{ status: string; student_id: string; records: unknown[]; quizzes: unknown[] }>(`/learning-data/${studentId}/history`, { params: { limit: limit || 50 } }),
   record: (data: LearningRecordRequest) =>
     api.post<{ status: string; record_id: string; points_awarded?: number; total_points?: number }>('/learning-data/record', data),
   getCompleted: (studentId: string) =>
@@ -336,7 +336,7 @@ export const learningDataApi = {
 // ---------- 反思与日志 ----------
 export const logReflectionApi = {
   getReflections: (studentId: string, limit?: number) =>
-    api.get<{ status: string; data: Array<{ reflection_id: string; date: string; content: string; mood: string; tags: string[]; ai_feedback?: string; created_at?: string }> }>(`/log-reflection/${studentId}/reflections?limit=${limit || 30}`),
+    api.get<{ status: string; data: Array<{ reflection_id: string; date: string; content: string; mood: string; tags: string[]; ai_feedback?: string; created_at?: string }> }>(`/log-reflection/${studentId}/reflections`, { params: { limit: limit || 30 } }),
   createReflection: (data: { student_id: string; date: string; content: string; mood?: string; tags?: string[]; ai_feedback?: string }) =>
     api.post<{ status: string; message?: string; reflection_id: string }>('/log-reflection/reflections/create', data),
   updateReflection: (reflectionId: string, data: { content?: string; mood?: string; tags?: string[]; ai_feedback?: string }) =>
@@ -344,7 +344,7 @@ export const logReflectionApi = {
   deleteReflection: (reflectionId: string) =>
     api.delete<{ status: string; reflection_id: string }>(`/log-reflection/reflections/${reflectionId}`),
   getLogs: (studentId: string, date?: string) =>
-    api.get<{ status: string; data: Array<{ log_id: string; date: string; total_duration: number; kp_count: number; quiz_count: number; avg_score: number; mistakes: string[]; path_progress: number; completed_tasks: string[]; timeline: unknown[] }> }>(`/log-reflection/${studentId}/logs${date ? `?date=${date}` : ''}`),
+    api.get<{ status: string; data: Array<{ log_id: string; date: string; total_duration: number; kp_count: number; quiz_count: number; avg_score: number; mistakes: string[]; path_progress: number; completed_tasks: string[]; timeline: unknown[] }> }>(`/log-reflection/${studentId}/logs`, date ? { params: { date } } : undefined),
   getReview: (studentId: string) =>
     api.get<{ status: string; student_id: string; summary: unknown; daily_logs: unknown[]; reflections: unknown[] }>(`/log-reflection/${studentId}/review`),
 }
@@ -352,7 +352,7 @@ export const logReflectionApi = {
 // ---------- Trend ----------
 export const trendApi = {
   getHistory: (studentId: string, days?: number) =>
-    api.get<{ status: string; student_id: string; data: Array<{ date: string; trend_factor: number; trend_state: string; dimensions: Record<string, number>; predicted_mastery_3d: number; intervention: string }> }>(`/trend/${studentId}/history?days=${days || 30}`),
+    api.get<{ status: string; student_id: string; data: Array<{ date: string; trend_factor: number; trend_state: string; dimensions: Record<string, number>; predicted_mastery_3d: number; intervention: string }> }>(`/trend/${studentId}/history`, { params: { days: days || 30 } }),
   analyze: (studentId: string) =>
     api.post<{ status: string; data: unknown }>('/trend/analyze', { student_id: studentId }),
 }
@@ -360,11 +360,11 @@ export const trendApi = {
 // ---------- 知识点 ----------
 export const knowledgeApi = {
   list: (subject?: string) =>
-    api.get<{ status: string; data: Array<{ kp_id: string; name: string; subject: string; difficulty: number; prerequisites: string[]; tags: string[] }> }>(`/knowledge/list${subject ? `?subject=${subject}` : ''}`),
+    api.get<{ status: string; data: Array<{ kp_id: string; name: string; subject: string; difficulty: number; prerequisites: string[]; tags: string[] }> }>(`/knowledge/list`, subject ? { params: { subject } } : undefined),
   get: (kpId: string) =>
     api.get<{ status: string; data: unknown }>(`/knowledge/${kpId}`),
   search: (q: string) =>
-    api.get<{ status: string; data: Array<{ kp_id: string; name: string; subject: string; difficulty: number; prerequisites: string[]; tags: string[] }> }>(`/knowledge/search?q=${encodeURIComponent(q)}`),
+    api.get<{ status: string; data: Array<{ kp_id: string; name: string; subject: string; difficulty: number; prerequisites: string[]; tags: string[] }> }>(`/knowledge/search`, { params: { q } }),
 }
 
 export default api

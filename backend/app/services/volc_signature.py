@@ -34,7 +34,7 @@ def sign_request(
     为火山引擎请求生成签名并返回完整的请求头
     与官方 Python 示例逻辑完全一致
     """
-    t = datetime.datetime.utcnow()
+    t = datetime.datetime.now(datetime.timezone.utc)
     current_date = t.strftime("%Y%m%dT%H%M%SZ")
     datestamp = t.strftime("%Y%m%d")
 

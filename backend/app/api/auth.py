@@ -3,26 +3,26 @@
 - 登录、注册、token管理
 - JWT身份校验
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field, field_validator
+import asyncio
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from datetime import datetime, timedelta
+
+from fastapi import APIRouter, HTTPException, Depends
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
+
+from ..core.config import settings
 from ..models.database import get_db
 from ..models.user import UserModel
-from ..core.config import settings
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
-
-
-import re
 
 class UserRegisterRequest(BaseModel):
     student_id: str = Field(..., min_length=3, max_length=64)
@@ -53,7 +53,7 @@ class TokenResponse(BaseModel):
 
 def _create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
 
@@ -105,11 +105,12 @@ async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
     existing = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="student_id already exists")
+    hashed = await asyncio.to_thread(pwd_context.hash, request.password)
     user = UserModel(
         student_id=request.student_id,
         username=request.username,
         email=request.email,
-        hashed_password=pwd_context.hash(request.password),
+        hashed_password=hashed,
         is_active=True,
         role="student",
     )
@@ -137,7 +138,10 @@ async def debug_validate(password: str):
 async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     """用户登录"""
     user = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
-    if not user or not pwd_context.verify(request.password, user.hashed_password):
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    valid = await asyncio.to_thread(pwd_context.verify, request.password, user.hashed_password)
+    if not valid:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = _create_access_token({"sub": user.student_id})
     return {

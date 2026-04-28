@@ -5,7 +5,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 from ..schemas import (
@@ -47,8 +47,23 @@ class ResourceGenerationResponse(BaseModel):
     message: str = ""
 
 
-# 模拟任务存储
-_tasks_db = {}
+# 模拟任务存储（限制最大条目数，防止内存无限增长）
+_tasks_db: Dict[str, Dict[str, Any]] = {}
+_MAX_TASKS = 500
+
+
+def _cleanup_old_tasks():
+    """当任务数超过上限时，删除最早完成的或最旧的 pending 任务"""
+    if len(_tasks_db) <= _MAX_TASKS:
+        return
+    # 优先删除已完成的旧任务，再删除最旧的任务
+    sorted_tasks = sorted(
+        _tasks_db.items(),
+        key=lambda item: (item[1].get("status") != "completed", item[1].get("created_at", 0))
+    )
+    to_remove = len(sorted_tasks) - _MAX_TASKS
+    for key, _ in sorted_tasks[:to_remove]:
+        del _tasks_db[key]
 
 
 @router.post("/generate", response_model=ResourceGenerationResponse)
@@ -58,13 +73,16 @@ async def generate_resource(
     _current: str = Depends(require_auth),
 ):
     """生成多模态学习资源 —— 后台任务直接调用 ResourceGeneratorAgent"""
-    task_id = f"task_{datetime.now().timestamp()}"
+    now = datetime.now().timestamp()
+    task_id = f"task_{now}"
+    _cleanup_old_tasks()
     _tasks_db[task_id] = {
         "task_id": task_id,
         "status": "pending",
         "progress": 0.0,
         "resources": {},
         "message": "Task queued",
+        "created_at": now,
     }
     background_tasks.add_task(
         _execute_generation,
@@ -130,7 +148,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
 
 
 @router.get("/task/{task_id}")
-async def get_task_status(task_id: str):
+async def get_task_status(task_id: str, _current: str = Depends(require_auth)):
     if task_id not in _tasks_db:
         raise HTTPException(status_code=404, detail="Task not found")
     return _tasks_db[task_id]
@@ -148,7 +166,7 @@ async def generate_document(request: DocumentGenerateRequest, _current: str = De
             "metadata": {
                 "topic": request.topic,
                 "source": "content_library",
-                "generated_at": datetime.now().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             },
         }
 
@@ -175,7 +193,7 @@ async def generate_document(request: DocumentGenerateRequest, _current: str = De
         "document": doc_content,
         "metadata": {
             "topic": request.topic,
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         },
     }
 
@@ -314,7 +332,7 @@ import ast
 
 _DANGEROUS_MODULES = {
     "os", "sys", "subprocess", "shutil", "socket", "ctypes",
-    "urllib", "http", "ftplib", "telnetlib", " pathlib",
+    "urllib", "http", "ftplib", "telnetlib", "pathlib",
     "pickle", "marshal", "base64", "platform", "multiprocessing",
 }
 
@@ -370,124 +388,119 @@ def _analyze_python_security(source: str) -> tuple[bool, str]:
     return True, ""
 
 
-@router.post("/code/execute", response_model=CodeExecuteResponse)
-async def execute_code(request: CodeExecuteRequest, _current: str = Depends(require_auth)):
-    """在服务器子进程中执行代码（支持 Python 和 C）"""
+def _run_c_code(code: str) -> dict:
+    """同步函数：编译并运行 C 代码（供 asyncio.to_thread 调用）"""
     import subprocess
     import tempfile
     import os
     import shutil
 
-    code = request.code
-    language = (request.language or "Python").lower()
-    if not code.strip():
-        return {"status": "success", "output": "", "error": "代码为空", "explanation": ""}
+    gcc_path = shutil.which("gcc")
+    msys2_gcc = r"C:\msys64\mingw64\bin\gcc.exe"
+    if not gcc_path and os.path.exists(msys2_gcc):
+        gcc_path = msys2_gcc
+    if not gcc_path:
+        return {
+            "status": "success",
+            "output": "",
+            "error": "当前服务器未安装 gcc，无法编译运行 C 代码。建议将代码复制到本地 IDE（如 Dev-C++、VS Code）中运行。",
+            "explanation": "C 代码需要 gcc 编译器，当前环境未提供。",
+        }
 
-    # C语言执行：尝试 gcc 编译运行
-    if language in ("c", "c语言"):
-        # 查找 gcc（支持常见安装路径）
-        gcc_path = shutil.which("gcc")
-        msys2_gcc = r"C:\msys64\mingw64\bin\gcc.exe"
-        if not gcc_path and os.path.exists(msys2_gcc):
-            gcc_path = msys2_gcc
-        if not gcc_path:
+    env = os.environ.copy()
+    msys2_bin = r"C:\msys64\mingw64\bin"
+    if msys2_bin not in env.get("PATH", ""):
+        env["PATH"] = msys2_bin + os.pathsep + env.get("PATH", "")
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".c", delete=False, encoding="utf-8") as f:
+        f.write(code)
+        src_path = f.name
+    exe_path = src_path.replace(".c", ".exe" if os.name == "nt" else "")
+    output = ""
+    error = ""
+    try:
+        compile_res = subprocess.run(
+            [gcc_path, src_path, "-o", exe_path, "-finput-charset=UTF-8"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=env,
+        )
+        compile_stderr = getattr(compile_res, 'stderr', None) or ""
+        if compile_res.returncode != 0:
             return {
                 "status": "success",
                 "output": "",
-                "error": "当前服务器未安装 gcc，无法编译运行 C 代码。建议将代码复制到本地 IDE（如 Dev-C++、VS Code）中运行。",
-                "explanation": "C 代码需要 gcc 编译器，当前环境未提供。",
+                "error": compile_stderr[:2000] or "编译失败",
+                "explanation": "C 代码编译出错，请检查语法。",
             }
+        run_res = subprocess.run(
+            [exe_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10,
+            env=env,
+        )
+        run_stdout_bytes = run_res.stdout or b""
+        run_stderr_bytes = run_res.stderr or b""
 
-        # 确保 gcc 依赖的 DLL 能被找到（如 MSYS2 路径）
-        env = os.environ.copy()
-        msys2_bin = r"C:\msys64\mingw64\bin"
-        if msys2_bin not in env.get("PATH", ""):
-            env["PATH"] = msys2_bin + os.pathsep + env.get("PATH", "")
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".c", delete=False, encoding="utf-8") as f:
-            f.write(code)
-            src_path = f.name
-        exe_path = src_path.replace(".c", ".exe" if os.name == "nt" else "")
-        output = ""
-        error = ""
-        try:
-            # 编译时声明源代码为 UTF-8，避免中文乱码
-            compile_res = subprocess.run(
-                [gcc_path, src_path, "-o", exe_path, "-finput-charset=UTF-8"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                env=env,
-            )
-            compile_stderr = getattr(compile_res, 'stderr', None) or ""
-            if compile_res.returncode != 0:
-                return {
-                    "status": "success",
-                    "output": "",
-                    "error": compile_stderr[:2000] or "编译失败",
-                    "explanation": "C 代码编译出错，请检查语法。",
-                }
-            # 运行时使用 UTF-8 解码 stdout，防止 Windows 管道编码导致输出丢失
-            run_res = subprocess.run(
-                [exe_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=10,
-                env=env,
-            )
-            # 先读取原始字节，再按 UTF-8 → GBK 顺序解码，防止 Windows 管道编码导致输出丢失
-            run_stdout_bytes = run_res.stdout or b""
-            run_stderr_bytes = run_res.stderr or b""
-
-            def _decode(b: bytes) -> str:
-                for enc in ("utf-8", "gbk", "gb2312"):
-                    try:
-                        return b.decode(enc)
-                    except UnicodeDecodeError:
-                        continue
-                return b.decode("utf-8", errors="replace")
-
-            run_stdout = _decode(run_stdout_bytes)
-            run_stderr = _decode(run_stderr_bytes)
-            output = run_stdout[:5000]
-            if run_res.returncode != 0:
-                error = run_stderr[:5000] or f"程序异常退出，返回码: {run_res.returncode}"
-        except subprocess.TimeoutExpired:
-            error = "代码执行超时（限制 10 秒）"
-        except Exception as e:
-            error = f"执行异常: {str(e)}"
-        finally:
-            for p in (src_path, exe_path):
+        def _decode(b: bytes) -> str:
+            for enc in ("utf-8", "gbk", "gb2312"):
                 try:
-                    if p and os.path.exists(p):
-                        os.remove(p)
-                except Exception:
-                    pass
-        if error:
-            explanation = "代码执行过程中出现错误，请检查语法或逻辑。"
-        elif output:
-            explanation = "代码执行成功，上方为输出结果。"
-        else:
-            explanation = "代码执行完成，无输出。"
-        return {"status": "success", "output": output, "error": error, "explanation": explanation}
+                    return b.decode(enc)
+                except UnicodeDecodeError:
+                    continue
+            return b.decode("utf-8", errors="replace")
 
-    # Python 执行：先进行 AST 安全分析
+        run_stdout = _decode(run_stdout_bytes)
+        run_stderr = _decode(run_stderr_bytes)
+        output = run_stdout[:5000]
+        if run_res.returncode != 0:
+            error = run_stderr[:5000] or f"程序异常退出，返回码: {run_res.returncode}"
+    except subprocess.TimeoutExpired:
+        error = "代码执行超时（限制 10 秒）"
+    except Exception as e:
+        error = f"执行异常: {str(e)}"
+    finally:
+        for p in (src_path, exe_path):
+            try:
+                if p and os.path.exists(p):
+                    os.remove(p)
+            except Exception:
+                pass
+    if error:
+        explanation = "代码执行过程中出现错误，请检查语法或逻辑。"
+    elif output:
+        explanation = "代码执行成功，上方为输出结果。"
+    else:
+        explanation = "代码执行完成，无输出。"
+    return {"status": "success", "output": output, "error": error, "explanation": explanation}
+
+
+def _run_python_code(code: str) -> dict:
+    """同步函数：执行 Python 代码（供 asyncio.to_thread 调用）"""
+    import subprocess
+    import tempfile
+    import os
+
     safe, reason = _analyze_python_security(code)
     if not safe:
         return {"status": "success", "output": "", "error": f"代码安全检查未通过: {reason}", "explanation": "为了安全，部分系统级操作已被禁用。"}
 
-    # 保留字符串黑名单作为二次防线（防止 AST 未覆盖的拼接绕过）
     blocked_keywords = ["__import__", "os.system", "os.popen", "subprocess.call", "subprocess.run",
                         "subprocess.Popen", "eval(", "exec(", "compile("]
-    lower_code = code.lower()
+    # 规范化空白字符，防止通过插入空格绕过检测（如 os . system）
+    normalized_code = "".join(code.lower().split())
     for kw in blocked_keywords:
-        if kw.lower() in lower_code:
+        if "".join(kw.lower().split()) in normalized_code:
             return {"status": "success", "output": "", "error": f"代码包含被禁止的关键字: {kw}", "explanation": "为了安全，部分系统级操作已被禁用。"}
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
         f.write(code)
         tmp_path = f.name
 
+    output = ""
+    error = ""
     try:
         result = subprocess.run(
             ["python", tmp_path],
@@ -515,9 +528,18 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
     elif error:
         explanation = "代码执行过程中出现错误，请检查语法或逻辑。"
 
-    return {
-        "status": "success",
-        "output": output,
-        "error": error,
-        "explanation": explanation,
-    }
+    return {"status": "success", "output": output, "error": error, "explanation": explanation}
+
+
+@router.post("/code/execute", response_model=CodeExecuteResponse)
+async def execute_code(request: CodeExecuteRequest, _current: str = Depends(require_auth)):
+    """在服务器子进程中执行代码（支持 Python 和 C）"""
+    code = request.code
+    language = (request.language or "Python").lower()
+    if not code.strip():
+        return {"status": "success", "output": "", "error": "代码为空", "explanation": ""}
+
+    if language in ("c", "c语言"):
+        return await asyncio.to_thread(_run_c_code, code)
+    else:
+        return await asyncio.to_thread(_run_python_code, code)

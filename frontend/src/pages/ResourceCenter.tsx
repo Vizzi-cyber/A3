@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   Typography, Card, Button, Input, Space, Tabs, Tag, Collapse,
@@ -60,6 +60,7 @@ const ResourceCenter: React.FC = () => {
   const [docContent, setDocContent] = useState('')
   const [codeContent, setCodeContent] = useState('')
   const [codeLanguage, setCodeLanguage] = useState<'Python' | 'C'>('C')
+  const prevCodeLangRef = useRef(codeLanguage)
   const [questions, setQuestions] = useState<QuestionItem[]>([])
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({})
   const [quizSubmitted, setQuizSubmitted] = useState<Record<string, boolean>>({})
@@ -91,7 +92,7 @@ const ResourceCenter: React.FC = () => {
   const studentId = useAppStore((s) => s.studentId)
   const location = useLocation()
 
-  const currentTopic = courseMenu.flatMap(c => c.children || []).find(c => c.key === activeKey)?.label || ''
+  const currentTopic = useMemo(() => courseMenu.flatMap(c => c.children || []).find(c => c.key === activeKey)?.label || '', [courseMenu, activeKey])
 
   // 加载课程目录
   useEffect(() => {
@@ -172,9 +173,11 @@ const ResourceCenter: React.FC = () => {
     return () => { ignore = true }
   }, [studentId])
 
-  // 切换代码语言时重新生成代码
+  // 切换代码语言时重新生成代码（仅当语言本身变化时触发，避免 activeKey 切换导致重复请求）
   useEffect(() => {
     if (!activeKey || !currentTopic) return
+    if (prevCodeLangRef.current === codeLanguage) return
+    prevCodeLangRef.current = codeLanguage
     let ignore = false
     const loadCode = async () => {
       try {
@@ -500,7 +503,7 @@ const ResourceCenter: React.FC = () => {
               defaultActiveKey={courseMenu.map(c => c.key)}
               ghost
               expandIconPosition="end"
-              items={courseMenu.map((chapter) => ({
+              items={useMemo(() => courseMenu.map((chapter) => ({
                 key: chapter.key,
                 label: <span className="font-medium text-slate-700 text-sm">{chapter.label}</span>,
                 children: (
@@ -518,7 +521,7 @@ const ResourceCenter: React.FC = () => {
                     ))}
                   </div>
                 ),
-              }))}
+              })), [courseMenu, activeKey])}
             />
           </Spin>
         </Card>
@@ -544,8 +547,8 @@ const ResourceCenter: React.FC = () => {
               <Space>
                 <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">{currentTopic}</Tag>
                 <Space.Compact className="rounded-lg overflow-hidden">
-                  <Button size="small" icon={<LikeOutlined />} className={resourceFeedback[currentTopic] === 'good' ? 'text-emerald-600' : ''} onClick={() => setResourceFeedback({ ...resourceFeedback, [currentTopic]: 'good' })} />
-                  <Button size="small" icon={<DislikeOutlined />} className={resourceFeedback[currentTopic] === 'bad' ? 'text-red-500' : ''} onClick={() => setResourceFeedback({ ...resourceFeedback, [currentTopic]: 'bad' })} />
+                  <Button size="small" icon={<LikeOutlined />} className={resourceFeedback[currentTopic] === 'good' ? 'text-emerald-600' : ''} onClick={() => setResourceFeedback(prev => ({ ...prev, [currentTopic]: 'good' }))} />
+                  <Button size="small" icon={<DislikeOutlined />} className={resourceFeedback[currentTopic] === 'bad' ? 'text-red-500' : ''} onClick={() => setResourceFeedback(prev => ({ ...prev, [currentTopic]: 'bad' }))} />
                 </Space.Compact>
               </Space>
             }

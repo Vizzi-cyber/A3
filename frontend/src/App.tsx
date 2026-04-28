@@ -1,5 +1,5 @@
 import React, { useEffect, useState, Suspense } from 'react'
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Layout, Spin } from 'antd'
 import AppHeader from './components/AppHeader'
 import Sidebar from './components/Sidebar'
@@ -24,18 +24,27 @@ const PageLoader = () => (
   </div>
 )
 
-const { Content } = Layout
-
-const PrivateLayout: React.FC = () => {
-  const location = useLocation()
-  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed)
+/** 页面进入动画包装器：只在自身挂载时触发，不强制重挂载 Routes/Suspense */
+const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(false)
     const timer = setTimeout(() => setMounted(true), 30)
     return () => clearTimeout(timer)
-  }, [location.pathname])
+  }, [])
+
+  return (
+    <div className={mounted ? 'page-enter' : 'opacity-0'}>
+      {children}
+    </div>
+  )
+}
+
+const { Content } = Layout
+
+const PrivateLayout: React.FC = () => {
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed)
 
   return (
     <Layout className="min-h-screen bg-slate-50">
@@ -47,23 +56,18 @@ const PrivateLayout: React.FC = () => {
       >
         <AppHeader />
         <Content className="p-6 md:p-8 min-h-[280px]">
-          <div
-            key={location.pathname}
-            className={mounted ? 'page-enter' : 'opacity-0'}
-          >
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/learning-path" element={<LearningPath />} />
-                <Route path="/resources" element={<ResourceCenter />} />
-                <Route path="/resource/:kpId" element={<ResourceDetail />} />
-                <Route path="/personal" element={<PersonalSpace />} />
-                <Route path="/tutor" element={<Tutor />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </div>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
+              <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
+              <Route path="/learning-path" element={<PageWrapper><LearningPath /></PageWrapper>} />
+              <Route path="/resources" element={<PageWrapper><ResourceCenter /></PageWrapper>} />
+              <Route path="/resource/:kpId" element={<PageWrapper><ResourceDetail /></PageWrapper>} />
+              <Route path="/personal" element={<PageWrapper><PersonalSpace /></PageWrapper>} />
+              <Route path="/tutor" element={<PageWrapper><Tutor /></PageWrapper>} />
+              <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
+            </Routes>
+          </Suspense>
         </Content>
       </Layout>
     </Layout>
@@ -72,18 +76,25 @@ const PrivateLayout: React.FC = () => {
 
 const App: React.FC = () => {
   const isLoggedIn = useAppStore((s) => s.isLoggedIn)
-  const setUserInfo = useAppStore((s) => s.setUserInfo)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (isLoggedIn) {
       authApi.me().then((res) => {
         const u = res.data.data
-        setUserInfo({ student_id: u.student_id, username: u.username, role: u.role })
+        useAppStore.getState().setUserInfo({ student_id: u.student_id, username: u.username, role: u.role })
       }).catch(() => {
         // token invalid, handled by interceptor
       })
     }
-  }, [isLoggedIn, setUserInfo])
+  }, [isLoggedIn])
+
+  // 监听全局认证过期事件，内存路由跳转（避免 window.location.href 硬刷新）
+  useEffect(() => {
+    const handler = () => navigate('/login', { replace: true })
+    window.addEventListener('auth:expired', handler)
+    return () => window.removeEventListener('auth:expired', handler)
+  }, [navigate])
 
   return (
     <Routes>

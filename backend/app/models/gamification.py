@@ -1,7 +1,7 @@
 """
 游戏化学习 ORM 模型
 """
-from sqlalchemy import Column, String, DateTime, JSON, Integer, Float, Boolean
+from sqlalchemy import Column, String, DateTime, JSON, Integer, Float, Boolean, Index
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -31,6 +31,10 @@ class AchievementModel(Base):
     icon = Column(String(256), nullable=True)
     unlocked_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    __table_args__ = (
+        Index("ix_achievements_student_achievement", "student_id", "achievement_id"),
+    )
+
 
 class TaskModel(Base):
     """学习任务与挑战任务表"""
@@ -49,6 +53,10 @@ class TaskModel(Base):
     deadline = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    __table_args__ = (
+        Index("ix_tasks_student_task", "student_id", "task_id"),
+    )
+
 
 class LeaderboardModel(Base):
     """排行榜快照表"""
@@ -60,3 +68,7 @@ class LeaderboardModel(Base):
     score = Column(Integer, default=0)
     rank = Column(Integer, default=0)
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_leaderboard_period_score", "period", "score"),
+    )

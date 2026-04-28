@@ -1,4 +1,4 @@
-import React, { useState, ReactNode } from 'react'
+import React, { useState, ReactNode, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -11,7 +11,7 @@ interface MarkdownViewerProps {
   className?: string
 }
 
-/** 从 ReactNode 提取纯文本 */
+/** 从 ReactNode 提取纯文本 —— 模块级，避免每次渲染重新创建 */
 function extractText(node: ReactNode): string {
   if (node == null) return ''
   if (typeof node === 'string') return node
@@ -76,6 +76,69 @@ const CodeBlock: React.FC<{ language: string; children: string }> = ({ language,
   )
 }
 
+/** 静态 components 映射 —— 模块级单例，避免每次渲染重新创建对象 */
+const markdownComponents = {
+  code({ inline, className: cls, children, ...props }: any) {
+    const match = /language-(\w+)/.exec(cls || '')
+    const codeText = extractText(children)
+    if (!inline && match) {
+      return <CodeBlock language={match[1]}>{codeText}</CodeBlock>
+    }
+    return (
+      <code className="inline-code" {...props}>
+        {codeText}
+      </code>
+    )
+  },
+  h1({ children }: any) {
+    return <h1 className="md-h1">{children}</h1>
+  },
+  h2({ children }: any) {
+    return <h2 className="md-h2">{children}</h2>
+  },
+  h3({ children }: any) {
+    return <h3 className="md-h3">{children}</h3>
+  },
+  h4({ children }: any) {
+    return <h4 className="md-h4">{children}</h4>
+  },
+  p({ children }: any) {
+    return <p className="md-p">{children}</p>
+  },
+  strong({ children }: any) {
+    const text = extractText(children)
+    if (text.startsWith('例')) {
+      return <span className="example-title">{children}</span>
+    }
+    return <strong className="md-strong">{children}</strong>
+  },
+  ul({ children }: any) {
+    return <ul className="md-ul">{children}</ul>
+  },
+  ol({ children }: any) {
+    return <ol className="md-ol">{children}</ol>
+  },
+  li({ children }: any) {
+    return <li className="md-li">{children}</li>
+  },
+  blockquote({ children }: any) {
+    return <blockquote className="md-blockquote">{children}</blockquote>
+  },
+  table({ children }: any) {
+    return (
+      <div className="table-wrapper">
+        <table className="md-table">{children}</table>
+      </div>
+    )
+  },
+  hr() {
+    return <hr className="md-hr" />
+  },
+}
+
+/** 模块级常量，避免每次渲染创建新数组 */
+const remarkPlugins = [remarkGfm as any]
+
 export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, className = '' }) => {
   if (!content) {
     return <div className="text-slate-400 text-center py-12">内容加载中...</div>
@@ -84,65 +147,8 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
   return (
     <div className={`markdown-body ${className}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm as any]}
-        components={{
-          code({ inline, className: cls, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(cls || '')
-            const codeText = extractText(children)
-            if (!inline && match) {
-              return <CodeBlock language={match[1]}>{codeText}</CodeBlock>
-            }
-            return (
-              <code className="inline-code" {...props}>
-                {codeText}
-              </code>
-            )
-          },
-          h1({ children }) {
-            return <h1 className="md-h1">{children}</h1>
-          },
-          h2({ children }) {
-            return <h2 className="md-h2">{children}</h2>
-          },
-          h3({ children }) {
-            return <h3 className="md-h3">{children}</h3>
-          },
-          h4({ children }) {
-            return <h4 className="md-h4">{children}</h4>
-          },
-          p({ children }) {
-            return <p className="md-p">{children}</p>
-          },
-          strong({ children }) {
-            const text = extractText(children)
-            if (text.startsWith('例')) {
-              return <span className="example-title">{children}</span>
-            }
-            return <strong className="md-strong">{children}</strong>
-          },
-          ul({ children }) {
-            return <ul className="md-ul">{children}</ul>
-          },
-          ol({ children }) {
-            return <ol className="md-ol">{children}</ol>
-          },
-          li({ children }) {
-            return <li className="md-li">{children}</li>
-          },
-          blockquote({ children }) {
-            return <blockquote className="md-blockquote">{children}</blockquote>
-          },
-          table({ children }) {
-            return (
-              <div className="table-wrapper">
-                <table className="md-table">{children}</table>
-              </div>
-            )
-          },
-          hr() {
-            return <hr className="md-hr" />
-          },
-        }}
+        remarkPlugins={remarkPlugins}
+        components={markdownComponents}
       >
         {content}
       </ReactMarkdown>

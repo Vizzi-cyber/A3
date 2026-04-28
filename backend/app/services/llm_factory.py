@@ -37,14 +37,9 @@ class BaseLLM(ABC):
     ) -> AsyncIterator[str]:
         pass
 
-    async def generate_json(
-        self,
-        messages: List[Dict[str, Any]],
-        temperature: float = 0.3,
-        max_tokens: int = 1024,
-    ) -> Dict[str, Any]:
-        """强制 JSON 输出"""
-        text = await self.ainvoke(messages, temperature, max_tokens)
+    @staticmethod
+    def _try_parse_json(text: str) -> Optional[Dict[str, Any]]:
+        """尝试多种方式解析 JSON，成功返回 dict，失败返回 None"""
         try:
             return json.loads(text)
         except json.JSONDecodeError:
@@ -63,12 +58,28 @@ class BaseLLM(ABC):
                 return json.loads(match.group(1).strip())
             except json.JSONDecodeError:
                 pass
+        return None
+
+    async def generate_json(
+        self,
+        messages: List[Dict[str, Any]],
+        temperature: float = 0.3,
+        max_tokens: int = 1024,
+    ) -> Dict[str, Any]:
+        """强制 JSON 输出"""
+        text = await self.ainvoke(messages, temperature, max_tokens)
+        parsed = self._try_parse_json(text)
+        if parsed is not None:
+            return parsed
 
         logger.warning(f"JSON parse failed, returning raw text. Raw: {text[:200]}")
         return {"status": "error", "raw_text": text, "message": "模型未返回合法 JSON"}
 
     def bind_tools(self, tools: List[Any]):
         return self
+
+
+_DEFAULT_TIMEOUT = 60.0  # 秒
 
 
 class OpenAICompatibleLLM(BaseLLM):
@@ -79,11 +90,13 @@ class OpenAICompatibleLLM(BaseLLM):
         api_key: str,
         base_url: str,
         model: str,
+        timeout: float = _DEFAULT_TIMEOUT,
     ):
         if not api_key:
             raise ValueError(f"API key is required for model {model}")
-        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model
+        self._is_bigmodel = "bigmodel" in self.client.base_url.host
 
     async def ainvoke(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> str:
         """非流式调用，默认关闭智谱 thinking 以加快响应"""
@@ -95,7 +108,7 @@ class OpenAICompatibleLLM(BaseLLM):
             "stream": False,
         }
         # 智谱 GLM-4.6v 支持 thinking 参数：默认禁用深度思考，只有显式开启才启用
-        if "bigmodel" in self.client.base_url.host:
+        if self._is_bigmodel:
             kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
         response = await self.client.chat.completions.create(**kwargs)
@@ -113,7 +126,7 @@ class OpenAICompatibleLLM(BaseLLM):
             "max_tokens": max_tokens,
             "stream": True,
         }
-        if "bigmodel" in self.client.base_url.host:
+        if self._is_bigmodel:
             kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
         response = await self.client.chat.completions.create(**kwargs)
@@ -130,6 +143,14 @@ class LLMFactory:
 
     _cache: Dict[str, BaseLLM] = {}
 
+    # provider -> (settings_api_key, settings_base_url, settings_model, env_var_name)
+    _PROVIDER_MAP: Dict[str, tuple] = {
+        "bigmodel":  ("BIGMODEL_API_KEY",  "BIGMODEL_BASE_URL",  "BIGMODEL_MODEL"),
+        "deepseek":  ("DEEPSEEK_API_KEY",  "DEEPSEEK_BASE_URL",  "DEEPSEEK_MODEL"),
+        "openai":    ("OPENAI_API_KEY",    "OPENAI_BASE_URL",    "OPENAI_MODEL"),
+        "spark":     ("SPARK_API_KEY",     "SPARK_HTTP_BASE_URL", "SPARK_MODEL"),
+    }
+
     @classmethod
     def get_llm(cls, provider: Optional[str] = None) -> BaseLLM:
         """获取指定提供商的 LLM 实例"""
@@ -138,44 +159,20 @@ class LLMFactory:
         if provider in cls._cache:
             return cls._cache[provider]
 
-        if provider == "bigmodel":
-            api_key = settings.BIGMODEL_API_KEY or ""
-            if not api_key:
-                logger.warning("BIGMODEL_API_KEY is not configured. LLM calls will fail.")
-            llm = OpenAICompatibleLLM(
-                api_key=api_key,
-                base_url=settings.BIGMODEL_BASE_URL,
-                model=settings.BIGMODEL_MODEL,
-            )
-        elif provider == "deepseek":
-            api_key = settings.DEEPSEEK_API_KEY or ""
-            if not api_key:
-                logger.warning("DEEPSEEK_API_KEY is not configured. LLM calls will fail.")
-            llm = OpenAICompatibleLLM(
-                api_key=api_key,
-                base_url=settings.DEEPSEEK_BASE_URL,
-                model=settings.DEEPSEEK_MODEL,
-            )
-        elif provider == "openai":
-            api_key = settings.OPENAI_API_KEY or ""
-            if not api_key:
-                logger.warning("OPENAI_API_KEY is not configured. LLM calls will fail.")
-            llm = OpenAICompatibleLLM(
-                api_key=api_key,
-                base_url=settings.OPENAI_BASE_URL,
-                model=settings.OPENAI_MODEL,
-            )
-        elif provider == "spark":
-            api_key = settings.SPARK_API_KEY or ""
-            if not api_key:
-                logger.warning("SPARK_API_KEY is not configured. LLM calls will fail.")
-            llm = OpenAICompatibleLLM(
-                api_key=api_key,
-                base_url=settings.SPARK_HTTP_BASE_URL,
-                model=settings.SPARK_MODEL,
-            )
-        else:
-            raise ValueError(f"Unsupported LLM provider: {provider}. Supported: bigmodel, deepseek, openai, spark")
+        mapping = cls._PROVIDER_MAP.get(provider)
+        if not mapping:
+            raise ValueError(f"Unsupported LLM provider: {provider}. Supported: {', '.join(cls._PROVIDER_MAP.keys())}")
+
+        api_key_attr, base_url_attr, model_attr = mapping
+        api_key = getattr(settings, api_key_attr, None) or ""
+        if not api_key:
+            logger.warning(f"{api_key_attr} is not configured. LLM calls will fail.")
+
+        llm = OpenAICompatibleLLM(
+            api_key=api_key,
+            base_url=getattr(settings, base_url_attr),
+            model=getattr(settings, model_attr),
+        )
 
         cls._cache[provider] = llm
         logger.info(f"LLM provider initialized: {provider} (model={llm.model})")

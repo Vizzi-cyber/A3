@@ -46,14 +46,13 @@ const Tutor: React.FC = () => {
   const token = useAppStore((s) => s.token)
 
   const wsRef = useRef<WebSocket | null>(null)
-  const sessionIdRef = useRef(`${studentId}_tutor`)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectAttemptRef = useRef(0)
 
-  // 建立 WebSocket 连接
+  // 建立 WebSocket 连接（依赖 studentId/token，切换用户时会自动重连）
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
-    const sessionId = sessionIdRef.current
+    const sessionId = `${studentId}_tutor`
     const wsUrl = token
       ? `${WS_BASE_URL}/tutor/ws/${sessionId}?token=${encodeURIComponent(token)}`
       : `${WS_BASE_URL}/tutor/ws/${sessionId}`
@@ -110,7 +109,7 @@ const Tutor: React.FC = () => {
     }
 
     wsRef.current = ws
-  }, [token])
+  }, [token, studentId])
 
   useEffect(() => {
     // token 变化时关闭旧连接，重新建立
@@ -159,7 +158,7 @@ const Tutor: React.FC = () => {
       const res = await tutorApi.ask({
         student_id: studentId,
         question: content,
-        session_id: sessionIdRef.current,
+        session_id: `${studentId}_tutor`,
         provider: modelProvider === 'default' ? undefined : modelProvider,
         rag_active: ragActive,
       })

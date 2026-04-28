@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Typography, Card, Button, Tag, Space, Timeline, Drawer, Slider, Radio, Progress, Avatar, List, message, Input, Badge, Tooltip, Divider, Popconfirm, Checkbox } from 'antd'
 import {
   CheckCircleOutlined,
@@ -334,6 +334,36 @@ const LearningPathPage: React.FC = () => {
   const completedCount = pathNodes.filter((n) => n.status === 'completed').length
   const progress = pathNodes.length ? Math.round((completedCount / pathNodes.length) * 100) : 0
 
+  const timelineItems = useMemo(() => pathNodes.map((node) => ({
+    dot: (
+      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm" style={{ background: statusColors[node.status] }}>
+        {node.status === 'completed' ? <CheckCircleOutlined /> :
+         node.status === 'in-progress' ? <ClockCircleOutlined /> :
+         node.status === 'locked' ? <LockOutlined /> :
+         <EnvironmentOutlined />}
+      </div>
+    ),
+    color: statusColors[node.status],
+    children: (
+      <div
+        className="p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer"
+        onClick={() => openNodeDetail(node)}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <Tag
+            className="rounded-full border-0 text-xs font-medium"
+            style={{ background: statusBg[node.status], color: statusColors[node.status] }}
+          >
+            {statusLabels[node.status]}
+          </Tag>
+          <span className="text-xs text-slate-400">{node.type}</span>
+        </div>
+        <Typography.Text className="font-bold text-slate-800 block text-base">{node.title}</Typography.Text>
+        <Typography.Text className="text-slate-400 text-sm">{node.resources} 个资源</Typography.Text>
+      </div>
+    ),
+  })), [pathNodes])
+
   return (
     <div className="space-y-5">
       {/* 顶部控制栏 */}
@@ -472,35 +502,7 @@ const LearningPathPage: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
           <Timeline
             mode="left"
-            items={pathNodes.map((node) => ({
-              dot: (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm" style={{ background: statusColors[node.status] }}>
-                  {node.status === 'completed' ? <CheckCircleOutlined /> :
-                   node.status === 'in-progress' ? <ClockCircleOutlined /> :
-                   node.status === 'locked' ? <LockOutlined /> :
-                   <EnvironmentOutlined />}
-                </div>
-              ),
-              color: statusColors[node.status],
-              children: (
-                <div
-                  className="p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer"
-                  onClick={() => openNodeDetail(node)}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Tag
-                      className="rounded-full border-0 text-xs font-medium"
-                      style={{ background: statusBg[node.status], color: statusColors[node.status] }}
-                    >
-                      {statusLabels[node.status]}
-                    </Tag>
-                    <span className="text-xs text-slate-400">{node.type}</span>
-                  </div>
-                  <Typography.Text className="font-bold text-slate-800 block text-base">{node.title}</Typography.Text>
-                  <Typography.Text className="text-slate-400 text-sm">{node.resources} 个资源</Typography.Text>
-                </div>
-              ),
-            }))}
+            items={timelineItems}
           />
         </div>
       )}

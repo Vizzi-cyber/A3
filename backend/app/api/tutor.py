@@ -6,7 +6,7 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -163,7 +163,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 await manager.send_message(session_id, {
                     "type": "agent_step",
                     "step": "planner",
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
 
                 # 输入安全校验
@@ -172,9 +172,9 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                     await manager.send_message(session_id, {
                         "type": "chunk",
                         "content": "【内容安全提醒】输入包含敏感内容，请修改后重试。",
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
-                    await manager.send_message(session_id, {"type": "complete", "timestamp": datetime.now().isoformat()})
+                    await manager.send_message(session_id, {"type": "complete", "timestamp": datetime.now(timezone.utc).isoformat()})
                     continue
 
                 # 获取 LLM 实例（支持动态切换）
@@ -184,9 +184,9 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                     await manager.send_message(session_id, {
                         "type": "chunk",
                         "content": f"模型加载失败：{e}",
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
-                    await manager.send_message(session_id, {"type": "complete", "timestamp": datetime.now().isoformat()})
+                    await manager.send_message(session_id, {"type": "complete", "timestamp": datetime.now(timezone.utc).isoformat()})
                     continue
 
                 # rag_active=True 时拉取学生画像注入 prompt
@@ -232,7 +232,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 await manager.send_message(session_id, {
                     "type": "agent_step",
                     "step": "worker",
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
 
                 # 真实流式输出
@@ -245,7 +245,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                         await manager.send_message(session_id, {
                             "type": "chunk",
                             "content": chunk,
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         })
                 except Exception as e:
                     if not full_answer:
@@ -253,14 +253,14 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                         await manager.send_message(session_id, {
                             "type": "chunk",
                             "content": full_answer,
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         })
 
                 # Step 3: critic —— 输出安全审核
                 await manager.send_message(session_id, {
                     "type": "agent_step",
                     "step": "critic",
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
                 out_safe = SafetyGuard.check_output(full_answer)
                 if not out_safe.get("safe", True):
@@ -268,7 +268,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                     await manager.send_message(session_id, {
                         "type": "chunk",
                         "content": "\n" + full_answer,
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
 
                 # 更新会话历史
@@ -281,25 +281,27 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 try:
                     from ..models.database import SessionLocal
                     db = SessionLocal()
-                    qa = TutorQAModel(
-                        student_id=student_id,
-                        session_id=session_id,
-                        question=question,
-                        answer=full_answer,
-                        question_meta={"rag_active": rag_active},
-                        profile_snapshot=profile_snapshot,
-                        response_type="explanation",
-                        llm_provider=provider,
-                    )
-                    db.add(qa)
-                    db.commit()
-                    db.close()
+                    try:
+                        qa = TutorQAModel(
+                            student_id=student_id,
+                            session_id=session_id,
+                            question=question,
+                            answer=full_answer,
+                            question_meta={"rag_active": rag_active},
+                            profile_snapshot=profile_snapshot,
+                            response_type="explanation",
+                            llm_provider=provider,
+                        )
+                        db.add(qa)
+                        db.commit()
+                    finally:
+                        db.close()
                 except Exception:
                     pass
 
                 await manager.send_message(session_id, {
                     "type": "complete",
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
 
             elif message_type == "ping":
@@ -311,7 +313,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
 
 
 @router.get("/session/{session_id}/history")
-async def get_session_history(session_id: str, db: Session = Depends(get_db)):
+async def get_session_history(session_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取辅导会话历史（优先从数据库读取持久化记录）"""
     # 从数据库读取该 session 的问答记录
     records = (

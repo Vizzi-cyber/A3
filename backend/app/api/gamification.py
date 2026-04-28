@@ -9,12 +9,13 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..models.database import get_db
 from ..models.gamification import PointsModel, AchievementModel, TaskModel, LeaderboardModel
+from .auth import require_auth
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ router = APIRouter()
 # ---------- 积分 ----------
 
 @router.get("/{student_id}/points")
-async def get_points(student_id: str, db: Session = Depends(get_db)):
+async def get_points(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生积分"""
     points = db.query(PointsModel).filter(PointsModel.student_id == student_id).first()
     if not points:
@@ -45,7 +46,7 @@ class AddPointsRequest(BaseModel):
 
 
 @router.post("/points/add")
-async def add_points(request: AddPointsRequest, db: Session = Depends(get_db)):
+async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """增加积分"""
     points = db.query(PointsModel).filter(PointsModel.student_id == request.student_id).first()
     if not points:
@@ -62,7 +63,7 @@ async def add_points(request: AddPointsRequest, db: Session = Depends(get_db)):
 # ---------- 成就 ----------
 
 @router.get("/{student_id}/achievements")
-async def get_achievements(student_id: str, db: Session = Depends(get_db)):
+async def get_achievements(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取已解锁成就"""
     achievements = db.query(AchievementModel).filter(AchievementModel.student_id == student_id).all()
     return {
@@ -89,7 +90,7 @@ class UnlockAchievementRequest(BaseModel):
 
 
 @router.post("/achievements/unlock")
-async def unlock_achievement(request: UnlockAchievementRequest, db: Session = Depends(get_db)):
+async def unlock_achievement(request: UnlockAchievementRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """解锁成就"""
     existing = db.query(AchievementModel).filter(
         AchievementModel.student_id == request.student_id,
@@ -112,7 +113,7 @@ async def unlock_achievement(request: UnlockAchievementRequest, db: Session = De
 # ---------- 任务 ----------
 
 @router.get("/{student_id}/tasks")
-async def get_tasks(student_id: str, task_type: Optional[str] = None, db: Session = Depends(get_db)):
+async def get_tasks(student_id: str, task_type: Optional[str] = None, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取任务列表"""
     query = db.query(TaskModel).filter(TaskModel.student_id == student_id)
     if task_type:
@@ -146,7 +147,7 @@ class CreateTaskRequest(BaseModel):
 
 
 @router.post("/tasks/create")
-async def create_task(request: CreateTaskRequest, db: Session = Depends(get_db)):
+async def create_task(request: CreateTaskRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """创建任务"""
     task = TaskModel(
         student_id=request.student_id,
@@ -168,7 +169,7 @@ class UpdateTaskProgressRequest(BaseModel):
 
 
 @router.post("/tasks/progress")
-async def update_task_progress(request: UpdateTaskProgressRequest, db: Session = Depends(get_db)):
+async def update_task_progress(request: UpdateTaskProgressRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """更新任务进度"""
     task = db.query(TaskModel).filter(
         TaskModel.student_id == request.student_id,
@@ -179,7 +180,7 @@ async def update_task_progress(request: UpdateTaskProgressRequest, db: Session =
     task.progress = min(1.0, max(0.0, request.progress))
     if task.progress >= 1.0 and not task.completed:
         task.completed = True
-        task.completed_at = datetime.now()
+        task.completed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(task)
     return {"status": "success", "progress": task.progress, "completed": task.completed}
@@ -188,7 +189,7 @@ async def update_task_progress(request: UpdateTaskProgressRequest, db: Session =
 # ---------- 排行榜 ----------
 
 @router.get("/leaderboard/{period}")
-async def get_leaderboard(period: str = "weekly", limit: int = 20, db: Session = Depends(get_db)):
+async def get_leaderboard(period: str = "weekly", limit: int = 20, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取排行榜"""
     rows = (
         db.query(LeaderboardModel)

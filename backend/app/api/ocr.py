@@ -4,7 +4,6 @@ OCR 图片识别 API
 支持纸质笔记、错题、公式识别
 """
 import base64
-import io
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from pydantic import BaseModel
@@ -43,9 +42,8 @@ async def ocr_recognize(
         raise HTTPException(status_code=413, detail="Image too large")
 
     try:
-        # 解码验证是否为合法图片
-        raw = base64.b64decode(image_b64)
-        io.BytesIO(raw)
+        # 解码验证是否为合法图片（至少能成功 base64 解码）
+        base64.b64decode(image_b64)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid image data")
 

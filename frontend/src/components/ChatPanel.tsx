@@ -57,7 +57,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   className = '',
   style,
 }) => {
-  const [inputValue, setInputValue] = React.useState('')
+  const [inputValue, setInputValue] = useState('')
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [imageModalOpen, setImageModalOpen] = useState(false)
   const [imageUrlInput, setImageUrlInput] = useState('')

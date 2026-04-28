@@ -1,7 +1,7 @@
 """
 知识点与学习记录 ORM 模型
 """
-from sqlalchemy import Column, String, DateTime, JSON, Float, Integer, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, JSON, Float, Integer, ForeignKey, Text, Index
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -41,6 +41,10 @@ class LearningRecordModel(Base):
     meta = Column(JSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    __table_args__ = (
+        Index("ix_learning_records_student_action", "student_id", "action"),
+    )
+
 
 class QuizResultModel(Base):
     """测验结果表"""
@@ -56,3 +60,7 @@ class QuizResultModel(Base):
     time_spent = Column(Integer, default=0)  # 用时（秒）
     answers = Column(JSON, default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_quiz_results_created_at", "created_at"),
+    )

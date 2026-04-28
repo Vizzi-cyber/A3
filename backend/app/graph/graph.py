@@ -93,5 +93,4 @@ class LearningGraphRunner:
         return final_state.get("final_output", {"status": "error", "message": "No final output produced"})
 
 
-# 全局单例（FastAPI 启动时建议挂载到 app.state）
-learning_graph_runner = LearningGraphRunner()
+# 不再在模块导入时创建全局单例，改由 lifespan 延迟初始化，避免阻塞启动

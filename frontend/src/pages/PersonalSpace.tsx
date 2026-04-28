@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Typography, Tabs, List, Avatar, Tag, Space, Button, Progress, Row, Col, message } from 'antd'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
@@ -85,6 +85,17 @@ const typeMeta: Record<string, { icon: React.ReactNode; color: string; bg: strin
   document: { icon: <FileTextOutlined />, color: '#10b981', bg: '#ecfdf5', label: '文档' },
   mindmap: { icon: <ApartmentOutlined />, color: '#8b5cf6', bg: '#f5f3ff', label: '思维导图' },
 }
+
+const defaultBadges = [
+  { id: '1', name: '初出茅庐', desc: '完成首次学习', icon: <StarOutlined />, color: '#f59e0b' },
+  { id: '2', name: '代码能手', desc: '完成5次代码实操', icon: <CodeOutlined />, color: '#3b82f6' },
+  { id: '3', name: '学习王者', desc: '连续打卡30天', icon: <CrownOutlined />, color: '#ef4444' },
+  { id: '4', name: '全勤标兵', desc: '连续7天完成每日挑战', icon: <FireOutlined />, color: '#10b981' },
+  { id: '5', name: '思维导图', desc: '生成10张思维导图', icon: <ApartmentOutlined />, color: '#8b5cf6' },
+  { id: '6', name: '提问达人', desc: '向AI辅导提问50次', icon: <MessageOutlined />, color: '#0ea5e9' },
+  { id: '7', name: '知识探索者', desc: '完成全部基础章节', icon: <BulbOutlined />, color: '#f59e0b' },
+  { id: '8', name: '完美通过', desc: '测验全部满分', icon: <CheckCircleOutlined />, color: '#10b981' },
+]
 
 const PersonalSpace: React.FC = () => {
   const navigate = useNavigate()
@@ -559,7 +570,7 @@ const PersonalSpace: React.FC = () => {
   }
 
   const statsRecord = (dashboardStats?.stats || {}) as Record<string, unknown>
-  const statCardsData = [
+  const statCardsData = useMemo(() => [
     {
       title: '累计学习时长',
       value: Math.round((Number(statsRecord.weekly_hours) || 0) * 10) / 10,
@@ -588,38 +599,26 @@ const PersonalSpace: React.FC = () => {
       color: '#ec4899',
       icon: <HeartOutlined />,
     },
-  ]
+  ], [dashboardStats, achievements, favorites])
 
-  const defaultBadges = [
-    { id: '1', name: '初出茅庐', desc: '完成首次学习', icon: <StarOutlined />, color: '#f59e0b' },
-    { id: '2', name: '代码能手', desc: '完成5次代码实操', icon: <CodeOutlined />, color: '#3b82f6' },
-    { id: '3', name: '学习王者', desc: '连续打卡30天', icon: <CrownOutlined />, color: '#ef4444' },
-    { id: '4', name: '全勤标兵', desc: '连续7天完成每日挑战', icon: <FireOutlined />, color: '#10b981' },
-    { id: '5', name: '思维导图', desc: '生成10张思维导图', icon: <ApartmentOutlined />, color: '#8b5cf6' },
-    { id: '6', name: '提问达人', desc: '向AI辅导提问50次', icon: <MessageOutlined />, color: '#0ea5e9' },
-    { id: '7', name: '知识探索者', desc: '完成全部基础章节', icon: <BulbOutlined />, color: '#f59e0b' },
-    { id: '8', name: '完美通过', desc: '测验全部满分', icon: <CheckCircleOutlined />, color: '#10b981' },
-  ]
-
-  const badgeList = defaultBadges.map((db) => {
+  const badgeList = useMemo(() => defaultBadges.map((db) => {
     const unlocked = achievements.find((a) => a.name === db.name)
     return { ...db, unlocked: !!unlocked, unlocked_at: unlocked?.unlocked_at }
-  })
+  }), [achievements])
 
-  const weekFocus = focusData.length
-    ? focusData
-    : (() => {
-        // 没数据时也铺满 7 天（按今天往前推），全部 0，避免出现假数据
-        const labels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-        const out: FocusItem[] = []
-        const t = new Date()
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(t)
-          d.setDate(t.getDate() - i)
-          out.push({ day: labels[d.getDay()], focus: 0, duration: 0 })
-        }
-        return out
-      })()
+  const weekFocus = useMemo(() => {
+    if (focusData.length) return focusData
+    // 没数据时也铺满 7 天（按今天往前推），全部 0，避免出现假数据
+    const labels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    const out: FocusItem[] = []
+    const t = new Date()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(t)
+      d.setDate(t.getDate() - i)
+      out.push({ day: labels[d.getDay()], focus: 0, duration: 0 })
+    }
+    return out
+  }, [focusData])
 
   return (
     <div className="space-y-6">
