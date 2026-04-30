@@ -26,6 +26,7 @@ class TutorRequest(BaseModel):
     session_id: Optional[str] = None
     provider: Optional[str] = None  # bigmodel / deepseek / openai / spark
     rag_active: bool = True  # 是否启用画像/知识库检索增强
+    task: str = "answer_question"  # answer_question / hint / encourage / explain_code / explain_error
 
 
 class TutorResponse(BaseModel):
@@ -84,9 +85,10 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
     try:
         result = await asyncio.wait_for(
             _tutor_agent.process({
-                "task": "answer_question",
+                "task": request.task,
                 "session_id": session_id,
                 "question": request.question,
+                "language": request.context.get("language", "C") if request.context else "C",
                 "profile": profile_for_prompt,
                 "llm_provider": request.provider,
             }),

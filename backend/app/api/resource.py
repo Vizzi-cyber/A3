@@ -339,6 +339,7 @@ _DANGEROUS_MODULES = {
 _DANGEROUS_CALLS = {
     "eval", "exec", "compile", "open", "input", "raw_input",
     "__import__", "breakpoint", "exit", "quit",
+    "getattr", "globals", "locals", "vars", "dir",
 }
 
 
@@ -348,6 +349,12 @@ def _analyze_python_security(source: str) -> tuple[bool, str]:
         tree = ast.parse(source)
     except SyntaxError as e:
         return False, f"Python 语法错误: {e.msg} (第{e.lineno}行)"
+
+    _ALLOWED_MAGIC = {
+        "__init__", "__str__", "__repr__", "__len__", "__eq__", "__name__", "__doc__",
+        "__file__", "__class__", "__module__", "__dict__", "__slots__",
+        "__main__", "__future__", "__all__", "__version__",
+    }
 
     for node in ast.walk(tree):
         # 禁止危险导入
@@ -370,20 +377,22 @@ def _analyze_python_security(source: str) -> tuple[bool, str]:
                 return False, f"禁止调用危险函数: {node.func.id}()"
             # 禁止 os.system / os.popen / subprocess.run 等
             if isinstance(node.func, ast.Attribute):
-                # 简单的属性链检测：只检测一层如 os.system
                 if isinstance(node.func.value, ast.Name):
                     if node.func.value.id in _DANGEROUS_MODULES and node.func.attr in {
                         "system", "popen", "call", "run", "Popen", "fork", "kill",
                         "remove", "rmdir", "unlink", "rename", "replace",
                     }:
                         return False, f"禁止调用危险方法: {node.func.value.id}.{node.func.attr}()"
+            # 禁止 __import__ 调用（包括间接调用）
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "__import__":
+                return False, "禁止调用 __import__"
         # 禁止访问 __subclasses__ / __bases__ / __globals__ 等双下划线魔法属性（常用于沙箱逃逸）
         if isinstance(node, ast.Attribute):
-            if node.attr.startswith("__") and node.attr.endswith("__") and node.attr not in {
-                "__init__", "__str__", "__repr__", "__len__", "__eq__", "__name__", "__doc__",
-                "__file__", "__class__", "__module__", "__dict__", "__slots__",
-            }:
+            if node.attr.startswith("__") and node.attr.endswith("__") and node.attr not in _ALLOWED_MAGIC:
                 return False, f"禁止访问魔法属性: {node.attr}"
+        # 禁止 global/nonlocal 声明（防止修改外部作用域）
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            return False, f"禁止使用 {'global' if isinstance(node, ast.Global) else 'nonlocal'} 声明"
 
     return True, ""
 
@@ -394,6 +403,10 @@ def _run_c_code(code: str) -> dict:
     import tempfile
     import os
     import shutil
+
+    # 安全检查：限制代码长度（防止超大文件）
+    if len(code) > 50_000:
+        return {"status": "success", "output": "", "error": "代码过长（超过 50KB），已拒绝执行。", "explanation": "安全限制。"}
 
     gcc_path = shutil.which("gcc")
     msys2_gcc = r"C:\msys64\mingw64\bin\gcc.exe"
@@ -434,12 +447,27 @@ def _run_c_code(code: str) -> dict:
                 "error": compile_stderr[:2000] or "编译失败",
                 "explanation": "C 代码编译出错，请检查语法。",
             }
+
+        # Unix: 通过 preexec_fn 设置资源限制（防止 fork bomb / 内存耗尽）
+        preexec = None
+        if os.name != "nt":
+            def _set_limits():
+                import resource
+                # CPU 时间限制 5 秒
+                resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
+                # 内存限制 128MB
+                resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
+                # 禁止 fork 子进程
+                resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
+            preexec = _set_limits
+
         run_res = subprocess.run(
             [exe_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=10,
             env=env,
+            preexec_fn=preexec,
         )
         run_stdout_bytes = run_res.stdout or b""
         run_stderr_bytes = run_res.stderr or b""
@@ -483,6 +511,10 @@ def _run_python_code(code: str) -> dict:
     import tempfile
     import os
 
+    # 安全检查：限制代码长度
+    if len(code) > 50_000:
+        return {"status": "success", "output": "", "error": "代码过长（超过 50KB），已拒绝执行。", "explanation": "安全限制。"}
+
     safe, reason = _analyze_python_security(code)
     if not safe:
         return {"status": "success", "output": "", "error": f"代码安全检查未通过: {reason}", "explanation": "为了安全，部分系统级操作已被禁用。"}
@@ -502,11 +534,22 @@ def _run_python_code(code: str) -> dict:
     output = ""
     error = ""
     try:
+        # Unix: 通过 preexec_fn 设置资源限制
+        preexec = None
+        if os.name != "nt":
+            def _set_limits():
+                import resource
+                resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
+                resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
+                resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
+            preexec = _set_limits
+
         result = subprocess.run(
             ["python", tmp_path],
             capture_output=True,
             text=True,
             timeout=10,
+            preexec_fn=preexec,
         )
         output = result.stdout[:5000]
         error = result.stderr[:5000] if result.returncode != 0 else ""

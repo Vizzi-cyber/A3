@@ -21,8 +21,22 @@ class RateLimiter(BaseHTTPMiddleware):
         super().__init__(app)
         self.default_limit = default_limit
         self.window_seconds = window_seconds
-        # 存储结构: {key: [(timestamp, count), ...]}
+        # 存储结构: {key: [timestamp, ...]}
         self._records: Dict[str, list[float]] = {}
+        self._cleanup_counter: int = 0
+        self._cleanup_interval: int = 200  # 每 200 次请求做一次全量清理
+
+    def _global_cleanup(self, now: float):
+        """全量清理所有过期的 key，防止内存泄漏"""
+        expired_keys = []
+        for key, records in self._records.items():
+            active = [t for t in records if now - t < self.window_seconds]
+            if active:
+                self._records[key] = active
+            else:
+                expired_keys.append(key)
+        for key in expired_keys:
+            del self._records[key]
 
     async def dispatch(self, request: Request, call_next):
         # 获取客户端标识（优先 X-Forwarded-For 第一个 IP，其次直接IP）
@@ -45,6 +59,12 @@ class RateLimiter(BaseHTTPMiddleware):
 
         key = f"{client_ip}:{path}"
         now = time.time()
+
+        # 定期全量清理，防止不活跃 key 占用内存
+        self._cleanup_counter += 1
+        if self._cleanup_counter >= self._cleanup_interval:
+            self._cleanup_counter = 0
+            self._global_cleanup(now)
 
         # 清理过期记录
         records = self._records.get(key, [])

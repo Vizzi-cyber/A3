@@ -163,6 +163,7 @@ class BaseAgent(ABC):
         """
         best_result = None
         best_score = 0.0
+        iteration = 0
 
         for iteration in range(max_iterations):
             self.logger.info(f"Reflection iteration {iteration + 1}/{max_iterations}")
@@ -188,6 +189,8 @@ class BaseAgent(ABC):
             context["_previous_result"] = result
             context["_feedback"] = await self._generate_feedback(result)
 
+        if best_result is None:
+            best_result = {"status": "error", "message": "No iterations executed"}
         best_result["_total_iterations"] = iteration + 1
         return best_result
 

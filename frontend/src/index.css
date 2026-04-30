@@ -164,3 +164,38 @@ code {
     background-image: none;
   }
 }
+
+/* ===== XP 浮动动画 ===== */
+@keyframes xpFloat {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(-40px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.9);
+  }
+}
+
+.xp-float {
+  animation: xpFloat 1.5s ease-out forwards;
+  pointer-events: none;
+  position: absolute;
+  font-weight: 800;
+  color: #f59e0b;
+  text-shadow: 0 1px 4px rgba(245, 158, 11, 0.3);
+}
+
+/* ===== 连续打卡脉冲 ===== */
+@keyframes streakPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.streak-pulse {
+  animation: streakPulse 2s ease-in-out infinite;
+}
