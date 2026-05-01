@@ -66,7 +66,10 @@ const resourceTypeMeta: Record<string, { icon: React.ReactNode; color: string }>
 }
 
 const LearningPathPage: React.FC = () => {
-  const [viewMode, setViewMode] = useState<'map' | 'timeline' | 'graph'>('map')
+  const [viewMode, setViewMode] = useState<'map' | 'timeline' | 'graph'>(() => {
+    if (typeof window === 'undefined') return 'map'
+    return (localStorage.getItem('learning_path_view_mode') as 'map' | 'timeline' | 'graph') || 'map'
+  })
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedNode, setSelectedNode] = useState<PathNode | null>(null)
   const [pathData, setPathData] = useState<Record<string, unknown> | null>(null)
@@ -349,7 +352,11 @@ const LearningPathPage: React.FC = () => {
             </div>
           </Space>
           <Space>
-            <Radio.Group value={viewMode} onChange={(e) => setViewMode(e.target.value)} buttonStyle="solid" className="rounded-lg overflow-hidden">
+            <Radio.Group value={viewMode} onChange={(e) => {
+              const v = e.target.value as 'map' | 'timeline' | 'graph'
+              setViewMode(v)
+              localStorage.setItem('learning_path_view_mode', v)
+            }} buttonStyle="solid" className="rounded-lg overflow-hidden">
               <Radio.Button value="map"><GlobalOutlined /> 地图视图</Radio.Button>
               <Radio.Button value="timeline"><ClockCircleOutlined /> 时间轴</Radio.Button>
               <Radio.Button value="graph"><NodeIndexOutlined /> 知识图谱</Radio.Button>
@@ -416,7 +423,7 @@ const LearningPathPage: React.FC = () => {
         </div>
       )}
 
-      {/* 地图视图 — 统一垂直布局 */}
+      {/* 地图视图 — 拓扑图呈现 */}
       {viewMode === 'map' && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
           {pathNodes.length === 0 ? (
@@ -428,80 +435,198 @@ const LearningPathPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-          <div className="relative max-w-2xl mx-auto">
-            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-100" />
-            <div className="space-y-8">
-              {pathNodes.map((node) => (
-                <div key={node.id} className="flex items-start gap-5 relative">
-                  <div
-                    className="relative z-10 w-12 h-12 rounded-full flex items-center justify-center text-white text-lg shrink-0 shadow-sm"
-                    style={{ background: statusColors[node.status] }}
-                    onClick={() => openNodeDetail(node)}
-                  >
-                    {node.status === 'completed' ? <CheckCircleOutlined /> :
-                     node.status === 'in-progress' ? <ClockCircleOutlined /> :
-                     node.status === 'locked' ? <LockOutlined /> :
-                     <EnvironmentOutlined />}
+            <div className="relative max-w-4xl mx-auto overflow-x-auto">
+              {/* 拓扑分层布局 */}
+              {(() => {
+                // 按 4 个节点一层分组，构建拓扑层级
+                const layers: PathNode[][] = []
+                for (let i = 0; i < pathNodes.length; i += 4) {
+                  layers.push(pathNodes.slice(i, i + 4))
+                }
+                const maxLayerSize = Math.max(...layers.map(l => l.length))
+                return (
+                  <div className="flex flex-col items-center gap-12 min-w-[600px]">
+                    {/* 层间 SVG 连线 */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
+                      {/* 画各层节点之间的连线 */}
+                      {layers.map((layer, li) =>
+                        layer.map((node, ni) => {
+                          if (li === layers.length - 1) return null
+                          const nextLayer = layers[li + 1]
+                          // 每个节点连向下一层的所有节点（简化：只连相邻 2 个）
+                          return nextLayer.slice(0, 2).map((nextNode, nni) => {
+                            const fromX = ((ni + 0.5) / maxLayerSize) * 100
+                            const fromY = (li + 1) * 200 - 60
+                            const toX = ((nni + 0.5) / maxLayerSize) * 100
+                            const toY = (li + 1) * 200 + 60
+                            return (
+                              <line
+                                key={`${node.id}-${nextNode.id}`}
+                                x1={`${fromX}%`} y1={fromY}
+                                x2={`${toX}%`} y2={toY}
+                                stroke="#e2e8f0"
+                                strokeWidth="2"
+                                strokeDasharray={node.status === 'completed' ? undefined : '6 4'}
+                              />
+                            )
+                          })
+                        })
+                      ).flat().filter(Boolean)}
+                    </svg>
+
+                    {layers.map((layer, li) => (
+                      <div key={li} className="relative z-10 w-full">
+                        {/* 层标题 */}
+                        <div className="text-center mb-4">
+                          <Tag className="rounded-full border-0 bg-slate-100 text-slate-500 text-xs">
+                            阶段 {li + 1} / {layers.length}
+                          </Tag>
+                        </div>
+                        {/* 层内节点 */}
+                        <div className="flex justify-center gap-6 flex-wrap">
+                          {layer.map((node, ni) => {
+                            const globalIdx = li * 4 + ni
+                            return (
+                              <div key={node.id} className="flex flex-col items-center">
+                                <div
+                                  className="w-40 p-4 rounded-xl border-2 text-center cursor-pointer transition-all hover:shadow-lg relative"
+                                  style={{
+                                    borderColor: statusColors[node.status],
+                                    background: statusBg[node.status],
+                                  }}
+                                  onClick={() => openNodeDetail(node)}
+                                >
+                                  {/* 编号角标 */}
+                                  <div
+                                    className="absolute -top-3 -left-3 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm"
+                                    style={{ background: statusColors[node.status] }}
+                                  >
+                                    {globalIdx + 1}
+                                  </div>
+                                  {/* 状态图标 */}
+                                  <div className="mb-2 text-lg" style={{ color: statusColors[node.status] }}>
+                                    {node.status === 'completed' ? <CheckCircleOutlined /> :
+                                     node.status === 'in-progress' ? <ClockCircleOutlined /> :
+                                     node.status === 'locked' ? <LockOutlined /> :
+                                     <EnvironmentOutlined />}
+                                  </div>
+                                  <div className="text-sm font-bold text-slate-800 truncate">{node.title}</div>
+                                  <div className="text-xs text-slate-500 mt-1">{(node.resources || 3) * 20} 分钟</div>
+                                  <Tag
+                                    className="rounded-full border-0 text-xs mt-2"
+                                    style={{ background: statusBg[node.status], color: statusColors[node.status] }}
+                                  >
+                                    {statusLabels[node.status]}
+                                  </Tag>
+                                </div>
+                                {/* 与下一层的竖线 */}
+                                {li < layers.length - 1 && (
+                                  <div className="h-10 w-0.5 bg-slate-200 mt-2" />
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div
-                    className="flex-1 p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer"
-                    onClick={() => openNodeDetail(node)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <Tag
-                        className="rounded-full border-0 text-xs font-medium"
-                        style={{ background: statusBg[node.status], color: statusColors[node.status] }}
-                      >
-                        {statusLabels[node.status]}
-                      </Tag>
-                      <span className="text-xs text-slate-400">{node.type}</span>
-                    </div>
-                    <Typography.Text className="font-bold text-slate-800 text-lg block">{node.title}</Typography.Text>
-                    <Typography.Text className="text-slate-400 text-sm">{node.resources} 个学习资源</Typography.Text>
-                  </div>
-                </div>
-              ))}
+                )
+              })()}
             </div>
-          </div>
           )}
         </div>
       )}
 
-      {/* 时间轴视图 */}
+      {/* 时间轴视图 — 带日期和里程碑 */}
       {viewMode === 'timeline' && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
-          <Timeline
-            mode="left"
-            items={pathNodes.map((node) => ({
-              dot: (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm" style={{ background: statusColors[node.status] }}>
-                  {node.status === 'completed' ? <CheckCircleOutlined /> :
-                   node.status === 'in-progress' ? <ClockCircleOutlined /> :
-                   node.status === 'locked' ? <LockOutlined /> :
-                   <EnvironmentOutlined />}
-                </div>
-              ),
-              color: statusColors[node.status],
-              children: (
-                <div
-                  className="p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer"
-                  onClick={() => openNodeDetail(node)}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Tag
-                      className="rounded-full border-0 text-xs font-medium"
-                      style={{ background: statusBg[node.status], color: statusColors[node.status] }}
-                    >
-                      {statusLabels[node.status]}
-                    </Tag>
-                    <span className="text-xs text-slate-400">{node.type}</span>
+          {pathNodes.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">暂无学习路径</div>
+          ) : (
+            <div className="max-w-2xl mx-auto">
+              {/* 时间轴概览 */}
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                <div>
+                  <Typography.Text className="text-slate-500 text-sm">预计总时长</Typography.Text>
+                  <div className="text-2xl font-bold text-slate-800">
+                    {Math.ceil(pathNodes.reduce((sum, n) => sum + (n.resources || 3) * 20, 0) / dailyDuration)} 天
                   </div>
-                  <Typography.Text className="font-bold text-slate-800 block text-base">{node.title}</Typography.Text>
-                  <Typography.Text className="text-slate-400 text-sm">{node.resources} 个资源</Typography.Text>
                 </div>
-              ),
-            }))}
-          />
+                <div className="text-right">
+                  <Typography.Text className="text-slate-500 text-sm">每日学习</Typography.Text>
+                  <div className="text-2xl font-bold text-slate-800">{dailyDuration} 分钟</div>
+                </div>
+              </div>
+
+              {/* 自定义时间轴：避免 antd Timeline label 挤压 */}
+              <div className="relative">
+                {/* 中心线 */}
+                <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-slate-100 -translate-x-1/2" />
+                <div className="space-y-8">
+                  {pathNodes.map((node, idx) => {
+                    const cumulativeMinutes = pathNodes.slice(0, idx).reduce((sum, n) => sum + (n.resources || 3) * 20, 0)
+                    const dayNum = Math.floor(cumulativeMinutes / dailyDuration) + 1
+                    const weekNum = Math.ceil(dayNum / 7)
+                    const isMilestone = dayNum % 7 === 1 && idx > 0
+                    const isLeft = idx % 2 === 0
+                    return (
+                      <div key={node.id} className={`relative flex items-start gap-4 md:gap-8 ${isLeft ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                        {/* 移动端：左侧固定；桌面端：交替 */}
+                        <div className="hidden md:block flex-1" />
+                        {/* 时间轴节点圆点 */}
+                        <div className="relative z-10 shrink-0">
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm text-sm"
+                            style={{ background: statusColors[node.status] }}
+                          >
+                            {node.status === 'completed' ? <CheckCircleOutlined /> :
+                             node.status === 'in-progress' ? <ClockCircleOutlined /> :
+                             node.status === 'locked' ? <LockOutlined /> :
+                             <span className="text-xs font-bold">{idx + 1}</span>}
+                          </div>
+                        </div>
+                        {/* 内容卡片 */}
+                        <div className={`flex-1 ${isLeft ? 'md:text-left' : 'md:text-right'}`}>
+                          {/* 日期标签 */}
+                          <div className={`mb-2 text-xs leading-relaxed ${isLeft ? 'md:text-left' : 'md:text-right'}`}>
+                            <span className="font-bold text-slate-600 mr-2">第 {dayNum} 天</span>
+                            <span className="text-slate-400">{(node.resources || 3) * 20} 分钟</span>
+                            {isMilestone && (
+                              <span className="text-amber-500 font-medium ml-2">第 {weekNum} 周</span>
+                            )}
+                          </div>
+                          {/* 卡片 */}
+                          <div
+                            className={`inline-block p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer max-w-sm text-left ${isMilestone ? 'ring-2 ring-amber-100' : ''}`}
+                            onClick={() => openNodeDetail(node)}
+                          >
+                            {isMilestone && (
+                              <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-xs mb-2">
+                                <FlagOutlined /> 里程碑 · 第 {weekNum} 周
+                              </Tag>
+                            )}
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <Tag
+                                className="rounded-full border-0 text-xs font-medium"
+                                style={{ background: statusBg[node.status], color: statusColors[node.status] }}
+                              >
+                                {statusLabels[node.status]}
+                              </Tag>
+                              <span className="text-xs text-slate-400">{node.type}</span>
+                            </div>
+                            <Typography.Text className="font-bold text-slate-800 block text-base">{node.title}</Typography.Text>
+                            <Typography.Text className="text-slate-400 text-sm">{node.resources} 个资源</Typography.Text>
+                          </div>
+                        </div>
+                        {/* 移动端占位 */}
+                        <div className="md:hidden flex-1" />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
