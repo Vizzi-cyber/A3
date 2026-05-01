@@ -4,11 +4,13 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.favorites import FavoriteModel
+from .auth import require_auth
+import uuid
 
 router = APIRouter()
 
@@ -29,7 +31,7 @@ class AddFavoriteRequest(BaseModel):
 
 
 @router.get("/{student_id}")
-async def get_favorites(student_id: str, db: Session = Depends(get_db)):
+async def get_favorites(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生收藏列表"""
     items = (
         db.query(FavoriteModel)
@@ -55,9 +57,8 @@ async def get_favorites(student_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{student_id}")
-async def add_favorite(student_id: str, request: FavoriteItem, db: Session = Depends(get_db)):
+async def add_favorite(student_id: str, request: FavoriteItem, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """添加收藏"""
-    import uuid
     fav = FavoriteModel(
         id=f"fav_{uuid.uuid4().hex[:12]}",
         student_id=student_id,
@@ -73,7 +74,7 @@ async def add_favorite(student_id: str, request: FavoriteItem, db: Session = Dep
 
 
 @router.delete("/{student_id}/{favorite_id}")
-async def remove_favorite(student_id: str, favorite_id: str, db: Session = Depends(get_db)):
+async def remove_favorite(student_id: str, favorite_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """删除收藏"""
     item = db.query(FavoriteModel).filter(
         FavoriteModel.student_id == student_id,

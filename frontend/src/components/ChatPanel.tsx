@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
   Button,
   Input,
@@ -10,7 +10,7 @@ import {
   Spin,
   Tooltip,
   Modal,
-} from 'antd'
+} from "antd";
 import {
   SendOutlined,
   RobotOutlined,
@@ -21,157 +21,157 @@ import {
   CloseOutlined,
   LinkOutlined,
   UploadOutlined,
-} from '@ant-design/icons'
-import type { ChatMessage, VisionContentItem } from '../types'
+} from "@ant-design/icons";
+import type { ChatMessage, VisionContentItem } from "../types";
 
 interface ChatPanelProps {
-  messages: ChatMessage[]
-  loading: boolean
-  onSend: (content: string | VisionContentItem[]) => void
-  placeholder?: string
-  suggestions?: string[]
-  showAvatars?: boolean
-  showSuggestions?: boolean
-  title?: string
-  subtitle?: string
-  tag?: string
-  extraHeader?: React.ReactNode
-  inputPrefix?: React.ReactNode
-  className?: string
-  style?: React.CSSProperties
+  messages: ChatMessage[];
+  loading: boolean;
+  onSend: (content: string | VisionContentItem[]) => void;
+  placeholder?: string;
+  suggestions?: string[];
+  showAvatars?: boolean;
+  showSuggestions?: boolean;
+  title?: string;
+  subtitle?: string;
+  tag?: string;
+  extraHeader?: React.ReactNode;
+  inputPrefix?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   loading,
   onSend,
-  placeholder = '输入消息...',
+  placeholder = "输入消息...",
   suggestions = [],
   showAvatars = true,
   showSuggestions = false,
-  title = 'AI 助手',
-  subtitle = '',
-  tag = '在线',
+  title = "AI 助手",
+  subtitle = "",
+  tag = "在线",
   extraHeader,
   inputPrefix,
-  className = '',
+  className = "",
   style,
 }) => {
-  const [inputValue, setInputValue] = React.useState('')
-  const [attachedImages, setAttachedImages] = useState<string[]>([])
-  const [imageModalOpen, setImageModalOpen] = useState(false)
-  const [imageUrlInput, setImageUrlInput] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [inputValue, setInputValue] = useState("");
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
-  const buildContent = (): string | VisionContentItem[] => {
+  const buildContent = useCallback((): string | VisionContentItem[] => {
     if (attachedImages.length === 0) {
-      return inputValue.trim()
+      return inputValue.trim();
     }
-    const content: VisionContentItem[] = []
+    const content: VisionContentItem[] = [];
     if (inputValue.trim()) {
-      content.push({ type: 'text', text: inputValue.trim() })
+      content.push({ type: "text", text: inputValue.trim() });
     }
     attachedImages.forEach((url) => {
-      content.push({ type: 'image_url', image_url: { url } })
-    })
-    return content
-  }
+      content.push({ type: "image_url", image_url: { url } });
+    });
+    return content;
+  }, [attachedImages, inputValue]);
 
-  const handleSend = () => {
-    const content = buildContent()
+  const handleSend = useCallback(() => {
+    const content = buildContent();
     if (
-      (typeof content === 'string' && !content.trim()) ||
+      (typeof content === "string" && !content.trim()) ||
       (Array.isArray(content) && content.length === 0)
     ) {
-      return
+      return;
     }
-    onSend(content)
-    setInputValue('')
-    setAttachedImages([])
-  }
+    onSend(content);
+    setInputValue("");
+    setAttachedImages([]);
+  }, [buildContent, onSend]);
 
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent) => {
-      const items = e.clipboardData?.items
-      if (!items) return
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i]
-        if (item.type.startsWith('image/')) {
-          const blob = item.getAsFile()
-          if (blob) {
-            const reader = new FileReader()
-            reader.onload = (ev) => {
-              const result = ev.target?.result as string
-              if (result) setAttachedImages((prev) => [...prev, result])
-            }
-            reader.readAsDataURL(blob)
-          }
-          e.preventDefault()
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        const blob = item.getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const result = ev.target?.result as string;
+            if (result) setAttachedImages((prev) => [...prev, result]);
+          };
+          reader.readAsDataURL(blob);
         }
+        e.preventDefault();
       }
+    }
+  }, []);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files) return;
+      Array.from(files).forEach((file) => {
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const result = ev.target?.result as string;
+            if (result) setAttachedImages((prev) => [...prev, result]);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+      e.target.value = "";
     },
-    []
-  )
+    [],
+  );
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-    Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader()
-        reader.onload = (ev) => {
-          const result = ev.target?.result as string
-          if (result) setAttachedImages((prev) => [...prev, result])
-        }
-        reader.readAsDataURL(file)
-      }
-    })
-    e.target.value = ''
-  }
+  const handleAddUrl = useCallback(() => {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    setAttachedImages((prev) => [...prev, url]);
+    setImageUrlInput("");
+    setImageModalOpen(false);
+  }, [imageUrlInput]);
 
-  const handleAddUrl = () => {
-    const url = imageUrlInput.trim()
-    if (!url) return
-    setAttachedImages((prev) => [...prev, url])
-    setImageUrlInput('')
-    setImageModalOpen(false)
-  }
-
-  const renderMessageContent = (msg: ChatMessage) => {
-    if (typeof msg.content === 'string') {
-      return msg.content
+  const renderMessageContent = useCallback((msg: ChatMessage) => {
+    if (typeof msg.content === "string") {
+      return msg.content;
     }
     return (
       <div className="space-y-2">
         {msg.content.map((item, idx) => {
-          if (item.type === 'text') {
-            return <div key={idx}>{item.text}</div>
+          if (item.type === "text") {
+            return <div key={idx}>{item.text}</div>;
           }
-          if (item.type === 'image_url') {
+          if (item.type === "image_url") {
             return (
               <img
                 key={idx}
                 src={item.image_url.url}
                 alt="attached"
                 className="max-w-[200px] max-h-[200px] rounded-lg border border-slate-200 object-cover cursor-pointer"
-                onClick={() => window.open(item.image_url.url, '_blank')}
+                onClick={() => window.open(item.image_url.url, "_blank")}
               />
-            )
+            );
           }
-          return null
+          return null;
         })}
       </div>
-    )
-  }
+    );
+  }, []);
 
   return (
     <div className={`flex flex-col h-full min-h-0 ${className}`} style={style}>
@@ -179,15 +179,31 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
           <Space>
             <Badge dot color="green">
-              <Avatar icon={<RobotOutlined />} className="bg-gradient-to-br from-primary to-secondary shadow-glow" />
+              <Avatar
+                icon={<RobotOutlined />}
+                className="bg-gradient-to-br from-primary to-secondary shadow-glow"
+              />
             </Badge>
             <div>
-              <Typography.Text className="font-bold text-slate-800 block">{title}</Typography.Text>
-              {subtitle && <Typography.Text className="text-xs text-slate-400">{subtitle}</Typography.Text>}
+              <Typography.Text className="font-bold text-slate-800 block">
+                {title}
+              </Typography.Text>
+              {subtitle && (
+                <Typography.Text className="text-xs text-slate-400">
+                  {subtitle}
+                </Typography.Text>
+              )}
             </div>
           </Space>
           <Space>
-            {tag && <Tag color="success" className="rounded-full border-0 bg-emerald-50 text-emerald-600">{tag}</Tag>}
+            {tag && (
+              <Tag
+                color="success"
+                className="rounded-full border-0 bg-emerald-50 text-emerald-600"
+              >
+                {tag}
+              </Tag>
+            )}
             {extraHeader}
           </Space>
         </div>
@@ -195,27 +211,36 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
       <div className="flex-1 overflow-y-auto pr-2 space-y-5 mb-4 flex flex-col justify-end min-h-0">
         {messages.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div
+            key={idx}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+          >
             {showAvatars ? (
               <Space align="start" size={10}>
-                {msg.role === 'ai' && (
-                  <Avatar icon={<RobotOutlined />} className="bg-gradient-to-br from-primary to-secondary shadow-glow shrink-0" />
+                {msg.role === "ai" && (
+                  <Avatar
+                    icon={<RobotOutlined />}
+                    className="bg-gradient-to-br from-primary to-secondary shadow-glow shrink-0"
+                  />
                 )}
                 <div
                   className={`max-w-md px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'
+                    msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"
                   }`}
                 >
                   {renderMessageContent(msg)}
                 </div>
-                {msg.role === 'user' && (
-                  <Avatar icon={<UserOutlined />} className="bg-slate-200 text-slate-500 shrink-0" />
+                {msg.role === "user" && (
+                  <Avatar
+                    icon={<UserOutlined />}
+                    className="bg-slate-200 text-slate-500 shrink-0"
+                  />
                 )}
               </Space>
             ) : (
               <div
                 className={`max-w-[85%] px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'
+                  msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"
                 }`}
               >
                 {renderMessageContent(msg)}
@@ -226,7 +251,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         {loading && (
           <div className="flex justify-start">
             <Space align="start" size={10}>
-              {showAvatars && <Avatar icon={<RobotOutlined />} className="bg-gradient-to-br from-primary to-secondary shadow-glow shrink-0" />}
+              {showAvatars && (
+                <Avatar
+                  icon={<RobotOutlined />}
+                  className="bg-gradient-to-br from-primary to-secondary shadow-glow shrink-0"
+                />
+              )}
               <div className="chat-bubble-ai px-4 py-3 flex items-center gap-2">
                 <LoadingOutlined className="text-primary" />
                 <span className="text-sm text-slate-500">思考中...</span>
@@ -249,7 +279,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 />
                 <button
                   className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))}
+                  onClick={() =>
+                    setAttachedImages((prev) =>
+                      prev.filter((_, idx) => idx !== i),
+                    )
+                  }
                 >
                   <CloseOutlined />
                 </button>
@@ -265,7 +299,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 key={i}
                 size="small"
                 className="rounded-full text-xs border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:text-primary hover:border-indigo-200 transition-all"
-                onClick={() => { setInputValue(s); onSend(s) }}
+                onClick={() => {
+                  setInputValue(s);
+                  onSend(s);
+                }}
               >
                 <BulbOutlined /> {s}
               </Button>
@@ -305,14 +342,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       <Modal
         title="添加图片"
         open={imageModalOpen}
-        onCancel={() => { setImageModalOpen(false); setImageUrlInput('') }}
+        onCancel={() => {
+          setImageModalOpen(false);
+          setImageUrlInput("");
+        }}
         onOk={handleAddUrl}
         okText="添加"
         cancelText="取消"
       >
         <div className="space-y-4">
           <div>
-            <Typography.Text className="block mb-1 text-sm text-slate-600">图片链接</Typography.Text>
+            <Typography.Text className="block mb-1 text-sm text-slate-600">
+              图片链接
+            </Typography.Text>
             <Input
               placeholder="https://..."
               value={imageUrlInput}
@@ -322,7 +364,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             />
           </div>
           <div>
-            <Typography.Text className="block mb-1 text-sm text-slate-600">或上传本地图片</Typography.Text>
+            <Typography.Text className="block mb-1 text-sm text-slate-600">
+              或上传本地图片
+            </Typography.Text>
             <Button
               icon={<UploadOutlined />}
               onClick={() => fileInputRef.current?.click()}
@@ -345,5 +389,5 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         </div>
       </Modal>
     </div>
-  )
-}
+  );
+};

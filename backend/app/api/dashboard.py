@@ -5,7 +5,7 @@ Dashboard 聚合数据 API
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from ..models.database import get_db
 from ..models.student import StudentProfileModel
@@ -15,6 +15,7 @@ from ..models.favorites import FavoriteModel
 from ..models.trend import TrendDataModel
 from ..algorithms.effect_evaluation import LearningEffectEvaluator
 from ..algorithms.trend_analysis import MultiFactorTrendAnalyzer
+from .auth import require_auth
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ def _fmt_iso(dt):
 
 
 @router.get("/{student_id}/summary")
-async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
+async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取 Dashboard 聚合数据：今日任务、统计卡片、推荐资源、画像摘要"""
 
     # ---------- 画像 ----------
@@ -33,43 +34,41 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
     cognitive_style = profile.cognitive_style or {} if profile else {}
     interest_areas = profile.interest_areas or [] if profile else []
 
-    # ---------- 今日学习时长（秒 -> 分钟） ----------
-    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_records = (
-        db.query(LearningRecordModel)
+    # ---------- 今日学习时长（秒 -> 分钟）—— 数据库层聚合，避免全量加载 ----------
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_duration_sec = (
+        db.query(func.coalesce(func.sum(LearningRecordModel.duration), 0))
         .filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= today_start)
-        .all()
+        .scalar()
     )
-    today_duration_min = sum(r.duration or 0 for r in today_records) // 60
+    today_duration_min = (today_duration_sec or 0) // 60
 
-    # ---------- 本周学习时长 ----------
+    # ---------- 本周学习时长 —— 数据库层聚合 ----------
     week_start = today_start - timedelta(days=today_start.weekday())
-    week_records = (
-        db.query(LearningRecordModel)
+    week_duration_sec = (
+        db.query(func.coalesce(func.sum(LearningRecordModel.duration), 0))
         .filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= week_start)
-        .all()
+        .scalar()
     )
-    weekly_duration_h = round(sum(r.duration or 0 for r in week_records) / 3600, 1)
+    weekly_duration_h = round((week_duration_sec or 0) / 3600, 1)
 
-    # ---------- 连续打卡（简化：最近有学习记录的天数） ----------
+    # ---------- 连续打卡（简化：最近有学习记录的天数）—— 只查询日期字段 ----------
     year_ago = today_start - timedelta(days=365)
-    recent_records = (
-        db.query(LearningRecordModel)
+    recent_days = [
+        row[0]
+        for row in db.query(func.date(LearningRecordModel.created_at))
         .filter(
             LearningRecordModel.student_id == student_id,
             LearningRecordModel.created_at >= year_ago,
         )
-        .order_by(LearningRecordModel.created_at.desc())
+        .distinct()
         .all()
-    )
+    ]
     streak = 0
-    if recent_records:
-        seen_days = set()
-        for r in recent_records:
-            day = r.created_at.date() if r.created_at else None
-            if day:
-                seen_days.add(day)
-        today = datetime.now().date()
+    if recent_days:
+        # 兼容 SQLite（字符串）与 PostgreSQL（date 对象）
+        seen_days = {datetime.strptime(str(d), "%Y-%m-%d").date() for d in recent_days if d}
+        today = datetime.now(timezone.utc).date()
         for i in range(365):
             d = today - timedelta(days=i)
             if d in seen_days:
@@ -77,11 +76,18 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db)):
             else:
                 break
 
-    # ---------- 掌握知识点数（进度 >= 0.8 的去重 kp_id） ----------
-    mastered_kps = set()
-    for r in recent_records:
-        if (r.progress or 0) >= 0.8:
-            mastered_kps.add(r.kp_id)
+    # ---------- 掌握知识点数（进度 >= 0.8 的去重 kp_id）—— 数据库层去重 ----------
+    mastered_kps = {
+        row[0]
+        for row in db.query(LearningRecordModel.kp_id)
+        .filter(
+            LearningRecordModel.student_id == student_id,
+            LearningRecordModel.created_at >= year_ago,
+            LearningRecordModel.progress >= 0.8,
+        )
+        .distinct()
+        .all()
+    }
 
     # ---------- 成就数 ----------
     ach_count = db.query(AchievementModel).filter(AchievementModel.student_id == student_id).count()

@@ -1,7 +1,7 @@
 """
 系统监控 ORM 模型
 """
-from sqlalchemy import Column, String, DateTime, JSON, Integer, Float, Text, Boolean
+from sqlalchemy import Column, String, DateTime, JSON, Integer, Float, Text, Boolean, Index
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -20,6 +20,10 @@ class ApiMonitorModel(Base):
     error_msg = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    __table_args__ = (
+        Index("ix_api_monitor_created_at", "created_at"),
+    )
+
 
 class LlmCallModel(Base):
     """大模型调用监控表"""
@@ -35,6 +39,10 @@ class LlmCallModel(Base):
     error_msg = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    __table_args__ = (
+        Index("ix_llm_calls_created_at", "created_at"),
+    )
+
 
 class SystemHealthModel(Base):
     """系统健康监控表"""
@@ -47,3 +55,7 @@ class SystemHealthModel(Base):
     active_connections = Column(Integer, default=0)
     queue_size = Column(Integer, default=0)
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_system_health_recorded_at", "recorded_at"),
+    )

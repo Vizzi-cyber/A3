@@ -30,6 +30,23 @@ const Sidebar: React.FC = () => {
   const collapsed = useAppStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
 
+  const navMenuItems = React.useMemo(
+    () =>
+      menuItems.map((item) => ({
+        key: item.key,
+        icon: item.icon,
+        label: collapsed ? (
+          <Tooltip title={item.label} placement="right">
+            <span>{item.label}</span>
+          </Tooltip>
+        ) : (
+          item.label
+        ),
+        onClick: () => navigate(item.key),
+      })),
+    [collapsed, navigate],
+  )
+
   return (
     <Sider
       width={240}
@@ -64,18 +81,7 @@ const Sidebar: React.FC = () => {
           mode="inline"
           inlineCollapsed={collapsed}
           selectedKeys={[location.pathname]}
-          items={menuItems.map((item) => ({
-            key: item.key,
-            icon: item.icon,
-            label: collapsed ? (
-              <Tooltip title={item.label} placement="right">
-                <span>{item.label}</span>
-              </Tooltip>
-            ) : (
-              item.label
-            ),
-            onClick: () => navigate(item.key),
-          }))}
+          items={navMenuItems}
           className="border-r-0 bg-transparent"
           style={{
             '--ant-menu-item-selected-bg': 'rgba(79, 70, 229, 0.08)',

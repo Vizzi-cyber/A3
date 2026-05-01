@@ -8,12 +8,13 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..models.database import get_db
 from ..models.monitor import ApiMonitorModel, LlmCallModel, SystemHealthModel
+from .auth import require_auth
 
 router = APIRouter()
 
@@ -21,9 +22,9 @@ router = APIRouter()
 # ---------- 接口性能监控 ----------
 
 @router.get("/api-stats")
-async def get_api_stats(minutes: int = 60, db: Session = Depends(get_db)):
+async def get_api_stats(minutes: int = 60, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """接口统计"""
-    since = datetime.now() - timedelta(minutes=minutes)
+    since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
     rows = db.query(ApiMonitorModel).filter(ApiMonitorModel.created_at >= since).all()
 
     from collections import defaultdict
@@ -48,9 +49,9 @@ async def get_api_stats(minutes: int = 60, db: Session = Depends(get_db)):
 # ---------- 模型调用监控 ----------
 
 @router.get("/llm-stats")
-async def get_llm_stats(minutes: int = 60, db: Session = Depends(get_db)):
+async def get_llm_stats(minutes: int = 60, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """大模型调用统计"""
-    since = datetime.now() - timedelta(minutes=minutes)
+    since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
     rows = db.query(LlmCallModel).filter(LlmCallModel.created_at >= since).all()
 
     from collections import defaultdict
@@ -104,7 +105,7 @@ class RecordHealthRequest(BaseModel):
 
 
 @router.post("/health/record")
-async def record_system_health(request: RecordHealthRequest, db: Session = Depends(get_db)):
+async def record_system_health(request: RecordHealthRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """记录系统健康数据"""
     health = SystemHealthModel(
         cpu_percent=request.cpu_percent,

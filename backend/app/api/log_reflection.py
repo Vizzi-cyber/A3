@@ -7,7 +7,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from ..models.database import get_db
@@ -20,7 +20,7 @@ router = APIRouter()
 # ---------- 学习日志 ----------
 
 @router.get("/{student_id}/logs")
-async def get_learning_logs(student_id: str, date: Optional[str] = None, db: Session = Depends(get_db)):
+async def get_learning_logs(student_id: str, date: Optional[str] = None, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学习日志"""
     query = db.query(LearningLogModel).filter(LearningLogModel.student_id == student_id)
     if date:
@@ -107,7 +107,7 @@ class ReflectionCreateRequest(BaseModel):
 
 
 @router.post("/reflections/create")
-async def create_reflection(request: ReflectionCreateRequest, db: Session = Depends(get_db)):
+async def create_reflection(request: ReflectionCreateRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """
     创建反思 / 笔记记录。
     每次调用都会生成新的 reflection_id（含毫秒时间戳 + 主标签），
@@ -143,7 +143,7 @@ class ReflectionUpdateRequest(BaseModel):
 
 
 @router.put("/reflections/{reflection_id}")
-async def update_reflection(reflection_id: str, request: ReflectionUpdateRequest, db: Session = Depends(get_db)):
+async def update_reflection(reflection_id: str, request: ReflectionUpdateRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """更新指定反思 / 笔记"""
     ref = db.query(ReflectionModel).filter(ReflectionModel.reflection_id == reflection_id).first()
     if not ref:
@@ -161,7 +161,7 @@ async def update_reflection(reflection_id: str, request: ReflectionUpdateRequest
 
 
 @router.delete("/reflections/{reflection_id}")
-async def delete_reflection(reflection_id: str, db: Session = Depends(get_db)):
+async def delete_reflection(reflection_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """删除指定反思 / 笔记"""
     ref = db.query(ReflectionModel).filter(ReflectionModel.reflection_id == reflection_id).first()
     if not ref:
@@ -172,7 +172,7 @@ async def delete_reflection(reflection_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{student_id}/reflections")
-async def get_reflections(student_id: str, limit: int = 30, db: Session = Depends(get_db)):
+async def get_reflections(student_id: str, limit: int = 30, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取反思记录列表"""
     refs = (
         db.query(ReflectionModel)
@@ -199,7 +199,7 @@ async def get_reflections(student_id: str, limit: int = 30, db: Session = Depend
 
 
 @router.get("/{student_id}/review")
-async def get_learning_review(student_id: str, db: Session = Depends(get_db)):
+async def get_learning_review(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """学习复盘数据接口（聚合日志与反思）"""
     logs = (
         db.query(LearningLogModel)

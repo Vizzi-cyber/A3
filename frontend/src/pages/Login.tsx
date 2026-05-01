@@ -8,6 +8,29 @@ import { authApi } from '../services/api'
 import { useAppStore } from '../store'
 import { extractApiError } from '../utils/error'
 
+const features = [
+  {
+    icon: <BookOutlined className="text-primary text-lg" />,
+    title: '知识图谱驱动',
+    desc: '基于知识图谱的科学路径规划，避免大模型幻觉带来的偏差',
+  },
+  {
+    icon: <BulbOutlined className="text-warning text-lg" />,
+    title: '个性化推荐',
+    desc: '多维画像分析，精准匹配最适合你的学习资源与节奏',
+  },
+  {
+    icon: <MessageOutlined className="text-success text-lg" />,
+    title: 'AI 智能辅导',
+    desc: '24 小时在线答疑，代码纠错、论文润色、学习规划全覆盖',
+  },
+]
+
+const tabItems = [
+  { key: 'login', label: '登录' },
+  { key: 'register', label: '注册' },
+]
+
 const Login: React.FC = () => {
   const navigate = useNavigate()
   const login = useAppStore((s) => s.login)
@@ -126,24 +149,6 @@ const Login: React.FC = () => {
     }
   }
 
-  const features = [
-    {
-      icon: <BookOutlined className="text-primary text-lg" />,
-      title: '知识图谱驱动',
-      desc: '基于知识图谱的科学路径规划，避免大模型幻觉带来的偏差',
-    },
-    {
-      icon: <BulbOutlined className="text-warning text-lg" />,
-      title: '个性化推荐',
-      desc: '多维画像分析，精准匹配最适合你的学习资源与节奏',
-    },
-    {
-      icon: <MessageOutlined className="text-success text-lg" />,
-      title: 'AI 智能辅导',
-      desc: '24 小时在线答疑，代码纠错、论文润色、学习规划全覆盖',
-    },
-  ]
-
   return (
     <div className="min-h-screen relative flex">
       {/* 全屏统一背景 */}
@@ -186,10 +191,7 @@ const Login: React.FC = () => {
                   onChange={setActiveTab}
                   centered
                   className="mb-4"
-                  items={[
-                    { key: 'login', label: '登录' },
-                    { key: 'register', label: '注册' },
-                  ]}
+                  items={tabItems}
                 />
 
                 {activeTab === 'login' && (

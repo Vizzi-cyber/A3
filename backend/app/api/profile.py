@@ -4,7 +4,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 import asyncio
 from sqlalchemy.orm import Session
@@ -43,8 +43,8 @@ class StudentProfile(BaseModel):
         "coding_proficiency": {},
         "preferred_practice_types": [],
     }
-    created_at: str = datetime.now().isoformat()
-    updated_at: str = datetime.now().isoformat()
+    created_at: str = datetime.now(timezone.utc).isoformat()
+    updated_at: str = datetime.now(timezone.utc).isoformat()
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -77,8 +77,8 @@ def _profile_to_dict(profile: StudentProfileModel) -> Dict[str, Any]:
         "interest_areas": profile.interest_areas or [],
         "learning_tempo": profile.learning_tempo or {},
         "practical_preferences": profile.practical_preferences or {},
-        "created_at": profile.created_at.isoformat() if profile.created_at else datetime.now().isoformat(),
-        "updated_at": profile.updated_at.isoformat() if profile.updated_at else datetime.now().isoformat(),
+        "created_at": profile.created_at.isoformat() if profile.created_at else datetime.now(timezone.utc).isoformat(),
+        "updated_at": profile.updated_at.isoformat() if profile.updated_at else datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -93,7 +93,7 @@ def _get_or_create_profile(db: Session, student_id: str) -> StudentProfileModel:
 
 
 @router.get("/{student_id}")
-async def get_profile(student_id: str, db: Session = Depends(get_db)):
+async def get_profile(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生画像"""
     profile = _get_or_create_profile(db, student_id)
     return {"status": "success", "data": _profile_to_dict(profile)}
@@ -156,7 +156,7 @@ async def update_profile(student_id: str, request: ProfileUpdateRequest, db: Ses
 
 
 @router.get("/{student_id}/summary")
-async def get_profile_summary(student_id: str, db: Session = Depends(get_db)):
+async def get_profile_summary(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取画像摘要"""
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
     if not profile:

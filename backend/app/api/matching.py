@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.student import StudentProfileModel
 from ..algorithms import MultiDimWeightedMatcher
+from .auth import require_auth
 
 router = APIRouter()
 
@@ -28,7 +29,7 @@ class PathMatchRequest(BaseModel):
 
 
 @router.post("/resources")
-async def match_resources(request: ResourceMatchRequest, db: Session = Depends(get_db)):
+async def match_resources(request: ResourceMatchRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """学习资源匹配推荐"""
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
     if not profile:
@@ -50,7 +51,7 @@ async def match_resources(request: ResourceMatchRequest, db: Session = Depends(g
 
 
 @router.post("/paths")
-async def match_paths(request: PathMatchRequest, db: Session = Depends(get_db)):
+async def match_paths(request: PathMatchRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """学习路径匹配推荐"""
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
     if not profile:

@@ -25,20 +25,22 @@ def get_content(kp_id: str) -> Optional[Dict[str, Any]]:
         from ..models.database import SessionLocal
         from ..models.knowledge import KnowledgePointModel
         db = SessionLocal()
-        kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == kp_id).first()
-        db.close()
-        if not kp:
-            return None
-        result: Dict[str, Any] = {}
-        if kp.document:
-            result["document"] = kp.document
-        if kp.code_example:
-            result["code"] = kp.code_example
-        if kp.questions:
-            result["questions"] = kp.questions if isinstance(kp.questions, list) else json.loads(kp.questions)
-        if kp.mindmap:
-            result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
-        return result
+        try:
+            kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == kp_id).first()
+            if not kp:
+                return None
+            result: Dict[str, Any] = {}
+            if kp.document:
+                result["document"] = kp.document
+            if kp.code_example:
+                result["code"] = kp.code_example
+            if kp.questions:
+                result["questions"] = kp.questions if isinstance(kp.questions, list) else json.loads(kp.questions)
+            if kp.mindmap:
+                result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
+            return result
+        finally:
+            db.close()
     except Exception:
         _load_fallback()
         return _FALLBACK_LIBRARY.get(kp_id)
@@ -50,14 +52,16 @@ def get_content_by_topic(topic: str) -> Optional[Dict[str, Any]]:
         from ..models.database import SessionLocal
         from ..models.knowledge import KnowledgePointModel
         db = SessionLocal()
-        kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name == topic).first()
-        if not kp:
-            # 模糊匹配
-            kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name.like(f"%{topic}%")).first()
-        db.close()
-        if not kp:
-            return None
-        return get_content(kp.kp_id)
+        try:
+            kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name == topic).first()
+            if not kp:
+                # 模糊匹配
+                kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name.like(f"%{topic}%")).first()
+            if not kp:
+                return None
+            return get_content(kp.kp_id)
+        finally:
+            db.close()
     except Exception:
         return None
 

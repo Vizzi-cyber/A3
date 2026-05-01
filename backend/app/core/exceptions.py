@@ -1,13 +1,12 @@
 """
 全局异常处理
 """
+import json
+from typing import Any
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-
-
-import json
-from typing import Any
 
 
 def _safe_jsonify(obj: Any) -> Any:

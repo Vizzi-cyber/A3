@@ -1,20 +1,22 @@
 """
 FastAPI 主应用入口
 """
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+import asyncio
+import os
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
 import uvicorn
-import os
 
 from .api import router as api_router
 from .core.config import settings
 from .core.logger import setup_logger
 from .core.rate_limiter import RateLimiter
 from .core.exceptions import validation_exception_handler, http_exception_handler, global_exception_handler
-from fastapi.exceptions import HTTPException as FastAPIHTTPException
-from fastapi.exceptions import RequestValidationError
 
 # 设置日志
 logger = setup_logger()
@@ -28,19 +30,18 @@ async def lifespan(app: FastAPI):
     # 启动时执行
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
-    # 初始化数据库表
+    # 异步初始化数据库表（避免阻塞事件循环）
     from .models import Base, engine
-    Base.metadata.create_all(bind=engine)
+    await asyncio.to_thread(Base.metadata.create_all, bind=engine)
     logger.info("Database tables initialized")
 
-    # 初始化智能体系统
+    # 异步初始化智能体系统（CPU 密集型构造放到后台线程）
     from .agents import CourseDesignerAgent
-    app.state.course_designer = CourseDesignerAgent()
+    from .graph import LearningGraphRunner
+    app.state.course_designer = await asyncio.to_thread(CourseDesignerAgent)
     logger.info("CourseDesignerAgent initialized")
 
-    # 初始化 LangGraph 工作流
-    from .graph import learning_graph_runner
-    app.state.graph_runner = learning_graph_runner
+    app.state.graph_runner = await asyncio.to_thread(LearningGraphRunner)
     logger.info("LearningGraph initialized")
 
     yield
@@ -71,7 +72,7 @@ app.add_middleware(RateLimiter, default_limit=60, window_seconds=60)
 
 # 注册异常处理器
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(FastAPIHTTPException, http_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 # 注册路由
@@ -99,7 +100,7 @@ async def health_check():
     """健康检查端点"""
     return {
         "status": "healthy",
-        "timestamp": __import__('datetime').datetime.now().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

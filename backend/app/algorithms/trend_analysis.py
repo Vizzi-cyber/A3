@@ -11,7 +11,7 @@
 输出：趋势因子、趋势状态、未来3天掌握度预测、干预建议
 """
 from typing import Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import math
 
 
@@ -103,7 +103,7 @@ class MultiFactorTrendAnalyzer:
             },
             "predicted_mastery_3d": round(predicted_mastery_3d, 4),
             "intervention": intervention,
-            "analyzed_at": datetime.now().isoformat(),
+            "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def _calc_mastery_trend(self, quiz_history: List[Dict[str, Any]]) -> float:
@@ -196,7 +196,7 @@ class MultiFactorTrendAnalyzer:
         if not daily_duration:
             return 0.0
         # 最近7天
-        today = datetime.now().date()
+        today = datetime.now(timezone.utc).date()
         last_7_days = [(today - timedelta(days=i)).isoformat() for i in range(7)]
         study_days = sum(1 for d in last_7_days if daily_duration.get(d, 0) > 0)
         ratio = study_days / 7.0

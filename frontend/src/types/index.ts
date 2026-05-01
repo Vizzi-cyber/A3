@@ -3,357 +3,372 @@
 // ============================================
 
 export interface ApiResponse<T = unknown> {
-  status: string
-  message?: string
-  data?: T
-  summary?: Record<string, unknown>
-  llm_analysis?: Record<string, unknown>
+  status: string;
+  message?: string;
+  data?: T;
+  summary?: Record<string, unknown>;
+  llm_analysis?: Record<string, unknown>;
 }
 
 // ---------- 学生画像 ----------
 export interface CognitiveStyle {
-  primary?: string
-  scores?: Record<string, number>
+  primary?: string;
+  scores?: Record<string, number>;
 }
 
 export interface LearningTempo {
-  study_speed?: string
-  optimal_session_duration?: number
-  weekly_study_capacity?: number
-  focus_score?: number
+  study_speed?: string;
+  optimal_session_duration?: number;
+  weekly_study_capacity?: number;
+  focus_score?: number;
 }
 
 export interface PracticalPreferences {
-  coding_proficiency?: Record<string, unknown>
-  preferred_practice_types?: string[]
-  overall_score?: number
+  coding_proficiency?: Record<string, unknown>;
+  preferred_practice_types?: string[];
+  overall_score?: number;
 }
 
 export interface KnowledgeBase {
-  overall_score?: number
-  [key: string]: unknown
+  overall_score?: number;
+  [key: string]: unknown;
 }
 
 export interface StudentProfile {
-  student_id: string
-  knowledge_base: KnowledgeBase
-  cognitive_style: CognitiveStyle
-  weak_areas: string[]
-  error_patterns: unknown[]
-  learning_goals: unknown[]
-  interest_areas: unknown[]
-  learning_tempo: LearningTempo
-  practical_preferences: PracticalPreferences
-  created_at?: string
-  updated_at?: string
+  student_id: string;
+  knowledge_base: KnowledgeBase;
+  cognitive_style: CognitiveStyle;
+  weak_areas: string[];
+  error_patterns: unknown[];
+  learning_goals: unknown[];
+  interest_areas: unknown[];
+  learning_tempo: LearningTempo;
+  practical_preferences: PracticalPreferences;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ProfileUpdateRequest {
-  dimension: string
-  updates: Record<string, unknown>
-  confidence?: number
-  trigger?: string
+  dimension: string;
+  updates: Record<string, unknown>;
+  confidence?: number;
+  trigger?: string;
 }
 
 export interface ProfileInitRequest {
-  inputs: string[]
-  initial_data?: Record<string, unknown>
+  inputs: string[];
+  initial_data?: Record<string, unknown>;
 }
 
 export interface ProfileSummary {
-  dominant_style: string
-  current_level: string
-  focus_areas: string[]
-  weekly_study_hours: number
-  last_updated: string
+  dominant_style: string;
+  current_level: string;
+  focus_areas: string[];
+  weekly_study_hours: number;
+  last_updated: string;
 }
 
 // ---------- 学习路径 ----------
 export interface PathStage {
-  stage_no: number
-  title: string
-  topics: string[]
-  hours: number
-  criteria: string
-  resources: string[]
+  stage_no: number;
+  title: string;
+  topics: string[];
+  hours: number;
+  criteria: string;
+  resources: string[];
 }
 
 export interface LearningPathData {
-  target?: string
-  estimated_total_hours?: number
-  stages?: PathStage[]
-  [key: string]: unknown
+  target?: string;
+  estimated_total_hours?: number;
+  stages?: PathStage[];
+  [key: string]: unknown;
 }
 
 export interface LearningPath {
-  path_id: string
-  student_id: string
-  path: LearningPathData
+  path_id: string;
+  student_id: string;
+  path: LearningPathData;
 }
 
 export interface PathGenerationRequest {
-  student_id: string
-  target_topic: string
-  current_knowledge?: string[]
-  time_constraint?: number
-  preference?: string
-  daily_duration?: number
-  difficulty?: number
+  student_id: string;
+  target_topic: string;
+  current_knowledge?: string[];
+  time_constraint?: number;
+  preference?: string;
+  daily_duration?: number;
+  difficulty?: number;
 }
 
 export interface PathAdjustmentRequest {
-  feedback: string
-  current_path?: LearningPathData
+  feedback: string;
+  current_path?: LearningPathData;
 }
 
 export interface CurrentPathResponse {
-  status: string
-  student_id: string
-  current_step: number
-  progress: number
+  status: string;
+  student_id: string;
+  current_step: number;
+  progress: number;
   next_task: {
-    kp_id: string
-    name: string
-    action: string
-  }
-  nodes?: PathNode[]
+    kp_id: string;
+    name: string;
+    action: string;
+  };
+  nodes?: PathNode[];
 }
 
 // ---------- 资源生成 ----------
 export interface ResourceGenerationRequest {
-  student_id: string
-  topic: string
-  resource_types?: string[]
-  difficulty?: string
-  cognitive_style?: string
+  student_id: string;
+  topic: string;
+  resource_types?: string[];
+  difficulty?: string;
+  cognitive_style?: string;
 }
 
 export interface ResourceGenerationResponse {
-  task_id: string
-  status: string
-  progress: number
-  resources: Record<string, unknown>
-  message: string
+  task_id: string;
+  status: string;
+  progress: number;
+  resources: Record<string, unknown>;
+  message: string;
 }
 
 export interface DocumentGenerationRequest {
-  student_id: string
-  topic: string
-  difficulty?: string
-  kp_id?: string
+  student_id: string;
+  topic: string;
+  difficulty?: string;
+  kp_id?: string;
 }
 
 export interface DocumentGenerationResponse {
-  status: string
-  document: string
+  status: string;
+  document: string;
   metadata: {
-    topic: string
-    generated_at: string
-  }
+    topic: string;
+    generated_at: string;
+  };
 }
 
 export interface QuestionOption {
-  id: string
-  text: string
+  id: string;
+  text: string;
 }
 
 export interface QuestionItem {
-  q_id: string
-  type: string
-  content: string
-  options: QuestionOption[]
-  correct_answer: string
-  explanation: string
+  q_id: string;
+  type: string;
+  content: string;
+  options: QuestionOption[];
+  correct_answer: string;
+  explanation: string;
 }
 
 export interface QuestionsGenerationRequest {
-  student_id: string
-  topic: string
-  count?: number
-  kp_id?: string
+  student_id: string;
+  topic: string;
+  count?: number;
+  kp_id?: string;
 }
 
 export interface QuestionsGenerationResponse {
-  status: string
-  topic: string
-  count: number
-  questions: QuestionItem[]
+  status: string;
+  topic: string;
+  count: number;
+  questions: QuestionItem[];
 }
 
 export interface MindmapGenerationRequest {
-  student_id: string
-  topic: string
-  kp_id?: string
+  student_id: string;
+  topic: string;
+  kp_id?: string;
 }
 
 export interface MindmapNode {
-  name: string
-  children?: MindmapNode[]
+  name: string;
+  children?: MindmapNode[];
 }
 
 export interface MindmapGenerationResponse {
-  status: string
+  status: string;
   mindmap: {
-    root?: string
-    children?: MindmapNode[]
-  }
-  format: string
+    root?: string;
+    children?: MindmapNode[];
+  };
+  format: string;
 }
 
 export interface CodeGenerationRequest {
-  student_id: string
-  topic: string
-  language?: string
-  kp_id?: string
+  student_id: string;
+  topic: string;
+  language?: string;
+  kp_id?: string;
 }
 
 export interface CodeGenerationResponse {
-  status: string
-  code: string
-  language: string
-  filename: string
+  status: string;
+  code: string;
+  language: string;
+  filename: string;
 }
 
 // ---------- 智能辅导 ----------
 export interface TutorRequest {
-  student_id: string
-  question: string | VisionContentItem[]
-  context?: Record<string, unknown>
-  session_id?: string
-  provider?: 'bigmodel' | 'deepseek' | 'openai' | 'spark'
-  rag_active?: boolean
+  student_id: string;
+  question: string | VisionContentItem[];
+  context?: Record<string, unknown>;
+  session_id?: string;
+  provider?: "bigmodel" | "deepseek" | "openai" | "spark";
+  rag_active?: boolean;
+  task?:
+    | "answer_question"
+    | "hint"
+    | "encourage"
+    | "explain_code"
+    | "explain_error";
 }
 
 export interface TutorResponse {
-  response: string
-  response_type: string
-  resources?: Record<string, unknown>[]
-  follow_up_questions?: string[]
+  response: string;
+  response_type: string;
+  resources?: Record<string, unknown>[];
+  follow_up_questions?: string[];
 }
 
 // OpenAI vision 格式内容项
 export type VisionContentItem =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } }
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
 export interface TutorMessage {
-  role: 'user' | 'ai' | 'system'
-  content: string | VisionContentItem[]
+  role: "user" | "ai" | "system";
+  content: string | VisionContentItem[];
 }
 
 export interface TutorSessionHistoryResponse {
-  status: string
-  session_id: string
-  messages: TutorMessage[]
+  status: string;
+  session_id: string;
+  messages: TutorMessage[];
 }
 
 // ---------- UI 通用 ----------
 export interface ChatMessage {
-  role: 'user' | 'ai' | 'system'
-  content: string | VisionContentItem[]
-  agent?: string
+  role: "user" | "ai" | "system";
+  content: string | VisionContentItem[];
+  agent?: string;
 }
 
 export interface ReflectionEntry {
-  id: string
-  date: string
-  content: string
-  topic: string
+  id: string;
+  date: string;
+  content: string;
+  topic: string;
 }
 
 export interface ToastState {
-  type: 'success' | 'error' | 'info'
-  message: string
+  type: "success" | "error" | "info";
+  message: string;
 }
 
 // ---------- Dashboard ----------
 export interface DashboardTask {
-  task_id: string
-  title: string
-  description?: string
-  progress: number
-  type: string
-  duration?: number
+  task_id: string;
+  title: string;
+  description?: string;
+  progress: number;
+  type: string;
+  duration?: number;
 }
 
 export interface DashboardRecommendation {
-  title: string
-  type: string
-  url?: string | null
+  title: string;
+  type: string;
+  url?: string | null;
 }
 
 export interface DashboardStats {
-  weekly_hours: number
-  streak_days: number
-  achievements: number
-  favorites: number
-  mastered_kps: number
-  today_duration_min: number
+  weekly_hours: number;
+  streak_days: number;
+  achievements: number;
+  favorites: number;
+  mastered_kps: number;
+  today_duration_min: number;
 }
 
 export interface TrendAnalysis {
-  trend_state: string
-  trend_factor: number
-  predicted_mastery_3d: number
-  dimensions: Record<string, number>
-  intervention?: string
+  trend_state: string;
+  trend_factor: number;
+  predicted_mastery_3d: number;
+  dimensions: Record<string, number>;
+  intervention?: string;
 }
 
 export interface EffectEvaluation {
   realtime_metrics: {
-    accuracy: number
-    mastery: number
-    improvement_rate: number
-    next_predicted_score: number
-  }
-  loss_points: Array<{ kp_id: string; loss: number }>
-  intervention_strategies: string[]
+    accuracy: number;
+    mastery: number;
+    improvement_rate: number;
+    next_predicted_score: number;
+  };
+  loss_points: Array<{ kp_id: string; loss: number }>;
+  intervention_strategies: string[];
   predictions?: {
-    next_score: number
-    potential_loss_points: Array<{ tag: string; risk_score: number }>
-  }
+    next_score: number;
+    potential_loss_points: Array<{ tag: string; risk_score: number }>;
+  };
   intervention?: {
-    priority: string
-    strategies: Array<{ action: string }>
-  }
+    priority: string;
+    strategies: Array<{ action: string }>;
+  };
 }
 
 export interface AlgorithmAnalysis {
-  trend_analysis?: TrendAnalysis
-  effect_evaluation?: EffectEvaluation
+  trend_analysis?: TrendAnalysis;
+  effect_evaluation?: EffectEvaluation;
 }
 
 // ---------- 学习路径 ----------
 export interface PathNode {
-  id: number
-  title: string
-  status: 'completed' | 'in-progress' | 'pending' | 'locked'
-  type: string
-  resources?: number
-  kp_id?: string
-  skipped?: boolean
+  id: number;
+  title: string;
+  status: "completed" | "in-progress" | "pending" | "locked";
+  type: string;
+  resources?: number;
+  kp_id?: string;
+  skipped?: boolean;
 }
 
 // ---------- 游戏化 ----------
+export interface LeaderboardEntry {
+  student_id: string;
+  username?: string;
+  points: number;
+  rank: number;
+  streak_days?: number;
+  level?: number;
+}
+
 export interface Achievement {
-  achievement_id: string
-  name: string
-  description?: string
-  icon?: string
-  unlocked_at?: string
+  achievement_id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  unlocked_at?: string;
 }
 
 export interface BadgeItem {
-  name: string
-  icon: React.ReactNode
-  color: string
-  unlocked: boolean
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+  unlocked: boolean;
 }
 
 // ---------- 资源 ----------
 export interface ResourceItem {
-  title: string
-  type: string
-  icon?: React.ReactNode
-  color?: string
+  title: string;
+  type: string;
+  icon?: React.ReactNode;
+  color?: string;
 }

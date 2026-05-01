@@ -12,6 +12,8 @@ from ..core.safety import SafetyGuard
 class TutorAgent(BaseAgent):
     """辅导助手智能体"""
 
+    MAX_SESSIONS = 100  # 最大内存会话数
+
     def __init__(self, llm: Optional[BaseLLM] = None):
         super().__init__(
             agent_id="tutor",
@@ -20,6 +22,21 @@ class TutorAgent(BaseAgent):
         )
         self.llm = llm or LLMFactory.get_default_llm()
         self.session_histories: Dict[str, List[Dict[str, Any]]] = {}
+        self._session_last_access: Dict[str, float] = {}  # 记录会话最后访问时间
+
+    def _evict_old_sessions(self):
+        """当会话数超过上限时，淘汰最久未访问的会话"""
+        if len(self.session_histories) <= self.MAX_SESSIONS:
+            return
+        # 按最后访问时间排序，淘汰最旧的
+        sorted_sessions = sorted(
+            self._session_last_access.items(),
+            key=lambda x: x[1],
+        )
+        to_remove = len(sorted_sessions) - self.MAX_SESSIONS + 1
+        for session_id, _ in sorted_sessions[:to_remove]:
+            self.session_histories.pop(session_id, None)
+            self._session_last_access.pop(session_id, None)
 
     def get_system_prompt(self) -> str:
         return (
@@ -48,6 +65,10 @@ class TutorAgent(BaseAgent):
         session_id = context.get("session_id", "default")
         provider = context.get("llm_provider")
 
+        # 更新会话访问时间
+        from time import time as _time
+        self._session_last_access[session_id] = _time()
+
         # 动态切换 LLM 提供商
         llm = self.llm
         if provider:
@@ -61,7 +82,8 @@ class TutorAgent(BaseAgent):
             return {"status": "blocked", "reason": safety["message"]}
 
         try:
-            # 维护会话历史
+            # 维护会话历史（带 LRU 淘汰）
+            self._evict_old_sessions()
             history = self.session_histories.setdefault(session_id, [])
             if task == "answer_question":
                 result = await self._socratic_answer(question, history, context.get("profile", {}), llm)
@@ -69,6 +91,10 @@ class TutorAgent(BaseAgent):
                 result = await self._give_hint(question, history, llm)
             elif task == "encourage":
                 result = await self._encourage(history, llm)
+            elif task == "explain_code":
+                result = await self._explain_code(question, context.get("language", "C"), llm)
+            elif task == "explain_error":
+                result = await self._explain_error(question, context.get("language", "C"), llm)
             else:
                 result = {"status": "failed", "error": f"Unknown task: {task}"}
 
@@ -152,6 +178,45 @@ class TutorAgent(BaseAgent):
         text = await llm.ainvoke(messages, temperature=0.7)
         return {"status": "success", "answer": text, "type": "encouragement"}
 
+    async def _explain_code(self, code: str, language: str = "C", llm: Optional[BaseLLM] = None) -> Dict[str, Any]:
+        llm = llm or self.llm
+        prompt = (
+            f"以下是学生编写的一段 {language} 代码，请逐行解释它的功能和逻辑：\n\n"
+            f"```{language.lower()}\n{code}\n```\n\n"
+            "要求：\n"
+            "1. 先用一句话概括这段代码做了什么\n"
+            "2. 逐行或逐块解释关键逻辑\n"
+            "3. 指出可能的改进点或常见错误（如果有）\n"
+            "4. 语言简洁，适合初学者理解"
+        )
+        prompt = SafetyGuard.sanitize_prompt(prompt)
+        messages = [
+            {"role": "system", "content": "你是一位专业的编程教师，善于用清晰简洁的语言解释代码。"},
+            {"role": "user", "content": prompt},
+        ]
+        answer = await llm.ainvoke(messages, temperature=0.4, max_tokens=1500)
+        return {"status": "success", "answer": answer, "type": "code_explanation"}
+
+    async def _explain_error(self, error_output: str, language: str = "C", llm: Optional[BaseLLM] = None) -> Dict[str, Any]:
+        llm = llm or self.llm
+        prompt = (
+            f"学生运行了一段 {language} 代码，遇到了以下错误：\n\n"
+            f"```\n{error_output}\n```\n\n"
+            "请：\n"
+            "1. 解释这个错误是什么意思\n"
+            "2. 分析最可能的原因\n"
+            "3. 给出修复建议\n"
+            "4. 用初学者能理解的语言"
+        )
+        prompt = SafetyGuard.sanitize_prompt(prompt)
+        messages = [
+            {"role": "system", "content": "你是一位专业的编程教师，善于帮助初学者理解和修复代码错误。"},
+            {"role": "user", "content": prompt},
+        ]
+        answer = await llm.ainvoke(messages, temperature=0.4, max_tokens=1000)
+        return {"status": "success", "answer": answer, "type": "error_explanation"}
+
     def clear_session(self, session_id: str):
         """清空指定会话历史"""
         self.session_histories.pop(session_id, None)
+        self._session_last_access.pop(session_id, None)

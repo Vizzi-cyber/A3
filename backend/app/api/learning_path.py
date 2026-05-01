@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel, LearningRecordModel
 from ..models.student import StudentProfileModel
@@ -107,7 +107,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             # 默认目标为最后一个知识点
             target_kp_id = kps[-1].kp_id
             # 使用聚合查询直接获取每个知识点的最大进度，避免加载全部记录
-            since = datetime.now() - timedelta(days=365)
+            since = datetime.now(timezone.utc) - timedelta(days=365)
             mastery_rows = (
                 db.query(LearningRecordModel.kp_id, func.max(LearningRecordModel.progress).label("max_progress"))
                 .filter(
@@ -193,11 +193,11 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 
 
 @router.get("/{student_id}/current")
-async def get_current_path(student_id: str, db: Session = Depends(get_db)):
+async def get_current_path(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取当前学习路径 —— 基于数据库知识点动态构建"""
     kps = db.query(KnowledgePointModel).order_by(KnowledgePointModel.created_at.asc()).all()
     # 使用聚合查询计算每个KP的最大进度，避免加载全部记录
-    since = datetime.now() - timedelta(days=365)
+    since = datetime.now(timezone.utc) - timedelta(days=365)
     progress_rows = (
         db.query(LearningRecordModel.kp_id, func.max(LearningRecordModel.progress).label("max_progress"))
         .filter(
@@ -341,7 +341,7 @@ async def adjust_dag_path(request: DAGPathAdjustRequest, _current: str = Depends
 
 
 @router.get("/dag/dependency-chain/{target_kp_id}")
-async def get_dependency_chain(target_kp_id: str, db: Session = Depends(get_db)):
+async def get_dependency_chain(target_kp_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取目标知识点的完整依赖链"""
     kps = db.query(KnowledgePointModel).all()
     planner = DAGPathPlanner()

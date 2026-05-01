@@ -65,3 +65,11 @@ Thumbs.db
 *.tmp
 *.bak
 image_tasks.json
+
+# Claude Code temp files
+.claude-task.log
+claude-log.js
+notify.js
+
+# Root node_modules (only husky needed)
+/node_modules/

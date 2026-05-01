@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { StudentProfile, LearningPath, ToastState } from '../types'
 
 interface UserInfo {
@@ -34,43 +35,51 @@ interface AppState {
   toggleSidebar: () => void
 }
 
-const storedToken = localStorage.getItem('token')
-const storedStudentId = localStorage.getItem('student_id')
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      studentId: 'student_001',
+      setStudentId: (id) => set({ studentId: id }),
 
-export const useAppStore = create<AppState>((set) => ({
-  studentId: storedStudentId || 'student_001',
-  setStudentId: (id) => {
-    localStorage.setItem('student_id', id)
-    set({ studentId: id })
-  },
+      token: null,
+      isLoggedIn: false,
+      userInfo: null,
+      login: (token, studentId) =>
+        set({ token, isLoggedIn: true, studentId }),
+      logout: () =>
+        set({ token: null, isLoggedIn: false, userInfo: null, studentId: '' }),
+      setUserInfo: (info) => set({ userInfo: info }),
 
-  token: storedToken,
-  isLoggedIn: !!storedToken,
-  userInfo: null,
-  login: (token, studentId) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('student_id', studentId)
-    set({ token, isLoggedIn: true, studentId })
-  },
-  logout: () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('student_id')
-    set({ token: null, isLoggedIn: false, userInfo: null, studentId: '' })
-  },
-  setUserInfo: (info) => set({ userInfo: info }),
+      profile: null,
+      setProfile: (profile) => set({ profile }),
 
-  profile: null,
-  setProfile: (profile) => set({ profile }),
+      currentPath: null,
+      setCurrentPath: (path) => set({ currentPath: path }),
 
-  currentPath: null,
-  setCurrentPath: (path) => set({ currentPath: path }),
+      loading: false,
+      setLoading: (loading) => set({ loading }),
 
-  loading: false,
-  setLoading: (loading) => set({ loading }),
+      toast: null,
+      setToast: (toast) => set({ toast }),
 
-  toast: null,
-  setToast: (toast) => set({ toast }),
-
-  sidebarCollapsed: false,
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-}))
+      sidebarCollapsed: false,
+      toggleSidebar: () =>
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+    }),
+    {
+      name: 'ai-learning-storage',
+      partialize: (state) => ({
+        token: state.token,
+        studentId: state.studentId,
+      }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<AppState>
+        return {
+          ...current,
+          ...p,
+          isLoggedIn: !!p.token,
+        }
+      },
+    }
+  )
+)
