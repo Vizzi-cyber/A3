@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { StudentProfile, LearningPath, ToastState } from '../types'
+import type { ToastState } from '../types'
 
 interface UserInfo {
   student_id: string
@@ -18,15 +18,6 @@ interface AppState {
   login: (token: string, studentId: string) => void
   logout: () => void
   setUserInfo: (info: UserInfo) => void
-
-  profile: StudentProfile | null
-  setProfile: (profile: StudentProfile | null) => void
-
-  currentPath: LearningPath | null
-  setCurrentPath: (path: LearningPath | null) => void
-
-  loading: boolean
-  setLoading: (loading: boolean) => void
 
   toast: ToastState | null
   setToast: (toast: ToastState | null) => void
@@ -49,15 +40,6 @@ export const useAppStore = create<AppState>()(
       logout: () =>
         set({ token: null, isLoggedIn: false, userInfo: null, studentId: '' }),
       setUserInfo: (info) => set({ userInfo: info }),
-
-      profile: null,
-      setProfile: (profile) => set({ profile }),
-
-      currentPath: null,
-      setCurrentPath: (path) => set({ currentPath: path }),
-
-      loading: false,
-      setLoading: (loading) => set({ loading }),
 
       toast: null,
       setToast: (toast) => set({ toast }),

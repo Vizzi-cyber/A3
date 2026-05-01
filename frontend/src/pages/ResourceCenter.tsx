@@ -142,6 +142,11 @@ const ResourceCenter: React.FC = () => {
     [courseMenu, activeKey],
   );
 
+  const currentSubject = useMemo(
+    () => courseMenu.find((c) => c.children?.some((ch) => ch.key === activeKey))?.label?.replace(/^第\d+章[：:]\s*/, '') || '',
+    [courseMenu, activeKey],
+  );
+
   // 加载课程目录
   useEffect(() => {
     let ignore = false;
@@ -636,7 +641,7 @@ const ResourceCenter: React.FC = () => {
                 {currentTopic}
               </Typography.Title>
               <Typography.Text className="text-slate-400 text-xs">
-                C语言程序设计 · 编程基础
+                {currentSubject || '学习资源'}
               </Typography.Text>
             </div>
           </Space>
@@ -762,12 +767,10 @@ const ResourceCenter: React.FC = () => {
                         ? "text-emerald-600"
                         : ""
                     }
-                    onClick={() =>
-                      setResourceFeedback((prev) => ({
-                        ...prev,
-                        [currentTopic]: "good",
-                      }))
-                    }
+                    onClick={() => {
+                      setResourceFeedback((prev) => ({ ...prev, [currentTopic]: "good" }))
+                      learningDataApi.submitFeedback({ student_id: studentId, kp_id: currentTopic, rating: "good" }).catch(() => {})
+                    }}
                   />
                   <Button
                     size="small"
@@ -777,12 +780,10 @@ const ResourceCenter: React.FC = () => {
                         ? "text-red-500"
                         : ""
                     }
-                    onClick={() =>
-                      setResourceFeedback((prev) => ({
-                        ...prev,
-                        [currentTopic]: "bad",
-                      }))
-                    }
+                    onClick={() => {
+                      setResourceFeedback((prev) => ({ ...prev, [currentTopic]: "bad" }))
+                      learningDataApi.submitFeedback({ student_id: studentId, kp_id: currentTopic, rating: "bad" }).catch(() => {})
+                    }}
                   />
                 </Space.Compact>
               </Space>

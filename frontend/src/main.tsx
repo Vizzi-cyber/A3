@@ -7,11 +7,13 @@ import zhCN from "antd/locale/zh_CN";
 import App from "./App";
 import "./index.css";
 
-Sentry.init({
-  dsn: "替换为你的 Sentry DSN",
-  integrations: [Sentry.browserTracingIntegration()],
-  tracesSampleRate: 1.0,
-});
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    integrations: [Sentry.browserTracingIntegration()],
+    tracesSampleRate: 1.0,
+  });
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

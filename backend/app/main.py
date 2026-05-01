@@ -35,15 +35,6 @@ async def lifespan(app: FastAPI):
     await asyncio.to_thread(Base.metadata.create_all, bind=engine)
     logger.info("Database tables initialized")
 
-    # 异步初始化智能体系统（CPU 密集型构造放到后台线程）
-    from .agents import CourseDesignerAgent
-    from .graph import LearningGraphRunner
-    app.state.course_designer = await asyncio.to_thread(CourseDesignerAgent)
-    logger.info("CourseDesignerAgent initialized")
-
-    app.state.graph_runner = await asyncio.to_thread(LearningGraphRunner)
-    logger.info("LearningGraph initialized")
-
     yield
 
     # 关闭时执行
@@ -69,6 +60,38 @@ app.add_middleware(
 
 # 请求限流
 app.add_middleware(RateLimiter, default_limit=60, window_seconds=60)
+
+
+# API 性能监控中间件
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+import time
+
+class APIMonitorMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.time()
+        response = await call_next(request)
+        duration_ms = (time.time() - start) * 1000
+        # 异步写入，不阻塞响应
+        try:
+            from .models.database import SessionLocal
+            from .models.monitor import ApiMonitorModel
+            db = SessionLocal()
+            try:
+                db.add(ApiMonitorModel(
+                    endpoint=request.url.path,
+                    method=request.method,
+                    status_code=response.status_code,
+                    duration_ms=round(duration_ms, 2),
+                ))
+                db.commit()
+            finally:
+                db.close()
+        except Exception:
+            pass  # 监控写入失败不影响正常请求
+        return response
+
+app.add_middleware(APIMonitorMiddleware)
 
 # 注册异常处理器
 app.add_exception_handler(RequestValidationError, validation_exception_handler)

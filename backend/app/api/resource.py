@@ -397,6 +397,74 @@ def _analyze_python_security(source: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _create_win_job_object(max_memory_mb: int = 128):
+    """Windows: 创建 Job Object 限制子进程内存（防止内存炸弹）"""
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x00000100
+    JOB_OBJECT_LIMIT_JOB_MEMORY = 0x00000200
+    JobObjectExtendedLimitInformation = 9
+
+    class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_int64),
+            ("PerJobUserTimeLimit", ctypes.c_int64),
+            ("LimitFlags", ctypes.c_uint32),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", ctypes.c_uint32),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", ctypes.c_uint32),
+            ("SchedulingClass", ctypes.c_uint32),
+        ]
+
+    class IO_COUNTERS(ctypes.Structure):
+        _fields_ = [
+            ("ReadOperationCount", ctypes.c_uint64),
+            ("WriteOperationCount", ctypes.c_uint64),
+            ("OtherOperationCount", ctypes.c_uint64),
+            ("ReadTransferCount", ctypes.c_uint64),
+            ("WriteTransferCount", ctypes.c_uint64),
+            ("OtherTransferCount", ctypes.c_uint64),
+        ]
+
+    class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", JOBOBJECT_BASIC_LIMIT_INFORMATION),
+            ("IoInfo", IO_COUNTERS),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        return None
+
+    info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_PROCESS_MEMORY | JOB_OBJECT_LIMIT_JOB_MEMORY
+    info.ProcessMemoryLimit = max_memory_mb * 1024 * 1024
+    info.JobMemoryLimit = max_memory_mb * 1024 * 1024
+
+    if not kernel32.SetInformationJobObject(job, JobObjectExtendedLimitInformation,
+                                             ctypes.byref(info), ctypes.sizeof(info)):
+        kernel32.CloseHandle(job)
+        return None
+    return job
+
+
+def _assign_to_job(job_handle, pid: int):
+    """将子进程 PID 绑定到 Job Object"""
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    proc_handle = kernel32.OpenProcess(0x1F0FFF, False, pid)  # PROCESS_ALL_ACCESS
+    if proc_handle:
+        kernel32.AssignProcessToJobObject(job_handle, proc_handle)
+        kernel32.CloseHandle(proc_handle)
+
+
 def _run_c_code(code: str) -> dict:
     """同步函数：编译并运行 C 代码（供 asyncio.to_thread 调用）"""
     import subprocess
@@ -448,29 +516,46 @@ def _run_c_code(code: str) -> dict:
                 "explanation": "C 代码编译出错，请检查语法。",
             }
 
-        # Unix: 通过 preexec_fn 设置资源限制（防止 fork bomb / 内存耗尽）
+        # 资源限制：Unix 用 preexec_fn，Windows 用 Job Object
         preexec = None
+        job_handle = None
+        creation_flags = 0
         if os.name != "nt":
             def _set_limits():
                 import resource
-                # CPU 时间限制 5 秒
                 resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
-                # 内存限制 128MB
                 resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
-                # 禁止 fork 子进程
                 resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
             preexec = _set_limits
+        else:
+            job_handle = _create_win_job_object(128)
+            creation_flags = 0x00000200  # CREATE_BREAKAWAY_FROM_JOB
 
-        run_res = subprocess.run(
-            [exe_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=10,
-            env=env,
-            preexec_fn=preexec,
-        )
-        run_stdout_bytes = run_res.stdout or b""
-        run_stderr_bytes = run_res.stderr or b""
+        run_returncode = 0
+        if job_handle:
+            proc = subprocess.Popen(
+                [exe_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                env=env, creationflags=creation_flags,
+            )
+            _assign_to_job(job_handle, proc.pid)
+            try:
+                run_stdout_bytes, run_stderr_bytes = proc.communicate(timeout=10)
+                run_returncode = proc.returncode
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                run_stdout_bytes, run_stderr_bytes = proc.communicate()
+                raise
+            finally:
+                import ctypes
+                ctypes.windll.kernel32.CloseHandle(job_handle)
+        else:
+            run_res = subprocess.run(
+                [exe_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=10, env=env, preexec_fn=preexec,
+            )
+            run_stdout_bytes = run_res.stdout or b""
+            run_stderr_bytes = run_res.stderr or b""
+            run_returncode = run_res.returncode
 
         def _decode(b: bytes) -> str:
             for enc in ("utf-8", "gbk", "gb2312"):
@@ -483,8 +568,8 @@ def _run_c_code(code: str) -> dict:
         run_stdout = _decode(run_stdout_bytes)
         run_stderr = _decode(run_stderr_bytes)
         output = run_stdout[:5000]
-        if run_res.returncode != 0:
-            error = run_stderr[:5000] or f"程序异常退出，返回码: {run_res.returncode}"
+        if run_returncode != 0:
+            error = run_stderr[:5000] or f"程序异常退出，返回码: {run_returncode}"
     except subprocess.TimeoutExpired:
         error = "代码执行超时（限制 10 秒）"
     except Exception as e:
@@ -534,8 +619,10 @@ def _run_python_code(code: str) -> dict:
     output = ""
     error = ""
     try:
-        # Unix: 通过 preexec_fn 设置资源限制
+        # 资源限制：Unix 用 preexec_fn，Windows 用 Job Object
         preexec = None
+        job_handle = None
+        creation_flags = 0
         if os.name != "nt":
             def _set_limits():
                 import resource
@@ -543,16 +630,33 @@ def _run_python_code(code: str) -> dict:
                 resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
                 resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
             preexec = _set_limits
+        else:
+            job_handle = _create_win_job_object(128)
+            creation_flags = 0x00000200  # CREATE_BREAKAWAY_FROM_JOB
 
-        result = subprocess.run(
-            ["python", tmp_path],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            preexec_fn=preexec,
-        )
-        output = result.stdout[:5000]
-        error = result.stderr[:5000] if result.returncode != 0 else ""
+        if job_handle:
+            proc = subprocess.Popen(
+                ["python", tmp_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, creationflags=creation_flags,
+            )
+            _assign_to_job(job_handle, proc.pid)
+            try:
+                stdout, stderr = proc.communicate(timeout=10)
+                output = stdout[:5000]
+                error = stderr[:5000] if proc.returncode != 0 else ""
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                raise
+            finally:
+                import ctypes
+                ctypes.windll.kernel32.CloseHandle(job_handle)
+        else:
+            result = subprocess.run(
+                ["python", tmp_path], capture_output=True, text=True,
+                timeout=10, preexec_fn=preexec,
+            )
+            output = result.stdout[:5000]
+            error = result.stderr[:5000] if result.returncode != 0 else ""
     except subprocess.TimeoutExpired:
         output = ""
         error = "代码执行超时（限制 10 秒）"

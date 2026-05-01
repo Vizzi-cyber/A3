@@ -428,6 +428,8 @@ export const learningDataApi = {
       completed_kps: string[];
       count: number;
     }>(`/learning-data/${studentId}/completed`),
+  submitFeedback: (data: { student_id: string; kp_id: string; rating: string }) =>
+    api.post<{ status: string }>("/learning-data/feedback", data),
 };
 
 // ---------- 反思与日志 ----------

@@ -11,19 +11,28 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from ..models.database import get_db
-from ..models.knowledge import LearningRecordModel, QuizResultModel
-from ..models.gamification import PointsModel, AchievementModel
+from ..models.knowledge import LearningRecordModel, QuizResultModel, ResourceFeedbackModel
+from ..models.gamification import PointsModel, AchievementModel, LeaderboardModel
 from .auth import require_auth
 
 router = APIRouter()
 
 
 def _ensure_points(db: Session, student_id: str) -> PointsModel:
+    from datetime import datetime, timezone
     points = db.query(PointsModel).filter(PointsModel.student_id == student_id).first()
     if not points:
         points = PointsModel(student_id=student_id, total_points=0, daily_points=0, weekly_points=0)
         db.add(points)
         db.flush()
+    # 每日/每周积分自动重置
+    now = datetime.now(timezone.utc)
+    updated = points.updated_at
+    if updated:
+        if updated.date() < now.date():
+            points.daily_points = 0
+        if updated.isocalendar()[1] != now.isocalendar()[1] or updated.year != now.year:
+            points.weekly_points = 0
     return points
 
 
@@ -33,6 +42,17 @@ def _award_points(db: Session, student_id: str, amount: int, reason: str = "") -
     points.total_points += amount
     points.daily_points += amount
     points.weekly_points += amount
+    # 同步排行榜
+    for period in ("daily", "weekly", "monthly"):
+        row = db.query(LeaderboardModel).filter(
+            LeaderboardModel.student_id == student_id,
+            LeaderboardModel.period == period,
+        ).first()
+        score = points.daily_points if period == "daily" else points.weekly_points if period == "weekly" else points.total_points
+        if row:
+            row.score = score
+        else:
+            db.add(LeaderboardModel(student_id=student_id, period=period, score=score))
     return points.total_points
 
 
@@ -231,3 +251,30 @@ async def get_completed_kps(student_id: str, db: Session = Depends(get_db), _cur
         "completed_kps": kp_ids,
         "count": len(kp_ids),
     }
+
+
+class ResourceFeedbackRequest(BaseModel):
+    student_id: str
+    kp_id: str
+    rating: str  # "good" / "bad"
+
+
+@router.post("/feedback")
+async def submit_feedback(request: ResourceFeedbackRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """提交资源反馈（点赞/踩），同一学生对同一知识点只保留最新一条"""
+    if request.rating not in ("good", "bad"):
+        raise HTTPException(status_code=400, detail="rating must be 'good' or 'bad'")
+    existing = db.query(ResourceFeedbackModel).filter(
+        ResourceFeedbackModel.student_id == request.student_id,
+        ResourceFeedbackModel.kp_id == request.kp_id,
+    ).first()
+    if existing:
+        existing.rating = request.rating
+    else:
+        db.add(ResourceFeedbackModel(
+            student_id=request.student_id,
+            kp_id=request.kp_id,
+            rating=request.rating,
+        ))
+    db.commit()
+    return {"status": "success"}
