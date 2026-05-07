@@ -108,8 +108,9 @@ const Tutor: React.FC = () => {
 
     ws.onclose = () => {
       setWsConnected(false);
-      // 指数退避重连：1s → 2s → 5s → 10s（封顶）
+      // 指数退避重连：1s → 2s → 5s → 10s（封顶），最多重试 10 次
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (reconnectAttemptRef.current >= 10) return;
       const backoff = [1000, 2000, 5000, 10000];
       const delay =
         backoff[Math.min(reconnectAttemptRef.current, backoff.length - 1)];

@@ -57,6 +57,8 @@ const Profile: React.FC = () => {
 
         if (profileRes.data.data) {
           updateVisuals(profileRes.data.data)
+          const pref = profileRes.data.data.practical_preferences?.interaction_pref
+          if (pref) setInteractionPref(pref)
           // 由 weak_areas 派生「遗忘曲线 · 知识点衰减」列表
           const weak = profileRes.data.data.weak_areas || []
           if (weak.length) {
@@ -151,6 +153,14 @@ const Profile: React.FC = () => {
     }
   }
 
+  const handleStartEvaluation = () => {
+    handleSend('请对我进行一次全面的学习画像评估，包括编程基础、认知风格、学习偏好和薄弱点分析。')
+  }
+
+  const handleSetGoal = () => {
+    handleSend('我想设定一个新的学习目标，请帮我梳理当前的学习状态并给出目标建议。')
+  }
+
   const handleInitProfile = async () => {
     try {
       await profileApi.initialize(studentId, { inputs: ['我是一名计算机专业大二学生，对编程很感兴趣。有一定的高数基础，但数据结构和算法比较薄弱。喜欢通过代码实践来学习，想系统学习C语言。'] })
@@ -169,7 +179,7 @@ const Profile: React.FC = () => {
         {quickActions.map((action, idx) => (
           <button
             key={idx}
-            onClick={idx === 2 ? handleInitProfile : undefined}
+            onClick={idx === 0 ? handleStartEvaluation : idx === 1 ? handleSetGoal : handleInitProfile}
             className="flex items-center gap-3 px-5 py-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all text-left"
           >
             <div
@@ -254,7 +264,11 @@ const Profile: React.FC = () => {
                   ].map((item) => (
                     <button
                       key={item.key}
-                      onClick={() => setInteractionPref(item.key as 'video' | 'text' | 'audio')}
+                      onClick={() => {
+                        const pref = item.key as 'video' | 'text' | 'audio'
+                        setInteractionPref(pref)
+                        profileApi.update(studentId, { dimension: 'practice', updates: { interaction_pref: pref } }).catch(() => {})
+                      }}
                       className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${interactionPref === item.key ? 'bg-primary-50 border-primary text-primary' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}`}
                     >
                       <div className="text-lg">{item.icon}</div>
@@ -330,19 +344,22 @@ const Profile: React.FC = () => {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={[
-                  { day: '第1天', memory: 100 },
-                  { day: '第2天', memory: 55 },
-                  { day: '第3天', memory: 42 },
-                  { day: '第5天', memory: 35 },
-                  { day: '第8天', memory: 30 },
-                  { day: '第15天', memory: 25 },
-                  { day: '第30天', memory: 20 },
+                  { day: '第1天', theoretical: 100, actual: retentionItems[0]?.retention },
+                  { day: '第2天', theoretical: 55, actual: retentionItems[1]?.retention },
+                  { day: '第3天', theoretical: 42, actual: retentionItems[2]?.retention },
+                  { day: '第5天', theoretical: 35, actual: retentionItems[3]?.retention },
+                  { day: '第8天', theoretical: 30 },
+                  { day: '第15天', theoretical: 25 },
+                  { day: '第30天', theoretical: 20 },
                 ]}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis domain={[0, 100]} tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }} />
-                  <Line type="monotone" dataKey="memory" name="理论记忆保留率" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="5 5" />
+                  <Line type="monotone" dataKey="theoretical" name="理论记忆保留率" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="5 5" />
+                  {retentionItems.length > 0 && (
+                    <Line type="monotone" dataKey="actual" name="你的薄弱点保留率" stroke="#4f46e5" strokeWidth={2} dot={{ r: 4, fill: '#4f46e5' }} connectNulls={false} />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>

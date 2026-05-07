@@ -1,5 +1,5 @@
-import React from 'react'
-import { Layout, Menu, Avatar, Typography, Space, Tooltip } from 'antd'
+import React, { useState, useEffect } from 'react'
+import { Layout, Menu, Typography, Space, Tooltip } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   DashboardOutlined,
@@ -12,6 +12,7 @@ import {
   MenuUnfoldOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
+import { dashboardApi } from '../services/api'
 
 const { Sider } = Layout
 
@@ -29,6 +30,14 @@ const Sidebar: React.FC = () => {
   const location = useLocation()
   const collapsed = useAppStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const studentId = useAppStore((s) => s.studentId)
+  const [todayMinutes, setTodayMinutes] = useState(0)
+
+  useEffect(() => {
+    dashboardApi.getSummary(studentId).then((res) => {
+      setTodayMinutes(res.data?.stats?.today_duration_min || 0)
+    }).catch(() => {})
+  }, [studentId])
 
   const navMenuItems = React.useMemo(
     () =>
@@ -98,14 +107,14 @@ const Sidebar: React.FC = () => {
               今日学习时长
             </Typography.Text>
             <Typography.Text className="text-2xl font-bold text-primary block tracking-tight">
-              1h 24m
+              {todayMinutes >= 60 ? `${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m` : `${todayMinutes}m`}
             </Typography.Text>
             <div className="mt-3 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full w-3/5 bg-primary rounded-full" />
+              <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(100, Math.round(todayMinutes / 120 * 100))}%` }} />
             </div>
             <div className="flex justify-between mt-1.5">
               <Typography.Text className="text-xs text-slate-400">目标: 2小时</Typography.Text>
-              <Typography.Text className="text-xs text-primary font-medium">60%</Typography.Text>
+              <Typography.Text className="text-xs text-primary font-medium">{Math.min(100, Math.round(todayMinutes / 120 * 100))}%</Typography.Text>
             </div>
           </div>
         </div>
@@ -113,9 +122,9 @@ const Sidebar: React.FC = () => {
 
       {collapsed && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-          <Tooltip title="今日已学 1h 24m">
+          <Tooltip title={`今日已学 ${todayMinutes >= 60 ? `${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m` : `${todayMinutes}m`}`}>
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-              60%
+              {Math.min(100, Math.round(todayMinutes / 120 * 100))}%
             </div>
           </Tooltip>
         </div>

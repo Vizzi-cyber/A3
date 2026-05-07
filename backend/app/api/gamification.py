@@ -20,6 +20,20 @@ from .auth import require_auth
 router = APIRouter()
 
 
+def _maybe_reset_points(db: Session, points: PointsModel):
+    """根据 updated_at 判断是否需要重置每日/每周积分"""
+    now = datetime.now(timezone.utc)
+    updated = points.updated_at
+    if not updated:
+        return
+    # 每日重置：跨天
+    if updated.date() < now.date():
+        points.daily_points = 0
+    # 每周重置：周一（weekday 0）
+    if updated.isocalendar()[1] != now.isocalendar()[1] or updated.year != now.year:
+        points.weekly_points = 0
+
+
 # ---------- 积分 ----------
 
 @router.get("/{student_id}/points")
@@ -28,6 +42,8 @@ async def get_points(student_id: str, db: Session = Depends(get_db), _current: s
     points = db.query(PointsModel).filter(PointsModel.student_id == student_id).first()
     if not points:
         return {"status": "success", "data": {"student_id": student_id, "total_points": 0, "daily_points": 0, "weekly_points": 0}}
+    _maybe_reset_points(db, points)
+    db.commit()
     return {
         "status": "success",
         "data": {
@@ -57,6 +73,20 @@ async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _
     points.weekly_points += request.points
     db.commit()
     db.refresh(points)
+
+    # 同步更新排行榜（upsert daily/weekly/monthly）
+    for period in ("daily", "weekly", "monthly"):
+        row = db.query(LeaderboardModel).filter(
+            LeaderboardModel.student_id == request.student_id,
+            LeaderboardModel.period == period,
+        ).first()
+        score = points.daily_points if period == "daily" else points.weekly_points if period == "weekly" else points.total_points
+        if row:
+            row.score = score
+        else:
+            db.add(LeaderboardModel(student_id=request.student_id, period=period, score=score))
+    db.commit()
+
     return {"status": "success", "total_points": points.total_points}
 
 
@@ -203,10 +233,10 @@ async def get_leaderboard(period: str = "weekly", limit: int = 20, db: Session =
         "period": period,
         "data": [
             {
-                "rank": r.rank,
+                "rank": idx + 1,
                 "student_id": r.student_id,
                 "score": r.score,
             }
-            for r in rows
+            for idx, r in enumerate(rows)
         ],
     }

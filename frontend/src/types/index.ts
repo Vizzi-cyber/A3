@@ -27,6 +27,7 @@ export interface PracticalPreferences {
   coding_proficiency?: Record<string, unknown>;
   preferred_practice_types?: string[];
   overall_score?: number;
+  interaction_pref?: 'video' | 'text' | 'audio';
 }
 
 export interface KnowledgeBase {

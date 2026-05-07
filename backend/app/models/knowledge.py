@@ -64,3 +64,18 @@ class QuizResultModel(Base):
     __table_args__ = (
         Index("ix_quiz_results_created_at", "created_at"),
     )
+
+
+class ResourceFeedbackModel(Base):
+    """资源反馈表（点赞/踩）"""
+    __tablename__ = "resource_feedback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    student_id = Column(String(64), index=True, nullable=False)
+    kp_id = Column(String(64), index=True, nullable=False)
+    rating = Column(String(8), nullable=False)  # "good" / "bad"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_resource_feedback_student_kp", "student_id", "kp_id", unique=True),
+    )

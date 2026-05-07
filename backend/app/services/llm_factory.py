@@ -98,8 +98,29 @@ class OpenAICompatibleLLM(BaseLLM):
         self.model = model
         self._is_bigmodel = "bigmodel" in self.client.base_url.host
 
+    def _log_llm_call(self, provider: str, model: str, prompt_tokens: int, completion_tokens: int,
+                       duration_ms: float, success: bool, error_msg: str = None):
+        """异步记录 LLM 调用到监控表（同步方法，供 to_thread 调用）"""
+        try:
+            from ..models.database import SessionLocal
+            from ..models.monitor import LlmCallModel
+            db = SessionLocal()
+            try:
+                db.add(LlmCallModel(
+                    provider=provider, model=model,
+                    prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                    duration_ms=round(duration_ms, 2), success=success, error_msg=error_msg,
+                ))
+                db.commit()
+            finally:
+                db.close()
+        except Exception:
+            pass
+
     async def ainvoke(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> str:
         """非流式调用，默认关闭智谱 thinking 以加快响应"""
+        import time, asyncio
+        start = time.time()
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -107,18 +128,34 @@ class OpenAICompatibleLLM(BaseLLM):
             "max_tokens": max_tokens,
             "stream": False,
         }
-        # 智谱 GLM-4.6v 支持 thinking 参数：默认禁用深度思考，只有显式开启才启用
         if self._is_bigmodel:
             kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
-        response = await self.client.chat.completions.create(**kwargs)
-        msg = response.choices[0].message
-        # 只返回正式回答 content，忽略 reasoning_content（思考过程）
-        content = msg.content or ""
-        return content
+        try:
+            response = await self.client.chat.completions.create(**kwargs)
+            msg = response.choices[0].message
+            content = msg.content or ""
+            duration_ms = (time.time() - start) * 1000
+            usage = getattr(response, 'usage', None)
+            asyncio.create_task(asyncio.to_thread(
+                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                getattr(usage, 'prompt_tokens', 0) if usage else 0,
+                getattr(usage, 'completion_tokens', 0) if usage else 0,
+                duration_ms, True,
+            ))
+            return content
+        except Exception as e:
+            duration_ms = (time.time() - start) * 1000
+            asyncio.create_task(asyncio.to_thread(
+                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                0, 0, duration_ms, False, str(e)[:500],
+            ))
+            raise
 
     async def astream(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> AsyncIterator[str]:
         """流式调用，关闭 thinking，只输出正式回答 content"""
+        import time, asyncio
+        start = time.time()
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -129,13 +166,25 @@ class OpenAICompatibleLLM(BaseLLM):
         if self._is_bigmodel:
             kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
-        response = await self.client.chat.completions.create(**kwargs)
-        async for chunk in response:
-            delta = chunk.choices[0].delta
-            # 只取 content，不输出 reasoning_content（思考过程）
-            content = delta.content
-            if content:
-                yield content
+        try:
+            response = await self.client.chat.completions.create(**kwargs)
+            async for chunk in response:
+                delta = chunk.choices[0].delta
+                content = delta.content
+                if content:
+                    yield content
+            duration_ms = (time.time() - start) * 1000
+            asyncio.create_task(asyncio.to_thread(
+                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                0, 0, duration_ms, True,
+            ))
+        except Exception as e:
+            duration_ms = (time.time() - start) * 1000
+            asyncio.create_task(asyncio.to_thread(
+                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                0, 0, duration_ms, False, str(e)[:500],
+            ))
+            raise
 
 
 class LLMFactory:

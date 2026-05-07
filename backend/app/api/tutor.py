@@ -157,7 +157,6 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
 
             if message_type == "message":
                 question = data.get("content", "")
-                student_id = data.get("student_id", "anonymous")
                 provider = data.get("provider")
                 rag_active = bool(data.get("rag_active", True))
 

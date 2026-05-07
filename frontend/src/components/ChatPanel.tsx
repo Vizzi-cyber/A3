@@ -299,10 +299,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 key={i}
                 size="small"
                 className="rounded-full text-xs border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:text-primary hover:border-indigo-200 transition-all"
-                onClick={() => {
-                  setInputValue(s);
-                  onSend(s);
-                }}
+                onClick={() => setInputValue(s)}
               >
                 <BulbOutlined /> {s}
               </Button>
