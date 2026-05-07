@@ -1,153 +1,186 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Card, Form, Input, Button, Tabs, Typography, message, Divider } from 'antd'
-import { RobotOutlined, UserOutlined, LockOutlined, MailOutlined, BookOutlined, BulbOutlined, MessageOutlined } from '@ant-design/icons'
-import gsap from 'gsap'
-import { SplitText } from 'gsap/SplitText'
-import { authApi } from '../services/api'
-import { useAppStore } from '../store'
-import { extractApiError } from '../utils/error'
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Card,
+  Form,
+  Input,
+  Button,
+  Tabs,
+  Typography,
+  message,
+  Divider,
+} from "antd";
+import {
+  RobotOutlined,
+  UserOutlined,
+  LockOutlined,
+  MailOutlined,
+  BookOutlined,
+  BulbOutlined,
+  MessageOutlined,
+} from "@ant-design/icons";
+import gsap from "gsap";
+import { SplitText } from "gsap/SplitText";
+import { authApi } from "../services/api";
+import { useAppStore } from "../store";
+import { extractApiError } from "../utils/error";
 
 const features = [
   {
     icon: <BookOutlined className="text-primary text-lg" />,
-    title: '知识图谱驱动',
-    desc: '基于知识图谱的科学路径规划，避免大模型幻觉带来的偏差',
+    title: "知识图谱驱动",
+    desc: "基于知识图谱的科学路径规划，避免大模型幻觉带来的偏差",
   },
   {
     icon: <BulbOutlined className="text-warning text-lg" />,
-    title: '个性化推荐',
-    desc: '多维画像分析，精准匹配最适合你的学习资源与节奏',
+    title: "个性化推荐",
+    desc: "多维画像分析，精准匹配最适合你的学习资源与节奏",
   },
   {
     icon: <MessageOutlined className="text-success text-lg" />,
-    title: 'AI 智能辅导',
-    desc: '24 小时在线答疑，代码纠错、论文润色、学习规划全覆盖',
+    title: "AI 智能辅导",
+    desc: "24 小时在线答疑，代码纠错、论文润色、学习规划全覆盖",
   },
-]
+];
 
 const tabItems = [
-  { key: 'login', label: '登录' },
-  { key: 'register', label: '注册' },
-]
+  { key: "login", label: "登录" },
+  { key: "register", label: "注册" },
+];
 
 const Login: React.FC = () => {
-  const navigate = useNavigate()
-  const login = useAppStore((s) => s.login)
-  const setUserInfo = useAppStore((s) => s.setUserInfo)
-  const [activeTab, setActiveTab] = useState('login')
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const login = useAppStore((s) => s.login);
+  const setUserInfo = useAppStore((s) => s.setUserInfo);
+  const [activeTab, setActiveTab] = useState("login");
+  const [loading, setLoading] = useState(false);
 
   // ===== Block Reveal 动画 =====
-  const brandRef = useRef<HTMLDivElement>(null)
-  const titleRef = useRef<HTMLHeadingElement>(null)
-  const descRef = useRef<HTMLParagraphElement>(null)
+  const brandRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const descRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
-    const section = brandRef.current
-    const titleEl = titleRef.current
-    const descEl = descRef.current
-    if (!section || !titleEl) return
+    const section = brandRef.current;
+    const titleEl = titleRef.current;
+    const descEl = descRef.current;
+    if (!section || !titleEl) return;
 
-    const splits: Array<{ revert: () => void; lines: Element[] }> = []
-    const allBlocks: HTMLDivElement[] = []
-    const allLines: HTMLElement[] = []
+    const splits: Array<{ revert: () => void; lines: Element[] }> = [];
+    const allBlocks: HTMLDivElement[] = [];
+    const allLines: HTMLElement[] = [];
 
     const setupText = (element: HTMLElement) => {
       const split = new SplitText(element, {
-        type: 'lines',
-        linesClass: 'block-line++',
+        type: "lines",
+        linesClass: "block-line++",
         lineThreshold: 0.1,
-      })
-      splits.push(split)
+      });
+      splits.push(split);
 
       split.lines.forEach((line: Element) => {
-        const el = line as HTMLElement
-        const wrapper = document.createElement('div')
-        wrapper.className = 'block-line-wrapper'
-        el.parentNode?.insertBefore(wrapper, el)
-        wrapper.appendChild(el)
+        const el = line as HTMLElement;
+        const wrapper = document.createElement("div");
+        wrapper.className = "block-line-wrapper";
+        el.parentNode?.insertBefore(wrapper, el);
+        wrapper.appendChild(el);
 
-        const block = document.createElement('div')
-        block.className = 'block-revealer'
-        block.style.backgroundColor = '#e2e8f0'
-        wrapper.appendChild(block)
+        const block = document.createElement("div");
+        block.className = "block-revealer";
+        block.style.backgroundColor = "#e2e8f0";
+        wrapper.appendChild(block);
 
-        allLines.push(el)
-        allBlocks.push(block)
-      })
-    }
+        allLines.push(el);
+        allBlocks.push(block);
+      });
+    };
 
-    setupText(titleEl)
-    if (descEl) setupText(descEl)
+    setupText(titleEl);
+    if (descEl) setupText(descEl);
 
-    gsap.set(allLines, { opacity: 0 })
-    gsap.set(allBlocks, { scaleX: 0, transformOrigin: 'left center' })
+    gsap.set(allLines, { opacity: 0 });
+    gsap.set(allBlocks, { scaleX: 0, transformOrigin: "left center" });
 
     allBlocks.forEach((block, index) => {
-      const tl = gsap.timeline({ delay: 0.3 + index * 0.15 })
+      const tl = gsap.timeline({ delay: 0.3 + index * 0.15 });
       tl.to(block, {
         scaleX: 1,
         duration: 0.75,
-        ease: 'power4.inOut',
-      })
-      tl.set(allLines[index], { opacity: 1 })
-      tl.set(block, { transformOrigin: 'right center' })
+        ease: "power4.inOut",
+      });
+      tl.set(allLines[index], { opacity: 1 });
+      tl.set(block, { transformOrigin: "right center" });
       tl.to(block, {
         scaleX: 0,
         duration: 0.75,
-        ease: 'power4.inOut',
-      })
-    })
+        ease: "power4.inOut",
+      });
+    });
 
     return () => {
-      splits.forEach((s) => s.revert())
-      const wrappers = section.querySelectorAll('.block-line-wrapper')
+      splits.forEach((s) => s.revert());
+      const wrappers = section.querySelectorAll(".block-line-wrapper");
       wrappers.forEach((wrapper) => {
         if (wrapper.parentNode && wrapper.firstChild) {
-          wrapper.parentNode.insertBefore(wrapper.firstChild, wrapper)
-          wrapper.remove()
+          wrapper.parentNode.insertBefore(wrapper.firstChild, wrapper);
+          wrapper.remove();
         }
-      })
-    }
-  }, [])
+      });
+    };
+  }, []);
 
-  const handleLogin = async (values: { student_id: string; password: string }) => {
-    setLoading(true)
+  const handleLogin = async (values: {
+    student_id: string;
+    password: string;
+  }) => {
+    setLoading(true);
     try {
-      const res = await authApi.login(values)
-      const token = res.data.access_token
-      login(token, values.student_id)
+      const res = await authApi.login(values);
+      const token = res.data.access_token;
+      if (!token) {
+        message.error("登录失败：未获取到令牌");
+        return;
+      }
+      login(token, values.student_id);
 
       try {
-        const meRes = await authApi.me()
-        const u = meRes.data.data
-        setUserInfo({ student_id: u.student_id, username: u.username, role: u.role })
+        const meRes = await authApi.me();
+        const u = meRes.data.data;
+        setUserInfo({
+          student_id: u.student_id,
+          username: u.username,
+          role: u.role,
+        });
       } catch {
         // ignore
       }
 
-      message.success('登录成功')
-      navigate('/')
+      message.success("登录成功");
+      navigate("/");
     } catch (e: unknown) {
-      message.error(extractApiError(e, '登录失败'))
+      message.error(extractApiError(e, "登录失败"));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleRegister = async (values: { student_id: string; username: string; email?: string; password: string }) => {
-    setLoading(true)
+  const handleRegister = async (values: {
+    student_id: string;
+    username: string;
+    email?: string;
+    password: string;
+  }) => {
+    setLoading(true);
     try {
-      await authApi.register(values)
-      message.success('注册成功，请登录')
-      setActiveTab('login')
+      await authApi.register(values);
+      message.success("注册成功，请登录");
+      setActiveTab("login");
     } catch (e: unknown) {
-      message.error(extractApiError(e, '注册失败'))
+      message.error(extractApiError(e, "注册失败"));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen relative flex">
@@ -194,12 +227,12 @@ const Login: React.FC = () => {
                   items={tabItems}
                 />
 
-                {activeTab === 'login' && (
+                {activeTab === "login" && (
                   <Form layout="vertical" onFinish={handleLogin}>
                     <Form.Item
                       label="学号"
                       name="student_id"
-                      rules={[{ required: true, message: '请输入学号' }]}
+                      rules={[{ required: true, message: "请输入学号" }]}
                     >
                       <Input
                         prefix={<UserOutlined className="text-slate-400" />}
@@ -211,7 +244,7 @@ const Login: React.FC = () => {
                     <Form.Item
                       label="密码"
                       name="password"
-                      rules={[{ required: true, message: '请输入密码' }]}
+                      rules={[{ required: true, message: "请输入密码" }]}
                     >
                       <Input.Password
                         prefix={<LockOutlined className="text-slate-400" />}
@@ -234,12 +267,12 @@ const Login: React.FC = () => {
                   </Form>
                 )}
 
-                {activeTab === 'register' && (
+                {activeTab === "register" && (
                   <Form layout="vertical" onFinish={handleRegister}>
                     <Form.Item
                       label="学号"
                       name="student_id"
-                      rules={[{ required: true, message: '请输入学号' }]}
+                      rules={[{ required: true, message: "请输入学号" }]}
                     >
                       <Input
                         prefix={<UserOutlined className="text-slate-400" />}
@@ -251,7 +284,7 @@ const Login: React.FC = () => {
                     <Form.Item
                       label="用户名"
                       name="username"
-                      rules={[{ required: true, message: '请输入用户名' }]}
+                      rules={[{ required: true, message: "请输入用户名" }]}
                     >
                       <Input
                         prefix={<UserOutlined className="text-slate-400" />}
@@ -260,10 +293,7 @@ const Login: React.FC = () => {
                         size="large"
                       />
                     </Form.Item>
-                    <Form.Item
-                      label="邮箱（可选）"
-                      name="email"
-                    >
+                    <Form.Item label="邮箱（可选）" name="email">
                       <Input
                         prefix={<MailOutlined className="text-slate-400" />}
                         placeholder="请输入邮箱"
@@ -274,7 +304,14 @@ const Login: React.FC = () => {
                     <Form.Item
                       label="密码"
                       name="password"
-                      rules={[{ required: true, min: 6, message: '密码至少6位' }]}
+                      rules={[
+                        { required: true, message: "请输入密码" },
+                        { min: 8, message: "密码至少8位" },
+                        {
+                          pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/,
+                          message: "密码必须包含字母和数字",
+                        },
+                      ]}
                     >
                       <Input.Password
                         prefix={<LockOutlined className="text-slate-400" />}
@@ -312,8 +349,12 @@ const Login: React.FC = () => {
                         {f.icon}
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-slate-800">{f.title}</div>
-                        <div className="text-xs text-slate-500 mt-0.5 leading-relaxed">{f.desc}</div>
+                        <div className="text-sm font-semibold text-slate-800">
+                          {f.title}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                          {f.desc}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -350,15 +391,21 @@ const Login: React.FC = () => {
 
             <div className="mt-10 flex items-center justify-center gap-8 text-white/60 text-sm">
               <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg">📚</div>
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg">
+                  📚
+                </div>
                 <span>智能课程</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg">🎯</div>
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg">
+                  🎯
+                </div>
                 <span>精准推荐</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg">🤖</div>
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg">
+                  🤖
+                </div>
                 <span>AI 辅导</span>
               </div>
             </div>
@@ -366,7 +413,7 @@ const Login: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

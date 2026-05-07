@@ -209,7 +209,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto pr-2 space-y-5 mb-4 flex flex-col justify-end min-h-0">
+      <div className="flex-1 overflow-y-auto pr-2 space-y-5 mb-4 min-h-0">
         {messages.map((msg, idx) => (
           <div
             key={idx}

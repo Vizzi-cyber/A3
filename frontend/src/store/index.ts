@@ -1,44 +1,48 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { ToastState } from '../types'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { ToastState } from "../types";
 
 interface UserInfo {
-  student_id: string
-  username: string
-  role: string
+  student_id: string;
+  username: string;
+  role: string;
 }
 
 interface AppState {
-  studentId: string
-  setStudentId: (id: string) => void
+  studentId: string;
+  setStudentId: (id: string) => void;
 
-  token: string | null
-  isLoggedIn: boolean
-  userInfo: UserInfo | null
-  login: (token: string, studentId: string) => void
-  logout: () => void
-  setUserInfo: (info: UserInfo) => void
+  token: string | null;
+  isLoggedIn: boolean;
+  userInfo: UserInfo | null;
+  login: (token: string, studentId: string) => void;
+  logout: () => void;
+  setUserInfo: (info: UserInfo) => void;
 
-  toast: ToastState | null
-  setToast: (toast: ToastState | null) => void
+  toast: ToastState | null;
+  setToast: (toast: ToastState | null) => void;
 
-  sidebarCollapsed: boolean
-  toggleSidebar: () => void
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      studentId: 'student_001',
+      studentId: "student_001",
       setStudentId: (id) => set({ studentId: id }),
 
       token: null,
       isLoggedIn: false,
       userInfo: null,
-      login: (token, studentId) =>
-        set({ token, isLoggedIn: true, studentId }),
+      login: (token, studentId) => set({ token, isLoggedIn: true, studentId }),
       logout: () =>
-        set({ token: null, isLoggedIn: false, userInfo: null, studentId: '' }),
+        set({
+          token: null,
+          isLoggedIn: false,
+          userInfo: null,
+          studentId: "guest",
+        }),
       setUserInfo: (info) => set({ userInfo: info }),
 
       toast: null,
@@ -49,19 +53,19 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     }),
     {
-      name: 'ai-learning-storage',
+      name: "ai-learning-storage",
       partialize: (state) => ({
         token: state.token,
         studentId: state.studentId,
       }),
       merge: (persisted, current) => {
-        const p = persisted as Partial<AppState>
+        const p = persisted as Partial<AppState>;
         return {
           ...current,
           ...p,
           isLoggedIn: !!p.token,
-        }
+        };
       },
-    }
-  )
-)
+    },
+  ),
+);

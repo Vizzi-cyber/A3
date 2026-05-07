@@ -27,7 +27,7 @@ export interface PracticalPreferences {
   coding_proficiency?: Record<string, unknown>;
   preferred_practice_types?: string[];
   overall_score?: number;
-  interaction_pref?: 'video' | 'text' | 'audio';
+  interaction_pref?: "video" | "text" | "audio";
 }
 
 export interface KnowledgeBase {
@@ -311,17 +311,20 @@ export interface EffectEvaluation {
     accuracy: number;
     mastery: number;
     improvement_rate: number;
-    next_predicted_score: number;
+    weakness_concentration: number;
   };
-  loss_points: Array<{ kp_id: string; loss: number }>;
-  intervention_strategies: string[];
-  predictions?: {
+  predictions: {
     next_score: number;
-    potential_loss_points: Array<{ tag: string; risk_score: number }>;
+    potential_loss_points: Array<{
+      tag: string;
+      frequency: number;
+      risk_score: number;
+      suggestion: string;
+    }>;
   };
-  intervention?: {
+  intervention: {
     priority: string;
-    strategies: Array<{ action: string }>;
+    strategies: Array<{ type: string; action: string }>;
   };
 }
 

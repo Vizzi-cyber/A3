@@ -45,6 +45,7 @@ class TutorAgent(BaseAgent):
             "引导学生发现自己的知识盲区，并自主推导出结论。"
             "你的语气应温和、鼓励，避免批评。"
             "重要：不要输出思考过程、分析步骤或'让我想想'之类的内心独白，直接给出对学生的回复内容。"
+            "每次回复要有所不同，不要重复相同的引导问题或句式。"
         )
 
     async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -146,9 +147,10 @@ class TutorAgent(BaseAgent):
                 {"role": "user", "content": prompt},
             ]
 
-        answer = await llm.ainvoke(messages, temperature=0.6, max_tokens=1024)
+        answer = await llm.ainvoke(messages, temperature=0.8, max_tokens=1024)
         # 更新历史
-        history.append({"role": "user", "content": question})
+        user_content = prefixed_content if isinstance(question, list) else prompt
+        history.append({"role": "user", "content": user_content})
         history.append({"role": "assistant", "content": answer})
         # 限制历史长度
         if len(history) > 20:

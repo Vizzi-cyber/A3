@@ -171,7 +171,9 @@ const Dashboard: React.FC = () => {
     need: number;
     percent: number;
   } | null>(null);
-  const [kgNodes, setKgNodes] = useState<{ id: string; name: string; prerequisites: string[] }[]>([]);
+  const [kgNodes, setKgNodes] = useState<
+    { id: string; name: string; prerequisites: string[] }[]
+  >([]);
 
   const studentId = useAppStore((s) => s.studentId);
   const journeyRef = useRef<HTMLDivElement>(null);
@@ -248,7 +250,14 @@ const Dashboard: React.FC = () => {
         if (profileRes?.data?.data) {
           setProfileData(buildRadarData(profileRes.data.data));
           const interests = profileRes.data.data.interest_areas || [];
-          if (interests.length > 0) setWelcomeTopic(String(interests[0]));
+          if (interests.length > 0) {
+            const first = interests[0];
+            setWelcomeTopic(
+              typeof first === "object"
+                ? first.name || first.label || JSON.stringify(first)
+                : String(first),
+            );
+          }
         }
 
         if (summaryRes?.data) {
@@ -315,7 +324,15 @@ const Dashboard: React.FC = () => {
 
         // 知识图谱节点 —— 来自后端 knowledge.list
         if (kgRes?.data?.data?.length) {
-          setKgNodes(kgRes.data.data.slice(0, 14).map((k) => ({ id: k.kp_id, name: k.name, prerequisites: k.prerequisites || [] })));
+          setKgNodes(
+            kgRes.data.data
+              .slice(0, 14)
+              .map((k) => ({
+                id: k.kp_id,
+                name: k.name,
+                prerequisites: k.prerequisites || [],
+              })),
+          );
         }
       } catch {
         message.error("部分数据加载失败");
@@ -585,8 +602,9 @@ const Dashboard: React.FC = () => {
                 <StatRow
                   label="综合趋势因子"
                   value={
-                    algorithmAnalysis.trend_analysis?.trend_factor?.toFixed(2) ??
-                    "--"
+                    algorithmAnalysis.trend_analysis?.trend_factor?.toFixed(
+                      2,
+                    ) ?? "--"
                   }
                 />
                 <StatRow
@@ -1412,55 +1430,90 @@ const Dashboard: React.FC = () => {
               核心知识网络
             </div>
             {kgNodes.length > 0 ? (
-              <svg width="100%" viewBox="0 0 640 400" className="overflow-visible">
+              <svg
+                width="100%"
+                viewBox="0 0 640 400"
+                className="overflow-visible"
+              >
                 <defs>
                   <radialGradient id="kg-node-grad">
                     <stop offset="0%" stopColor="#818cf8" />
                     <stop offset="100%" stopColor="#4f46e5" />
                   </radialGradient>
-                  <marker id="kg-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <marker
+                    id="kg-arrow"
+                    viewBox="0 0 10 10"
+                    refX="10"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse"
+                  >
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
                   </marker>
                 </defs>
                 {/* Edges */}
                 {(() => {
-                  const nodeMap = new Map(kgNodes.map((n, i) => {
-                    const angle = (2 * Math.PI * i) / kgNodes.length - Math.PI / 2
-                    const cx = 320 + 160 * Math.cos(angle)
-                    const cy = 200 + 140 * Math.sin(angle)
-                    return [n.id, { cx, cy }]
-                  }))
+                  const nodeMap = new Map(
+                    kgNodes.map((n, i) => {
+                      const angle =
+                        (2 * Math.PI * i) / kgNodes.length - Math.PI / 2;
+                      const cx = 320 + 160 * Math.cos(angle);
+                      const cy = 200 + 140 * Math.sin(angle);
+                      return [n.id, { cx, cy }];
+                    }),
+                  );
                   return kgNodes.flatMap((node) =>
                     node.prerequisites
                       .filter((pre) => nodeMap.has(pre))
                       .map((pre) => {
-                        const from = nodeMap.get(pre)!
-                        const to = nodeMap.get(node.id)!
+                        const from = nodeMap.get(pre)!;
+                        const to = nodeMap.get(node.id)!;
                         return (
                           <line
                             key={`${pre}-${node.id}`}
-                            x1={from.cx} y1={from.cy}
-                            x2={to.cx} y2={to.cy}
-                            stroke="#cbd5e1" strokeWidth={1.5}
+                            x1={from.cx}
+                            y1={from.cy}
+                            x2={to.cx}
+                            y2={to.cy}
+                            stroke="#cbd5e1"
+                            strokeWidth={1.5}
                             markerEnd="url(#kg-arrow)"
                           />
-                        )
-                      })
-                  )
+                        );
+                      }),
+                  );
                 })()}
                 {/* Nodes */}
                 {kgNodes.map((node, i) => {
-                  const angle = (2 * Math.PI * i) / kgNodes.length - Math.PI / 2
-                  const cx = 320 + 160 * Math.cos(angle)
-                  const cy = 200 + 140 * Math.sin(angle)
+                  const angle =
+                    (2 * Math.PI * i) / kgNodes.length - Math.PI / 2;
+                  const cx = 320 + 160 * Math.cos(angle);
+                  const cy = 200 + 140 * Math.sin(angle);
                   return (
                     <g key={node.id}>
-                      <circle cx={cx} cy={cy} r={24} fill="url(#kg-node-grad)" filter="drop-shadow(0 2px 4px rgba(79,70,229,0.3))" />
-                      <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="central" fill="white" fontSize={10} fontWeight={600}>
-                        {node.name.length > 4 ? node.name.slice(0, 4) + '..' : node.name}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={24}
+                        fill="url(#kg-node-grad)"
+                        filter="drop-shadow(0 2px 4px rgba(79,70,229,0.3))"
+                      />
+                      <text
+                        x={cx}
+                        y={cy + 1}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="white"
+                        fontSize={10}
+                        fontWeight={600}
+                      >
+                        {node.name.length > 4
+                          ? node.name.slice(0, 4) + ".."
+                          : node.name}
                       </text>
                     </g>
-                  )
+                  );
                 })}
               </svg>
             ) : (
