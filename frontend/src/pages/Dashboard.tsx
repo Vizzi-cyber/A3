@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Typography,
-  Card,
   Row,
   Col,
   Button,
@@ -62,6 +61,8 @@ import {
 } from "../services/api";
 import { buildRadarData } from "../utils/profile";
 import { StatCard } from "../components/StatCard";
+import { SectionCard } from "../components/SectionCard";
+import { StatRow } from "../components/StatRow";
 import Leaderboard from "../components/Leaderboard";
 import DailyChallenge from "../components/DailyChallenge";
 import type {
@@ -75,27 +76,24 @@ import type {
 
 gsap.registerPlugin(ScrollTrigger);
 
-const taskTypeMeta: Record<
+const RESOURCE_META: Record<
   string,
   { icon: React.ReactNode; color: string; bg: string }
 > = {
-  video: { icon: <PlayCircleOutlined />, color: "#ef4444", bg: "#fef2f2" },
-  quiz: { icon: <BookOutlined />, color: "#f59e0b", bg: "#fffbeb" },
   doc: { icon: <FileTextOutlined />, color: "#10b981", bg: "#ecfdf5" },
+  文档: { icon: <FileTextOutlined />, color: "#10b981", bg: "#ecfdf5" },
+  video: { icon: <PlayCircleOutlined />, color: "#ef4444", bg: "#fef2f2" },
+  视频: { icon: <PlayCircleOutlined />, color: "#ef4444", bg: "#fef2f2" },
   code: { icon: <CodeOutlined />, color: "#3b82f6", bg: "#eff6ff" },
-};
-
-const typeIconMap: Record<string, { icon: React.ReactNode; color: string }> = {
-  doc: { icon: <FileTextOutlined />, color: "#10b981" },
-  video: { icon: <PlayCircleOutlined />, color: "#ef4444" },
-  code: { icon: <CodeOutlined />, color: "#3b82f6" },
-  tool: { icon: <ApartmentOutlined />, color: "#3b82f6" },
-  tutor: { icon: <MessageOutlined />, color: "#8b5cf6" },
-  推荐: { icon: <RocketOutlined />, color: "#f59e0b" },
-  文章: { icon: <FileTextOutlined />, color: "#10b981" },
-  视频: { icon: <PlayCircleOutlined />, color: "#ef4444" },
-  代码: { icon: <CodeOutlined />, color: "#3b82f6" },
-  工具: { icon: <ApartmentOutlined />, color: "#3b82f6" },
+  代码: { icon: <CodeOutlined />, color: "#3b82f6", bg: "#eff6ff" },
+  quiz: { icon: <BookOutlined />, color: "#f59e0b", bg: "#fffbeb" },
+  练习: { icon: <BookOutlined />, color: "#f59e0b", bg: "#fffbeb" },
+  题目: { icon: <BookOutlined />, color: "#f59e0b", bg: "#fffbeb" },
+  tool: { icon: <ApartmentOutlined />, color: "#3b82f6", bg: "#eff6ff" },
+  工具: { icon: <ApartmentOutlined />, color: "#3b82f6", bg: "#eff6ff" },
+  tutor: { icon: <MessageOutlined />, color: "#8b5cf6", bg: "#f3f0ff" },
+  推荐: { icon: <RocketOutlined />, color: "#f59e0b", bg: "#fffbeb" },
+  文章: { icon: <FileTextOutlined />, color: "#10b981", bg: "#ecfdf5" },
 };
 
 const statusColors: Record<string, string> = {
@@ -542,8 +540,7 @@ const Dashboard: React.FC = () => {
       {algorithmAnalysis && (
         <Row gutter={[20, 20]}>
           <Col xs={24} lg={12}>
-            <Card
-              className="border border-slate-100 rounded-2xl shadow-card"
+            <SectionCard
               title={
                 <Space>
                   <NodeIndexOutlined className="text-primary text-lg" />
@@ -552,54 +549,51 @@ const Dashboard: React.FC = () => {
                   </span>
                 </Space>
               }
-              styles={{ body: { padding: "24px" } }}
             >
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">趋势状态</span>
-                  <Tag
-                    className={`rounded-full border-0 text-xs font-medium ${
-                      algorithmAnalysis.trend_analysis?.trend_state === "growth"
-                        ? "bg-emerald-50 text-emerald-600"
-                        : algorithmAnalysis.trend_analysis?.trend_state ===
-                            "warning"
-                          ? "bg-red-50 text-red-600"
-                          : algorithmAnalysis.trend_analysis?.trend_state ===
-                              "decline"
-                            ? "bg-amber-50 text-amber-600"
-                            : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {algorithmAnalysis.trend_analysis?.trend_state === "growth"
+                {(() => {
+                  const state = algorithmAnalysis.trend_analysis?.trend_state;
+                  const trendCls =
+                    state === "growth"
+                      ? "bg-emerald-50 text-emerald-600"
+                      : state === "warning"
+                        ? "bg-red-50 text-red-600"
+                        : state === "decline"
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-slate-100 text-slate-600";
+                  const trendLabel =
+                    state === "growth"
                       ? "上升趋势"
-                      : algorithmAnalysis.trend_analysis?.trend_state ===
-                          "warning"
+                      : state === "warning"
                         ? "预警"
-                        : algorithmAnalysis.trend_analysis?.trend_state ===
-                            "decline"
+                        : state === "decline"
                           ? "下滑"
-                          : "平稳"}
-                  </Tag>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">综合趋势因子</span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {algorithmAnalysis.trend_analysis?.trend_factor?.toFixed(
-                      2,
-                    ) ?? "--"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">
-                    3天后预测掌握度
-                  </span>
-                  <span className="text-sm font-bold text-primary">
-                    {algorithmAnalysis.trend_analysis?.predicted_mastery_3d?.toFixed(
-                      1,
-                    ) ?? "--"}
-                    %
-                  </span>
-                </div>
+                          : "平稳";
+                  return (
+                    <StatRow
+                      label="趋势状态"
+                      value={
+                        <Tag
+                          className={`rounded-full border-0 text-xs font-medium ${trendCls}`}
+                        >
+                          {trendLabel}
+                        </Tag>
+                      }
+                    />
+                  );
+                })()}
+                <StatRow
+                  label="综合趋势因子"
+                  value={
+                    algorithmAnalysis.trend_analysis?.trend_factor?.toFixed(2) ??
+                    "--"
+                  }
+                />
+                <StatRow
+                  label="3天后预测掌握度"
+                  value={`${algorithmAnalysis.trend_analysis?.predicted_mastery_3d?.toFixed(1) ?? "--"}%`}
+                  valueClassName="text-primary"
+                />
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 leading-relaxed">
                   <strong>干预建议：</strong>
                   {algorithmAnalysis.trend_analysis?.intervention || "暂无建议"}
@@ -630,11 +624,10 @@ const Dashboard: React.FC = () => {
                   ))}
                 </div>
               </div>
-            </Card>
+            </SectionCard>
           </Col>
           <Col xs={24} lg={12}>
-            <Card
-              className="border border-slate-100 rounded-2xl shadow-card"
+            <SectionCard
               title={
                 <Space>
                   <TrophyOutlined className="text-primary text-lg" />
@@ -643,49 +636,35 @@ const Dashboard: React.FC = () => {
                   </span>
                 </Space>
               }
-              styles={{ body: { padding: "24px" } }}
             >
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">总体正确率</span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {algorithmAnalysis.effect_evaluation?.realtime_metrics?.accuracy?.toFixed(
-                      1,
-                    ) ?? "--"}
-                    %
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">掌握度</span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {algorithmAnalysis.effect_evaluation?.realtime_metrics?.mastery?.toFixed(
-                      1,
-                    ) ?? "--"}
-                    %
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">提升速率</span>
-                  <span
-                    className={`text-sm font-bold ${(algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate || 0) >= 0 ? "text-emerald-600" : "text-red-500"}`}
-                  >
-                    {(algorithmAnalysis.effect_evaluation?.realtime_metrics
+                <StatRow
+                  label="总体正确率"
+                  value={`${algorithmAnalysis.effect_evaluation?.realtime_metrics?.accuracy?.toFixed(1) ?? "--"}%`}
+                />
+                <StatRow
+                  label="掌握度"
+                  value={`${algorithmAnalysis.effect_evaluation?.realtime_metrics?.mastery?.toFixed(1) ?? "--"}%`}
+                />
+                <StatRow
+                  label="提升速率"
+                  value={`${(algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate || 0) >= 0 ? "+" : ""}${algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate?.toFixed(1) ?? "--"}`}
+                  valueClassName={
+                    (algorithmAnalysis.effect_evaluation?.realtime_metrics
                       ?.improvement_rate || 0) >= 0
-                      ? "+"
-                      : ""}
-                    {algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate?.toFixed(
+                      ? "text-emerald-600"
+                      : "text-red-500"
+                  }
+                />
+                <StatRow
+                  label="预测下次得分"
+                  value={
+                    algorithmAnalysis.effect_evaluation?.predictions?.next_score?.toFixed(
                       1,
-                    ) ?? "--"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">预测下次得分</span>
-                  <span className="text-sm font-bold text-primary">
-                    {algorithmAnalysis.effect_evaluation?.predictions?.next_score?.toFixed(
-                      1,
-                    ) ?? "--"}
-                  </span>
-                </div>
+                    ) ?? "--"
+                  }
+                  valueClassName="text-primary"
+                />
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                   <div className="text-xs text-slate-500 mb-2 font-medium">
                     潜在失分点 TOP3
@@ -736,7 +715,7 @@ const Dashboard: React.FC = () => {
                     .join("；") || "继续保持"}
                 </div>
               </div>
-            </Card>
+            </SectionCard>
           </Col>
         </Row>
       )}
@@ -786,10 +765,7 @@ const Dashboard: React.FC = () => {
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="w-full max-w-xl">
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
-                styles={{ body: { padding: "28px" } }}
-              >
+              <SectionCard bodyPadding="28px">
                 <div
                   className="flex items-center gap-2 cursor-pointer select-none"
                   onClick={() => setPathExpanded((v) => !v)}
@@ -930,7 +906,7 @@ const Dashboard: React.FC = () => {
                     })()}
                   </div>
                 )}
-              </Card>
+              </SectionCard>
             </div>
           </div>
 
@@ -941,10 +917,7 @@ const Dashboard: React.FC = () => {
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="w-full max-w-md">
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
-                styles={{ body: { padding: "28px" } }}
-              >
+              <SectionCard bodyPadding="28px">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <ClockCircleOutlined className="text-primary text-lg" />
@@ -997,7 +970,7 @@ const Dashboard: React.FC = () => {
                     </Button>
                   </Space>
                 </div>
-              </Card>
+              </SectionCard>
             </div>
           </div>
 
@@ -1008,8 +981,7 @@ const Dashboard: React.FC = () => {
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="w-full max-w-xl">
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
+              <SectionCard
                 title={
                   <span className="font-semibold text-slate-800">
                     今日学习任务
@@ -1020,7 +992,7 @@ const Dashboard: React.FC = () => {
                     {tasks.length} 项待完成
                   </Tag>
                 }
-                styles={{ body: { padding: "20px 24px" } }}
+                bodyPadding="20px 24px"
               >
                 <Spin spinning={summaryLoading}>
                   <List
@@ -1029,7 +1001,7 @@ const Dashboard: React.FC = () => {
                     locale={{ emptyText: "暂无任务，去学习中心看看吧" }}
                     renderItem={(item: DashboardTask) => {
                       const meta =
-                        taskTypeMeta[item.type || "doc"] || taskTypeMeta.doc;
+                        RESOURCE_META[item.type || "doc"] || RESOURCE_META.doc;
                       return (
                         <List.Item
                           actions={[
@@ -1084,7 +1056,7 @@ const Dashboard: React.FC = () => {
                     }}
                   />
                 </Spin>
-              </Card>
+              </SectionCard>
             </div>
           </div>
 
@@ -1095,8 +1067,7 @@ const Dashboard: React.FC = () => {
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="w-full max-w-lg">
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
+              <SectionCard
                 title={
                   <span className="font-semibold text-slate-800">今日挑战</span>
                 }
@@ -1109,7 +1080,6 @@ const Dashboard: React.FC = () => {
                     经验待领取
                   </Tag>
                 }
-                styles={{ body: { padding: "24px" } }}
               >
                 <div className="flex flex-wrap gap-3">
                   {challenges.map((c, idx) => (
@@ -1135,7 +1105,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              </Card>
+              </SectionCard>
             </div>
           </div>
 
@@ -1146,8 +1116,7 @@ const Dashboard: React.FC = () => {
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="w-full max-w-xl">
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
+              <SectionCard
                 title={
                   <span className="font-semibold text-slate-800">推荐资源</span>
                 }
@@ -1160,15 +1129,14 @@ const Dashboard: React.FC = () => {
                     查看全部 <ArrowRightOutlined />
                   </Button>
                 }
-                styles={{ body: { padding: "24px" } }}
               >
                 <Spin spinning={summaryLoading}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {(recommendations.length > 0 ? recommendations : []).map(
                       (res: DashboardRecommendation, idx: number) => {
                         const iconMeta =
-                          typeIconMap[res.type || "推荐"] ||
-                          typeIconMap["推荐"];
+                          RESOURCE_META[res.type || "推荐"] ||
+                          RESOURCE_META["推荐"];
                         return (
                           <div
                             key={idx}
@@ -1206,7 +1174,7 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                 </Spin>
-              </Card>
+              </SectionCard>
             </div>
           </div>
 
@@ -1217,8 +1185,7 @@ const Dashboard: React.FC = () => {
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="w-full max-w-md space-y-5">
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
+              <SectionCard
                 title={
                   <Space>
                     <span className="font-semibold text-slate-800">
@@ -1239,7 +1206,6 @@ const Dashboard: React.FC = () => {
                     详情 <ArrowRightOutlined />
                   </Button>
                 }
-                styles={{ body: { padding: "24px" } }}
               >
                 <Spin spinning={isLoading}>
                   {!isLoading && (
@@ -1287,10 +1253,9 @@ const Dashboard: React.FC = () => {
                     </>
                   )}
                 </Spin>
-              </Card>
+              </SectionCard>
 
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
+              <SectionCard
                 title={
                   <span className="font-semibold text-slate-800">成就徽章</span>
                 }
@@ -1303,7 +1268,6 @@ const Dashboard: React.FC = () => {
                     全部 <ArrowRightOutlined />
                   </Button>
                 }
-                styles={{ body: { padding: "24px" } }}
               >
                 <div className="grid grid-cols-4 gap-3">
                   {badgesState.map((b, idx) => (
@@ -1323,7 +1287,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              </Card>
+              </SectionCard>
             </div>
           </div>
 
@@ -1334,12 +1298,10 @@ const Dashboard: React.FC = () => {
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="w-full max-w-xl space-y-5">
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
+              <SectionCard
                 title={
                   <span className="font-semibold text-slate-800">知识图谱</span>
                 }
-                styles={{ body: { padding: "24px" } }}
               >
                 <div
                   className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 cursor-pointer hover:shadow-card transition-all"
@@ -1358,14 +1320,12 @@ const Dashboard: React.FC = () => {
                   </div>
                   <ArrowRightOutlined className="text-indigo-400 ml-auto" />
                 </div>
-              </Card>
+              </SectionCard>
 
-              <Card
-                className="border border-slate-100 rounded-2xl shadow-card"
+              <SectionCard
                 title={
                   <span className="font-semibold text-slate-800">算力适配</span>
                 }
-                styles={{ body: { padding: "24px" } }}
               >
                 <div className="flex flex-wrap gap-2">
                   <Tooltip title="已适配文心一言">
@@ -1401,7 +1361,7 @@ const Dashboard: React.FC = () => {
                     </Tag>
                   </Tooltip>
                 </div>
-              </Card>
+              </SectionCard>
             </div>
           </div>
 

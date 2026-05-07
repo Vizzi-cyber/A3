@@ -1,10 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react'
-import { Typography, Card, Button, Tag, Space, Timeline, Drawer, Slider, Radio, Progress, Avatar, List, message, Input, Badge, Tooltip, Divider, Popconfirm, Checkbox } from 'antd'
+import React, { useEffect, useState } from 'react'
+import { Typography, Card, Button, Tag, Space, Drawer, Slider, Radio, Progress, Avatar, List, message, Input, Badge, Tooltip, Divider, Popconfirm, Checkbox } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
-  LockOutlined,
-  EnvironmentOutlined,
   SwapOutlined,
   BookOutlined,
   PlayCircleOutlined,
@@ -29,28 +27,11 @@ import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store'
 import { pathApi, profileApi, learningDataApi } from '../services/api'
 import { buildRadarData } from '../utils/profile'
+import { StatusIcon } from '../components/StatusIcon'
+import { StatusTag } from '../components/StatusTag'
 import type { PathNode, PathStage, StudentProfile, LearningPathData } from '../types'
 
-const statusColors: Record<string, string> = {
-  completed: '#10b981',
-  'in-progress': '#4f46e5',
-  pending: '#94a3b8',
-  locked: '#cbd5e1',
-}
-
-const statusLabels: Record<string, string> = {
-  completed: '已完成',
-  'in-progress': '进行中',
-  pending: '未开始',
-  locked: '未解锁',
-}
-
-const statusBg: Record<string, string> = {
-  completed: '#ecfdf5',
-  'in-progress': '#eef2ff',
-  pending: '#f8fafc',
-  locked: '#f1f5f9',
-}
+import { statusColors, statusBg, statusLabels } from '../components/StatusTag'
 
 const resourceTypeMeta: Record<string, { icon: React.ReactNode; color: string }> = {
   video: { icon: <PlayCircleOutlined />, color: '#ef4444' },
@@ -337,36 +318,6 @@ const LearningPathPage: React.FC = () => {
   const completedCount = pathNodes.filter((n) => n.status === 'completed').length
   const progress = pathNodes.length ? Math.round((completedCount / pathNodes.length) * 100) : 0
 
-  const timelineItems = useMemo(() => pathNodes.map((node) => ({
-    dot: (
-      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm" style={{ background: statusColors[node.status] }}>
-        {node.status === 'completed' ? <CheckCircleOutlined /> :
-         node.status === 'in-progress' ? <ClockCircleOutlined /> :
-         node.status === 'locked' ? <LockOutlined /> :
-         <EnvironmentOutlined />}
-      </div>
-    ),
-    color: statusColors[node.status],
-    children: (
-      <div
-        className="p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer"
-        onClick={() => openNodeDetail(node)}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <Tag
-            className="rounded-full border-0 text-xs font-medium"
-            style={{ background: statusBg[node.status], color: statusColors[node.status] }}
-          >
-            {statusLabels[node.status]}
-          </Tag>
-          <span className="text-xs text-slate-400">{node.type}</span>
-        </div>
-        <Typography.Text className="font-bold text-slate-800 block text-base">{node.title}</Typography.Text>
-        <Typography.Text className="text-slate-400 text-sm">{node.resources} 个资源</Typography.Text>
-      </div>
-    ),
-  })), [pathNodes])
-
   return (
     <div className="space-y-5">
       {/* 顶部控制栏 */}
@@ -535,19 +486,11 @@ const LearningPathPage: React.FC = () => {
                                   </div>
                                   {/* 状态图标 */}
                                   <div className="mb-2 text-lg" style={{ color: statusColors[node.status] }}>
-                                    {node.status === 'completed' ? <CheckCircleOutlined /> :
-                                     node.status === 'in-progress' ? <ClockCircleOutlined /> :
-                                     node.status === 'locked' ? <LockOutlined /> :
-                                     <EnvironmentOutlined />}
+                                    <StatusIcon status={node.status} />
                                   </div>
                                   <div className="text-sm font-bold text-slate-800 truncate">{node.title}</div>
                                   <div className="text-xs text-slate-500 mt-1">{(node.resources || 3) * 20} 分钟</div>
-                                  <Tag
-                                    className="rounded-full border-0 text-xs mt-2"
-                                    style={{ background: statusBg[node.status], color: statusColors[node.status] }}
-                                  >
-                                    {statusLabels[node.status]}
-                                  </Tag>
+                                  <StatusTag status={node.status} className="mt-2" />
                                 </div>
                                 {/* 与下一层的竖线 */}
                                 {li < layers.length - 1 && (
@@ -609,10 +552,10 @@ const LearningPathPage: React.FC = () => {
                             className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm text-sm"
                             style={{ background: statusColors[node.status] }}
                           >
-                            {node.status === 'completed' ? <CheckCircleOutlined /> :
-                             node.status === 'in-progress' ? <ClockCircleOutlined /> :
-                             node.status === 'locked' ? <LockOutlined /> :
-                             <span className="text-xs font-bold">{idx + 1}</span>}
+                            <StatusIcon
+                              status={node.status}
+                              pendingIcon={<span className="text-xs font-bold">{idx + 1}</span>}
+                            />
                           </div>
                         </div>
                         {/* 内容卡片 */}
@@ -636,12 +579,7 @@ const LearningPathPage: React.FC = () => {
                               </Tag>
                             )}
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <Tag
-                                className="rounded-full border-0 text-xs font-medium"
-                                style={{ background: statusBg[node.status], color: statusColors[node.status] }}
-                              >
-                                {statusLabels[node.status]}
-                              </Tag>
+                              <StatusTag status={node.status} />
                               <span className="text-xs text-slate-400">{node.type}</span>
                             </div>
                             <Typography.Text className="font-bold text-slate-800 block text-base">{node.title}</Typography.Text>
@@ -711,7 +649,7 @@ const LearningPathPage: React.FC = () => {
           selectedNode ? (
             <Space>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white" style={{ background: statusColors[selectedNode.status] }}>
-                {selectedNode.status === 'completed' ? <CheckCircleOutlined /> : selectedNode.status === 'in-progress' ? <ClockCircleOutlined /> : <RocketOutlined />}
+                <StatusIcon status={selectedNode.status} pendingIcon={<RocketOutlined />} />
               </div>
               <span className="font-semibold">{selectedNode.title}</span>
             </Space>
@@ -729,12 +667,7 @@ const LearningPathPage: React.FC = () => {
           <div className="space-y-6">
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
               <Space>
-                <Tag
-                  className="rounded-full border-0 text-xs font-medium"
-                  style={{ background: statusBg[selectedNode.status], color: statusColors[selectedNode.status] }}
-                >
-                  {statusLabels[selectedNode.status]}
-                </Tag>
+                <StatusTag status={selectedNode.status} />
                 <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">{selectedNode.type}</Tag>
               </Space>
               <Typography.Text className="text-slate-600 block mt-3 leading-relaxed text-sm">

@@ -671,64 +671,67 @@ const ResourceCenter: React.FC = () => {
       </Card>
 
       <div className="flex gap-5 items-start">
-        {/* 左侧目录 */}
-        <Card
-          className="border border-slate-100 rounded-2xl w-56 hidden xl:block flex-shrink-0"
-          styles={{ body: { padding: "20px 16px" } }}
-        >
-          <Typography.Text className="font-semibold text-slate-800 block mb-4 text-sm">
-            课程目录
-          </Typography.Text>
-          <Spin spinning={menuLoading}>
-            <Collapse
-              defaultActiveKey={courseMenu.map((c) => c.key)}
-              ghost
-              expandIconPosition="end"
-              items={useMemo(
-                () =>
-                  courseMenu.map((chapter) => ({
-                    key: chapter.key,
-                    label: (
-                      <span className="font-medium text-slate-700 text-sm">
-                        {chapter.label}
-                      </span>
-                    ),
-                    children: (
-                      <div className="flex flex-col gap-1">
-                        {chapter.children?.map((item) => (
-                          <Button
-                            key={item.key}
-                            type={activeKey === item.key ? "primary" : "text"}
-                            className={`justify-start text-left rounded-lg text-sm transition-all ${activeKey === item.key ? "bg-primary" : "text-slate-600 hover:bg-slate-50"}`}
-                            icon={
-                              item.completed ? (
-                                <CheckCircleOutlined className="text-success text-xs" />
-                              ) : (
-                                <FileTextOutlined
-                                  className={
-                                    activeKey === item.key
-                                      ? "text-white text-xs"
-                                      : "text-slate-400 text-xs"
-                                  }
-                                />
-                              )
-                            }
-                            onClick={() => setActiveKey(item.key)}
-                          >
-                            {item.label}
-                          </Button>
-                        ))}
-                      </div>
-                    ),
-                  })),
-                [courseMenu, activeKey],
-              )}
-            />
-          </Spin>
-        </Card>
+        {/* 左侧目录 —— sticky 悬浮 */}
+        <div className="hidden xl:block flex-shrink-0 w-56 sticky top-5 self-start z-10">
+          <Card
+            className="border border-slate-100 rounded-2xl max-h-[calc(100vh-6rem)] overflow-y-auto"
+            styles={{ body: { padding: "20px 16px" } }}
+          >
+            <Typography.Text className="font-semibold text-slate-800 block mb-4 text-sm">
+              课程目录
+            </Typography.Text>
+            <Spin spinning={menuLoading}>
+              <Collapse
+                defaultActiveKey={courseMenu.map((c) => c.key)}
+                ghost
+                expandIconPosition="end"
+                items={useMemo(
+                  () =>
+                    courseMenu.map((chapter) => ({
+                      key: chapter.key,
+                      label: (
+                        <span className="font-medium text-slate-700 text-sm">
+                          {chapter.label}
+                        </span>
+                      ),
+                      children: (
+                        <div className="flex flex-col gap-1">
+                          {chapter.children?.map((item) => (
+                            <Button
+                              key={item.key}
+                              type={activeKey === item.key ? "primary" : "text"}
+                              className={`justify-start text-left rounded-lg text-sm transition-all ${activeKey === item.key
+                                ? "bg-primary" : "text-slate-600 hover:bg-slate-50"}`}
+                              icon={
+                                item.completed ? (
+                                  <CheckCircleOutlined className="text-success text-xs" />
+                                ) : (
+                                  <FileTextOutlined
+                                    className={
+                                      activeKey === item.key
+                                        ? "text-white text-xs"
+                                        : "text-slate-400 text-xs"
+                                    }
+                                  />
+                                )
+                              }
+                              onClick={() => setActiveKey(item.key)}
+                            >
+                              {item.label}
+                            </Button>
+                          ))}
+                        </div>
+                      ),
+                    })),
+                  [courseMenu, activeKey],
+                )}
+              />
+            </Spin>
+          </Card>
+        </div>
 
         {/* 中间主内容区 */}
-        <div className="flex-1 min-w-0 space-y-5">
+        <div className={`flex-1 min-w-0 space-y-5 transition-all ${chatOpen ? "lg:pr-80" : ""}`}>
           {/* 图文讲义 */}
           <Card
             className="border border-slate-100 rounded-2xl"
@@ -1298,37 +1301,40 @@ const ResourceCenter: React.FC = () => {
           </Card>
         </div>
 
-        {/* 右侧 AI 辅导 */}
+        {/* 右侧 AI 辅导 —— fixed 悬浮 */}
         {chatOpen && (
-          <Card
-            className="border border-slate-100 rounded-2xl w-72 flex-shrink-0 hidden lg:flex flex-col"
-            styles={{
-              body: {
-                padding: "16px",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-              },
-            }}
-          >
-            <ChatPanel
-              messages={messages}
-              loading={loading}
-              onSend={handleSend}
-              title="AI 辅导助手"
-              subtitle="苏格拉底式教学"
-              placeholder="输入问题..."
-              showAvatars={false}
-              extraHeader={
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<MenuFoldOutlined className="text-slate-400" />}
-                  onClick={() => setChatOpen(false)}
-                />
-              }
-            />
-          </Card>
+          <div className="fixed right-5 top-20 bottom-5 w-72 z-50 hidden lg:block">
+            <Card
+              className="border border-slate-100 rounded-2xl h-full flex flex-col shadow-lg"
+              styles={{
+                body: {
+                  padding: "16px",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                },
+              }}
+            >
+              <ChatPanel
+                messages={messages}
+                loading={loading}
+                onSend={handleSend}
+                title="AI 辅导助手"
+                subtitle="苏格拉底式教学"
+                placeholder="输入问题..."
+                showAvatars={false}
+                extraHeader={
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<MenuFoldOutlined className="text-slate-400" />}
+                    onClick={() => setChatOpen(false)}
+                  />
+                }
+              />
+            </Card>
+          </div>
         )}
       </div>
 
