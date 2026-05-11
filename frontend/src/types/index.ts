@@ -311,9 +311,12 @@ export interface EffectEvaluation {
     accuracy: number;
     mastery: number;
     improvement_rate: number;
-    weakness_concentration: number;
+    next_predicted_score: number;
+    weakness_concentration?: number;
   };
-  predictions: {
+  loss_points: Array<{ kp_id: string; loss: number }>;
+  intervention_strategies: string[];
+  predictions?: {
     next_score: number;
     potential_loss_points: Array<{
       tag: string;
@@ -322,7 +325,7 @@ export interface EffectEvaluation {
       suggestion: string;
     }>;
   };
-  intervention: {
+  intervention?: {
     priority: string;
     strategies: Array<{ type: string; action: string }>;
   };

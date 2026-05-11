@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Typography,
   Tabs,
@@ -274,6 +274,7 @@ const PersonalSpace: React.FC = () => {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const studentId = useAppStore((s) => s.studentId);
+  const loadedTabs = useRef<Set<string>>(new Set());
 
   // 同步 URL 中的 tab 参数到激活 Tab
   useEffect(() => {
@@ -284,18 +285,53 @@ const PersonalSpace: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       if (!studentId) return;
-      // 8 个独立接口并发拉取，单个失败不影响其它（fallback 到 null）
+      if (loadedTabs.current.has(activeTab)) return;
+
+      const safe = <T,>(p: Promise<T>): Promise<T | null> =>
+        p.catch(() => null);
+
+      // 按 Tab 分组：只拉取当前 Tab 需要的接口
+      const needsHistory = ["history", "focus", "forgetting"].includes(
+        activeTab,
+      );
+      const needsBadges = activeTab === "badges";
+      const needsLeaderboard = activeTab === "leaderboard";
+      const needsFavorites = activeTab === "favorites";
+      const needsReflections = [
+        "reflection",
+        "cornell",
+        "feynman",
+        "notes-history",
+      ].includes(activeTab);
+
+      // profile 总是拉取（多个 Tab 依赖 weak_areas 等字段）
       const [pRes, dRes, ptRes, aRes, hRes, thRes, fRes, rRes] =
         await Promise.all([
-          profileApi.get(studentId).catch(() => null),
-          dashboardApi.getSummary(studentId).catch(() => null),
-          gamificationApi.getPoints(studentId).catch(() => null),
-          gamificationApi.getAchievements(studentId).catch(() => null),
-          learningDataApi.getHistory(studentId, 200).catch(() => null),
-          trendApi.getHistory(studentId, 7).catch(() => null),
-          favoritesApi.get(studentId).catch(() => null),
-          logReflectionApi.getReflections(studentId, 100).catch(() => null),
+          safe(profileApi.get(studentId)),
+          needsHistory || needsLeaderboard
+            ? safe(dashboardApi.getSummary(studentId))
+            : Promise.resolve(null),
+          needsBadges
+            ? safe(gamificationApi.getPoints(studentId))
+            : Promise.resolve(null),
+          needsBadges
+            ? safe(gamificationApi.getAchievements(studentId))
+            : Promise.resolve(null),
+          needsHistory
+            ? safe(learningDataApi.getHistory(studentId, 200))
+            : Promise.resolve(null),
+          needsHistory
+            ? safe(trendApi.getHistory(studentId, 7))
+            : Promise.resolve(null),
+          needsFavorites
+            ? safe(favoritesApi.get(studentId))
+            : Promise.resolve(null),
+          needsReflections
+            ? safe(logReflectionApi.getReflections(studentId, 100))
+            : Promise.resolve(null),
         ]);
+
+      loadedTabs.current.add(activeTab);
 
       try {
         if (pRes?.data?.data) setProfile(pRes.data.data);
@@ -579,7 +615,7 @@ const PersonalSpace: React.FC = () => {
       }
     };
     load();
-  }, [studentId]);
+  }, [studentId, activeTab]);
 
   const weakAreas = profile?.weak_areas || [];
   const cognitivePrimary = profile?.cognitive_style?.primary || "visual";

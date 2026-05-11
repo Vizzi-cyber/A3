@@ -143,7 +143,10 @@ const ResourceCenter: React.FC = () => {
   );
 
   const currentSubject = useMemo(
-    () => courseMenu.find((c) => c.children?.some((ch) => ch.key === activeKey))?.label?.replace(/^第\d+章[：:]\s*/, '') || '',
+    () =>
+      courseMenu
+        .find((c) => c.children?.some((ch) => ch.key === activeKey))
+        ?.label?.replace(/^第\d+章[：:]\s*/, "") || "",
     [courseMenu, activeKey],
   );
 
@@ -181,10 +184,15 @@ const ResourceCenter: React.FC = () => {
         });
         setCourseMenu(menu);
 
-        // 优先使用路由传入的 kpId（从学习路径跳转过来）
-        const navKpId = (location.state as Record<string, unknown> | null)
-          ?.kpId as string | undefined;
+        // 优先使用路由传入的 kpId（从学习路径或搜索跳转过来）
+        const navKpId =
+          ((location.state as Record<string, unknown> | null)?.kpId as
+            | string
+            | undefined) ||
+          localStorage.getItem("selected_kp_id") ||
+          undefined;
         if (navKpId) {
+          localStorage.removeItem("selected_kp_id");
           const found = menu
             .flatMap((m) => m.children || [])
             .find((c) => c.key === navKpId);
@@ -641,7 +649,7 @@ const ResourceCenter: React.FC = () => {
                 {currentTopic}
               </Typography.Title>
               <Typography.Text className="text-slate-400 text-xs">
-                {currentSubject || '学习资源'}
+                {currentSubject || "学习资源"}
               </Typography.Text>
             </div>
           </Space>
@@ -705,8 +713,11 @@ const ResourceCenter: React.FC = () => {
                             <Button
                               key={item.key}
                               type={activeKey === item.key ? "primary" : "text"}
-                              className={`justify-start text-left rounded-lg text-sm transition-all ${activeKey === item.key
-                                ? "bg-primary" : "text-slate-600 hover:bg-slate-50"}`}
+                              className={`justify-start text-left rounded-lg text-sm transition-all ${
+                                activeKey === item.key
+                                  ? "bg-primary"
+                                  : "text-slate-600 hover:bg-slate-50"
+                              }`}
                               icon={
                                 item.completed ? (
                                   <CheckCircleOutlined className="text-success text-xs" />
@@ -736,7 +747,9 @@ const ResourceCenter: React.FC = () => {
         </div>
 
         {/* 中间主内容区 */}
-        <div className={`flex-1 min-w-0 space-y-5 transition-all ${chatOpen ? "lg:pr-80" : ""}`}>
+        <div
+          className={`flex-1 min-w-0 space-y-5 transition-all ${chatOpen ? "lg:pr-80" : ""}`}
+        >
           {/* 图文讲义 */}
           <Card
             className="border border-slate-100 rounded-2xl"
@@ -771,8 +784,17 @@ const ResourceCenter: React.FC = () => {
                         : ""
                     }
                     onClick={() => {
-                      setResourceFeedback((prev) => ({ ...prev, [currentTopic]: "good" }))
-                      learningDataApi.submitFeedback({ student_id: studentId, kp_id: currentTopic, rating: "good" }).catch(() => {})
+                      setResourceFeedback((prev) => ({
+                        ...prev,
+                        [currentTopic]: "good",
+                      }));
+                      learningDataApi
+                        .submitFeedback({
+                          student_id: studentId,
+                          kp_id: currentTopic,
+                          rating: "good",
+                        })
+                        .catch(() => {});
                     }}
                   />
                   <Button
@@ -784,8 +806,17 @@ const ResourceCenter: React.FC = () => {
                         : ""
                     }
                     onClick={() => {
-                      setResourceFeedback((prev) => ({ ...prev, [currentTopic]: "bad" }))
-                      learningDataApi.submitFeedback({ student_id: studentId, kp_id: currentTopic, rating: "bad" }).catch(() => {})
+                      setResourceFeedback((prev) => ({
+                        ...prev,
+                        [currentTopic]: "bad",
+                      }));
+                      learningDataApi
+                        .submitFeedback({
+                          student_id: studentId,
+                          kp_id: currentTopic,
+                          rating: "bad",
+                        })
+                        .catch(() => {});
                     }}
                   />
                 </Space.Compact>

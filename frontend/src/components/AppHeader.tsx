@@ -112,10 +112,7 @@ const AppHeader: React.FC = () => {
   const handleSelectResult = (kp: SearchResult) => {
     setSearchOpen(false);
     setSearchValue("");
-    navigate("/resources");
-    // 通过 localStorage 传递选中知识点，ResourceCenter 可读取
-    localStorage.setItem("selected_kp_id", kp.kp_id);
-    localStorage.setItem("selected_kp_name", kp.name);
+    navigate("/resources", { state: { kpId: kp.kp_id } });
     message.success(`已跳转至 ${kp.name}`);
   };
 

@@ -63,6 +63,7 @@ import { buildRadarData } from "../utils/profile";
 import { StatCard } from "../components/StatCard";
 import { SectionCard } from "../components/SectionCard";
 import { StatRow } from "../components/StatRow";
+import { statusColors } from "../components/StatusTag";
 import Leaderboard from "../components/Leaderboard";
 import DailyChallenge from "../components/DailyChallenge";
 import type {
@@ -94,12 +95,6 @@ const RESOURCE_META: Record<
   tutor: { icon: <MessageOutlined />, color: "#8b5cf6", bg: "#f3f0ff" },
   推荐: { icon: <RocketOutlined />, color: "#f59e0b", bg: "#fffbeb" },
   文章: { icon: <FileTextOutlined />, color: "#10b981", bg: "#ecfdf5" },
-};
-
-const statusColors: Record<string, string> = {
-  completed: "#10b981",
-  "in-progress": "#4f46e5",
-  pending: "#94a3b8",
 };
 
 const POMODORO_FOCUS = 25 * 60;
@@ -152,11 +147,47 @@ const Dashboard: React.FC = () => {
   });
   const [welcomeTopic, setWelcomeTopic] = useState("新知识");
 
-  const [pomodoroTime, setPomodoroTime] = useState(POMODORO_FOCUS);
-  const [isPomodoroRunning, setIsPomodoroRunning] = useState(false);
-  const [isBreak, setIsBreak] = useState(false);
+  const [pomodoroTime, setPomodoroTime] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        return s.time ?? POMODORO_FOCUS;
+      }
+    } catch {}
+    return POMODORO_FOCUS;
+  });
+  const pomodoroEndRef = useRef<number | null>(null);
+  const [isPomodoroRunning, setIsPomodoroRunning] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.running && s.endTime) pomodoroEndRef.current = s.endTime;
+        return s.running ?? false;
+      }
+    } catch {}
+    return false;
+  });
   const isBreakRef = useRef(false);
-  const [pomodoroCount, setPomodoroCount] = useState(0);
+  const [isBreak, setIsBreak] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        isBreakRef.current = s.isBreak ?? false;
+        return s.isBreak ?? false;
+      }
+    } catch {}
+    return false;
+  });
+  const [pomodoroCount, setPomodoroCount] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) return JSON.parse(saved).count ?? 0;
+    } catch {}
+    return 0;
+  });
   const [kgModalOpen, setKgModalOpen] = useState(false);
   const [algorithmAnalysis, setAlgorithmAnalysis] =
     useState<AlgorithmAnalysis | null>(null);
@@ -181,7 +212,6 @@ const Dashboard: React.FC = () => {
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Pomodoro timer —— 用 Date.now() 差值计算剩余秒数，避免后台标签页被节流时不能按时结束
-  const pomodoroEndRef = useRef<number | null>(null);
   useEffect(() => {
     if (!isPomodoroRunning) {
       pomodoroEndRef.current = null;
@@ -199,7 +229,7 @@ const Dashboard: React.FC = () => {
         setIsPomodoroRunning(false);
         pomodoroEndRef.current = null;
         if (!isBreakRef.current) {
-          setPomodoroCount((c) => c + 1);
+          setPomodoroCount((c: number) => c + 1);
           message.success("专注时间结束！休息一下吧");
           isBreakRef.current = true;
           setIsBreak(true);
@@ -215,6 +245,18 @@ const Dashboard: React.FC = () => {
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [isPomodoroRunning]);
+
+  // 持久化番茄钟状态到 sessionStorage
+  useEffect(() => {
+    const state = {
+      time: pomodoroTime,
+      running: isPomodoroRunning,
+      isBreak: isBreak,
+      count: pomodoroCount,
+      endTime: pomodoroEndRef.current,
+    };
+    sessionStorage.setItem("pomodoro_state", JSON.stringify(state));
+  }, [pomodoroTime, isPomodoroRunning, isBreak, pomodoroCount]);
 
   // Data fetching
   useEffect(() => {
@@ -251,10 +293,14 @@ const Dashboard: React.FC = () => {
           setProfileData(buildRadarData(profileRes.data.data));
           const interests = profileRes.data.data.interest_areas || [];
           if (interests.length > 0) {
-            const first = interests[0];
+            const first = interests[0] as Record<string, unknown> | string;
             setWelcomeTopic(
-              typeof first === "object"
-                ? first.name || first.label || JSON.stringify(first)
+              typeof first === "object" && first !== null
+                ? String(
+                    (first as Record<string, unknown>).name ||
+                      (first as Record<string, unknown>).label ||
+                      JSON.stringify(first),
+                  )
                 : String(first),
             );
           }
@@ -265,7 +311,9 @@ const Dashboard: React.FC = () => {
           setStats(d.stats || stats);
           setTasks(d.tasks || []);
           setRecommendations(d.recommendations || []);
-          setAlgorithmAnalysis(d.algorithm_analysis || null);
+          setAlgorithmAnalysis(
+            (d.algorithm_analysis as AlgorithmAnalysis) || null,
+          );
         }
 
         if (pathRes?.data?.nodes?.length) {
@@ -325,13 +373,11 @@ const Dashboard: React.FC = () => {
         // 知识图谱节点 —— 来自后端 knowledge.list
         if (kgRes?.data?.data?.length) {
           setKgNodes(
-            kgRes.data.data
-              .slice(0, 14)
-              .map((k) => ({
-                id: k.kp_id,
-                name: k.name,
-                prerequisites: k.prerequisites || [],
-              })),
+            kgRes.data.data.slice(0, 14).map((k) => ({
+              id: k.kp_id,
+              name: k.name,
+              prerequisites: k.prerequisites || [],
+            })),
           );
         }
       } catch {

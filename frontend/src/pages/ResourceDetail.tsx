@@ -103,7 +103,7 @@ const ResourceDetail: React.FC = () => {
   // 页面停留时长追踪
   const getElapsed = useElapsedTime([kpId]);
 
-  // 加载知识点信息 + 完成状态 + 资源（合并为一个 useEffect，避免 kpName 异步竞态导致重复请求）
+  // 加载知识点信息 + 完成状态 + 讲义/练习（不依赖 codeLanguage）
   useEffect(() => {
     if (!kpId || !studentId) return;
     let ignore = false;
@@ -134,19 +134,13 @@ const ResourceDetail: React.FC = () => {
         if (!ignore) setCompleted(true);
       }
 
-      // 2) 加载讲义 / 代码 / 练习
+      // 2) 加载讲义 / 练习
       if (!ignore) setLoading(true);
       try {
-        const [docRes, codeRes, qRes] = await Promise.all([
+        const [docRes, qRes] = await Promise.all([
           resourceApi.generateDocument({
             student_id: studentId,
             topic: name,
-            kp_id: kpId,
-          }),
-          resourceApi.generateCode({
-            student_id: studentId,
-            topic: name,
-            language: codeLanguage,
             kp_id: kpId,
           }),
           resourceApi.generateQuestions({
@@ -158,7 +152,6 @@ const ResourceDetail: React.FC = () => {
         ]);
         if (!ignore) {
           setDocContent(docRes.data.document || "");
-          setCodeContent(codeRes.data.code || "");
           setQuestions(qRes.data.questions || []);
         }
       } catch (e) {
@@ -172,7 +165,30 @@ const ResourceDetail: React.FC = () => {
     return () => {
       ignore = true;
     };
-  }, [kpId, studentId, codeLanguage]);
+  }, [kpId, studentId]);
+
+  // 切换代码语言时只重新生成代码
+  useEffect(() => {
+    if (!kpId || !studentId || !kpName) return;
+    let ignore = false;
+    const loadCode = async () => {
+      try {
+        const codeRes = await resourceApi.generateCode({
+          student_id: studentId,
+          topic: kpName,
+          language: codeLanguage,
+          kp_id: kpId,
+        });
+        if (!ignore) setCodeContent(codeRes.data.code || "");
+      } catch {
+        // ignore
+      }
+    };
+    loadCode();
+    return () => {
+      ignore = true;
+    };
+  }, [codeLanguage, kpId, studentId, kpName]);
 
   // 自动滚动到聊天底部
   useEffect(() => {

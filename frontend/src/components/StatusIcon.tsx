@@ -14,21 +14,21 @@ interface StatusIconProps {
   className?: string;
 }
 
-export const StatusIcon: React.FC<StatusIconProps> = ({
-  status,
-  pendingIcon = <EnvironmentOutlined />,
-  className,
-}) => {
-  const icon =
-    status === "completed" ? (
-      <CheckCircleOutlined />
-    ) : status === "in-progress" ? (
-      <ClockCircleOutlined />
-    ) : status === "locked" ? (
-      <LockOutlined />
-    ) : (
-      pendingIcon
-    );
+export const StatusIcon: React.FC<StatusIconProps> = React.memo(
+  ({ status, pendingIcon = <EnvironmentOutlined />, className }) => {
+    const icon =
+      status === "completed" ? (
+        <CheckCircleOutlined />
+      ) : status === "in-progress" ? (
+        <ClockCircleOutlined />
+      ) : status === "locked" ? (
+        <LockOutlined />
+      ) : (
+        pendingIcon
+      );
 
-  return className ? <span className={className}>{icon}</span> : <>{icon}</>;
-};
+    return className ? <span className={className}>{icon}</span> : <>{icon}</>;
+  },
+);
+
+StatusIcon.displayName = "StatusIcon";

@@ -149,7 +149,7 @@ const Profile: React.FC = () => {
           setMultiAgentStatus({
             planner: !!algo.trend_analysis,
             worker: !!algo.effect_evaluation,
-            critic: !!algo.effect_evaluation?.intervention?.strategies?.length,
+            critic: !!algo.effect_evaluation?.intervention_strategies?.length,
           });
         }
       } catch {

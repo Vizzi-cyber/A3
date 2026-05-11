@@ -38,7 +38,17 @@ const suggestions = [
 ];
 
 const Tutor: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const studentId = useAppStore((s) => s.studentId);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(`tutor_messages_${studentId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ChatMessage[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return initialMessages;
+  });
   const [loading, setLoading] = useState(false);
   const [multiAgentStep, setMultiAgentStep] = useState<
     "planner" | "worker" | "critic" | "done"
@@ -48,8 +58,15 @@ const Tutor: React.FC = () => {
     "bigmodel" | "deepseek" | "openai" | "spark" | "default"
   >("default");
   const [wsConnected, setWsConnected] = useState(false);
-  const studentId = useAppStore((s) => s.studentId);
   const token = useAppStore((s) => s.token);
+
+  // 持久化聊天记录到 sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem(
+      `tutor_messages_${studentId}`,
+      JSON.stringify(messages),
+    );
+  }, [messages, studentId]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
