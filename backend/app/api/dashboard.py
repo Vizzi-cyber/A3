@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from ..models.database import get_db
 from ..models.student import StudentProfileModel
-from ..models.knowledge import LearningRecordModel, QuizResultModel
+from ..models.knowledge import LearningRecordModel, QuizResultModel, KnowledgePointModel
 from ..models.gamification import PointsModel, AchievementModel, TaskModel
 from ..models.favorites import FavoriteModel
 from ..models.trend import TrendDataModel
@@ -249,5 +249,120 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
         "algorithm_analysis": {
             "effect_evaluation": effect_result,
             "trend_analysis": trend_result,
+        },
+    }
+
+
+@router.get("/{student_id}/timeline")
+async def get_growth_timeline(student_id: str, db: Session = Depends(get_db)):
+    """获取成长时间轴数据 — 里程碑事件列表"""
+
+    # 查询学习记录（最近90天）
+    cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+    records = db.query(LearningRecordModel).filter(
+        LearningRecordModel.student_id == student_id,
+        LearningRecordModel.created_at >= cutoff,
+    ).order_by(LearningRecordModel.created_at.desc()).all()
+
+    # 查询测验记录
+    quizzes = db.query(QuizResultModel).filter(
+        QuizResultModel.student_id == student_id,
+        QuizResultModel.created_at >= cutoff,
+    ).order_by(QuizResultModel.created_at.desc()).all()
+
+    # 查询成就
+    achievements = db.query(AchievementModel).filter(
+        AchievementModel.student_id == student_id,
+    ).order_by(AchievementModel.unlocked_at.desc()).all()
+
+    # 查询趋势数据
+    trends = db.query(TrendDataModel).filter(
+        TrendDataModel.student_id == student_id,
+        TrendDataModel.created_at >= cutoff,
+    ).order_by(TrendDataModel.created_at.desc()).all()
+
+    milestones = []
+
+    # 掌握知识点里程碑
+    completed_kps = set()
+    for r in records:
+        if r.action == "complete" or (r.progress and float(r.progress) >= 1.0):
+            if r.kp_id not in completed_kps:
+                completed_kps.add(r.kp_id)
+                kp = db.query(KnowledgePointModel).filter(
+                    KnowledgePointModel.kp_id == r.kp_id
+                ).first() if hasattr(r, 'kp_id') else None
+                milestones.append({
+                    "date": _fmt_iso(r.created_at),
+                    "type": "mastery",
+                    "title": f"掌握「{kp.name if kp else r.kp_id}」",
+                    "icon": "trophy",
+                    "color": "#10b981",
+                })
+
+    # 测验高分里程碑
+    for q in quizzes:
+        if q.score and q.score >= 90:
+            milestones.append({
+                "date": _fmt_iso(q.created_at),
+                "type": "achievement",
+                "title": f"测验获得 {q.score:.0f} 分",
+                "icon": "star",
+                "color": "#f59e0b",
+            })
+
+    # 成就解锁里程碑
+    for a in achievements:
+        milestones.append({
+            "date": _fmt_iso(a.unlocked_at),
+            "type": "badge",
+            "title": f"解锁成就「{a.name}」",
+            "icon": "medal",
+            "color": "#8b5cf6",
+        })
+
+    # 趋势预警里程碑
+    for t in trends:
+        if t.trend_factor and float(t.trend_factor) < -0.3:
+            milestones.append({
+                "date": _fmt_iso(t.created_at),
+                "type": "alert",
+                "title": "学习状态需要关注",
+                "icon": "alert",
+                "color": "#ef4444",
+            })
+
+    # 按日期排序
+    milestones.sort(key=lambda x: x["date"] or "", reverse=True)
+
+    # 每日学习曲线数据（最近30天）
+    daily_curve = []
+    today = datetime.now(timezone.utc).date()
+    for i in range(29, -1, -1):
+        d = today - timedelta(days=i)
+        d_str = d.isoformat()
+        day_records = [r for r in records if r.created_at and r.created_at.strftime("%Y-%m-%d") == d_str]
+        day_quizzes = [q for q in quizzes if q.created_at and q.created_at.strftime("%Y-%m-%d") == d_str]
+        total_min = sum((r.duration or 0) for r in day_records) / 60.0
+        avg_score = sum(q.score or 0 for q in day_quizzes) / max(len(day_quizzes), 1)
+        daily_curve.append({
+            "date": d_str,
+            "minutes": round(total_min, 1),
+            "kp_count": len(set(r.kp_id for r in day_records)),
+            "quiz_count": len(day_quizzes),
+            "avg_score": round(avg_score, 1),
+        })
+
+    return {
+        "status": "success",
+        "data": {
+            "milestones": milestones[:50],
+            "daily_curve": daily_curve,
+            "summary": {
+                "total_milestones": len(milestones),
+                "mastery_count": len(completed_kps),
+                "high_score_count": sum(1 for m in milestones if m["type"] == "achievement"),
+                "achievement_count": len(achievements),
+            },
         },
     }

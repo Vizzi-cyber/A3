@@ -23,6 +23,56 @@ class TutorAgent(BaseAgent):
         self.llm = llm or LLMFactory.get_default_llm()
         self.session_histories: Dict[str, List[Dict[str, Any]]] = {}
         self._session_last_access: Dict[str, float] = {}  # 记录会话最后访问时间
+        self._student_summaries: Dict[str, str] = {}  # 跨session记忆，keyed by student_id
+
+    def _detect_learning_state(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        分析最近对话，检测学习状态
+        返回: {state: "confident"|"confused"|"frustrated"|"neutral", hint: str}
+        """
+        if len(history) < 2:
+            return {"state": "neutral", "hint": ""}
+
+        recent = history[-6:]  # 最近3轮对话
+        user_msgs = [m for m in recent if m.get("role") == "user"]
+        if not user_msgs:
+            return {"state": "neutral", "hint": ""}
+
+        # 检测挫败感：短回答、否定词
+        frustration_words = ["不会", "不懂", "太难", "放弃", "算了", "不知道", "很难", "搞不懂"]
+        short_count = sum(1 for m in user_msgs if len(str(m.get("content", ""))) < 10)
+        frustration_count = sum(
+            1 for m in user_msgs
+            if any(w in str(m.get("content", "")) for w in frustration_words)
+        )
+
+        if frustration_count >= 2 or (short_count >= 2 and frustration_count >= 1):
+            return {
+                "state": "frustrated",
+                "hint": "学生似乎感到挫败，用更鼓励的语气，给出更简单的解释，避免过多追问。",
+            }
+
+        # 检测困惑：回退话题、重复提问
+        confusion_words = ["还是", "可是", "但是", "为什么", "不太", "没明白"]
+        confusion_count = sum(
+            1 for m in user_msgs
+            if any(w in str(m.get("content", "")) for w in confusion_words)
+        )
+        if confusion_count >= 2:
+            return {
+                "state": "confused",
+                "hint": "学生可能感到困惑，尝试换一种解释方式，用更具体的例子。",
+            }
+
+        # 检测自信：长回答、主动思考
+        long_count = sum(1 for m in user_msgs if len(str(m.get("content", ""))) > 50)
+        if long_count >= 2:
+            return {
+                "state": "confident",
+                "hint": "学生思考积极，可以适当增加难度，引导更深入的探讨。",
+            }
+
+        return {"state": "neutral", "hint": ""}
 
     def _evict_old_sessions(self):
         """当会话数超过上限时，淘汰最久未访问的会话"""
@@ -118,11 +168,16 @@ class TutorAgent(BaseAgent):
         style = profile.get("cognitive_style", {}).get("primary", "visual")
         llm = llm or self.llm
 
+        # 学习状态检测
+        learning_state = self._detect_learning_state(history)
+
         if isinstance(question, list):
             # 图文模式（OpenAI vision 格式）
             prefix_text = (
                 f"学生薄弱领域：{weak_areas}\n"
                 f"认知风格：{style}\n"
+                f"学习状态：{learning_state['state']}\n"
+                f"{'教学建议：' + learning_state['hint'] if learning_state['hint'] else ''}\n"
                 "请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，"
                 "帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
             )
@@ -137,6 +192,8 @@ class TutorAgent(BaseAgent):
                 f"学生提问：{question}\n"
                 f"学生薄弱领域：{weak_areas}\n"
                 f"认知风格：{style}\n"
+                f"学习状态：{learning_state['state']}\n"
+                f"{'教学建议：' + learning_state['hint'] if learning_state['hint'] else ''}\n"
                 "请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，"
                 "帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
             )
@@ -155,7 +212,12 @@ class TutorAgent(BaseAgent):
         # 限制历史长度
         if len(history) > 20:
             history[:] = history[-20:]
-        return {"status": "success", "answer": answer, "history_length": len(history)}
+        return {
+            "status": "success",
+            "answer": answer,
+            "history_length": len(history),
+            "learning_state": learning_state,
+        }
 
     async def _give_hint(self, question: str, history: List[Dict[str, Any]], llm: Optional[BaseLLM] = None) -> Dict[str, Any]:
         llm = llm or self.llm

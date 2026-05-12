@@ -379,3 +379,30 @@ export interface ResourceItem {
   icon?: React.ReactNode;
   color?: string;
 }
+
+// ---------- Agent 工作流 ----------
+export interface AgentNodeState {
+  status: "idle" | "running" | "completed" | "failed";
+  task: string;
+  log: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AgentFlowLog {
+  timestamp: string;
+  agent: string;
+  status: string;
+  message: string;
+}
+
+export interface AgentFlowRun {
+  run_id: string;
+  student_id: string;
+  task_type: string;
+  status: "running" | "completed" | "failed";
+  agents: Record<string, AgentNodeState>;
+  logs: AgentFlowLog[];
+  final_output: Record<string, unknown> | null;
+  created_at: string;
+}

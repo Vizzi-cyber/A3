@@ -73,3 +73,8 @@ notify.js
 
 # Root node_modules (only husky needed)
 /node_modules/
+
+# Generated files
+backend/static/resources/ppt/*.pptx
+backend/=0.6.23
+frontend/test/*.png

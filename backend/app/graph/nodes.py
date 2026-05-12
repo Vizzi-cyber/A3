@@ -13,6 +13,12 @@ from ..services.llm_factory import LLMFactory
 from ..core.safety import SafetyGuard
 from .state import AgentState
 
+# Agent 工作流事件推送（轻量级，不影响核心逻辑）
+try:
+    from ..api.agent_flow import flow_store
+except ImportError:
+    flow_store = None
+
 
 # 全局智能体实例（通过 LLMFactory 统一获取，支持 spark / deepseek / openai）
 _llm = LLMFactory.get_default_llm()
@@ -30,11 +36,19 @@ def _safe_topic(ctx: Dict[str, Any]) -> str:
     return topic if check["safe"] else "通用学习内容"
 
 
+# ---------- 事件推送辅助 ----------
+def _push(run_id: str, node: str, status: str, task: str = "", log: str = ""):
+    if flow_store and run_id:
+        flow_store.push_event(run_id, node, status, task, log)
+
+
 # ---------- Supervisor ----------
 async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     """
     课程设计师节点：根据当前状态决定下一步执行哪个智能体。
     """
+    run_id = state.get("context", {}).get("_run_id", "")
+    _push(run_id, "supervisor", "running", "分析任务类型，路由到对应智能体...")
     task_type = state["task_type"]
     results = state.get("results", {})
     iteration = state.get("iteration", 0)
@@ -46,37 +60,50 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     # 根据任务类型和已有结果做路由决策
     if task_type == "profile_update":
         if "profiler" not in results:
+            _push(run_id, "supervisor", "completed", "路由决策：调用画像师分析学生画像")
             return {"next_agent": "profiler", "iteration": iteration + 1}
+        _push(run_id, "supervisor", "completed", "所有任务完成，进入汇总")
         return {"next_agent": "finish", "iteration": iteration + 1}
 
     if task_type == "resource_generation":
         if "profiler" not in results:
+            _push(run_id, "supervisor", "completed", "路由决策：先分析画像，再生成资源")
             return {"next_agent": "profiler", "iteration": iteration + 1}
         if "resource_generator" not in results:
+            _push(run_id, "supervisor", "completed", "路由决策：画像完成，调用资源生成师")
             return {"next_agent": "resource_generator", "iteration": iteration + 1}
+        _push(run_id, "supervisor", "completed", "所有任务完成，进入汇总")
         return {"next_agent": "finish", "iteration": iteration + 1}
 
     if task_type == "path_planning":
         if "profiler" not in results:
+            _push(run_id, "supervisor", "completed", "路由决策：先分析画像，再规划路径")
             return {"next_agent": "profiler", "iteration": iteration + 1}
         if "path_planner" not in results:
+            _push(run_id, "supervisor", "completed", "路由决策：画像完成，调用路径规划师")
             return {"next_agent": "path_planner", "iteration": iteration + 1}
         if "resource_generator" not in results:
-            # 路径规划完后匹配资源
+            _push(run_id, "supervisor", "completed", "路由决策：路径完成，匹配学习资源")
             return {"next_agent": "resource_generator", "iteration": iteration + 1}
+        _push(run_id, "supervisor", "completed", "所有任务完成，进入汇总")
         return {"next_agent": "finish", "iteration": iteration + 1}
 
     if task_type == "tutoring":
         if "tutor" not in results:
+            _push(run_id, "supervisor", "completed", "路由决策：调用辅导助手回答问题")
             return {"next_agent": "tutor", "iteration": iteration + 1}
+        _push(run_id, "supervisor", "completed", "所有任务完成，进入汇总")
         return {"next_agent": "finish", "iteration": iteration + 1}
 
     # 默认兜底
+    _push(run_id, "supervisor", "completed", "路由决策完成")
     return {"next_agent": "finish", "iteration": iteration + 1}
 
 
 # ---------- Profiler ----------
 async def profiler_node(state: AgentState) -> Dict[str, Any]:
+    run_id = state.get("context", {}).get("_run_id", "")
+    _push(run_id, "profiler", "running", "正在分析学生画像，提取6维特征...")
     ctx = state.get("context", {})
     profile = state.get("profile", {})
     inputs = ctx.get("inputs", [])
@@ -97,15 +124,19 @@ async def profiler_node(state: AgentState) -> Dict[str, Any]:
         updates["messages"] = [
             SystemMessage(content=f"[画像师] 学生画像已更新: {json.dumps(result['profile'], ensure_ascii=False)[:300]}...")
         ]
+        _push(run_id, "profiler", "completed", "画像分析完成，6维特征已提取")
     else:
         updates["messages"] = [
             SystemMessage(content=f"[画像师] 执行结果: {json.dumps(result, ensure_ascii=False)[:300]}")
         ]
+        _push(run_id, "profiler", "completed", "画像分析完成")
     return updates
 
 
 # ---------- Resource Generator ----------
 async def resource_generator_node(state: AgentState) -> Dict[str, Any]:
+    run_id = state.get("context", {}).get("_run_id", "")
+    _push(run_id, "resource_generator", "running", "正在生成个性化学习资源...")
     ctx = state.get("context", {})
     profile = state.get("profile", {})
     task = ctx.get("resource_task", "generate_document")
@@ -133,6 +164,7 @@ async def resource_generator_node(state: AgentState) -> Dict[str, Any]:
             "constraints": ctx.get("constraints", {}),
         })
 
+    _push(run_id, "resource_generator", "completed", "资源生成完成")
     return {
         "results": {"resource_generator": result},
         "messages": [
@@ -143,6 +175,8 @@ async def resource_generator_node(state: AgentState) -> Dict[str, Any]:
 
 # ---------- Path Planner ----------
 async def path_planner_node(state: AgentState) -> Dict[str, Any]:
+    run_id = state.get("context", {}).get("_run_id", "")
+    _push(run_id, "path_planner", "running", "正在规划DAG学习路径...")
     ctx = state.get("context", {})
     profile = state.get("profile", {})
     task = ctx.get("path_task", "generate_path")
@@ -156,6 +190,7 @@ async def path_planner_node(state: AgentState) -> Dict[str, Any]:
         "feedback": ctx.get("feedback", ""),
     })
 
+    _push(run_id, "path_planner", "completed", "学习路径规划完成")
     return {
         "results": {"path_planner": result},
         "messages": [
@@ -166,6 +201,8 @@ async def path_planner_node(state: AgentState) -> Dict[str, Any]:
 
 # ---------- Tutor ----------
 async def tutor_node(state: AgentState) -> Dict[str, Any]:
+    run_id = state.get("context", {}).get("_run_id", "")
+    _push(run_id, "tutor", "running", "正在生成个性化辅导回答...")
     ctx = state.get("context", {})
     profile = state.get("profile", {})
     question = ctx.get("question", ctx.get("user_request", ""))
@@ -178,6 +215,7 @@ async def tutor_node(state: AgentState) -> Dict[str, Any]:
         "profile": profile,
     })
 
+    _push(run_id, "tutor", "completed", "辅导回答生成完成")
     return {
         "results": {"tutor": result},
         "messages": [
@@ -190,6 +228,8 @@ async def tutor_node(state: AgentState) -> Dict[str, Any]:
 # ---------- Assembler ----------
 async def assembler_node(state: AgentState) -> Dict[str, Any]:
     """结果汇总节点"""
+    run_id = state.get("context", {}).get("_run_id", "")
+    _push(run_id, "assembler", "running", "正在汇总所有智能体结果...")
     results = state.get("results", {})
     task_type = state["task_type"]
 
@@ -211,6 +251,7 @@ async def assembler_node(state: AgentState) -> Dict[str, Any]:
     if task_type == "tutoring" and "tutor" in results:
         final_output["answer"] = results["tutor"].get("answer", "")
 
+    _push(run_id, "assembler", "completed", f"汇总完成：{success_count}/{len(results)} 个智能体成功")
     return {"final_output": final_output, "next_agent": "__end__"}
 
 

@@ -19,6 +19,10 @@ from .image import router as image_router
 from .dashboard import router as dashboard_router
 from .favorites import router as favorites_router
 from .ocr import router as ocr_router
+from .agent_flow import router as agent_flow_router
+from .gamification_tree import router as gamification_tree_router
+from .gamification_challenge import router as gamification_challenge_router
+from .ppt import router as ppt_router
 
 router = APIRouter()
 
@@ -38,3 +42,7 @@ router.include_router(image_router, prefix="/image", tags=["文生图"])
 router.include_router(ocr_router, prefix="/ocr", tags=["OCR识图"])
 router.include_router(dashboard_router, prefix="/dashboard", tags=["仪表盘"])
 router.include_router(favorites_router, prefix="/favorites", tags=["收藏夹"])
+router.include_router(agent_flow_router, prefix="/agent-flow", tags=["Agent工作流"])
+router.include_router(gamification_tree_router, prefix="/gamification-tree", tags=["知识树成长"])
+router.include_router(gamification_challenge_router, prefix="/gamification-challenge", tags=["学习挑战与排行榜"])
+router.include_router(ppt_router, prefix="/ppt", tags=["PPT生成"])

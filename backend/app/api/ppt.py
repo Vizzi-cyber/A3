@@ -1,0 +1,126 @@
+"""
+PPT 自动生成 API
+"""
+import asyncio
+import os
+from typing import Dict, Any, Optional
+
+from fastapi import APIRouter, BackgroundTasks
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+from ..core.logger import setup_logger
+
+logger = setup_logger()
+
+router = APIRouter()
+
+# 内存任务存储
+_ppt_tasks: Dict[str, Dict[str, Any]] = {}
+
+
+class PPTGenerateRequest(BaseModel):
+    topic: str
+    subject: str = "C语言数据结构"
+
+
+class PPTTaskStatus(BaseModel):
+    task_id: str
+    status: str  # pending | generating_outline | building_pptx | completed | failed
+    progress: int  # 0-100
+    filename: Optional[str] = None
+    slide_count: Optional[int] = None
+    message: str = ""
+
+
+async def _generate_task(task_id: str, topic: str, subject: str):
+    """后台 PPT 生成任务"""
+    try:
+        _ppt_tasks[task_id]["status"] = "generating_outline"
+        _ppt_tasks[task_id]["progress"] = 15
+        _ppt_tasks[task_id]["message"] = "AI正在分析主题，生成深度大纲..."
+
+        from ..services.ppt_generator import generate_ppt
+
+        _ppt_tasks[task_id]["status"] = "building_pptx"
+        _ppt_tasks[task_id]["progress"] = 50
+        _ppt_tasks[task_id]["message"] = "正在构建PPT文件（含代码示例、算法步骤）..."
+
+        result = await generate_ppt(topic, subject)
+
+        _ppt_tasks[task_id]["status"] = "completed"
+        _ppt_tasks[task_id]["progress"] = 100
+        _ppt_tasks[task_id]["filename"] = result["filename"]
+        _ppt_tasks[task_id]["slide_count"] = result["slide_count"]
+        _ppt_tasks[task_id]["message"] = f"PPT生成完成，共{result['slide_count']}页"
+        _ppt_tasks[task_id]["path"] = result["path"]
+
+    except Exception as e:
+        logger.error(f"PPT生成失败: {e}")
+        _ppt_tasks[task_id]["status"] = "failed"
+        _ppt_tasks[task_id]["progress"] = 0
+        _ppt_tasks[task_id]["message"] = f"生成失败: {str(e)}"
+
+
+@router.post("/generate")
+async def generate_ppt_endpoint(req: PPTGenerateRequest, bg: BackgroundTasks):
+    """启动PPT生成任务"""
+    import uuid
+    task_id = str(uuid.uuid4())[:8]
+
+    _ppt_tasks[task_id] = {
+        "task_id": task_id,
+        "status": "pending",
+        "progress": 0,
+        "message": "任务已创建，等待生成...",
+        "filename": None,
+        "slide_count": None,
+        "path": None,
+    }
+
+    bg.add_task(_generate_task, task_id, req.topic, req.subject)
+
+    return {
+        "status": "success",
+        "task_id": task_id,
+        "message": "PPT生成任务已启动",
+    }
+
+
+@router.get("/{task_id}/status")
+async def get_ppt_status(task_id: str):
+    """查询PPT生成状态"""
+    task = _ppt_tasks.get(task_id)
+    if not task:
+        return {"status": "error", "message": "任务不存在"}
+    return {
+        "status": "success",
+        "data": {
+            "task_id": task["task_id"],
+            "status": task["status"],
+            "progress": task["progress"],
+            "filename": task["filename"],
+            "slide_count": task["slide_count"],
+            "message": task["message"],
+        },
+    }
+
+
+@router.get("/{task_id}/download")
+async def download_ppt(task_id: str):
+    """下载生成的PPT文件"""
+    task = _ppt_tasks.get(task_id)
+    if not task:
+        return {"status": "error", "message": "任务不存在"}
+    if task["status"] != "completed":
+        return {"status": "error", "message": "PPT尚未生成完成"}
+
+    file_path = task.get("path")
+    if not file_path or not os.path.exists(file_path):
+        return {"status": "error", "message": "文件不存在"}
+
+    return FileResponse(
+        path=file_path,
+        filename=task["filename"],
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )

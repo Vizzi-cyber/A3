@@ -102,6 +102,54 @@ body {
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.3s; }
 
+/* ===== 渐变卡片 ===== */
+.gradient-card {
+  background: linear-gradient(135deg, #fff 0%, #f8faff 100%);
+  border: 1px solid rgba(79, 70, 229, 0.06);
+}
+
+/* ===== 按钮微交互 ===== */
+.btn-micro {
+  transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btn-micro:hover {
+  transform: translateY(-1px);
+}
+.btn-micro:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ===== 发光pill ===== */
+.glow-pill {
+  box-shadow: 0 0 12px rgba(79, 70, 229, 0.15);
+}
+
+/* ===== 渐变文字 ===== */
+.gradient-text {
+  background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== 脉冲边框 ===== */
+@keyframes pulse-border {
+  0%, 100% { border-color: rgba(79, 70, 229, 0.2); }
+  50% { border-color: rgba(79, 70, 229, 0.5); }
+}
+.pulse-border {
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+/* ===== 页面过渡 ===== */
+.page-enter {
+  animation: fade-in-up 0.35s ease-out forwards;
+}
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 /* ===== 代码块 ===== */
 code {
   font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;

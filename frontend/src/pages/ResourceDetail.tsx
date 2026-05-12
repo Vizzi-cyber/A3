@@ -35,6 +35,7 @@ import {
   CopyOutlined,
   UserOutlined,
   BulbOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import {
@@ -48,6 +49,7 @@ import type { ChatMessage, QuestionItem, QuestionOption } from "../types";
 import { useElapsedTime } from "../hooks/useElapsedTime";
 import { MarkdownViewer } from "../components/MarkdownViewer";
 import CodeEditor from "../components/CodeEditor";
+import AlgorithmVisualizer from "../components/AlgorithmVisualizer";
 import "../styles/markdown-content.css";
 
 const ResourceDetail: React.FC = () => {
@@ -630,6 +632,15 @@ const ResourceDetail: React.FC = () => {
           </Button>
         </div>
       ),
+    },
+    {
+      key: "visualizer",
+      label: (
+        <span className="flex items-center gap-1">
+          <ThunderboltOutlined /> 算法可视化
+        </span>
+      ),
+      children: <AlgorithmVisualizer />,
     },
   ];
 

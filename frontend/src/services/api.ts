@@ -283,6 +283,32 @@ export interface DashboardSummaryResponse {
 export const dashboardApi = {
   getSummary: (studentId: string) =>
     api.get<DashboardSummaryResponse>(`/dashboard/${studentId}/summary`),
+  getTimeline: (studentId: string) =>
+    api.get<{
+      status: string;
+      data: {
+        milestones: Array<{
+          date: string;
+          type: string;
+          title: string;
+          icon: string;
+          color: string;
+        }>;
+        daily_curve: Array<{
+          date: string;
+          minutes: number;
+          kp_count: number;
+          quiz_count: number;
+          avg_score: number;
+        }>;
+        summary: {
+          total_milestones: number;
+          mastery_count: number;
+          high_score_count: number;
+          achievement_count: number;
+        };
+      };
+    }>(`/dashboard/${studentId}/timeline`),
 };
 
 // ---------- Favorites ----------
@@ -403,6 +429,138 @@ export interface LearningRecordRequest {
   meta?: Record<string, unknown>;
 }
 
+// ---------- 知识树成长系统 ----------
+export interface KnowledgeTreeData {
+  tree_state: string;
+  tree_label: string;
+  growth_value: number;
+  level: number;
+  level_name: string;
+  level_info: {
+    level: number;
+    level_name: string;
+    current_xp: number;
+    xp_to_next: number;
+    total_xp: number;
+    xp_per_level: number;
+    progress_pct: number;
+  };
+  total_points: number;
+  streak_days: number;
+  mastery_rate: number;
+  total_hours: number;
+  completed_kps: number;
+  touched_kps: number;
+  total_quizzes: number;
+  avg_score: number;
+  achievements: number;
+  trend_factor: number;
+  growth_logs: Array<{
+    date: string;
+    type: string;
+    message: string;
+    icon: string;
+  }>;
+  daily_trend: Array<{
+    date: string;
+    records: number;
+    score: number;
+  }>;
+}
+
+export const knowledgeTreeApi = {
+  getTree: (studentId: string) =>
+    api.get<{ status: string; data: KnowledgeTreeData }>(
+      `/gamification-tree/${studentId}/tree`,
+    ),
+};
+
+// ---------- 学习挑战 ----------
+export interface ChallengeItem {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  target: number;
+  reward: number;
+  icon: string;
+  difficulty: number;
+  progress: number;
+  completed: boolean;
+  progress_pct: number;
+}
+
+export interface ChallengeMapNode {
+  node_id: number;
+  challenge_id: string;
+  name: string;
+  difficulty: number;
+  completed: boolean;
+  x: number;
+  y: number;
+}
+
+export const challengeApi = {
+  getChallenges: (studentId: string) =>
+    api.get<{
+      status: string;
+      data: {
+        challenges: ChallengeItem[];
+        map_nodes: ChallengeMapNode[];
+        summary: {
+          total: number;
+          completed: number;
+          total_reward: number;
+          streak_days: number;
+        };
+      };
+    }>(`/gamification-challenge/${studentId}/challenges`),
+};
+
+// ---------- 增强排行榜 ----------
+export interface LeaderboardEntryPlus {
+  student_id: string;
+  username: string;
+  score: number;
+  rank: number;
+}
+
+export const leaderboardPlusApi = {
+  get: (dimension: string, period: string = "weekly", limit: number = 20) =>
+    api.get<{
+      status: string;
+      data: {
+        dimension: string;
+        period: string;
+        entries: LeaderboardEntryPlus[];
+      };
+    }>(`/gamification-challenge/leaderboard/${dimension}`, {
+      params: { period, limit },
+    }),
+};
+
+// ---------- PPT生成 ----------
+export const pptApi = {
+  generate: (data: { topic: string; subject?: string }) =>
+    api.post<{ status: string; task_id: string; message: string }>(
+      "/ppt/generate",
+      data,
+    ),
+  getStatus: (taskId: string) =>
+    api.get<{
+      status: string;
+      data: {
+        task_id: string;
+        status: string;
+        progress: number;
+        filename: string | null;
+        slide_count: number | null;
+        message: string;
+      };
+    }>(`/ppt/${taskId}/status`),
+  downloadUrl: (taskId: string) => `${API_BASE_URL}/ppt/${taskId}/download`,
+};
+
 // ---------- Learning Data ----------
 export const learningDataApi = {
   getHistory: (studentId: string, limit?: number) =>
@@ -428,8 +586,11 @@ export const learningDataApi = {
       completed_kps: string[];
       count: number;
     }>(`/learning-data/${studentId}/completed`),
-  submitFeedback: (data: { student_id: string; kp_id: string; rating: string }) =>
-    api.post<{ status: string }>("/learning-data/feedback", data),
+  submitFeedback: (data: {
+    student_id: string;
+    kp_id: string;
+    rating: string;
+  }) => api.post<{ status: string }>("/learning-data/feedback", data),
 };
 
 // ---------- 反思与日志 ----------
@@ -556,6 +717,21 @@ export const knowledgeApi = {
         tags: string[];
       }>;
     }>(`/knowledge/search`, { params: { q } }),
+};
+
+// ---------- Agent 工作流 ----------
+export const agentFlowApi = {
+  startRun: (data: {
+    student_id: string;
+    task_type: string;
+    context?: Record<string, unknown>;
+  }) =>
+    api.post<{ run_id: string; status: string; task_type: string }>(
+      "/agent-flow/run",
+      data,
+    ),
+  getStatus: (runId: string) =>
+    api.get<import("../types").AgentFlowRun>(`/agent-flow/${runId}/status`),
 };
 
 export default api;

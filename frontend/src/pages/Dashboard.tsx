@@ -50,6 +50,7 @@ import {
   MenuOutlined,
   DownOutlined,
   UpOutlined,
+  RiseOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import {
@@ -60,12 +61,15 @@ import {
   knowledgeApi,
 } from "../services/api";
 import { buildRadarData } from "../utils/profile";
+import { calcLevel, fetchLevelConfig } from "../utils/level";
 import { StatCard } from "../components/StatCard";
 import { SectionCard } from "../components/SectionCard";
 import { StatRow } from "../components/StatRow";
 import { statusColors } from "../components/StatusTag";
 import Leaderboard from "../components/Leaderboard";
 import DailyChallenge from "../components/DailyChallenge";
+import AgentFlowPanel from "../components/AgentFlowPanel";
+import GrowthTimeline from "../components/GrowthTimeline";
 import type {
   DashboardTask,
   DashboardRecommendation,
@@ -99,7 +103,6 @@ const RESOURCE_META: Record<
 
 const POMODORO_FOCUS = 25 * 60;
 const POMODORO_BREAK = 5 * 60;
-const XP_PER_LEVEL = 500;
 
 // 徽章 / 成就 图标映射（按名称关键字模糊匹配，不再硬编码具体徽章列表）
 const badgeIcon = (name: string): { icon: React.ReactNode; color: string } => {
@@ -279,6 +282,7 @@ const Dashboard: React.FC = () => {
           pointsRes,
           tasksRes,
           kgRes,
+          levelCfg,
         ] = await Promise.all([
           profileApi.get(studentId).catch(() => null),
           dashboardApi.getSummary(studentId).catch(() => null),
@@ -287,6 +291,7 @@ const Dashboard: React.FC = () => {
           gamificationApi.getPoints(studentId).catch(() => null),
           gamificationApi.getTasks(studentId).catch(() => null),
           knowledgeApi.list().catch(() => null),
+          fetchLevelConfig().catch(() => null),
         ]);
 
         if (profileRes?.data?.data) {
@@ -344,17 +349,16 @@ const Dashboard: React.FC = () => {
           );
         }
 
-        // 等级 / 经验值 —— 由总积分推算（每 500 XP 升一级）
+        // 等级 / 经验值 —— 由后端配置统一计算
         if (pointsRes?.data?.data) {
           const total = pointsRes.data.data.total_points || 0;
-          const level = Math.floor(total / XP_PER_LEVEL) + 1;
-          const current = total % XP_PER_LEVEL;
+          const lv = calcLevel(total);
           setPointsInfo({
             total,
-            level,
-            current,
-            need: XP_PER_LEVEL,
-            percent: Math.min(100, Math.round((current / XP_PER_LEVEL) * 100)),
+            level: lv.level,
+            current: lv.current_xp,
+            need: lv.xp_per_level,
+            percent: lv.progress_pct,
           });
         }
 
@@ -550,8 +554,7 @@ const Dashboard: React.FC = () => {
               <div className="flex justify-between text-xs text-slate-500 mb-1">
                 <span>经验值</span>
                 <span>
-                  {pointsInfo?.current ?? 0} /{" "}
-                  {pointsInfo?.need ?? XP_PER_LEVEL}
+                  {pointsInfo?.current ?? 0} / {pointsInfo?.need ?? 500}
                 </span>
               </div>
               <Progress
@@ -588,6 +591,21 @@ const Dashboard: React.FC = () => {
           </Col>
         ))}
       </Row>
+
+      {/* 多智能体协作引擎 */}
+      <AgentFlowPanel />
+
+      {/* 成长时间轴 */}
+      <SectionCard
+        title={
+          <Space>
+            <RiseOutlined className="text-indigo-500 text-lg" />
+            <span className="font-semibold text-slate-800">成长旅程</span>
+          </Space>
+        }
+      >
+        <GrowthTimeline />
+      </SectionCard>
 
       {/* 排行榜 & 每日挑战 */}
       <Row gutter={[20, 20]}>

@@ -278,6 +278,15 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 if len(history) > 20:
                     history[:] = history[-20:]
 
+                # 检测学习状态并推送
+                learning_state = _tutor_agent._detect_learning_state(history)
+                await manager.send_message(session_id, {
+                    "type": "learning_state",
+                    "state": learning_state["state"],
+                    "hint": learning_state["hint"],
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+
                 # 持久化问答记录
                 try:
                     from ..models.database import SessionLocal

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Typography,
   Card,
@@ -51,7 +51,9 @@ import {
   ocrApi,
   learningDataApi,
   logReflectionApi,
+  profileApi,
 } from "../services/api";
+import PPTGenerator from "../components/PPTGenerator";
 import type { ChatMessage, QuestionItem, VisionContentItem } from "../types";
 import { extractApiError } from "../utils/error";
 import { useElapsedTime } from "../hooks/useElapsedTime";
@@ -127,12 +129,16 @@ const ResourceCenter: React.FC = () => {
   const [imagePrompt, setImagePrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
+  const [pptModalOpen, setPptModalOpen] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [savingCornell, setSavingCornell] = useState(false);
   const [savingFeynman, setSavingFeynman] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const studentId = useAppStore((s) => s.studentId);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [weakReviewTopics, setWeakReviewTopics] = useState<string[]>([]);
+  const [showReviewBanner, setShowReviewBanner] = useState(true);
 
   const currentTopic = useMemo(
     () =>
@@ -342,6 +348,19 @@ const ResourceCenter: React.FC = () => {
       ignore = true;
     };
   }, [activeKey, studentId]);
+
+  // 加载艾宾浩斯复习提醒
+  useEffect(() => {
+    profileApi
+      .get(studentId)
+      .then((res) => {
+        const p = res.data?.data;
+        if (p?.weak_areas?.length) {
+          setWeakReviewTopics(p.weak_areas.slice(0, 5));
+        }
+      })
+      .catch(() => {});
+  }, [studentId]);
 
   const handleSend = async (content: string | VisionContentItem[]) => {
     const question = typeof content === "string" ? content : "";
@@ -634,6 +653,36 @@ const ResourceCenter: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      {/* 艾宾浩斯复习提醒 */}
+      {showReviewBanner && weakReviewTopics.length > 0 && (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex items-center gap-3">
+          <ReloadOutlined className="text-amber-500 text-lg" />
+          <div className="flex-1">
+            <div className="text-sm font-medium text-amber-800">
+              遗忘曲线提醒：{weakReviewTopics.length} 个知识点需要复习
+            </div>
+            <div className="text-xs text-amber-600 mt-0.5">
+              {weakReviewTopics.join("、")}
+            </div>
+          </div>
+          <Button
+            size="small"
+            className="rounded-lg border-amber-200 text-amber-700"
+            onClick={() => setShowReviewBanner(false)}
+          >
+            稍后提醒
+          </Button>
+          <Button
+            size="small"
+            type="primary"
+            className="rounded-lg bg-amber-500 border-amber-500"
+            onClick={() => navigate("/learning-path")}
+          >
+            <ReloadOutlined /> 去复习
+          </Button>
+        </div>
+      )}
+
       {/* 顶部标题栏 */}
       <Card
         className="border border-slate-100 rounded-2xl"
@@ -641,6 +690,15 @@ const ResourceCenter: React.FC = () => {
       >
         <div className="flex items-center justify-between flex-wrap gap-3">
           <Space>
+            <Tooltip title="返回学习路径">
+              <Button
+                className="rounded-lg border-slate-200"
+                icon={
+                  <ArrowRightOutlined style={{ transform: "rotate(180deg)" }} />
+                }
+                onClick={() => navigate("/learning-path")}
+              />
+            </Tooltip>
             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
               <ReadOutlined />
             </div>
@@ -661,6 +719,15 @@ const ResourceCenter: React.FC = () => {
                 onClick={() => setOcrModalOpen(true)}
               >
                 OCR识图
+              </Button>
+            </Tooltip>
+            <Tooltip title="AI智能生成学习PPT">
+              <Button
+                className="rounded-lg border-slate-200"
+                icon={<FileTextOutlined />}
+                onClick={() => setPptModalOpen(true)}
+              >
+                生成PPT
               </Button>
             </Tooltip>
             <Tooltip title={ragActive ? "RAG 检索增强已启用" : "RAG 已关闭"}>
@@ -1482,6 +1549,13 @@ const ResourceCenter: React.FC = () => {
           className="right-6 bottom-6"
         />
       )}
+
+      {/* PPT 生成器 */}
+      <PPTGenerator
+        open={pptModalOpen}
+        onClose={() => setPptModalOpen(false)}
+        defaultTopic={currentTopic}
+      />
     </div>
   );
 };

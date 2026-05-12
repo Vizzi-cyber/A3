@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { Layout, Spin } from "antd";
 import AppHeader from "./components/AppHeader";
@@ -17,6 +17,9 @@ const ResourceCenter = React.lazy(() => import("./pages/ResourceCenter"));
 const ResourceDetail = React.lazy(() => import("./pages/ResourceDetail"));
 const PersonalSpace = React.lazy(() => import("./pages/PersonalSpace"));
 const Tutor = React.lazy(() => import("./pages/Tutor"));
+const KnowledgeTree = React.lazy(() => import("./pages/KnowledgeTree"));
+const LearningChallenge = React.lazy(() => import("./pages/LearningChallenge"));
+const LeaderboardPlus = React.lazy(() => import("./pages/LeaderboardPlus"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -33,15 +36,33 @@ const InitLoader = () => (
 
 /** 页面进入动画包装器：只在自身挂载时触发，不强制重挂载 Routes/Suspense */
 const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mounted, setMounted] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setMounted(false);
-    const timer = setTimeout(() => setMounted(true), 30);
+    setReady(false);
+    const timer = setTimeout(() => setReady(true), 20);
     return () => clearTimeout(timer);
   }, []);
 
-  return <div className={mounted ? "page-enter" : "opacity-0"}>{children}</div>;
+  useEffect(() => {
+    if (!ready || !ref.current) return;
+    ref.current.style.opacity = "0";
+    ref.current.style.transform = "translateY(10px)";
+    requestAnimationFrame(() => {
+      if (!ref.current) return;
+      ref.current.style.transition =
+        "opacity 0.35s ease-out, transform 0.35s ease-out";
+      ref.current.style.opacity = "1";
+      ref.current.style.transform = "translateY(0)";
+    });
+  }, [ready]);
+
+  return (
+    <div ref={ref} style={{ opacity: 0 }}>
+      {ready ? children : null}
+    </div>
+  );
 };
 
 const { Content } = Layout;
@@ -110,6 +131,30 @@ const PrivateLayout: React.FC = () => {
                 }
               />
               <Route
+                path="/knowledge-tree"
+                element={
+                  <PageWrapper>
+                    <KnowledgeTree />
+                  </PageWrapper>
+                }
+              />
+              <Route
+                path="/challenges"
+                element={
+                  <PageWrapper>
+                    <LearningChallenge />
+                  </PageWrapper>
+                }
+              />
+              <Route
+                path="/leaderboard"
+                element={
+                  <PageWrapper>
+                    <LeaderboardPlus />
+                  </PageWrapper>
+                }
+              />
+              <Route
                 path="/tutor"
                 element={
                   <PageWrapper>
@@ -144,13 +189,11 @@ const App: React.FC = () => {
         .me()
         .then((res) => {
           const u = res.data.data;
-          useAppStore
-            .getState()
-            .setUserInfo({
-              student_id: u.student_id,
-              username: u.username,
-              role: u.role,
-            });
+          useAppStore.getState().setUserInfo({
+            student_id: u.student_id,
+            username: u.username,
+            role: u.role,
+          });
         })
         .catch(() => {
           // token invalid, handled by interceptor (will trigger logout + redirect)

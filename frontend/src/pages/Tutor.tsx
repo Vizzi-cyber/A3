@@ -58,6 +58,10 @@ const Tutor: React.FC = () => {
     "bigmodel" | "deepseek" | "openai" | "spark" | "default"
   >("default");
   const [wsConnected, setWsConnected] = useState(false);
+  const [learningState, setLearningState] = useState<{
+    state: string;
+    hint: string;
+  } | null>(null);
   const token = useAppStore((s) => s.token);
 
   // 持久化聊天记录到 sessionStorage
@@ -108,6 +112,8 @@ const Tutor: React.FC = () => {
           if (step === "planner" || step === "worker" || step === "critic") {
             setMultiAgentStep(step);
           }
+        } else if (data.type === "learning_state") {
+          setLearningState({ state: data.state, hint: data.hint });
         } else if (data.type === "complete") {
           setLoading(false);
           setMultiAgentStep("done");
@@ -297,6 +303,35 @@ const Tutor: React.FC = () => {
             </Tooltip>
           </Space>
         </div>
+
+        {/* AI 学习状态感知横幅 */}
+        {learningState && learningState.state !== "neutral" && (
+          <div
+            className={`mb-3 px-4 py-2.5 rounded-xl flex items-center gap-3 text-sm animate-fade-in ${
+              learningState.state === "frustrated"
+                ? "bg-amber-50 border border-amber-200 text-amber-700"
+                : learningState.state === "confused"
+                  ? "bg-blue-50 border border-blue-200 text-blue-700"
+                  : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+            }`}
+          >
+            <RobotOutlined className="text-lg" />
+            <span className="flex-1">
+              {learningState.state === "frustrated"
+                ? "AI发现你可能遇到了困难，我会用更简单的方式讲解"
+                : learningState.state === "confused"
+                  ? "AI发现你可能有些困惑，让我换个角度来解释"
+                  : "你的思考很积极，我们可以继续深入探讨"}
+            </span>
+            <button
+              onClick={() => setLearningState(null)}
+              className="text-xs opacity-50 hover:opacity-100 transition-opacity"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 min-h-0">
           <ChatPanel
             messages={messages}

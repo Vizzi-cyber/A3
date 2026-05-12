@@ -122,6 +122,7 @@ const LearningPathPage: React.FC = () => {
   const [adjustFeedback, setAdjustFeedback] = useState("");
   const [profileSuggestions, setProfileSuggestions] = useState<string[]>([]);
   const [weakReviewTopics, setWeakReviewTopics] = useState<string[]>([]);
+  const nodeOpenTimeRef = useRef<number>(Date.now());
   const [activeAdjustTab, setActiveAdjustTab] = useState<
     "params" | "nodes" | "feedback"
   >("params");
@@ -240,7 +241,6 @@ const LearningPathPage: React.FC = () => {
       ignore = true;
     };
     // 只在 studentId 变化或首次拿到 nodes 时执行
-     
   }, [studentId, pathNodes.length]);
 
   // 初始化节点位置
@@ -497,6 +497,7 @@ const LearningPathPage: React.FC = () => {
   const openNodeDetail = (node: PathNode) => {
     setSelectedNode(node);
     setDrawerOpen(true);
+    nodeOpenTimeRef.current = Date.now();
   };
 
   // 节点 -> kp_id 映射（保留 kp_id；缺失时退化为 kp_c01..14）
@@ -625,12 +626,16 @@ const LearningPathPage: React.FC = () => {
     const node = pathNodes.find((n) => n.id === nodeId);
     // 标记完成：写入后端
     if (action === "complete" && node) {
+      const elapsedSec = Math.max(
+        30,
+        Math.round((Date.now() - nodeOpenTimeRef.current) / 1000),
+      );
       try {
         await learningDataApi.record({
           student_id: studentId,
           kp_id: nodeKpId(node),
           action: "complete",
-          duration: 0,
+          duration: elapsedSec,
           progress: 1,
         });
       } catch (e) {
@@ -660,6 +665,10 @@ const LearningPathPage: React.FC = () => {
 
   const handleBatchComplete = async (ids: number[]) => {
     const targets = pathNodes.filter((n) => ids.includes(n.id));
+    const elapsedSec = Math.max(
+      30,
+      Math.round((Date.now() - nodeOpenTimeRef.current) / 1000),
+    );
     try {
       await Promise.all(
         targets.map((n) =>
@@ -667,7 +676,7 @@ const LearningPathPage: React.FC = () => {
             student_id: studentId,
             kp_id: nodeKpId(n),
             action: "complete",
-            duration: 0,
+            duration: elapsedSec,
             progress: 1,
           }),
         ),
