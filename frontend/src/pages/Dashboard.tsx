@@ -50,7 +50,6 @@ import {
   MenuOutlined,
   DownOutlined,
   UpOutlined,
-  RiseOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import {
@@ -66,10 +65,6 @@ import { StatCard } from "../components/StatCard";
 import { SectionCard } from "../components/SectionCard";
 import { StatRow } from "../components/StatRow";
 import { statusColors } from "../components/StatusTag";
-import Leaderboard from "../components/Leaderboard";
-import DailyChallenge from "../components/DailyChallenge";
-import AgentFlowPanel from "../components/AgentFlowPanel";
-import GrowthTimeline from "../components/GrowthTimeline";
 import type {
   DashboardTask,
   DashboardRecommendation,
@@ -590,31 +585,6 @@ const Dashboard: React.FC = () => {
             />
           </Col>
         ))}
-      </Row>
-
-      {/* 多智能体协作引擎 */}
-      <AgentFlowPanel />
-
-      {/* 成长时间轴 */}
-      <SectionCard
-        title={
-          <Space>
-            <RiseOutlined className="text-indigo-500 text-lg" />
-            <span className="font-semibold text-slate-800">成长旅程</span>
-          </Space>
-        }
-      >
-        <GrowthTimeline />
-      </SectionCard>
-
-      {/* 排行榜 & 每日挑战 */}
-      <Row gutter={[20, 20]}>
-        <Col xs={24} lg={12}>
-          <Leaderboard compact />
-        </Col>
-        <Col xs={24} lg={12}>
-          <DailyChallenge />
-        </Col>
       </Row>
 
       {/* 算法分析结果 */}

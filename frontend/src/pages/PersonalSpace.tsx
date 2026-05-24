@@ -99,6 +99,7 @@ import {
 } from "../services/api";
 import { StatCard } from "../components/StatCard";
 import Leaderboard from "../components/Leaderboard";
+import GrowthTimeline from "../components/GrowthTimeline";
 import { Input, Collapse, Drawer, Popconfirm } from "antd";
 import {
   CaretRightOutlined,
@@ -1252,6 +1253,19 @@ const PersonalSpace: React.FC = () => {
                     </Col>
                   ))}
                 </Row>
+              </div>
+            ),
+          },
+          {
+            key: "growth",
+            label: (
+              <span className="flex items-center gap-1.5">
+                <RiseOutlined /> 成长旅程
+              </span>
+            ),
+            children: (
+              <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <GrowthTimeline />
               </div>
             ),
           },
