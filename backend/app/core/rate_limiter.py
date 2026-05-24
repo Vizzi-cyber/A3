@@ -1,12 +1,33 @@
 """
 简易内存限流器
-基于客户端IP和路径做速率限制，无需额外依赖
+基于用户身份(student_id)做速率限制，无需额外依赖
 """
 import time
-from typing import Dict, Tuple
+import base64
+import json
+from typing import Dict, Tuple, Optional
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+
+
+def _extract_student_id_from_token(request: Request) -> Optional[str]:
+    """从 Authorization header 提取 student_id"""
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth[7:]
+    try:
+        # JWT payload 解码 (base64 + json)
+        parts = token.split(".")
+        if len(parts) >= 2:
+            payload = parts[1] + "=" * (4 - len(parts[1]) % 4)
+            decoded = base64.b64decode(payload).decode("utf-8")
+            data = json.loads(decoded)
+            return data.get("sub") or data.get("student_id")
+    except Exception:
+        pass
+    return None
 
 
 class RateLimiter(BaseHTTPMiddleware):
@@ -25,6 +46,7 @@ class RateLimiter(BaseHTTPMiddleware):
         self._records: Dict[str, list[float]] = {}
         self._cleanup_counter: int = 0
         self._cleanup_interval: int = 200  # 每 200 次请求做一次全量清理
+        self._max_keys: int = 10000  # 最大键数上限，防止 OOM
 
     def _global_cleanup(self, now: float):
         """全量清理所有过期的 key，防止内存泄漏"""
@@ -39,13 +61,16 @@ class RateLimiter(BaseHTTPMiddleware):
             del self._records[key]
 
     async def dispatch(self, request: Request, call_next):
-        # 获取客户端标识（优先 X-Forwarded-For 第一个 IP，其次直接IP）
-        forwarded = request.headers.get("x-forwarded-for")
-        client_ip = "unknown"
-        if forwarded:
-            client_ip = forwarded.split(",")[0].strip() or "unknown"
-        if client_ip == "unknown" and request.client:
-            client_ip = request.client.host or "unknown"
+        # 优先使用 JWT 中的 student_id，否则降级到 IP
+        client_id = _extract_student_id_from_token(request)
+        if not client_id:
+            forwarded = request.headers.get("x-forwarded-for")
+            client_ip = "unknown"
+            if forwarded:
+                client_ip = forwarded.split(",")[0].strip() or "unknown"
+            if client_ip == "unknown" and request.client:
+                client_ip = request.client.host or "unknown"
+            client_id = f"ip:{client_ip}"
 
         path = request.url.path
 
@@ -57,7 +82,7 @@ class RateLimiter(BaseHTTPMiddleware):
         else:
             limit = self.default_limit
 
-        key = f"{client_ip}:{path}"
+        key = f"{client_id}:{path}"
         now = time.time()
 
         # 定期全量清理，防止不活跃 key 占用内存
@@ -73,6 +98,10 @@ class RateLimiter(BaseHTTPMiddleware):
             self._records[key] = records
         else:
             self._records.pop(key, None)
+
+        # 键数超限时强制清理
+        if len(self._records) > self._max_keys:
+            self._global_cleanup(now)
 
         if len(records) >= limit:
             reset_after = int(self.window_seconds - (now - records[0])) if records else self.window_seconds

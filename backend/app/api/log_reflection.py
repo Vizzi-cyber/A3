@@ -148,6 +148,8 @@ async def update_reflection(reflection_id: str, request: ReflectionUpdateRequest
     ref = db.query(ReflectionModel).filter(ReflectionModel.reflection_id == reflection_id).first()
     if not ref:
         raise HTTPException(status_code=404, detail="reflection not found")
+    if ref.student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to update this reflection")
     if request.content is not None:
         ref.content = request.content
     if request.mood is not None:
@@ -166,6 +168,8 @@ async def delete_reflection(reflection_id: str, db: Session = Depends(get_db), _
     ref = db.query(ReflectionModel).filter(ReflectionModel.reflection_id == reflection_id).first()
     if not ref:
         raise HTTPException(status_code=404, detail="reflection not found")
+    if ref.student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this reflection")
     db.delete(ref)
     db.commit()
     return {"status": "success", "reflection_id": reflection_id}

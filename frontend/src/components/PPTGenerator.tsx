@@ -7,6 +7,7 @@ import {
   CheckCircleOutlined,
 } from "@ant-design/icons";
 import { pptApi } from "../services/api";
+import { useAppStore } from "../store";
 
 interface PPTGeneratorProps {
   open: boolean;

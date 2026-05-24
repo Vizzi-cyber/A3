@@ -5,11 +5,12 @@ import asyncio
 import os
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..core.logger import setup_logger
+from .auth import require_auth, verify_token
 
 logger = setup_logger()
 
@@ -17,11 +18,25 @@ router = APIRouter()
 
 # 内存任务存储
 _ppt_tasks: Dict[str, Dict[str, Any]] = {}
+_MAX_PPT_TASKS = 100
+
+
+def _cleanup_old_tasks():
+    """清理过期 PPT 任务，防止内存无限增长"""
+    if len(_ppt_tasks) <= _MAX_PPT_TASKS:
+        return
+    sorted_tasks = sorted(
+        _ppt_tasks.items(),
+        key=lambda x: x[1].get("status") == "pending",
+    )
+    to_remove = len(sorted_tasks) - _MAX_PPT_TASKS
+    for key, _ in sorted_tasks[:to_remove]:
+        del _ppt_tasks[key]
 
 
 class PPTGenerateRequest(BaseModel):
-    topic: str
-    subject: str = "C语言数据结构"
+    topic: str = Field(..., max_length=500)
+    subject: str = Field("C语言数据结构", max_length=200)
 
 
 class PPTTaskStatus(BaseModel):
@@ -63,11 +78,12 @@ async def _generate_task(task_id: str, topic: str, subject: str):
 
 
 @router.post("/generate")
-async def generate_ppt_endpoint(req: PPTGenerateRequest, bg: BackgroundTasks):
+async def generate_ppt_endpoint(req: PPTGenerateRequest, bg: BackgroundTasks, _current: str = Depends(require_auth)):
     """启动PPT生成任务"""
     import uuid
     task_id = str(uuid.uuid4())[:8]
 
+    _cleanup_old_tasks()
     _ppt_tasks[task_id] = {
         "task_id": task_id,
         "status": "pending",
@@ -88,7 +104,7 @@ async def generate_ppt_endpoint(req: PPTGenerateRequest, bg: BackgroundTasks):
 
 
 @router.get("/{task_id}/status")
-async def get_ppt_status(task_id: str):
+async def get_ppt_status(task_id: str, _current: str = Depends(require_auth)):
     """查询PPT生成状态"""
     task = _ppt_tasks.get(task_id)
     if not task:
@@ -107,8 +123,26 @@ async def get_ppt_status(task_id: str):
 
 
 @router.get("/{task_id}/download")
-async def download_ppt(task_id: str):
-    """下载生成的PPT文件"""
+async def download_ppt(task_id: str, request: Request, token: str = Query(None, description="JWT token (alternative to Authorization header)")):
+    """下载生成的PPT文件 - 支持 Authorization header 或 token query param"""
+    auth_header = request.headers.get("authorization", "")
+    token_to_verify = None
+
+    if auth_header.startswith("Bearer "):
+        token_to_verify = auth_header[7:]
+    elif token:
+        token_to_verify = token
+
+    if not token_to_verify:
+        return {"status": "error", "message": "未提供认证信息"}
+
+    try:
+        student_id = verify_token(token_to_verify)
+        if not student_id:
+            return {"status": "error", "message": "认证失败"}
+    except Exception:
+        return {"status": "error", "message": "认证失败"}
+
     task = _ppt_tasks.get(task_id)
     if not task:
         return {"status": "error", "message": "任务不存在"}

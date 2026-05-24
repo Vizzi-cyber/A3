@@ -29,7 +29,7 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      studentId: "student_001",
+      studentId: "",
       setStudentId: (id) => set({ studentId: id }),
 
       token: null,
@@ -41,7 +41,7 @@ export const useAppStore = create<AppState>()(
           token: null,
           isLoggedIn: false,
           userInfo: null,
-          studentId: "guest",
+          studentId: "",
         }),
       setUserInfo: (info) => set({ userInfo: info }),
 

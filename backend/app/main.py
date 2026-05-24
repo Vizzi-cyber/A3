@@ -30,10 +30,12 @@ async def lifespan(app: FastAPI):
     # 启动时执行
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
-    # 异步初始化数据库表（避免阻塞事件循环）
-    from .models import Base, engine
-    await asyncio.to_thread(Base.metadata.create_all, bind=engine)
-    logger.info("Database tables initialized")
+    # 异步执行 Alembic 迁移（避免阻塞事件循环）
+    from alembic.config import Config
+    from alembic.command import upgrade
+    alembic_cfg = Config("alembic.ini")
+    await asyncio.to_thread(upgrade, alembic_cfg, "head")
+    logger.info("Database migrations applied")
 
     yield
 
@@ -70,26 +72,37 @@ import time
 class APIMonitorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.time()
-        response = await call_next(request)
-        duration_ms = (time.time() - start) * 1000
-        # 异步写入，不阻塞响应
+        status_code = 500
         try:
-            from .models.database import SessionLocal
-            from .models.monitor import ApiMonitorModel
-            db = SessionLocal()
-            try:
-                db.add(ApiMonitorModel(
-                    endpoint=request.url.path,
-                    method=request.method,
-                    status_code=response.status_code,
-                    duration_ms=round(duration_ms, 2),
-                ))
-                db.commit()
-            finally:
-                db.close()
+            response = await call_next(request)
+            status_code = response.status_code
+            return response
         except Exception:
-            pass  # 监控写入失败不影响正常请求
-        return response
+            status_code = 500
+            raise
+        finally:
+            duration_ms = (time.time() - start) * 1000
+            # 异步写入，不阻塞事件循环
+            try:
+                from .models.database import SessionLocal
+                from .models.monitor import ApiMonitorModel
+
+                def _write_monitor():
+                    db = SessionLocal()
+                    try:
+                        db.add(ApiMonitorModel(
+                            endpoint=request.url.path,
+                            method=request.method,
+                            status_code=status_code,
+                            duration_ms=round(duration_ms, 2),
+                        ))
+                        db.commit()
+                    finally:
+                        db.close()
+
+                asyncio.create_task(asyncio.to_thread(_write_monitor))
+            except Exception as e:
+                logger.warning(f"API监控写入失败: {e}")
 
 app.add_middleware(APIMonitorMiddleware)
 

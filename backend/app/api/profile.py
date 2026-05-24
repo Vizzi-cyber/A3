@@ -8,6 +8,10 @@ from datetime import datetime, timezone
 
 import asyncio
 from sqlalchemy.orm import Session
+
+from ..core.logger import setup_logger
+
+logger = setup_logger()
 from ..models.database import get_db
 from ..models.student import StudentProfileModel
 from ..agents import ProfilerAgent
@@ -95,6 +99,8 @@ def _get_or_create_profile(db: Session, student_id: str) -> StudentProfileModel:
 @router.get("/{student_id}")
 async def get_profile(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生画像"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's profile")
     profile = _get_or_create_profile(db, student_id)
     return {"status": "success", "data": _profile_to_dict(profile)}
 
@@ -102,6 +108,8 @@ async def get_profile(student_id: str, db: Session = Depends(get_db), _current: 
 @router.post("/{student_id}/update")
 async def update_profile(student_id: str, request: ProfileUpdateRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """更新学生画像（本地更新 + 可选 LLM 分析）"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's profile")
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Student not found")
@@ -143,9 +151,9 @@ async def update_profile(student_id: str, request: ProfileUpdateRequest, db: Ses
         if llm_result.get("status") == "success":
             llm_analysis = llm_result.get("analysis", {})
     except asyncio.TimeoutError:
-        pass
-    except Exception:
-        pass
+        logger.warning(f"画像更新LLM超时: student_id={student_id}")
+    except Exception as e:
+        logger.warning(f"画像更新LLM异常: {e}")
 
     return {
         "status": "success",
@@ -158,6 +166,8 @@ async def update_profile(student_id: str, request: ProfileUpdateRequest, db: Ses
 @router.get("/{student_id}/summary")
 async def get_profile_summary(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取画像摘要"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's profile")
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Student not found")
@@ -180,6 +190,8 @@ async def initialize_profile(
     student_id: str, init_request: ProfileInitRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)
 ):
     """初始化学生画像（可调用 LLM 生成结构化画像）"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's profile")
     llm_profile = None
 
     if init_request.inputs:
@@ -195,33 +207,47 @@ async def initialize_profile(
             if llm_result.get("status") == "success":
                 llm_profile = llm_result.get("profile")
         except asyncio.TimeoutError:
-            pass
-        except Exception:
-            pass
+            logger.warning(f"画像初始化LLM超时: student_id={student_id}")
+        except Exception as e:
+            logger.warning(f"画像初始化LLM异常: {e}")
 
     if llm_profile:
-        # 删除旧记录（如果存在）并插入新数据
-        db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).delete()
-        new_profile = StudentProfileModel(
-            student_id=student_id,
-            knowledge_base=llm_profile.get("knowledge_base", {}),
-            cognitive_style=llm_profile.get("cognitive_style", {}),
-            weak_areas=llm_profile.get("weak_areas", []),
-            error_patterns=llm_profile.get("error_patterns", []),
-            learning_goals=llm_profile.get("learning_goals", []),
-            interest_areas=llm_profile.get("interest_areas", []),
-            learning_tempo=llm_profile.get("learning_tempo", {}),
-            practical_preferences=llm_profile.get("practical_preferences", {}),
-        )
-        db.add(new_profile)
-        db.commit()
-        db.refresh(new_profile)
-        profile = new_profile
+        # 使用事务确保原子性：先插入新记录，再删除旧记录
+        try:
+            # 先插入新记录
+            new_profile = StudentProfileModel(
+                student_id=student_id,
+                knowledge_base=llm_profile.get("knowledge_base", {}),
+                cognitive_style=llm_profile.get("cognitive_style", {}),
+                weak_areas=llm_profile.get("weak_areas", []),
+                error_patterns=llm_profile.get("error_patterns", []),
+                learning_goals=llm_profile.get("learning_goals", []),
+                interest_areas=llm_profile.get("interest_areas", []),
+                learning_tempo=llm_profile.get("learning_tempo", {}),
+                practical_preferences=llm_profile.get("practical_preferences", {}),
+            )
+            db.add(new_profile)
+            db.flush()  # 预提交检查
+
+            # 删除旧记录
+            db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).delete()
+
+            db.commit()
+            db.refresh(new_profile)
+            profile = new_profile
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Profile initialization failed: {e}")
+            profile = _get_or_create_profile(db, student_id)
     else:
         profile = _get_or_create_profile(db, student_id)
         if init_request.initial_data:
+            _ALLOWED_PROFILE_FIELDS = {
+                "knowledge_base", "cognitive_style", "weak_areas", "error_patterns",
+                "learning_goals", "interest_areas", "learning_tempo", "practical_preferences",
+            }
             for key, value in init_request.initial_data.items():
-                if hasattr(profile, key):
+                if key in _ALLOWED_PROFILE_FIELDS:
                     setattr(profile, key, value)
             db.commit()
             db.refresh(profile)
@@ -308,6 +334,8 @@ async def analyze_conversation(
     _current: str = Depends(require_auth),
 ):
     """分析学生对话内容，自动更新六维画像"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's profile")
     profile = _get_or_create_profile(db, student_id)
     current = _profile_to_dict(profile)
 
@@ -325,9 +353,9 @@ async def analyze_conversation(
         if llm_result.get("status") == "success":
             llm_profile = llm_result.get("profile")
     except asyncio.TimeoutError:
-        pass
-    except Exception:
-        pass
+        logger.warning(f"对话分析LLM超时: student_id={student_id}")
+    except Exception as e:
+        logger.warning(f"对话分析LLM异常: {e}")
 
     if llm_profile and isinstance(llm_profile, dict):
         # 先补齐 LLM 可能缺失的字段

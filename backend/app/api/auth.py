@@ -15,8 +15,11 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from ..core.config import settings
+from ..core.logger import setup_logger
 from ..models.database import get_db
 from ..models.user import UserModel
+
+logger = setup_logger()
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -41,8 +44,8 @@ class UserRegisterRequest(BaseModel):
 
 
 class UserLoginRequest(BaseModel):
-    student_id: str
-    password: str
+    student_id: str = Field(..., min_length=3, max_length=64)
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -62,7 +65,8 @@ def _verify_token(token: str) -> Optional[str]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         return payload.get("sub")
-    except JWTError:
+    except JWTError as e:
+        logger.debug(f"JWT校验失败: {e}")
         return None
 
 
@@ -70,7 +74,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 security = HTTPBearer(auto_error=False)
 
-async def get_current_student_id(credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> str:
+async def get_current_student_id(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
     """依赖注入：从请求头提取并校验token（允许匿名）"""
     if not credentials:
         return "anonymous"
@@ -81,7 +85,7 @@ async def get_current_student_id(credentials: HTTPAuthorizationCredentials | Non
     return student_id
 
 
-async def require_auth(credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> str:
+async def require_auth(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
     """严格认证：无token或token无效时直接抛401"""
     if not credentials:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -92,7 +96,12 @@ async def require_auth(credentials: HTTPAuthorizationCredentials | None = Depend
     return student_id
 
 
-def verify_token_for_websocket(token: str | None) -> str | None:
+def verify_token(token: str) -> Optional[str]:
+    """公开token校验函数，供其他模块使用"""
+    return _verify_token(token)
+
+
+def verify_token_for_websocket(token: Optional[str]) -> Optional[str]:
     """用于WebSocket的token校验（不抛HTTP异常，返回None表示失败）"""
     if not token:
         return None

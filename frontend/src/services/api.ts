@@ -558,7 +558,14 @@ export const pptApi = {
         message: string;
       };
     }>(`/ppt/${taskId}/status`),
-  downloadUrl: (taskId: string) => `${API_BASE_URL}/ppt/${taskId}/download`,
+  downloadUrl: (taskId: string) => {
+    const token = useAppStore.getState().token;
+    const url = `${API_BASE_URL}/ppt/${taskId}/download`;
+    if (token) {
+      return `${url}?token=${encodeURIComponent(token)}`;
+    }
+    return url;
+  },
 };
 
 // ---------- Learning Data ----------

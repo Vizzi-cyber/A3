@@ -6,8 +6,8 @@
 - 排行榜
 - 社交基础
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
@@ -15,23 +15,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..models.database import get_db
 from ..models.gamification import PointsModel, AchievementModel, TaskModel, LeaderboardModel
+from ..models.user import UserModel
+from ..services.gamification_service import ensure_points, award_points, sync_leaderboard
 from .auth import require_auth
 
 router = APIRouter()
-
-
-def _maybe_reset_points(db: Session, points: PointsModel):
-    """根据 updated_at 判断是否需要重置每日/每周积分"""
-    now = datetime.now(timezone.utc)
-    updated = points.updated_at
-    if not updated:
-        return
-    # 每日重置：跨天
-    if updated.date() < now.date():
-        points.daily_points = 0
-    # 每周重置：周一（weekday 0）
-    if updated.isocalendar()[1] != now.isocalendar()[1] or updated.year != now.year:
-        points.weekly_points = 0
 
 
 # ---------- 积分 ----------
@@ -39,10 +27,7 @@ def _maybe_reset_points(db: Session, points: PointsModel):
 @router.get("/{student_id}/points")
 async def get_points(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生积分"""
-    points = db.query(PointsModel).filter(PointsModel.student_id == student_id).first()
-    if not points:
-        return {"status": "success", "data": {"student_id": student_id, "total_points": 0, "daily_points": 0, "weekly_points": 0}}
-    _maybe_reset_points(db, points)
+    points = ensure_points(db, student_id)
     db.commit()
     return {
         "status": "success",
@@ -57,37 +42,16 @@ async def get_points(student_id: str, db: Session = Depends(get_db), _current: s
 
 class AddPointsRequest(BaseModel):
     student_id: str
-    points: int
+    points: int = Field(..., ge=1, le=10000)
     reason: str = ""
 
 
 @router.post("/points/add")
 async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """增加积分"""
-    points = db.query(PointsModel).filter(PointsModel.student_id == request.student_id).first()
-    if not points:
-        points = PointsModel(student_id=request.student_id, total_points=0, daily_points=0, weekly_points=0)
-        db.add(points)
-    points.total_points += request.points
-    points.daily_points += request.points
-    points.weekly_points += request.points
+    total = award_points(db, request.student_id, request.points, request.reason)
     db.commit()
-    db.refresh(points)
-
-    # 同步更新排行榜（upsert daily/weekly/monthly）
-    for period in ("daily", "weekly", "monthly"):
-        row = db.query(LeaderboardModel).filter(
-            LeaderboardModel.student_id == request.student_id,
-            LeaderboardModel.period == period,
-        ).first()
-        score = points.daily_points if period == "daily" else points.weekly_points if period == "weekly" else points.total_points
-        if row:
-            row.score = score
-        else:
-            db.add(LeaderboardModel(student_id=request.student_id, period=period, score=score))
-    db.commit()
-
-    return {"status": "success", "total_points": points.total_points}
+    return {"status": "success", "total_points": total}
 
 
 # ---------- 成就 ----------
@@ -219,7 +183,7 @@ async def update_task_progress(request: UpdateTaskProgressRequest, db: Session =
 # ---------- 排行榜 ----------
 
 @router.get("/leaderboard/{period}")
-async def get_leaderboard(period: str = "weekly", limit: int = 20, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def get_leaderboard(period: str = "weekly", limit: int = Query(20, ge=1, le=100), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取排行榜"""
     rows = (
         db.query(LeaderboardModel)
@@ -228,6 +192,15 @@ async def get_leaderboard(period: str = "weekly", limit: int = 20, db: Session =
         .limit(limit)
         .all()
     )
+    # 批量获取用户名
+    student_ids = [r.student_id for r in rows]
+    users = db.query(UserModel.student_id, UserModel.username).filter(UserModel.student_id.in_(student_ids)).all()
+    username_map = {u.student_id: u.username for u in users}
+
+    # 批量获取积分和连胜天数
+    points_list = db.query(PointsModel.student_id, PointsModel.total_points).filter(PointsModel.student_id.in_(student_ids)).all()
+    points_map = {p.student_id: p.total_points for p in points_list}
+
     return {
         "status": "success",
         "period": period,
@@ -235,7 +208,10 @@ async def get_leaderboard(period: str = "weekly", limit: int = 20, db: Session =
             {
                 "rank": idx + 1,
                 "student_id": r.student_id,
-                "score": r.score,
+                "username": username_map.get(r.student_id, ""),
+                "points": r.score,
+                "streak_days": 0,
+                "level": (r.score or 0) // 1000 + 1,
             }
             for idx, r in enumerate(rows)
         ],

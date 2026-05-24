@@ -3,10 +3,14 @@
 对接 LangGraph 工作流，调用 resource_generator 智能体
 """
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 import asyncio
+
+from ..core.logger import setup_logger
+
+logger = setup_logger()
 
 from ..schemas import (
     DocumentGenerateRequest,
@@ -23,6 +27,9 @@ from ..schemas import (
 from ..agents import ResourceGeneratorAgent
 from ..services import content_library
 from .auth import get_current_student_id, require_auth
+from sqlalchemy.orm import Session
+from ..models.database import get_db, SessionLocal
+from ..models.knowledge import ResourceTaskModel
 
 router = APIRouter()
 
@@ -32,7 +39,7 @@ _resource_agent = ResourceGeneratorAgent()
 class ResourceGenerationRequest(BaseModel):
     """资源生成请求"""
     student_id: str
-    topic: str
+    topic: str = Field(..., max_length=500)
     resource_types: List[str] = ["document", "questions", "mindmap", "code"]
     difficulty: str = "medium"
     cognitive_style: Optional[str] = None
@@ -47,43 +54,69 @@ class ResourceGenerationResponse(BaseModel):
     message: str = ""
 
 
-# 模拟任务存储（限制最大条目数，防止内存无限增长）
-_tasks_db: Dict[str, Dict[str, Any]] = {}
 _MAX_TASKS = 500
 
 
 def _cleanup_old_tasks():
     """当任务数超过上限时，删除最早完成的或最旧的 pending 任务"""
-    if len(_tasks_db) <= _MAX_TASKS:
-        return
-    # 优先删除已完成的旧任务，再删除最旧的任务
-    sorted_tasks = sorted(
-        _tasks_db.items(),
-        key=lambda item: (item[1].get("status") != "completed", item[1].get("created_at", 0))
-    )
-    to_remove = len(sorted_tasks) - _MAX_TASKS
-    for key, _ in sorted_tasks[:to_remove]:
-        del _tasks_db[key]
+    db = SessionLocal()
+    try:
+        total = db.query(ResourceTaskModel).count()
+        if total <= _MAX_TASKS:
+            return
+        to_remove = total - _MAX_TASKS
+        # 优先删除已完成的旧任务
+        old_completed = (
+            db.query(ResourceTaskModel)
+            .filter(ResourceTaskModel.status == "completed")
+            .order_by(ResourceTaskModel.created_at)
+            .limit(to_remove)
+            .all()
+        )
+        for t in old_completed:
+            db.delete(t)
+        db.commit()
+
+        # 如果还不够，再删除最旧的任务
+        remaining = db.query(ResourceTaskModel).count()
+        if remaining > _MAX_TASKS:
+            to_remove2 = remaining - _MAX_TASKS
+            oldest = (
+                db.query(ResourceTaskModel)
+                .order_by(ResourceTaskModel.created_at)
+                .limit(to_remove2)
+                .all()
+            )
+            for t in oldest:
+                db.delete(t)
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"Cleanup old tasks failed: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/generate", response_model=ResourceGenerationResponse)
 async def generate_resource(
     request: ResourceGenerationRequest,
     background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
     _current: str = Depends(require_auth),
 ):
     """生成多模态学习资源 —— 后台任务直接调用 ResourceGeneratorAgent"""
     now = datetime.now().timestamp()
     task_id = f"task_{now}"
     _cleanup_old_tasks()
-    _tasks_db[task_id] = {
-        "task_id": task_id,
-        "status": "pending",
-        "progress": 0.0,
-        "resources": {},
-        "message": "Task queued",
-        "created_at": now,
-    }
+    task = ResourceTaskModel(
+        task_id=task_id,
+        status="pending",
+        progress=0.0,
+        resources={},
+        message="Task queued",
+    )
+    db.add(task)
+    db.commit()
     background_tasks.add_task(
         _execute_generation,
         task_id,
@@ -95,63 +128,88 @@ async def generate_resource(
 
 
 async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
-    _tasks_db[task_id]["status"] = "running"
-    _tasks_db[task_id]["message"] = "Initializing agents..."
+    db = SessionLocal()
+    try:
+        task = db.query(ResourceTaskModel).filter(ResourceTaskModel.task_id == task_id).first()
+        if not task:
+            logger.warning(f"Task {task_id} not found in DB")
+            return
+        task.status = "running"
+        task.message = "Initializing agents..."
+        db.commit()
 
-    results = {}
-    # 根据请求的 resource_types 并行生成多种资源
-    tasks_to_run = []
-    for rt in request.resource_types:
-        if rt == "document":
-            tasks_to_run.append(_resource_agent.process({
-                "task": "generate_document",
-                "topic": request.topic,
-                "difficulty": request.difficulty,
-            }))
-        elif rt == "questions":
-            tasks_to_run.append(_resource_agent.process({
-                "task": "generate_questions",
-                "topic": request.topic,
-                "constraints": {"count": 3},
-            }))
-        elif rt == "mindmap":
-            tasks_to_run.append(_resource_agent.process({
-                "task": "generate_mindmap",
-                "topic": request.topic,
-            }))
-        elif rt == "code":
-            tasks_to_run.append(_resource_agent.process({
-                "task": "generate_code_examples",
-                "topic": request.topic,
-                "constraints": {"language": "Python"},
-            }))
+        results = {}
+        # 根据请求的 resource_types 并行生成多种资源
+        tasks_to_run = []
+        for rt in request.resource_types:
+            if rt == "document":
+                tasks_to_run.append(_resource_agent.process({
+                    "task": "generate_document",
+                    "topic": request.topic,
+                    "difficulty": request.difficulty,
+                }))
+            elif rt == "questions":
+                tasks_to_run.append(_resource_agent.process({
+                    "task": "generate_questions",
+                    "topic": request.topic,
+                    "constraints": {"count": 3},
+                }))
+            elif rt == "mindmap":
+                tasks_to_run.append(_resource_agent.process({
+                    "task": "generate_mindmap",
+                    "topic": request.topic,
+                }))
+            elif rt == "code":
+                tasks_to_run.append(_resource_agent.process({
+                    "task": "generate_code_examples",
+                    "topic": request.topic,
+                    "constraints": {"language": "Python"},
+                }))
 
-    if tasks_to_run:
-        try:
-            agent_results = await asyncio.wait_for(
-                asyncio.gather(*tasks_to_run, return_exceptions=True),
-                timeout=20.0,
-            )
-            for idx, res in enumerate(agent_results):
-                if isinstance(res, Exception):
-                    continue
-                if res.get("status") == "success":
-                    rt = request.resource_types[idx]
-                    results[rt] = res.get("content", res)
-        except asyncio.TimeoutError:
-            pass
+        if tasks_to_run:
+            try:
+                agent_results = await asyncio.wait_for(
+                    asyncio.gather(*tasks_to_run, return_exceptions=True),
+                    timeout=20.0,
+                )
+                for idx, res in enumerate(agent_results):
+                    if isinstance(res, Exception):
+                        continue
+                    if res.get("status") == "success":
+                        rt = request.resource_types[idx]
+                        results[rt] = res.get("content", res)
+            except asyncio.TimeoutError:
+                pass
 
-    _tasks_db[task_id]["status"] = "completed" if results else "failed"
-    _tasks_db[task_id]["progress"] = 1.0
-    _tasks_db[task_id]["resources"] = results
-    _tasks_db[task_id]["message"] = "Generation completed" if results else "Generation timeout or failed"
+        task.status = "completed" if results else "failed"
+        task.progress = 1.0
+        task.resources = results
+        task.message = "Generation completed" if results else "Generation timeout or failed"
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Task {task_id} failed: {e}")
+        task = db.query(ResourceTaskModel).filter(ResourceTaskModel.task_id == task_id).first()
+        if task:
+            task.status = "failed"
+            task.message = str(e)
+            db.commit()
+    finally:
+        db.close()
 
 
 @router.get("/task/{task_id}")
-async def get_task_status(task_id: str, _current: str = Depends(require_auth)):
-    if task_id not in _tasks_db:
+async def get_task_status(task_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    task = db.query(ResourceTaskModel).filter(ResourceTaskModel.task_id == task_id).first()
+    if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return _tasks_db[task_id]
+    return {
+        "task_id": task.task_id,
+        "status": task.status,
+        "progress": task.progress,
+        "resources": task.resources,
+        "message": task.message,
+    }
 
 
 @router.post("/document/generate", response_model=DocumentGenerateResponse)
@@ -184,9 +242,9 @@ async def generate_document(request: DocumentGenerateRequest, _current: str = De
         if result.get("status") == "success" and isinstance(result.get("content"), str):
             doc_content = result["content"]
     except asyncio.TimeoutError:
-        pass
-    except Exception:
-        pass
+        logger.warning(f"文档生成超时: topic={request.topic}")
+    except Exception as e:
+        logger.warning(f"文档生成异常: {e}")
 
     return {
         "status": "success",
@@ -243,9 +301,9 @@ async def generate_questions(request: QuestionsGenerateRequest, _current: str = 
             if isinstance(raw, list) and len(raw) > 0:
                 questions = raw
     except asyncio.TimeoutError:
-        pass
-    except Exception:
-        pass
+        logger.warning(f"题目生成超时: topic={request.topic}")
+    except Exception as e:
+        logger.warning(f"题目生成异常: {e}")
 
     return {
         "status": "success",
@@ -278,9 +336,9 @@ async def generate_mindmap(request: MindmapGenerateRequest, _current: str = Depe
             if isinstance(raw, dict) and raw.get("root"):
                 mindmap = raw
     except asyncio.TimeoutError:
-        pass
-    except Exception:
-        pass
+        logger.warning(f"思维导图生成超时: topic={request.topic}")
+    except Exception as e:
+        logger.warning(f"思维导图生成异常: {e}")
 
     return {"status": "success", "mindmap": mindmap, "format": "json_tree"}
 
@@ -314,9 +372,9 @@ async def generate_code(request: CodeGenerateRequest, _current: str = Depends(re
         if result.get("status") == "success" and isinstance(result.get("content"), str):
             code = result["content"]
     except asyncio.TimeoutError:
-        pass
-    except Exception:
-        pass
+        logger.warning(f"代码生成超时: topic={request.topic}")
+    except Exception as e:
+        logger.warning(f"代码生成异常: {e}")
 
     return {
         "status": "success",

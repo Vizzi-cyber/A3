@@ -25,6 +25,8 @@ class TrendAnalyzeRequest(BaseModel):
 @router.post("/analyze")
 async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """多因素趋势分析"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to analyze this student's data")
     student_id = request.student_id
 
     # 查询数据（限制最近 90 天，避免全表扫描）
@@ -106,6 +108,8 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
 @router.get("/{student_id}/report")
 async def get_eval_report(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """学习效果评估报告"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to view this report")
     since = datetime.now(timezone.utc) - timedelta(days=90)
     quizzes = db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id, QuizResultModel.created_at >= since).order_by(QuizResultModel.created_at).all()
     records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= since).order_by(LearningRecordModel.created_at).all()
@@ -142,6 +146,8 @@ async def get_eval_report(student_id: str, db: Session = Depends(get_db), _curre
 @router.get("/{student_id}/history")
 async def get_trend_history(student_id: str, days: int = 30, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取历史趋势数据"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to view this history")
     trends = (
         db.query(TrendDataModel)
         .filter(TrendDataModel.student_id == student_id)
