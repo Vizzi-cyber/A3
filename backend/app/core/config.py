@@ -1,8 +1,9 @@
 """
 应用配置
 """
+from __future__ import annotations
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List
 
 
 class Settings(BaseSettings):
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
     # 服务器配置
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    ALLOWED_ORIGINS: list[str] = [
+    ALLOWED_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
@@ -36,22 +37,22 @@ class Settings(BaseSettings):
             extra = [o.strip() for o in cors_env.split(",") if o.strip()]
             object.__setattr__(self, 'ALLOWED_ORIGINS', self.ALLOWED_ORIGINS + extra)
 
-        if not self.DEBUG:
-            if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
+        if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
+            if not self.DEBUG:
                 raise ValueError(
                     "生产环境必须设置强SECRET_KEY（至少32字符）。"
                     "建议运行: python -c \"import secrets; print(secrets.token_hex(32))\""
                 )
-        else:
-            # DEBUG模式：如果未设置，使用默认dev key并发出警告
-            if not self.SECRET_KEY:
+            else:
+                import secrets as _secrets
                 import warnings
                 warnings.warn(
-                    "DEBUG模式使用默认SECRET_KEY，生产部署前务必设置环境变量！",
+                    "DEBUG模式未设置SECRET_KEY，已自动生成临时密钥（重启后失效）。"
+                    "建议在 .env 中设置 SECRET_KEY 以保持 token 稳定。",
                     RuntimeWarning,
                     stacklevel=2,
                 )
-                object.__setattr__(self, 'SECRET_KEY', "dev-secret-32-chars-long-please-change-me!")
+                object.__setattr__(self, 'SECRET_KEY', _secrets.token_hex(32))
 
     # 数据库配置
     DATABASE_URL: str = "sqlite:///./ai_learning_v2.db"
@@ -91,7 +92,7 @@ class Settings(BaseSettings):
 
     # 火山方舟（ARK）文生图配置
     ARK_API_KEY: Optional[str] = None
-    ARK_IMAGE_ENDPOINT: str = "ark-d8c6b140-28d3-4525-8a83-2dca0e99fa1f-d8d59"
+    ARK_IMAGE_ENDPOINT: str = ""
     ARK_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3/invoke"
 
     # LangSmith配置（可选）

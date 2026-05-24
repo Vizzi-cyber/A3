@@ -99,7 +99,9 @@ const Profile: React.FC = () => {
   const studentId = useAppStore((s) => s.studentId);
 
   useEffect(() => {
+    let ignore = false;
     const load = async () => {
+      setLoading(true);
       try {
         const [profileRes, trendRes, summaryRes] = await Promise.all([
           profileApi.get(studentId),
@@ -153,10 +155,15 @@ const Profile: React.FC = () => {
           });
         }
       } catch {
-        message.error("获取画像失败，显示默认数据");
+        if (!ignore) message.error("获取画像失败，显示默认数据");
+      } finally {
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => {
+      ignore = true;
+    };
   }, [studentId]);
 
   const updateVisuals = (p: StudentProfile) => {

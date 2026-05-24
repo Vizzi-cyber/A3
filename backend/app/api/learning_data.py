@@ -4,8 +4,8 @@
 """
 import secrets
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
@@ -13,85 +13,30 @@ from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel, ResourceFeedbackModel
 from ..models.gamification import PointsModel, AchievementModel, LeaderboardModel
+from ..services.gamification_service import award_points, maybe_unlock_achievement
 from .auth import require_auth
 
 router = APIRouter()
 
 
-def _ensure_points(db: Session, student_id: str) -> PointsModel:
-    from datetime import datetime, timezone
-    points = db.query(PointsModel).filter(PointsModel.student_id == student_id).first()
-    if not points:
-        points = PointsModel(student_id=student_id, total_points=0, daily_points=0, weekly_points=0)
-        db.add(points)
-        db.flush()
-    # 每日/每周积分自动重置
-    now = datetime.now(timezone.utc)
-    updated = points.updated_at
-    if updated:
-        if updated.date() < now.date():
-            points.daily_points = 0
-        if updated.isocalendar()[1] != now.isocalendar()[1] or updated.year != now.year:
-            points.weekly_points = 0
-    return points
-
-
-def _award_points(db: Session, student_id: str, amount: int, reason: str = "") -> int:
-    """在同一事务中 awarding points（调用方负责 commit）"""
-    points = _ensure_points(db, student_id)
-    points.total_points += amount
-    points.daily_points += amount
-    points.weekly_points += amount
-    # 同步排行榜
-    for period in ("daily", "weekly", "monthly"):
-        row = db.query(LeaderboardModel).filter(
-            LeaderboardModel.student_id == student_id,
-            LeaderboardModel.period == period,
-        ).first()
-        score = points.daily_points if period == "daily" else points.weekly_points if period == "weekly" else points.total_points
-        if row:
-            row.score = score
-        else:
-            db.add(LeaderboardModel(student_id=student_id, period=period, score=score))
-    return points.total_points
-
-
-def _maybe_unlock_achievement(db: Session, student_id: str, achievement_id: str, name: str, description: str, icon: str = "trophy"):
-    """在同一事务中解锁成就（调用方负责 commit）"""
-    existing = db.query(AchievementModel).filter(
-        AchievementModel.student_id == student_id,
-        AchievementModel.achievement_id == achievement_id,
-    ).first()
-    if existing:
-        return
-    ach = AchievementModel(
-        student_id=student_id,
-        achievement_id=achievement_id,
-        name=name,
-        description=description,
-        icon=icon,
-    )
-    db.add(ach)
-
-
 class LearningRecordRequest(BaseModel):
     student_id: str
     kp_id: str
-    action: str  # watch / read / practice / review
-    duration: int = 0
-    progress: float = 0.0
-    score: Optional[float] = None
+    action: str = Field(..., max_length=64)  # watch / read / practice / review / complete
+    duration: int = Field(0, ge=0, le=86400)
+    progress: float = Field(0.0, ge=0.0, le=1.0)
+    score: Optional[float] = Field(None, ge=0.0, le=100.0)
     meta: Dict[str, Any] = {}
 
 
 class QuizResultRequest(BaseModel):
     student_id: str
     kp_id: str
-    total_questions: int
-    correct_count: int
-    score: float
+    total_questions: int = Field(..., ge=1, le=100)
+    correct_count: int = Field(..., ge=0, le=100)
+    score: float = Field(..., ge=0.0, le=100.0)
     weak_tags: List[str] = []
-    time_spent: int = 0
+    time_spent: int = Field(0, ge=0, le=7200)
     answers: List[Dict[str, Any]] = []
 
 
@@ -103,6 +48,8 @@ def _generate_id(prefix: str) -> str:
 @router.post("/record")
 async def record_learning(request: LearningRecordRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """上报学习记录"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's data")
     record_id = _generate_id("lr")
     record = LearningRecordModel(
         record_id=record_id,
@@ -120,7 +67,7 @@ async def record_learning(request: LearningRecordRequest, db: Session = Depends(
     awarded = 0
     if request.action == "complete" or request.progress >= 1.0:
         awarded += 10
-        _maybe_unlock_achievement(
+        maybe_unlock_achievement(
             db, request.student_id, "first_complete", "初次完成",
             "首次完成一个知识点的学习，继续保持！", "check-circle"
         )
@@ -131,7 +78,7 @@ async def record_learning(request: LearningRecordRequest, db: Session = Depends(
 
     total = None
     if awarded > 0:
-        total = _award_points(db, request.student_id, awarded, f"action:{request.action}")
+        total = award_points(db, request.student_id, awarded, f"action:{request.action}")
 
     db.commit()
     db.refresh(record)
@@ -144,6 +91,8 @@ async def record_learning(request: LearningRecordRequest, db: Session = Depends(
 @router.post("/quiz")
 async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """上报测验结果"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's data")
     quiz_id = _generate_id("qz")
     quiz = QuizResultModel(
         quiz_id=quiz_id,
@@ -162,13 +111,13 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
     awarded = int(request.score * 2)  # 满分200分
     total = None
     if awarded > 0:
-        total = _award_points(db, request.student_id, awarded, "quiz")
-        _maybe_unlock_achievement(
+        total = award_points(db, request.student_id, awarded, "quiz")
+        maybe_unlock_achievement(
             db, request.student_id, "first_quiz", "初次测验",
             "完成了第一次测验，继续挑战更高分数！", "file-done"
         )
         if request.score >= 100:
-            _maybe_unlock_achievement(
+            maybe_unlock_achievement(
                 db, request.student_id, "perfect_score", "满分成就",
                 "在一次测验中获得了满分，太棒了！", "star"
             )
@@ -182,8 +131,10 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
 
 
 @router.get("/{student_id}/history")
-async def get_learning_history(student_id: str, limit: int = 50, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def get_learning_history(student_id: str, limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生学习历史"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's data")
     limit = min(max(limit, 1), 200)
     records = (
         db.query(LearningRecordModel)
@@ -235,6 +186,8 @@ async def get_completed_kps(student_id: str, db: Session = Depends(get_db), _cur
     返回该学生已标记完成的所有 kp_id（去重）。
     供前端 ResourceDetail / LearningPath 在加载时同步完成状态。
     """
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's data")
     rows = (
         db.query(LearningRecordModel.kp_id)
         .filter(
@@ -262,6 +215,8 @@ class ResourceFeedbackRequest(BaseModel):
 @router.post("/feedback")
 async def submit_feedback(request: ResourceFeedbackRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """提交资源反馈（点赞/踩），同一学生对同一知识点只保留最新一条"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's data")
     if request.rating not in ("good", "bad"):
         raise HTTPException(status_code=400, detail="rating must be 'good' or 'bad'")
     existing = db.query(ResourceFeedbackModel).filter(

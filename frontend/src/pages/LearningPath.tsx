@@ -191,12 +191,14 @@ const LearningPathPage: React.FC = () => {
   }, [studentId]);
 
   useEffect(() => {
+    let ignore = false;
+    setLoading(true);
     const load = async () => {
       try {
         const res = await pathApi.current(studentId);
+        if (ignore) return;
         if (res.data) {
           const nodes: PathNode[] = res.data.nodes || [];
-          // 后端 current 接口可能挂载 path.stages，方便后续给节点详情显示资源类型
           const respAny = res.data as unknown as {
             path?: { stages?: PathStage[] };
           };
@@ -206,12 +208,18 @@ const LearningPathPage: React.FC = () => {
           setPathStages(stages);
         }
       } catch {
-        // 路径未生成或后端异常时不再回退到硬编码 14 节点，由空状态 UI 提示
-        setPathNodes([]);
-        setPathStages([]);
+        if (!ignore) {
+          setPathNodes([]);
+          setPathStages([]);
+        }
+      } finally {
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => {
+      ignore = true;
+    };
   }, [studentId]);
 
   // 从后端同步已完成节点（避免刷新后丢失）

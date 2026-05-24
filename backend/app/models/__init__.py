@@ -1,7 +1,7 @@
 from .database import Base, engine, get_db
 from .student import StudentProfileModel
 from .user import UserModel
-from .knowledge import KnowledgePointModel, LearningRecordModel, QuizResultModel
+from .knowledge import KnowledgePointModel, LearningRecordModel, QuizResultModel, ResourceTaskModel
 from .trend import TrendDataModel
 from .gamification import PointsModel, AchievementModel, TaskModel, LeaderboardModel
 from .log_reflection import LearningLogModel, ReflectionModel
@@ -12,7 +12,7 @@ from .tutor_qa import TutorQAModel
 __all__ = [
     "Base", "engine", "get_db",
     "StudentProfileModel", "UserModel",
-    "KnowledgePointModel", "LearningRecordModel", "QuizResultModel",
+    "KnowledgePointModel", "LearningRecordModel", "QuizResultModel", "ResourceTaskModel",
     "TrendDataModel",
     "PointsModel", "AchievementModel", "TaskModel", "LeaderboardModel",
     "LearningLogModel", "ReflectionModel",

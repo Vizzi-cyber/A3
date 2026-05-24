@@ -1,23 +1,23 @@
 """
 知识点管理API
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel
-from .auth import require_auth
+from .auth import require_auth, get_current_student_id
 
 router = APIRouter()
 
 
 class KnowledgePointCreate(BaseModel):
-    kp_id: str
-    name: str
-    subject: str
-    difficulty: float = 0.5
+    kp_id: str = Field(..., max_length=64)
+    name: str = Field(..., max_length=256)
+    subject: str = Field(..., max_length=64)
+    difficulty: float = Field(0.5, ge=0.0, le=1.0)
     prerequisites: List[str] = []
     description: Optional[str] = None
     tags: List[str] = []
@@ -45,7 +45,7 @@ async def create_kp(request: KnowledgePointCreate, db: Session = Depends(get_db)
 
 
 @router.get("/list")
-async def list_kps(subject: Optional[str] = None, db: Session = Depends(get_db)):
+async def list_kps(subject: Optional[str] = None, db: Session = Depends(get_db), _current: str = Depends(get_current_student_id)):
     """列出知识点"""
     query = db.query(KnowledgePointModel)
     if subject:
@@ -68,17 +68,19 @@ async def list_kps(subject: Optional[str] = None, db: Session = Depends(get_db))
 
 
 @router.get("/search")
-async def search_kps(q: str, limit: int = 10, db: Session = Depends(get_db)):
+async def search_kps(q: str = Query(..., min_length=1, max_length=200), limit: int = Query(10, ge=1, le=100), db: Session = Depends(get_db), _current: str = Depends(get_current_student_id)):
     """搜索知识点（按名称、学科、描述、标签模糊匹配）—— 单次查询避免重复加载"""
-    keyword = f"%{q}%"
+    # 转义 LIKE 通配符防止注入
+    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    keyword = f"%{escaped}%"
     # 放宽 limit 给标签过滤留余量，避免二次查询
     kps = (
         db.query(KnowledgePointModel)
         .filter(
             or_(
-                KnowledgePointModel.name.ilike(keyword),
-                KnowledgePointModel.subject.ilike(keyword),
-                KnowledgePointModel.description.ilike(keyword),
+                KnowledgePointModel.name.ilike(keyword, escape="\\"),
+                KnowledgePointModel.subject.ilike(keyword, escape="\\"),
+                KnowledgePointModel.description.ilike(keyword, escape="\\"),
             )
         )
         .limit(limit * 3)
@@ -105,7 +107,7 @@ async def search_kps(q: str, limit: int = 10, db: Session = Depends(get_db)):
 
 
 @router.get("/{kp_id}")
-async def get_kp(kp_id: str, db: Session = Depends(get_db)):
+async def get_kp(kp_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取知识点详情"""
     kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == kp_id).first()
     if not kp:

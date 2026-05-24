@@ -7,7 +7,7 @@
 """
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 # 基础敏感词库（示例，生产环境应接入专业内容审核 API）
 SENSITIVE_KEYWORDS = [
@@ -26,7 +26,7 @@ class SafetyGuard:
     """内容安全守卫"""
 
     @staticmethod
-    def check_input(text: str | List[Dict[str, Any]]) -> Dict[str, Any]:
+    def check_input(text: Union[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
         """检查用户输入是否包含敏感内容（支持纯文本或图文数组）"""
         if isinstance(text, list):
             # 提取图文数组中的所有文本内容进行检查

@@ -33,6 +33,8 @@ class AddFavoriteRequest(BaseModel):
 @router.get("/{student_id}")
 async def get_favorites(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生收藏列表"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's favorites")
     items = (
         db.query(FavoriteModel)
         .filter(FavoriteModel.student_id == student_id)
@@ -59,6 +61,8 @@ async def get_favorites(student_id: str, db: Session = Depends(get_db), _current
 @router.post("/{student_id}")
 async def add_favorite(student_id: str, request: FavoriteItem, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """添加收藏"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's favorites")
     fav = FavoriteModel(
         id=f"fav_{uuid.uuid4().hex[:12]}",
         student_id=student_id,
@@ -76,6 +80,8 @@ async def add_favorite(student_id: str, request: FavoriteItem, db: Session = Dep
 @router.delete("/{student_id}/{favorite_id}")
 async def remove_favorite(student_id: str, favorite_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """删除收藏"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's favorites")
     item = db.query(FavoriteModel).filter(
         FavoriteModel.student_id == student_id,
         FavoriteModel.id == favorite_id,

@@ -797,8 +797,8 @@ async def generate_ppt(
         try:
             from ..services.llm_factory import get_llm
             llm = get_llm("bigmodel")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"PPT生成LLM初始化失败，将使用默认大纲: {e}")
 
     outline = await generate_ppt_outline(topic, subject, llm)
 

@@ -3,7 +3,7 @@
 直接调用 TutorAgent，避免 LangGraph 多层路由延迟
 """
 import asyncio
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timezone
@@ -11,9 +11,12 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from ..agents import TutorAgent
+from ..core.logger import setup_logger
 from ..models.database import get_db
 from ..models.tutor_qa import TutorQAModel
 from .auth import get_current_student_id, require_auth
+
+logger = setup_logger()
 
 router = APIRouter()
 
@@ -78,7 +81,8 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
                     "cognitive_style": p.cognitive_style or {},
                     "interest_areas": p.interest_areas or [],
                 }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"获取画像失败: {e}")
             profile_for_prompt = {}
 
     result: Optional[Dict[str, Any]] = None
@@ -102,7 +106,8 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
             answer = "服务暂时不可用，请稍后再试。"
     except asyncio.TimeoutError:
         answer = "模型响应超时，请重试或切换到WebSocket流式模式。"
-    except Exception:
+    except Exception as e:
+        logger.error(f"辅导问答异常: {e}")
         answer = "服务暂时不可用，请稍后再试。"
 
     # 持久化问答记录
@@ -124,7 +129,8 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
         )
         db.add(qa)
         db.commit()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"问答记录持久化失败: {e}")
         db.rollback()
 
     return TutorResponse(
@@ -215,7 +221,8 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                                 )
                         finally:
                             _db.close()
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"WebSocket画像获取失败: {e}")
                         profile_snippet = ""
 
                 # 构建消息历史
@@ -306,8 +313,8 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                         db.commit()
                     finally:
                         db.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"WebSocket问答记录持久化失败: {e}")
 
                 await manager.send_message(session_id, {
                     "type": "complete",
@@ -361,7 +368,7 @@ async def get_session_history(session_id: str, db: Session = Depends(get_db), _c
 async def get_student_qa_history(
     student_id: str,
     session_id: Optional[str] = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     _current: str = Depends(require_auth),
 ):

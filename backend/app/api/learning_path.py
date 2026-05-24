@@ -5,8 +5,12 @@
 """
 import asyncio
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
+
+from ..core.logger import setup_logger
+
+logger = setup_logger()
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -26,12 +30,12 @@ _path_planner_agent = PathPlannerAgent()
 class PathGenerationRequest(BaseModel):
     """路径生成请求"""
     student_id: str
-    target_topic: str
+    target_topic: str = Field(..., max_length=500)
     current_knowledge: Optional[List[str]] = None
-    time_constraint: Optional[int] = None
+    time_constraint: Optional[int] = Field(None, ge=1, le=365)
     preference: Optional[str] = None
-    daily_duration: Optional[int] = None
-    difficulty: Optional[int] = None
+    daily_duration: Optional[int] = Field(None, ge=1, le=480)
+    difficulty: Optional[int] = Field(None, ge=1, le=10)
 
 
 class PathAdjustmentRequest(BaseModel):
@@ -58,6 +62,8 @@ class DAGPathAdjustRequest(BaseModel):
 @router.post("/generate")
 async def generate_learning_path(request: PathGenerationRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """生成个性化学习路径 —— 直接调用 PathPlannerAgent，避免 LangGraph 多层路由延迟"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot generate path for other student")
 
     # 加载学生画像用于个性化
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
@@ -83,8 +89,10 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
         )
         raw_path = result.get("path", {}) if isinstance(result, dict) else {}
     except asyncio.TimeoutError:
+        logger.warning(f"路径规划超时: student_id={student_id}")
         raw_path = {}
-    except Exception:
+    except Exception as e:
+        logger.warning(f"路径规划异常: {e}")
         raw_path = {}
 
     # 如果 agent 失败或超时，使用 DAG 算法生成路径
@@ -195,6 +203,8 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 @router.get("/{student_id}/current")
 async def get_current_path(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取当前学习路径 —— 基于数据库知识点动态构建"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's path")
     kps = db.query(KnowledgePointModel).order_by(KnowledgePointModel.created_at.asc()).all()
     # 使用聚合查询计算每个KP的最大进度，避免加载全部记录
     since = datetime.now(timezone.utc) - timedelta(days=365)
@@ -256,6 +266,8 @@ async def adjust_path(
     student_id: str, adjustment: PathAdjustmentRequest, _current: str = Depends(require_auth)
 ):
     """调整学习路径 —— 直接调用 PathPlannerAgent"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot adjust other student's path")
     path_data = adjustment.current_path or {}
 
     try:
@@ -273,9 +285,9 @@ async def adjust_path(
             if raw and raw.get("stages"):
                 path_data = raw
     except asyncio.TimeoutError:
-        pass
-    except Exception:
-        pass
+        logger.warning(f"路径调整超时: student_id={student_id}")
+    except Exception as e:
+        logger.warning(f"路径调整异常: {e}")
 
     return {
         "status": "success",
@@ -289,6 +301,8 @@ async def adjust_path(
 @router.post("/dag/generate")
 async def generate_dag_path(request: DAGPathRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """基于DAG生成学习路径"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot generate path for other student")
     # 查询所有知识点构建图
     kps = db.query(KnowledgePointModel).all()
     if not kps:
@@ -331,6 +345,8 @@ async def generate_dag_path(request: DAGPathRequest, db: Session = Depends(get_d
 @router.post("/dag/adjust")
 async def adjust_dag_path(request: DAGPathAdjustRequest, _current: str = Depends(require_auth)):
     """动态调整DAG路径"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot adjust other student's path")
     planner = DAGPathPlanner()
     result = planner.adjust_path(
         current_path=request.current_path,

@@ -13,15 +13,10 @@ from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel, KnowledgePointModel
 from ..models.gamification import PointsModel, AchievementModel, TaskModel
 from ..models.student import StudentProfileModel
+from ..utils import safe_float, calculate_streak
+from .auth import require_auth
 
 router = APIRouter()
-
-
-def _safe_float(v, default=0.0):
-    try:
-        return float(v) if v is not None else default
-    except (ValueError, TypeError):
-        return default
 
 
 # ---------- 学习挑战 ----------
@@ -112,7 +107,7 @@ CHALLENGE_DEFS = [
 
 
 @router.get("/{student_id}/challenges")
-def get_challenges(student_id: str, db: Session = Depends(get_db)):
+def get_challenges(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取挑战列表及进度"""
 
     now = datetime.now(timezone.utc)
@@ -146,18 +141,11 @@ def get_challenges(student_id: str, db: Session = Depends(get_db)):
         LearningRecordModel.student_id == student_id,
     ).all()
 
-    dates = set()
+    dates = []
     for r in all_records:
         if r.created_at:
-            dates.add(r.created_at.strftime("%Y-%m-%d"))
-    sorted_dates = sorted(dates, reverse=True)
-    streak = 0
-    for i, d in enumerate(sorted_dates):
-        expected = (now.date() - timedelta(days=i)).isoformat()
-        if d == expected:
-            streak += 1
-        else:
-            break
+            dates.append(r.created_at.strftime("%Y-%m-%d"))
+    streak = calculate_streak(dates)
 
     # 成就数
     achievement_count = db.query(AchievementModel).filter(
@@ -243,6 +231,7 @@ def get_leaderboard(
     period: str = Query("weekly", regex="^(daily|weekly|monthly|all)$"),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
 ):
     """
     多维度排行榜
@@ -285,25 +274,30 @@ def get_leaderboard(
             })
 
     elif dimension == "streak":
-        # 基于学习记录计算连续天数
-        all_students = db.query(
-            LearningRecordModel.student_id
-        ).distinct().all()
+        # 基于学习记录计算连续天数 —— 批量查询避免 N+1
+        from sqlalchemy import func as sa_func_date
+        date_query = db.query(
+            LearningRecordModel.student_id,
+            sa_func.date(LearningRecordModel.created_at).label("day")
+        ).distinct()
+        if start:
+            date_query = date_query.filter(LearningRecordModel.created_at >= start)
+        all_date_rows = date_query.all()
+
+        # 按 student_id 分组
+        student_dates: Dict[str, set] = {}
+        for sid, day in all_date_rows:
+            if sid not in student_dates:
+                student_dates[sid] = set()
+            student_dates[sid].add(str(day))
 
         streak_data = []
-        for (sid,) in all_students:
-            records = db.query(LearningRecordModel).filter(
-                LearningRecordModel.student_id == sid,
-            ).all()
-            dates = set()
-            for r in records:
-                if r.created_at:
-                    dates.add(r.created_at.strftime("%Y-%m-%d"))
-            sorted_dates = sorted(dates, reverse=True)
+        today = now.date()
+        for sid, dates in student_dates.items():
             streak = 0
-            for j, d in enumerate(sorted_dates):
-                expected = (now.date() - timedelta(days=j)).isoformat()
-                if d == expected:
+            for j in range(365):
+                expected = (today - timedelta(days=j)).isoformat()
+                if expected in dates:
                     streak += 1
                 else:
                     break
@@ -315,57 +309,48 @@ def get_leaderboard(
             results.append({**item, "rank": i + 1})
 
     elif dimension == "mastery":
-        # 基于掌握的知识点数
-        all_students = db.query(
-            LearningRecordModel.student_id
-        ).distinct().all()
+        # 基于掌握的知识点数 —— 批量查询避免 N+1
+        mastery_query = db.query(
+            LearningRecordModel.student_id,
+            sa_func.count(sa_func.distinct(LearningRecordModel.kp_id))
+        ).filter(
+            (LearningRecordModel.action == "complete") | (LearningRecordModel.progress >= 1.0)
+        )
+        if start:
+            mastery_query = mastery_query.filter(LearningRecordModel.created_at >= start)
+        mastery_rows = mastery_query.group_by(LearningRecordModel.student_id).all()
 
-        mastery_data = []
-        for (sid,) in all_students:
-            query_filter = [LearningRecordModel.student_id == sid]
-            if start:
-                query_filter.append(LearningRecordModel.created_at >= start)
-            records = db.query(LearningRecordModel).filter(*query_filter).all()
-            completed = set()
-            for r in records:
-                if r.action == "complete" or _safe_float(r.progress) >= 1.0:
-                    completed.add(r.kp_id)
-            if completed:
-                mastery_data.append({"student_id": sid, "score": len(completed)})
-
+        mastery_data = [{"student_id": sid, "score": cnt} for sid, cnt in mastery_rows if cnt > 0]
         mastery_data.sort(key=lambda x: x["score"], reverse=True)
         for i, item in enumerate(mastery_data[:limit]):
             results.append({**item, "rank": i + 1})
 
     elif dimension == "quiz_score":
-        # 基于测验均分
-        all_students = db.query(
-            QuizResultModel.student_id
-        ).distinct().all()
+        # 基于测验均分 —— 使用 SQL 聚合避免 N+1
+        score_query = db.query(
+            QuizResultModel.student_id,
+            sa_func.avg(QuizResultModel.score).label("avg_score"),
+            sa_func.count(QuizResultModel.id).label("cnt")
+        )
+        if start:
+            score_query = score_query.filter(QuizResultModel.created_at >= start)
+        score_rows = score_query.group_by(QuizResultModel.student_id).all()
 
-        score_data = []
-        for (sid,) in all_students:
-            query_filter = [QuizResultModel.student_id == sid]
-            if start:
-                query_filter.append(QuizResultModel.created_at >= start)
-            quizzes = db.query(QuizResultModel).filter(*query_filter).all()
-            if quizzes:
-                avg = sum(q.score or 0 for q in quizzes) / len(quizzes)
-                score_data.append({"student_id": sid, "score": round(avg, 1)})
-
+        score_data = [{"student_id": sid, "score": round(float(avg), 1)} for sid, avg, cnt in score_rows if cnt > 0]
         score_data.sort(key=lambda x: x["score"], reverse=True)
         for i, item in enumerate(score_data[:limit]):
             results.append({**item, "rank": i + 1})
     else:
         return {"status": "error", "message": f"未知维度: {dimension}"}
 
-    # 补充用户名
+    # 补充用户名 —— 批量查询避免 N+1
     from ..models.user import UserModel
-    for item in results:
-        user = db.query(UserModel).filter(
-            UserModel.student_id == item["student_id"]
-        ).first()
-        item["username"] = user.username if user else item["student_id"]
+    if results:
+        student_ids = [item["student_id"] for item in results]
+        users = db.query(UserModel).filter(UserModel.student_id.in_(student_ids)).all()
+        user_map = {u.student_id: u.username for u in users}
+        for item in results:
+            item["username"] = user_map.get(item["student_id"], item["student_id"])
 
     return {
         "status": "success",

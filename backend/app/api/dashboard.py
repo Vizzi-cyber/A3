@@ -16,6 +16,7 @@ from ..models.trend import TrendDataModel
 from ..algorithms.effect_evaluation import LearningEffectEvaluator
 from ..algorithms.trend_analysis import MultiFactorTrendAnalyzer
 from .auth import require_auth
+from ..utils import calculate_streak
 
 router = APIRouter()
 
@@ -55,7 +56,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
     # ---------- 连续打卡（简化：最近有学习记录的天数）—— 只查询日期字段 ----------
     year_ago = today_start - timedelta(days=365)
     recent_days = [
-        row[0]
+        str(row[0])
         for row in db.query(func.date(LearningRecordModel.created_at))
         .filter(
             LearningRecordModel.student_id == student_id,
@@ -63,18 +64,9 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
         )
         .distinct()
         .all()
+        if row[0]
     ]
-    streak = 0
-    if recent_days:
-        # 兼容 SQLite（字符串）与 PostgreSQL（date 对象）
-        seen_days = {datetime.strptime(str(d), "%Y-%m-%d").date() for d in recent_days if d}
-        today = datetime.now(timezone.utc).date()
-        for i in range(365):
-            d = today - timedelta(days=i)
-            if d in seen_days:
-                streak += 1
-            else:
-                break
+    streak = calculate_streak(recent_days)
 
     # ---------- 掌握知识点数（进度 >= 0.8 的去重 kp_id）—— 数据库层去重 ----------
     mastered_kps = {
@@ -254,7 +246,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
 
 
 @router.get("/{student_id}/timeline")
-async def get_growth_timeline(student_id: str, db: Session = Depends(get_db)):
+async def get_growth_timeline(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取成长时间轴数据 — 里程碑事件列表"""
 
     # 查询学习记录（最近90天）
@@ -283,19 +275,30 @@ async def get_growth_timeline(student_id: str, db: Session = Depends(get_db)):
 
     milestones = []
 
-    # 掌握知识点里程碑
+    # 掌握知识点里程碑 —— 批量查询避免 N+1
     completed_kps = set()
+    candidate_kp_ids = set()
     for r in records:
         if r.action == "complete" or (r.progress and float(r.progress) >= 1.0):
             if r.kp_id not in completed_kps:
                 completed_kps.add(r.kp_id)
-                kp = db.query(KnowledgePointModel).filter(
-                    KnowledgePointModel.kp_id == r.kp_id
-                ).first() if hasattr(r, 'kp_id') else None
+                candidate_kp_ids.add(r.kp_id)
+
+    kp_name_map = {}
+    if candidate_kp_ids:
+        kps = db.query(KnowledgePointModel).filter(
+            KnowledgePointModel.kp_id.in_(candidate_kp_ids)
+        ).all()
+        kp_name_map = {kp.kp_id: kp.name for kp in kps}
+
+    for r in records:
+        if r.action == "complete" or (r.progress and float(r.progress) >= 1.0):
+            if r.kp_id in completed_kps:
+                completed_kps.discard(r.kp_id)  # 只处理一次
                 milestones.append({
                     "date": _fmt_iso(r.created_at),
                     "type": "mastery",
-                    "title": f"掌握「{kp.name if kp else r.kp_id}」",
+                    "title": f"掌握「{kp_name_map.get(r.kp_id, r.kp_id)}」",
                     "icon": "trophy",
                     "color": "#10b981",
                 })

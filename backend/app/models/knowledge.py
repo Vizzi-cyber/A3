@@ -13,7 +13,7 @@ class KnowledgePointModel(Base):
 
     kp_id = Column(String(64), primary_key=True, index=True)
     name = Column(String(256), nullable=False)
-    subject = Column(String(64), nullable=False)
+    subject = Column(String(64), nullable=False, index=True)
     difficulty = Column(Float, default=0.5)  # 0.0 ~ 1.0
     prerequisites = Column(JSON, default=list)  # 前置知识点ID列表
     description = Column(Text, nullable=True)
@@ -79,3 +79,16 @@ class ResourceFeedbackModel(Base):
     __table_args__ = (
         Index("ix_resource_feedback_student_kp", "student_id", "kp_id", unique=True),
     )
+
+
+class ResourceTaskModel(Base):
+    """资源生成任务持久化表"""
+    __tablename__ = "resource_tasks"
+
+    task_id = Column(String(64), primary_key=True, index=True)
+    status = Column(String(32), default="pending")  # pending / running / completed / failed
+    progress = Column(Float, default=0.0)
+    resources = Column(JSON, default=dict)
+    message = Column(String(512), default="")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

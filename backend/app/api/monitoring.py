@@ -5,7 +5,7 @@
 - 服务健康监控
 - 异常告警
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
@@ -22,7 +22,7 @@ router = APIRouter()
 # ---------- 接口性能监控 ----------
 
 @router.get("/api-stats")
-async def get_api_stats(minutes: int = 60, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def get_api_stats(minutes: int = Query(60, ge=1, le=1440), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """接口统计"""
     since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
     rows = db.query(ApiMonitorModel).filter(ApiMonitorModel.created_at >= since).all()
@@ -49,7 +49,7 @@ async def get_api_stats(minutes: int = 60, db: Session = Depends(get_db), _curre
 # ---------- 模型调用监控 ----------
 
 @router.get("/llm-stats")
-async def get_llm_stats(minutes: int = 60, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def get_llm_stats(minutes: int = Query(60, ge=1, le=1440), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """大模型调用统计"""
     since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
     rows = db.query(LlmCallModel).filter(LlmCallModel.created_at >= since).all()
@@ -78,7 +78,7 @@ async def get_llm_stats(minutes: int = 60, db: Session = Depends(get_db), _curre
 # ---------- 服务健康 ----------
 
 @router.get("/health")
-async def get_system_health(db: Session = Depends(get_db)):
+async def get_system_health(db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """系统健康状态"""
     latest = db.query(SystemHealthModel).order_by(SystemHealthModel.recorded_at.desc()).first()
     if not latest:

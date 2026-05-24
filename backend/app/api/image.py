@@ -4,12 +4,13 @@
 兼容回退：火山引擎视觉智能 OpenAPI（异步任务）
 """
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timezone
 import asyncio
 
 from .auth import require_auth
+from ..core.logger import setup_logger
 from ..services.image_generation import (
     generate_image_ark,
     submit_image_task,
@@ -17,15 +18,17 @@ from ..services.image_generation import (
     ImageGenerationError,
 )
 
+logger = setup_logger()
+
 router = APIRouter()
 
 
 class ImageGenerateRequest(BaseModel):
-    prompt: str
-    width: int = 1328
-    height: int = 1328
+    prompt: str = Field(..., max_length=2000)
+    width: int = Field(1328, ge=64, le=4096)
+    height: int = Field(1328, ge=64, le=4096)
     seed: int = -1
-    scale: float = 2.5
+    scale: float = Field(2.5, ge=0.1, le=20.0)
     use_pre_llm: bool = True
 
 
@@ -58,7 +61,8 @@ def _load_image_tasks():
         try:
             with open(_IMAGE_TASKS_PATH, "r", encoding="utf-8") as f:
                 _image_tasks = json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"加载图片任务文件失败: {e}")
             _image_tasks = {}
     else:
         _image_tasks = {}
@@ -83,8 +87,8 @@ def _save_image_tasks():
     try:
         with open(_IMAGE_TASKS_PATH, "w", encoding="utf-8") as f:
             json.dump(_image_tasks, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"保存图片任务文件失败: {e}")
 
 
 _load_image_tasks()

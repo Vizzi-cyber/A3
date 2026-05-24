@@ -288,8 +288,8 @@ const LeaderboardPlus: React.FC = () => {
     DIMENSIONS.find((d) => d.key === activeDim) || DIMENSIONS[0];
 
   useEffect(() => {
+    let ignore = false;
     setLoading(true);
-    // 后端只有4个维度，AI协作和进步最快复用points/mastery
     const apiDim =
       activeDim === "ai_collab"
         ? "points"
@@ -300,25 +300,19 @@ const LeaderboardPlus: React.FC = () => {
     leaderboardPlusApi
       .get(apiDim, period, 20)
       .then((res) => {
-        let data = res.data.data.entries || [];
-        // AI协作榜和进步最快榜做分数变换增加区分度
-        if (activeDim === "ai_collab") {
-          data = data.map((e, i) => ({
-            ...e,
-            score: Math.round(e.score * (0.8 + Math.random() * 0.4)),
-          }));
-        } else if (activeDim === "improvement") {
-          data = data.map((e, i) => ({
-            ...e,
-            score: Math.round(10 + Math.random() * 40),
-          }));
-        }
+        if (ignore) return;
+        const data = res.data.data.entries || [];
         setEntries(data);
       })
       .catch(() => {
-        message.error("获取排行榜数据失败");
+        if (!ignore) message.error("获取排行榜数据失败");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [activeDim, period]);
 
   // 入场动画

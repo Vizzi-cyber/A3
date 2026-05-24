@@ -7,8 +7,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from .auth import require_auth
 
 router = APIRouter()
 
@@ -21,6 +23,7 @@ class AgentFlowStore:
         self._runs: Dict[str, Dict[str, Any]] = {}
 
     def create_run(self, run_id: str, student_id: str, task_type: str):
+        self.cleanup_old()
         self._runs[run_id] = {
             "run_id": run_id,
             "student_id": student_id,
@@ -130,7 +133,7 @@ class AgentFlowStatusResponse(BaseModel):
 
 # ---------- 路由 ----------
 @router.post("/run")
-async def start_agent_flow(request: AgentFlowRunRequest):
+async def start_agent_flow(request: AgentFlowRunRequest, _current: str = Depends(require_auth)):
     """启动一次多智能体工作流执行"""
     run_id = str(uuid.uuid4())[:12]
     flow_store.create_run(run_id, request.student_id, request.task_type)
@@ -142,7 +145,7 @@ async def start_agent_flow(request: AgentFlowRunRequest):
 
 
 @router.get("/{run_id}/status")
-async def get_agent_flow_status(run_id: str):
+async def get_agent_flow_status(run_id: str, _current: str = Depends(require_auth)):
     """查询工作流执行状态"""
     run = flow_store.get_run(run_id)
     if not run:

@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
 class DocumentGenerateRequest(BaseModel):
     student_id: str
-    topic: str
+    topic: str = Field(..., max_length=500)
     difficulty: str = "medium"
     kp_id: Optional[str] = None
 
@@ -17,8 +17,8 @@ class DocumentGenerateResponse(BaseModel):
 
 class QuestionsGenerateRequest(BaseModel):
     student_id: str
-    topic: str
-    count: int = 5
+    topic: str = Field(..., max_length=500)
+    count: int = Field(5, ge=1, le=20)
     kp_id: Optional[str] = None
 
 
@@ -31,7 +31,7 @@ class QuestionsGenerateResponse(BaseModel):
 
 class MindmapGenerateRequest(BaseModel):
     student_id: str
-    topic: str
+    topic: str = Field(..., max_length=500)
     kp_id: Optional[str] = None
 
 
@@ -43,7 +43,7 @@ class MindmapGenerateResponse(BaseModel):
 
 class CodeGenerateRequest(BaseModel):
     student_id: str
-    topic: str
+    topic: str = Field(..., max_length=500)
     language: str = "Python"
     kp_id: Optional[str] = None
 
@@ -56,7 +56,7 @@ class CodeGenerateResponse(BaseModel):
 
 
 class CodeExecuteRequest(BaseModel):
-    code: str
+    code: str = Field(..., max_length=50000)
     language: str = "Python"
     kp_id: Optional[str] = None
 

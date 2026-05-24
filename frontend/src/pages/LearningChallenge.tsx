@@ -430,19 +430,26 @@ const LearningChallenge: React.FC = () => {
   const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let ignore = false;
     setLoading(true);
     challengeApi
       .getChallenges(studentId)
       .then((res) => {
+        if (ignore) return;
         const data = res.data.data;
         setChallenges(data.challenges);
         setMapNodes(data.map_nodes);
         setSummary(data.summary);
       })
       .catch(() => {
-        message.error("获取挑战数据失败");
+        if (!ignore) message.error("获取挑战数据失败");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [studentId]);
 
   // 入场动画

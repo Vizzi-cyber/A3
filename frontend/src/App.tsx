@@ -4,7 +4,9 @@ import { Layout, Spin } from "antd";
 import AppHeader from "./components/AppHeader";
 import Sidebar from "./components/Sidebar";
 import GlobalToast from "./components/GlobalToast";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import Login from "./pages/Login";
+import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import { useAppStore } from "./store";
 import { authApi } from "./services/api";
@@ -80,98 +82,100 @@ const PrivateLayout: React.FC = () => {
       >
         <AppHeader />
         <Content className="p-6 md:p-8 min-h-[280px]">
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <PageWrapper>
-                    <Dashboard />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <PageWrapper>
-                    <Profile />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/learning-path"
-                element={
-                  <PageWrapper>
-                    <LearningPath />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/resources"
-                element={
-                  <PageWrapper>
-                    <ResourceCenter />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/resource/:kpId"
-                element={
-                  <PageWrapper>
-                    <ResourceDetail />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/personal"
-                element={
-                  <PageWrapper>
-                    <PersonalSpace />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/knowledge-tree"
-                element={
-                  <PageWrapper>
-                    <KnowledgeTree />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/challenges"
-                element={
-                  <PageWrapper>
-                    <LearningChallenge />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/leaderboard"
-                element={
-                  <PageWrapper>
-                    <LeaderboardPlus />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="/tutor"
-                element={
-                  <PageWrapper>
-                    <Tutor />
-                  </PageWrapper>
-                }
-              />
-              <Route
-                path="*"
-                element={
-                  <PageWrapper>
-                    <NotFound />
-                  </PageWrapper>
-                }
-              />
-            </Routes>
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <PageWrapper>
+                      <Dashboard />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <PageWrapper>
+                      <Profile />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/learning-path"
+                  element={
+                    <PageWrapper>
+                      <LearningPath />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/resources"
+                  element={
+                    <PageWrapper>
+                      <ResourceCenter />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/resource/:kpId"
+                  element={
+                    <PageWrapper>
+                      <ResourceDetail />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/personal"
+                  element={
+                    <PageWrapper>
+                      <PersonalSpace />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/knowledge-tree"
+                  element={
+                    <PageWrapper>
+                      <KnowledgeTree />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/challenges"
+                  element={
+                    <PageWrapper>
+                      <LearningChallenge />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/leaderboard"
+                  element={
+                    <PageWrapper>
+                      <LeaderboardPlus />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/tutor"
+                  element={
+                    <PageWrapper>
+                      <Tutor />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="*"
+                  element={
+                    <PageWrapper>
+                      <NotFound />
+                    </PageWrapper>
+                  }
+                />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </Content>
       </Layout>
     </Layout>
@@ -223,10 +227,12 @@ const App: React.FC = () => {
         element={isLoggedIn ? <Navigate to="/" replace /> : <Login />}
       />
       <Route
+        path="/"
+        element={isLoggedIn ? <PrivateLayout /> : <LandingPage />}
+      />
+      <Route
         path="/*"
-        element={
-          isLoggedIn ? <PrivateLayout /> : <Navigate to="/login" replace />
-        }
+        element={isLoggedIn ? <PrivateLayout /> : <Navigate to="/" replace />}
       />
     </Routes>
   );

@@ -739,17 +739,23 @@ const KnowledgeTree: React.FC = () => {
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
+    let ignore = false;
     setLoading(true);
     fetchLevelConfig().catch(() => {});
     knowledgeTreeApi
       .getTree(studentId)
       .then((res) => {
-        setData(res.data.data);
+        if (!ignore) setData(res.data.data);
       })
       .catch(() => {
-        message.error("获取知识树数据失败");
+        if (!ignore) message.error("获取知识树数据失败");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [studentId]);
 
   // 测量树容器尺寸给粒子Canvas

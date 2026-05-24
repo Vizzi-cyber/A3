@@ -10,8 +10,12 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.core.config import settings
 from app.models.database import Base
 from app.models.user import UserModel
+
+if not settings.DEBUG:
+    raise RuntimeError("seed_data.py 只能在 DEBUG 模式下运行，生产环境禁止执行！")
 from app.models.student import StudentProfileModel
 from app.models.knowledge import KnowledgePointModel, LearningRecordModel, QuizResultModel
 from app.models.trend import TrendDataModel

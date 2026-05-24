@@ -5,6 +5,10 @@ C语言课程内容库
 import json
 from typing import Dict, Any, Optional
 
+from ..core.logger import setup_logger
+
+logger = setup_logger()
+
 # 本地 fallback（当数据库不可用时使用）
 _FALLBACK_LIBRARY: Dict[str, Dict[str, Any]] = {}
 
@@ -41,7 +45,8 @@ def get_content(kp_id: str) -> Optional[Dict[str, Any]]:
             return result
         finally:
             db.close()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"内容库查询失败，回退到本地数据: {e}")
         _load_fallback()
         return _FALLBACK_LIBRARY.get(kp_id)
 
@@ -62,7 +67,8 @@ def get_content_by_topic(topic: str) -> Optional[Dict[str, Any]]:
             return get_content(kp.kp_id)
         finally:
             db.close()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"内容库主题查询失败: {e}")
         return None
 
 

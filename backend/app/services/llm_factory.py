@@ -8,7 +8,10 @@ import re
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Dict, Any, List, Optional
 
-from openai import AsyncOpenAI
+try:
+    from openai import AsyncOpenAI
+except ImportError:
+    AsyncOpenAI = None
 
 from ..core.config import settings
 from ..core.logger import setup_logger
@@ -92,6 +95,8 @@ class OpenAICompatibleLLM(BaseLLM):
         model: str,
         timeout: float = _DEFAULT_TIMEOUT,
     ):
+        if AsyncOpenAI is None:
+            raise ImportError("openai package is not installed. Please install it to use LLM features.")
         if not api_key:
             raise ValueError(f"API key is required for model {model}")
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
@@ -114,8 +119,8 @@ class OpenAICompatibleLLM(BaseLLM):
                 db.commit()
             finally:
                 db.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"LLM调用记录持久化失败: {e}")
 
     async def ainvoke(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> str:
         """非流式调用，默认关闭智谱 thinking 以加快响应"""
