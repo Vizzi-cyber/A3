@@ -15,6 +15,7 @@ import {
   Badge,
   Tooltip,
   Modal,
+  Calendar,
 } from "antd";
 import {
   Radar,
@@ -50,6 +51,8 @@ import {
   MenuOutlined,
   DownOutlined,
   UpOutlined,
+  MoreOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import {
@@ -99,7 +102,6 @@ const RESOURCE_META: Record<
 const POMODORO_FOCUS = 25 * 60;
 const POMODORO_BREAK = 5 * 60;
 
-// 徽章 / 成就 图标映射（按名称关键字模糊匹配，不再硬编码具体徽章列表）
 const badgeIcon = (name: string): { icon: React.ReactNode; color: string } => {
   if (/code|代码|编程/i.test(name))
     return { icon: <CodeOutlined />, color: "#3b82f6" };
@@ -209,7 +211,7 @@ const Dashboard: React.FC = () => {
   const pathRef = useRef<SVGPathElement>(null);
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Pomodoro timer —— 用 Date.now() 差值计算剩余秒数，避免后台标签页被节流时不能按时结束
+  // Pomodoro timer
   useEffect(() => {
     if (!isPomodoroRunning) {
       pomodoroEndRef.current = null;
@@ -262,7 +264,6 @@ const Dashboard: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       setSummaryLoading(true);
-      // 10秒超时兜底
       timeoutId = setTimeout(() => {
         setIsLoading(false);
         setSummaryLoading(false);
@@ -344,7 +345,6 @@ const Dashboard: React.FC = () => {
           );
         }
 
-        // 等级 / 经验值 —— 由后端配置统一计算
         if (pointsRes?.data?.data) {
           const total = pointsRes.data.data.total_points || 0;
           const lv = calcLevel(total);
@@ -357,7 +357,6 @@ const Dashboard: React.FC = () => {
           });
         }
 
-        // 今日挑战 —— 来自 gamification tasks
         if (tasksRes?.data?.data) {
           setChallenges(
             tasksRes.data.data.slice(0, 3).map((t) => ({
@@ -369,7 +368,6 @@ const Dashboard: React.FC = () => {
           );
         }
 
-        // 知识图谱节点 —— 来自后端 knowledge.list
         if (kgRes?.data?.data?.length) {
           setKgNodes(
             kgRes.data.data.slice(0, 14).map((k) => ({
@@ -506,52 +504,90 @@ const Dashboard: React.FC = () => {
     sceneRefs.current[idx] = el;
   };
 
+  const completedCount = pathNodesState.filter(
+    (n) => n.status === "completed",
+  ).length;
+
+  const courseCards = useMemo(() => {
+    const list =
+      pathNodesState.length > 0
+        ? pathNodesState.slice(0, 3)
+        : [
+            {
+              id: "1",
+              title: "设计基础",
+              status: "in-progress",
+              type: "设计",
+            },
+            {
+              id: "2",
+              title: "UX设计原理",
+              status: "pending",
+              type: "UX",
+            },
+            {
+              id: "3",
+              title: "3D建模入门",
+              status: "pending",
+              type: "3D",
+            },
+          ];
+    const styles = [
+      {
+        bg: "bg-[#ede9fe]",
+        text: "text-[#5b21b6]",
+        bar: "bg-[#7c3aed]",
+        icon: <ApartmentOutlined />,
+        num: "01",
+      },
+      {
+        bg: "bg-[#fef3c7]",
+        text: "text-[#92400e]",
+        bar: "bg-[#d97706]",
+        icon: <RocketOutlined />,
+        num: "02",
+      },
+      {
+        bg: "bg-[#fef9c3]",
+        text: "text-[#713f12]",
+        bar: "bg-[#a16207]",
+        icon: <StarOutlined />,
+        num: "03",
+      },
+    ];
+    return list.map((course, i) => ({ ...course, ...styles[i] }));
+  }, [pathNodesState]);
+
+  const assignmentList = useMemo(() => {
+    return tasks.length > 0 ? tasks.slice(0, 5) : [];
+  }, [tasks]);
+
+  const upcomingList = useMemo(() => {
+    return tasks.length > 0 ? tasks.slice(0, 3) : [];
+  }, [tasks]);
+
+  const upcomingStyles = [
+    { bg: "bg-[#ede9fe]", text: "text-[#5b21b6]" },
+    { bg: "bg-[#fef3c7]", text: "text-[#92400e]" },
+    { bg: "bg-[#fef9c3]", text: "text-[#713f12]" },
+  ];
+
   return (
-    <div className="space-y-8">
-      {/* ===== 顶部静态区 ===== */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1">
-          <Typography.Title
-            level={3}
-            className="!m-0 text-slate-900 font-bold tracking-tight"
-          >
-            欢迎回来，学习者
-          </Typography.Title>
-          <Typography.Text className="text-slate-500 block mt-1">
-            今天继续学习{" "}
-            <span className="text-primary font-medium">{welcomeTopic}</span>{" "}
-            吗？
-          </Typography.Text>
-        </div>
-        <div className="flex items-center gap-5">
-          {/* 连续打卡 */}
-          {stats.streak_days > 0 && (
-            <div className="flex items-center gap-3 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl px-5 py-4">
-              <FireOutlined className="text-3xl text-orange-500" />
-              <div>
-                <div className="text-2xl font-extrabold text-orange-600 leading-tight">
-                  {stats.streak_days}
-                </div>
-                <div className="text-xs text-amber-600 font-medium">
-                  连续打卡天
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 px-6 py-4">
-            <div className="text-center">
-              <div className="text-xs text-slate-500 mb-1">当前等级</div>
-              <div className="text-xl font-bold text-primary">
-                Lv.{pointsInfo?.level ?? 1}
-              </div>
-            </div>
-            <div className="flex-1 w-40">
-              <div className="flex justify-between text-xs text-slate-500 mb-1">
-                <span>经验值</span>
-                <span>
-                  {pointsInfo?.current ?? 0} / {pointsInfo?.need ?? 500}
-                </span>
-              </div>
+    <div className="space-y-8 pb-12">
+      {/* ===== 顶部标题区 ===== */}
+      <div className="flex items-center justify-between">
+        <Typography.Title
+          level={3}
+          className="!m-0 text-slate-900 font-bold tracking-tight"
+        >
+          学习进度
+        </Typography.Title>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 bg-white rounded-full border border-slate-100 px-4 py-2">
+            <span className="text-xs text-slate-500">
+              Lv.{pointsInfo?.level ?? 1}
+            </span>
+            <div className="w-20">
               <Progress
                 percent={pointsInfo?.percent ?? 0}
                 showInfo={false}
@@ -560,217 +596,297 @@ const Dashboard: React.FC = () => {
                 size="small"
               />
             </div>
-            <Button
-              type="primary"
-              className="rounded-xl bg-primary"
-              onClick={() => navigate("/resources")}
-            >
-              继续学习 <ArrowRightOutlined />
-            </Button>
+          </div>
+          <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-200 transition-colors">
+            <CalendarOutlined />
+          </div>
+          <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-200 transition-colors relative">
+            <FireOutlined />
+            {stats.streak_days > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
+                {stats.streak_days}
+              </span>
+            )}
+          </div>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+            学
           </div>
         </div>
       </div>
 
-      {/* 统计 */}
-      <Row gutter={[20, 20]}>
-        {statCards.map((stat, idx) => (
-          <Col xs={12} lg={6} key={idx}>
-            <StatCard
-              icon={stat.icon}
-              color={stat.color}
-              title={stat.title}
-              value={stat.value}
-              suffix={stat.suffix}
-              onClick={() => navigate(stat.path)}
-            />
-          </Col>
-        ))}
-      </Row>
+      {/* ===== 学习进度横幅 ===== */}
+      <div className="bg-[#1e1b4b] rounded-3xl p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 text-white relative overflow-hidden">
+        {/* 装饰 */}
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/5" />
+        <div className="absolute bottom-0 left-1/3 w-28 h-28 rounded-full bg-white/5" />
+        <div className="absolute top-1/2 right-1/4 w-16 h-16 rounded-full bg-white/5" />
 
-      {/* 算法分析结果 */}
-      {algorithmAnalysis && (
-        <Row gutter={[20, 20]}>
-          <Col xs={24} lg={12}>
-            <SectionCard
-              title={
-                <Space>
-                  <NodeIndexOutlined className="text-primary text-lg" />
-                  <span className="font-semibold text-slate-800">
-                    学习趋势分析
+        {/* 左侧 */}
+        <div className="flex-1 flex flex-col justify-center relative z-10 min-w-[240px]">
+          <div className="text-sm text-indigo-200 mb-2">Hi, 学习者!</div>
+          <div className="text-2xl lg:text-3xl font-bold mb-6 leading-tight">
+            你本周已完成{" "}
+            <span className="text-indigo-300">{completedCount}</span> 节课!
+          </div>
+          <Button
+            className="w-fit rounded-full bg-white text-[#1e1b4b] border-0 font-semibold hover:bg-indigo-50 transition-colors px-6"
+            onClick={() => navigate("/learning-path")}
+          >
+            查看全部 <ArrowRightOutlined />
+          </Button>
+        </div>
+
+        {/* 右侧课程卡片 */}
+        <div className="flex gap-4 overflow-x-auto pb-2 relative z-10">
+          {courseCards.map((course) => {
+            const isCompleted = course.status === "completed";
+            const progressVal = isCompleted
+              ? 100
+              : course.status === "in-progress"
+                ? 60
+                : 20;
+            return (
+              <div
+                key={course.id}
+                className={`${course.bg} rounded-2xl p-5 min-w-[170px] flex-shrink-0 text-slate-800 cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1`}
+                onClick={() => navigate("/learning-path")}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <span className={`text-xs font-bold ${course.text}`}>
+                    {course.num}
                   </span>
-                </Space>
-              }
-            >
-              <div className="space-y-4">
-                {(() => {
-                  const state = algorithmAnalysis.trend_analysis?.trend_state;
-                  const trendCls =
-                    state === "growth"
-                      ? "bg-emerald-50 text-emerald-600"
-                      : state === "warning"
-                        ? "bg-red-50 text-red-600"
-                        : state === "decline"
-                          ? "bg-amber-50 text-amber-600"
-                          : "bg-slate-100 text-slate-600";
-                  const trendLabel =
-                    state === "growth"
-                      ? "上升趋势"
-                      : state === "warning"
-                        ? "预警"
-                        : state === "decline"
-                          ? "下滑"
-                          : "平稳";
-                  return (
-                    <StatRow
-                      label="趋势状态"
-                      value={
-                        <Tag
-                          className={`rounded-full border-0 text-xs font-medium ${trendCls}`}
-                        >
-                          {trendLabel}
-                        </Tag>
-                      }
-                    />
-                  );
-                })()}
-                <StatRow
-                  label="综合趋势因子"
-                  value={
-                    algorithmAnalysis.trend_analysis?.trend_factor?.toFixed(
-                      2,
-                    ) ?? "--"
-                  }
-                />
-                <StatRow
-                  label="3天后预测掌握度"
-                  value={`${algorithmAnalysis.trend_analysis?.predicted_mastery_3d?.toFixed(1) ?? "--"}%`}
-                  valueClassName="text-primary"
-                />
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 leading-relaxed">
-                  <strong>干预建议：</strong>
-                  {algorithmAnalysis.trend_analysis?.intervention || "暂无建议"}
+                  <MoreOutlined className="text-slate-400" />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(
-                    algorithmAnalysis.trend_analysis?.dimensions || {},
-                  ).map(([key, val]: [string, number]) => (
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-3 ${course.text}`}
+                >
+                  {course.icon}
+                </div>
+                <div className="font-bold text-sm mb-1 leading-tight">
+                  {course.title}
+                </div>
+                <div className="text-xs text-slate-500 mb-3">
+                  {course.type || "课程"}
+                </div>
+                <div className="w-full h-1.5 bg-white/60 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${course.bar}`}
+                    style={{ width: `${progressVal}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ===== 统计 + 日历 / 任务 + 待办 两栏 ===== */}
+      <Row gutter={[24, 24]}>
+        {/* 左侧主内容 */}
+        <Col xs={24} lg={16}>
+          {/* 统计 */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <Typography.Title
+                level={5}
+                className="!m-0 text-slate-800 font-semibold"
+              >
+                数据统计
+              </Typography.Title>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {statCards.map((stat, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl p-5 border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
+                  onClick={() => navigate(stat.path)}
+                >
+                  <div className="flex items-center gap-2 mb-3">
                     <div
-                      key={key}
-                      className="p-2 rounded-lg bg-slate-50 text-center"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm shrink-0"
+                      style={{ background: stat.color }}
                     >
-                      <div className="text-xs text-slate-400">
-                        {key === "mastery_trend"
-                          ? "掌握度趋势"
-                          : key === "speed_ratio"
-                            ? "学习速度"
-                            : key === "time_efficiency"
-                              ? "时间效率"
-                              : key === "weakness_priority"
-                                ? "薄弱点优先"
-                                : "稳定性"}
+                      {stat.icon}
+                    </div>
+                  </div>
+                  <div className="text-3xl font-bold text-slate-800 mb-1 group-hover:opacity-80 transition-opacity">
+                    {stat.value}
+                    <span className="text-base font-medium text-slate-400 ml-1">
+                      {stat.suffix}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500">{stat.title}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 我的任务 */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <Typography.Title
+                level={5}
+                className="!m-0 text-slate-800 font-semibold"
+              >
+                我的任务
+              </Typography.Title>
+              <Button
+                type="link"
+                className="text-primary font-medium"
+                onClick={() => navigate("/learning-path")}
+              >
+                查看全部
+              </Button>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 p-5">
+              <Spin spinning={summaryLoading}>
+                <List
+                  itemLayout="horizontal"
+                  dataSource={assignmentList}
+                  locale={{ emptyText: "暂无任务，去学习中心看看吧" }}
+                  renderItem={(item: DashboardTask) => {
+                    const meta =
+                      RESOURCE_META[item.type || "doc"] || RESOURCE_META.doc;
+                    return (
+                      <List.Item
+                        actions={[
+                          <Button
+                            type="text"
+                            icon={<MoreOutlined />}
+                            className="text-slate-400"
+                          />,
+                        ]}
+                        className="hover:bg-slate-50 rounded-xl transition-colors px-3"
+                      >
+                        <List.Item.Meta
+                          avatar={
+                            <div
+                              className="w-11 h-11 rounded-xl flex items-center justify-center text-lg"
+                              style={{
+                                background: meta.bg,
+                                color: meta.color,
+                              }}
+                            >
+                              {meta.icon}
+                            </div>
+                          }
+                          title={
+                            <Typography.Text className="font-medium text-slate-800">
+                              {item.title}
+                            </Typography.Text>
+                          }
+                          description={
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-xs text-slate-400">
+                                {item.type || "任务"}
+                              </span>
+                              {item.progress > 0 && (
+                                <Progress
+                                  percent={Math.round(item.progress * 100)}
+                                  size="small"
+                                  className="w-24"
+                                  strokeColor={meta.color}
+                                  trailColor="#f1f5f9"
+                                />
+                              )}
+                            </div>
+                          }
+                        />
+                      </List.Item>
+                    );
+                  }}
+                />
+              </Spin>
+            </div>
+          </div>
+        </Col>
+
+        {/* 右侧边栏 */}
+        <Col xs={24} lg={8}>
+          {/* 日历 */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <Typography.Title
+                level={5}
+                className="!m-0 text-slate-800 font-semibold"
+              >
+                {new Date().toLocaleString("zh-CN", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </Typography.Title>
+              <div className="flex gap-1">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DownOutlined className="rotate-90 text-xs" />}
+                />
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DownOutlined className="-rotate-90 text-xs" />}
+                />
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 p-4 overflow-hidden">
+              <Calendar fullscreen={false} />
+            </div>
+          </div>
+
+          {/* 即将开始 */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <Typography.Title
+                level={5}
+                className="!m-0 text-slate-800 font-semibold"
+              >
+                即将开始
+              </Typography.Title>
+              <Button
+                type="link"
+                className="text-primary font-medium"
+                onClick={() => navigate("/learning-path")}
+              >
+                查看全部
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {upcomingList.map((task, idx) => {
+                const meta =
+                  RESOURCE_META[task.type || "doc"] || RESOURCE_META.doc;
+                const us = upcomingStyles[idx];
+                return (
+                  <div
+                    key={task.task_id || idx}
+                    className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => navigate("/learning-path")}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-xl ${us.bg} flex items-center justify-center text-xl ${us.text}`}
+                    >
+                      {meta.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-slate-800 truncate">
+                        {task.title}
                       </div>
-                      <div className="text-sm font-bold text-slate-800">
-                        {(val * 100).toFixed(0)}%
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        {task.duration ? `${task.duration} 分钟` : "待完成"}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </SectionCard>
-          </Col>
-          <Col xs={24} lg={12}>
-            <SectionCard
-              title={
-                <Space>
-                  <TrophyOutlined className="text-primary text-lg" />
-                  <span className="font-semibold text-slate-800">
-                    学习效果评估
-                  </span>
-                </Space>
-              }
-            >
-              <div className="space-y-4">
-                <StatRow
-                  label="总体正确率"
-                  value={`${algorithmAnalysis.effect_evaluation?.realtime_metrics?.accuracy?.toFixed(1) ?? "--"}%`}
-                />
-                <StatRow
-                  label="掌握度"
-                  value={`${algorithmAnalysis.effect_evaluation?.realtime_metrics?.mastery?.toFixed(1) ?? "--"}%`}
-                />
-                <StatRow
-                  label="提升速率"
-                  value={`${(algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate || 0) >= 0 ? "+" : ""}${algorithmAnalysis.effect_evaluation?.realtime_metrics?.improvement_rate?.toFixed(1) ?? "--"}`}
-                  valueClassName={
-                    (algorithmAnalysis.effect_evaluation?.realtime_metrics
-                      ?.improvement_rate || 0) >= 0
-                      ? "text-emerald-600"
-                      : "text-red-500"
-                  }
-                />
-                <StatRow
-                  label="预测下次得分"
-                  value={
-                    algorithmAnalysis.effect_evaluation?.predictions?.next_score?.toFixed(
-                      1,
-                    ) ?? "--"
-                  }
-                  valueClassName="text-primary"
-                />
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="text-xs text-slate-500 mb-2 font-medium">
-                    潜在失分点 TOP3
+                    <ArrowRightOutlined className="text-slate-300 text-sm" />
                   </div>
-                  <div className="space-y-1">
-                    {(
-                      algorithmAnalysis.effect_evaluation?.predictions
-                        ?.potential_loss_points || []
-                    )
-                      .slice(0, 3)
-                      .map(
-                        (p: { tag: string; risk_score: number }, i: number) => (
-                          <div
-                            key={i}
-                            className="flex items-center justify-between text-xs"
-                          >
-                            <span className="text-slate-600">{p.tag}</span>
-                            <span className="text-slate-400">
-                              风险 {(p.risk_score * 100).toFixed(0)}%
-                            </span>
-                          </div>
-                        ),
-                      )}
-                    {(
-                      algorithmAnalysis.effect_evaluation?.predictions
-                        ?.potential_loss_points || []
-                    ).length === 0 && (
-                      <span className="text-xs text-slate-400">
-                        暂无显著失分点
-                      </span>
-                    )}
-                  </div>
+                );
+              })}
+              {upcomingList.length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
+                  暂无 upcoming 事件
                 </div>
-                <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-xs text-indigo-700 leading-relaxed">
-                  <strong>
-                    干预策略（
-                    {algorithmAnalysis.effect_evaluation?.intervention
-                      ?.priority === "high"
-                      ? "高优先级"
-                      : "正常"}
-                    ）：
-                  </strong>
-                  {(
-                    algorithmAnalysis.effect_evaluation?.intervention
-                      ?.strategies || []
-                  )
-                    .map((s: { action: string }) => s.action)
-                    .join("；") || "继续保持"}
-                </div>
-              </div>
-            </SectionCard>
-          </Col>
-        </Row>
-      )}
+              )}
+            </div>
+          </div>
+        </Col>
+      </Row>
 
       {/* ===== 3D 滚动旅程区 ===== */}
       <div
@@ -899,7 +1015,7 @@ const Dashboard: React.FC = () => {
                         pathNodesState.find(
                           (n) => n.status === "in-progress",
                         ) || pathNodesState.find((n) => n.status === "pending");
-                      const completedCount = pathNodesState.filter(
+                      const completed = pathNodesState.filter(
                         (n) => n.status === "completed",
                       ).length;
                       return (
@@ -910,8 +1026,8 @@ const Dashboard: React.FC = () => {
                             </div>
                             <div className="flex-1">
                               <div className="text-sm font-medium text-slate-800">
-                                已完成 {completedCount} /{" "}
-                                {pathNodesState.length} 个阶段
+                                已完成 {completed} / {pathNodesState.length}{" "}
+                                个阶段
                               </div>
                               <div className="text-xs text-slate-400 mt-0.5">
                                 点击展开查看完整路径
@@ -1486,7 +1602,6 @@ const Dashboard: React.FC = () => {
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
                   </marker>
                 </defs>
-                {/* Edges */}
                 {(() => {
                   const nodeMap = new Map(
                     kgNodes.map((n, i) => {
@@ -1518,7 +1633,6 @@ const Dashboard: React.FC = () => {
                       }),
                   );
                 })()}
-                {/* Nodes */}
                 {kgNodes.map((node, i) => {
                   const angle =
                     (2 * Math.PI * i) / kgNodes.length - Math.PI / 2;
