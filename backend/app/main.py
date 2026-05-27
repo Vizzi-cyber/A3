@@ -30,12 +30,18 @@ async def lifespan(app: FastAPI):
     # 启动时执行
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
-    # 异步执行 Alembic 迁移（避免阻塞事件循环）
-    from alembic.config import Config
-    from alembic.command import upgrade
-    alembic_cfg = Config("alembic.ini")
-    await asyncio.to_thread(upgrade, alembic_cfg, "head")
-    logger.info("Database migrations applied")
+    # 先创建所有表
+    from .models.database import engine, Base
+    import app.models as models
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables created")
+
+    # 跳过 Alembic 迁移（表已通过 create_all 创建）
+    # from alembic.config import Config
+    # from alembic.command import upgrade
+    # alembic_cfg = Config("alembic.ini")
+    # await asyncio.to_thread(upgrade, alembic_cfg, "head")
+    # logger.info("Database migrations applied")
 
     yield
 
