@@ -24,6 +24,8 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
+  AreaChart,
+  Area,
 } from "recharts";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -616,20 +618,33 @@ const Dashboard: React.FC = () => {
 
       {/* ===== 学习进度横幅 ===== */}
       <div className="bg-[#1e1b4b] rounded-3xl p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 text-white relative overflow-hidden">
-        {/* 装饰 */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/5" />
-        <div className="absolute bottom-0 left-1/3 w-28 h-28 rounded-full bg-white/5" />
-        <div className="absolute top-1/2 right-1/4 w-16 h-16 rounded-full bg-white/5" />
+        {/* 装饰背景 */}
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)`,
+            backgroundSize: "24px 24px",
+          }}
+        />
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-indigo-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-1/4 w-48 h-48 rounded-full bg-purple-500/15 blur-3xl" />
+        <div className="absolute top-1/3 right-1/3 w-32 h-32 rounded-full bg-blue-400/10 blur-2xl" />
 
         {/* 左侧 */}
         <div className="flex-1 flex flex-col justify-center relative z-10 min-w-[240px]">
-          <div className="text-sm text-indigo-200 mb-2">Hi, 学习者!</div>
-          <div className="text-2xl lg:text-3xl font-bold mb-6 leading-tight">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 w-fit mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs text-indigo-100">欢迎回来，学习者</span>
+          </div>
+          <div className="text-2xl lg:text-[2rem] font-bold mb-6 leading-tight">
             你本周已完成{" "}
-            <span className="text-indigo-300">{completedCount}</span> 节课!
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
+              {completedCount}
+            </span>{" "}
+            节课!
           </div>
           <Button
-            className="w-fit rounded-full bg-white text-[#1e1b4b] border-0 font-semibold hover:bg-indigo-50 transition-colors px-6"
+            className="w-fit rounded-full bg-white text-[#1e1b4b] border-0 font-semibold hover:bg-indigo-50 hover:shadow-lg hover:shadow-indigo-900/20 transition-all px-6"
             onClick={() => navigate("/learning-path")}
           >
             查看全部 <ArrowRightOutlined />
@@ -640,39 +655,58 @@ const Dashboard: React.FC = () => {
         <div className="flex gap-4 overflow-x-auto pb-2 relative z-10">
           {courseCards.map((course) => {
             const isCompleted = course.status === "completed";
-            const progressVal = isCompleted
-              ? 100
-              : course.status === "in-progress"
-                ? 60
-                : 20;
+            const isInProgress = course.status === "in-progress";
+            const progressVal = isCompleted ? 100 : isInProgress ? 60 : 20;
+            const statusLabel = isCompleted
+              ? "已完成"
+              : isInProgress
+                ? "进行中"
+                : "未开始";
             return (
               <div
                 key={course.id}
-                className={`${course.bg} rounded-2xl p-5 min-w-[170px] flex-shrink-0 text-slate-800 cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1`}
+                className={`${course.bg} rounded-2xl p-5 min-w-[170px] flex-shrink-0 text-slate-800 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden`}
                 onClick={() => navigate("/learning-path")}
               >
-                <div className="flex items-center justify-between mb-6">
-                  <span className={`text-xs font-bold ${course.text}`}>
+                {/* 顶部装饰条 */}
+                <div
+                  className={`absolute top-0 left-0 right-0 h-1 ${course.bar}`}
+                  style={{ opacity: 0.6 }}
+                />
+
+                <div className="flex items-center justify-between mb-5">
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded-full bg-white/50 ${course.text}`}
+                  >
                     {course.num}
                   </span>
-                  <MoreOutlined className="text-slate-400" />
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isCompleted ? "bg-emerald-100 text-emerald-600" : isInProgress ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}
+                  >
+                    {statusLabel}
+                  </span>
                 </div>
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-3 ${course.text}`}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-3 shadow-sm bg-white/60 ${course.text}`}
                 >
                   {course.icon}
                 </div>
                 <div className="font-bold text-sm mb-1 leading-tight">
                   {course.title}
                 </div>
-                <div className="text-xs text-slate-500 mb-3">
+                <div className="text-xs text-slate-500 mb-4">
                   {course.type || "课程"}
                 </div>
-                <div className="w-full h-1.5 bg-white/60 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${course.bar}`}
-                    style={{ width: `${progressVal}%` }}
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-white/60 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${course.bar} transition-all duration-500`}
+                      style={{ width: `${progressVal}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500">
+                    {progressVal}%
+                  </span>
                 </div>
               </div>
             );
@@ -695,29 +729,72 @@ const Dashboard: React.FC = () => {
               </Typography.Title>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {statCards.map((stat, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white rounded-2xl p-5 border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
-                  onClick={() => navigate(stat.path)}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm shrink-0"
-                      style={{ background: stat.color }}
-                    >
-                      {stat.icon}
+              {statCards.map((stat, idx) => {
+                const sparkData = Array.from({ length: 7 }, (_, i) => ({
+                  v: Math.max(
+                    0,
+                    (Number(stat.value) || 0) *
+                      (0.4 + Math.sin(i + idx) * 0.3 + i * 0.1),
+                  ),
+                }));
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-2xl p-5 border border-slate-100 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group"
+                    onClick={() => navigate(stat.path)}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm shrink-0 shadow-sm"
+                        style={{ background: stat.color }}
+                      >
+                        {stat.icon}
+                      </div>
+                      <div className="w-16 h-8">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={sparkData}>
+                            <defs>
+                              <linearGradient
+                                id={`spark-${idx}`}
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="0%"
+                                  stopColor={stat.color}
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="100%"
+                                  stopColor={stat.color}
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <Area
+                              type="monotone"
+                              dataKey="v"
+                              stroke={stat.color}
+                              strokeWidth={2}
+                              fill={`url(#spark-${idx})`}
+                              isAnimationActive={false}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
+                    <div className="text-2xl font-bold text-slate-800 mb-0.5 group-hover:text-primary transition-colors">
+                      {stat.value}
+                      <span className="text-sm font-medium text-slate-400 ml-1">
+                        {stat.suffix}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500">{stat.title}</div>
                   </div>
-                  <div className="text-3xl font-bold text-slate-800 mb-1 group-hover:opacity-80 transition-opacity">
-                    {stat.value}
-                    <span className="text-base font-medium text-slate-400 ml-1">
-                      {stat.suffix}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500">{stat.title}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -743,25 +820,40 @@ const Dashboard: React.FC = () => {
                 <List
                   itemLayout="horizontal"
                   dataSource={assignmentList}
-                  locale={{ emptyText: "暂无任务，去学习中心看看吧" }}
+                  locale={{
+                    emptyText: (
+                      <div className="py-10 text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 text-2xl mx-auto mb-3">
+                          <RocketOutlined />
+                        </div>
+                        <div className="text-sm text-slate-500 mb-1">
+                          暂无任务
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          去学习中心开启新的学习旅程吧
+                        </div>
+                      </div>
+                    ),
+                  }}
                   renderItem={(item: DashboardTask) => {
                     const meta =
                       RESOURCE_META[item.type || "doc"] || RESOURCE_META.doc;
+                    const progressPct = Math.round(item.progress * 100);
                     return (
                       <List.Item
                         actions={[
                           <Button
                             type="text"
                             icon={<MoreOutlined />}
-                            className="text-slate-400"
+                            className="text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                           />,
                         ]}
-                        className="hover:bg-slate-50 rounded-xl transition-colors px-3"
+                        className="hover:bg-slate-50/80 rounded-xl transition-all px-3 border-b border-slate-50 last:border-0"
                       >
                         <List.Item.Meta
                           avatar={
                             <div
-                              className="w-11 h-11 rounded-xl flex items-center justify-center text-lg"
+                              className="w-11 h-11 rounded-xl flex items-center justify-center text-lg shadow-sm"
                               style={{
                                 background: meta.bg,
                                 color: meta.color,
@@ -771,23 +863,35 @@ const Dashboard: React.FC = () => {
                             </div>
                           }
                           title={
-                            <Typography.Text className="font-medium text-slate-800">
-                              {item.title}
-                            </Typography.Text>
+                            <div className="flex items-center gap-2">
+                              <Typography.Text className="font-medium text-slate-800">
+                                {item.title}
+                              </Typography.Text>
+                              {progressPct === 100 && (
+                                <Tag className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0 leading-normal">
+                                  已完成
+                                </Tag>
+                              )}
+                            </div>
                           }
                           description={
-                            <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center gap-4 mt-1.5">
                               <span className="text-xs text-slate-400">
                                 {item.type || "任务"}
                               </span>
                               {item.progress > 0 && (
-                                <Progress
-                                  percent={Math.round(item.progress * 100)}
-                                  size="small"
-                                  className="w-24"
-                                  strokeColor={meta.color}
-                                  trailColor="#f1f5f9"
-                                />
+                                <div className="flex items-center gap-2">
+                                  <Progress
+                                    percent={progressPct}
+                                    size="small"
+                                    className="w-20"
+                                    strokeColor={meta.color}
+                                    trailColor="#f1f5f9"
+                                  />
+                                  <span className="text-xs text-slate-400 w-8">
+                                    {progressPct}%
+                                  </span>
+                                </div>
                               )}
                             </div>
                           }
@@ -879,8 +983,16 @@ const Dashboard: React.FC = () => {
                 );
               })}
               {upcomingList.length === 0 && (
-                <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
-                  暂无 upcoming 事件
+                <div className="py-10 text-center bg-white rounded-2xl border border-slate-100">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 text-2xl mx-auto mb-3">
+                    <CalendarOutlined />
+                  </div>
+                  <div className="text-sm text-slate-500 mb-1">
+                    暂无即将开始的事件
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    学习路径中待办的任务会显示在这里
+                  </div>
                 </div>
               )}
             </div>
