@@ -43,6 +43,7 @@ class LearningRecordModel(Base):
 
     __table_args__ = (
         Index("ix_learning_records_student_action", "student_id", "action"),
+        Index("ix_learning_records_student_created", "student_id", "created_at"),
     )
 
 
@@ -63,6 +64,7 @@ class QuizResultModel(Base):
 
     __table_args__ = (
         Index("ix_quiz_results_created_at", "created_at"),
+        Index("ix_quiz_results_student_created", "student_id", "created_at"),
     )
 
 

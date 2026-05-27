@@ -1,7 +1,7 @@
 """
 学习趋势与评估数据 ORM 模型
 """
-from sqlalchemy import Column, String, DateTime, JSON, Float, Integer
+from sqlalchemy import Column, String, DateTime, JSON, Float, Integer, Index
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -31,3 +31,7 @@ class TrendDataModel(Base):
     intervention = Column(String(256), nullable=True)
     details = Column(JSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_student_trends_student_date", "student_id", "date"),
+    )

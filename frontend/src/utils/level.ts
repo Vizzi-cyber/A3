@@ -42,13 +42,14 @@ let _cachedConfig: LevelConfig | null = null;
 
 export async function fetchLevelConfig(): Promise<LevelConfig> {
   try {
-    const res = await fetch("/api/v1/gamification-tree/level-config");
-    const data = await res.json();
-    if (data?.data) {
+    const { api } = await import("../services/api");
+    const res = await api.get("/gamification-tree/level-config");
+    const data = res.data?.data;
+    if (data) {
       _cachedConfig = {
-        xp_per_level: data.data.xp_per_level,
-        max_level: data.data.max_level,
-        level_names: data.data.level_names,
+        xp_per_level: data.xp_per_level,
+        max_level: data.max_level,
+        level_names: data.level_names,
       };
       return _cachedConfig;
     }

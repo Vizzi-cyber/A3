@@ -26,6 +26,7 @@ class DAGPathPlanner:
         self.reverse_graph: Dict[str, List[str]] = {} # kp_id -> successors
         self.kp_meta: Dict[str, Dict[str, Any]] = {}
         self.in_degree: Dict[str, int] = {}
+        self._criticality_cache: Optional[Dict[str, int]] = None
 
     def build_graph(self, knowledge_points: List[Dict[str, Any]]):
         """从知识点列表构建 DAG"""
@@ -33,6 +34,7 @@ class DAGPathPlanner:
         self.reverse_graph = defaultdict(list)
         self.kp_meta = {}
         self.in_degree = defaultdict(int)
+        self._criticality_cache = None
 
         for kp in knowledge_points:
             kp_id = kp.get("kp_id", "")
@@ -166,8 +168,10 @@ class DAGPathPlanner:
         speed = tempo.get("study_speed", "moderate")
         speed_factor = {"fast": 0.75, "moderate": 1.0, "slow": 1.35}.get(speed, 1.0)
 
-        # 关键度因子：关键知识点多花一点时间打牢基础
-        criticality = self._compute_criticality()
+        # 关键度因子：关键知识点多花一点时间打牢基础（缓存结果）
+        if self._criticality_cache is None:
+            self._criticality_cache = self._compute_criticality()
+        criticality = self._criticality_cache
         crit = criticality.get(kp_id, 0)
         max_crit = max(criticality.values()) if criticality else 1
         crit_factor = 1.0 + 0.15 * (crit / max(max_crit, 1))
@@ -346,7 +350,8 @@ class DAGPathPlanner:
             mastery_map,
             profile,
         )
-        sorted_kps = [next(k for k in kp_costs if k["kp_id"] == sid) for sid in sorted_ids]
+        kp_costs_map = {k["kp_id"]: k for k in kp_costs}
+        sorted_kps = [kp_costs_map[sid] for sid in sorted_ids if sid in kp_costs_map]
 
         # 5. 自适应阶段划分
         daily_duration = profile.get("learning_tempo", {}).get("weekly_study_capacity", 10)

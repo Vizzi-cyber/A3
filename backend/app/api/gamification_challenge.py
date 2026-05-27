@@ -136,15 +136,13 @@ def get_challenges(student_id: str, db: Session = Depends(get_db), _current: str
 
     week_kps = set(r.kp_id for r in week_records)
 
-    # 连续学习天数
-    all_records = db.query(LearningRecordModel).filter(
+    # 连续学习天数（使用 DISTINCT 查询避免全表加载）
+    distinct_dates = db.query(
+        sa_func.distinct(sa_func.date(LearningRecordModel.created_at))
+    ).filter(
         LearningRecordModel.student_id == student_id,
     ).all()
-
-    dates = []
-    for r in all_records:
-        if r.created_at:
-            dates.append(r.created_at.strftime("%Y-%m-%d"))
+    dates = [str(row[0]) for row in distinct_dates if row[0]]
     streak = calculate_streak(dates)
 
     # 成就数

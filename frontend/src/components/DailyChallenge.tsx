@@ -156,4 +156,4 @@ const DailyChallenge: React.FC = () => {
   );
 };
 
-export default DailyChallenge;
+export default React.memo(DailyChallenge);

@@ -123,9 +123,9 @@ class OpenAICompatibleLLM(BaseLLM):
             logger.warning(f"LLM调用记录持久化失败: {e}")
 
     async def ainvoke(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> str:
-        """非流式调用，默认关闭智谱 thinking 以加快响应"""
+        """非流式调用，默认关闭智谱 thinking 以加快响应，含指数退避重试"""
         import time, asyncio
-        start = time.time()
+
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -136,31 +136,44 @@ class OpenAICompatibleLLM(BaseLLM):
         if self._is_bigmodel:
             kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
-        try:
-            response = await self.client.chat.completions.create(**kwargs)
-            msg = response.choices[0].message
-            content = msg.content or ""
-            duration_ms = (time.time() - start) * 1000
-            usage = getattr(response, 'usage', None)
-            asyncio.create_task(asyncio.to_thread(
-                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
-                getattr(usage, 'prompt_tokens', 0) if usage else 0,
-                getattr(usage, 'completion_tokens', 0) if usage else 0,
-                duration_ms, True,
-            ))
-            return content
-        except Exception as e:
-            duration_ms = (time.time() - start) * 1000
-            asyncio.create_task(asyncio.to_thread(
-                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
-                0, 0, duration_ms, False, str(e)[:500],
-            ))
-            raise
+        max_retries = 3
+        last_exception = None
+        for attempt in range(max_retries):
+            start = time.time()
+            try:
+                response = await self.client.chat.completions.create(**kwargs)
+                msg = response.choices[0].message
+                content = msg.content or ""
+                duration_ms = (time.time() - start) * 1000
+                usage = getattr(response, 'usage', None)
+                asyncio.create_task(asyncio.to_thread(
+                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    getattr(usage, 'prompt_tokens', 0) if usage else 0,
+                    getattr(usage, 'completion_tokens', 0) if usage else 0,
+                    duration_ms, True,
+                ))
+                return content
+            except Exception as e:
+                last_exception = e
+                duration_ms = (time.time() - start) * 1000
+                error_str = str(e).lower()
+                is_transient = any(k in error_str for k in ["timeout", "429", "503", "connection", "rate limit"])
+                if is_transient and attempt < max_retries - 1:
+                    wait = 2 ** attempt
+                    logger.warning(f"LLM transient error (attempt {attempt+1}/{max_retries}), retrying in {wait}s: {e}")
+                    await asyncio.sleep(wait)
+                    continue
+                asyncio.create_task(asyncio.to_thread(
+                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    0, 0, duration_ms, False, str(e)[:500],
+                ))
+                raise
+        raise last_exception
 
     async def astream(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> AsyncIterator[str]:
-        """流式调用，关闭 thinking，只输出正式回答 content"""
+        """流式调用，关闭 thinking，只输出正式回答 content，含指数退避重试"""
         import time, asyncio
-        start = time.time()
+
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -171,25 +184,39 @@ class OpenAICompatibleLLM(BaseLLM):
         if self._is_bigmodel:
             kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
 
-        try:
-            response = await self.client.chat.completions.create(**kwargs)
-            async for chunk in response:
-                delta = chunk.choices[0].delta
-                content = delta.content
-                if content:
-                    yield content
-            duration_ms = (time.time() - start) * 1000
-            asyncio.create_task(asyncio.to_thread(
-                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
-                0, 0, duration_ms, True,
-            ))
-        except Exception as e:
-            duration_ms = (time.time() - start) * 1000
-            asyncio.create_task(asyncio.to_thread(
-                self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
-                0, 0, duration_ms, False, str(e)[:500],
-            ))
-            raise
+        max_retries = 3
+        last_exception = None
+        for attempt in range(max_retries):
+            start = time.time()
+            try:
+                response = await self.client.chat.completions.create(**kwargs)
+                async for chunk in response:
+                    delta = chunk.choices[0].delta
+                    content = delta.content
+                    if content:
+                        yield content
+                duration_ms = (time.time() - start) * 1000
+                asyncio.create_task(asyncio.to_thread(
+                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    0, 0, duration_ms, True,
+                ))
+                return
+            except Exception as e:
+                last_exception = e
+                duration_ms = (time.time() - start) * 1000
+                error_str = str(e).lower()
+                is_transient = any(k in error_str for k in ["timeout", "429", "503", "connection", "rate limit"])
+                if is_transient and attempt < max_retries - 1:
+                    wait = 2 ** attempt
+                    logger.warning(f"LLM stream transient error (attempt {attempt+1}/{max_retries}), retrying in {wait}s: {e}")
+                    await asyncio.sleep(wait)
+                    continue
+                asyncio.create_task(asyncio.to_thread(
+                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    0, 0, duration_ms, False, str(e)[:500],
+                ))
+                raise
+        raise last_exception
 
 
 class LLMFactory:

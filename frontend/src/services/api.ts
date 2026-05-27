@@ -27,7 +27,7 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 120000,
   headers: {
@@ -418,7 +418,7 @@ export const gamificationApi = {
     }>(`/gamification/leaderboard/${period}`, { params: { limit } }),
 };
 
-export interface LearningRecordRequest {
+interface LearningRecordRequest {
   student_id: string;
   kp_id: string;
   action: string;

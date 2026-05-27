@@ -71,4 +71,5 @@ class LeaderboardModel(Base):
 
     __table_args__ = (
         Index("ix_leaderboard_period_score", "period", "score"),
+        Index("ix_leaderboard_student_period", "student_id", "period"),
     )

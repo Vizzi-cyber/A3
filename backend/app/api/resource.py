@@ -36,6 +36,44 @@ router = APIRouter()
 _resource_agent = ResourceGeneratorAgent()
 
 
+async def _generate_with_agent(
+    task: str,
+    topic: str,
+    lib_key: str,
+    kp_id: str,
+    default_content: Any,
+    constraints: Optional[Dict] = None,
+    extract_content=None,
+) -> tuple:
+    """统一的资源生成逻辑：先查内容库，再调用 Agent。返回 (content, source)"""
+    lib = content_library.get_content(kp_id) or content_library.get_content_by_topic(topic)
+    if lib and lib.get(lib_key):
+        return lib[lib_key], "content_library"
+
+    try:
+        agent_input: Dict[str, Any] = {"task": task, "topic": topic}
+        if constraints:
+            agent_input["constraints"] = constraints
+        result = await asyncio.wait_for(
+            _resource_agent.process(agent_input),
+            timeout=15.0,
+        )
+        if result.get("status") == "success":
+            raw = result.get("content", default_content)
+            if extract_content:
+                extracted = extract_content(raw)
+                if extracted is not None:
+                    return extracted, "agent"
+            elif raw is not None:
+                return raw, "agent"
+    except asyncio.TimeoutError:
+        logger.warning(f"{task} 超时: topic={topic}")
+    except Exception as e:
+        logger.warning(f"{task} 异常: {e}")
+
+    return default_content, "fallback"
+
+
 class ResourceGenerationRequest(BaseModel):
     """资源生成请求"""
     student_id: str
@@ -105,8 +143,8 @@ async def generate_resource(
     _current: str = Depends(require_auth),
 ):
     """生成多模态学习资源 —— 后台任务直接调用 ResourceGeneratorAgent"""
-    now = datetime.now().timestamp()
-    task_id = f"task_{now}"
+    import uuid
+    task_id = f"task_{uuid.uuid4().hex[:12]}"
     _cleanup_old_tasks()
     task = ResourceTaskModel(
         task_id=task_id,
@@ -215,42 +253,21 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db), _current:
 @router.post("/document/generate", response_model=DocumentGenerateResponse)
 async def generate_document(request: DocumentGenerateRequest, _current: str = Depends(require_auth)):
     """生成讲解文档 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
-    # 优先匹配内容库
-    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
-    if lib and lib.get("document"):
-        return {
-            "status": "success",
-            "document": lib["document"],
-            "metadata": {
-                "topic": request.topic,
-                "source": "content_library",
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-            },
-        }
-
-    doc_content = f"# {request.topic}\n\n这里是生成的文档内容（fallback）。"
-
-    try:
-        result = await asyncio.wait_for(
-            _resource_agent.process({
-                "task": "generate_document",
-                "topic": request.topic,
-                "difficulty": request.difficulty,
-            }),
-            timeout=15.0,
-        )
-        if result.get("status") == "success" and isinstance(result.get("content"), str):
-            doc_content = result["content"]
-    except asyncio.TimeoutError:
-        logger.warning(f"文档生成超时: topic={request.topic}")
-    except Exception as e:
-        logger.warning(f"文档生成异常: {e}")
-
+    doc_content, source = await _generate_with_agent(
+        task="generate_document",
+        topic=request.topic,
+        lib_key="document",
+        kp_id=request.kp_id,
+        default_content=f"# {request.topic}\n\n这里是生成的文档内容（fallback）。",
+        constraints={"difficulty": request.difficulty},
+        extract_content=lambda raw: raw if isinstance(raw, str) else None,
+    )
     return {
         "status": "success",
         "document": doc_content,
         "metadata": {
             "topic": request.topic,
+            "source": source,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         },
     }
@@ -259,18 +276,7 @@ async def generate_document(request: DocumentGenerateRequest, _current: str = De
 @router.post("/questions/generate", response_model=QuestionsGenerateResponse)
 async def generate_questions(request: QuestionsGenerateRequest, _current: str = Depends(require_auth)):
     """生成练习题 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
-    # 优先匹配内容库
-    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
-    if lib and lib.get("questions"):
-        questions = lib["questions"]
-        return {
-            "status": "success",
-            "topic": request.topic,
-            "count": len(questions),
-            "questions": questions,
-        }
-
-    questions = [
+    default_questions = [
         {
             "q_id": f"q_{i}",
             "type": "single_choice",
@@ -287,24 +293,15 @@ async def generate_questions(request: QuestionsGenerateRequest, _current: str = 
         for i in range(request.count)
     ]
 
-    try:
-        result = await asyncio.wait_for(
-            _resource_agent.process({
-                "task": "generate_questions",
-                "topic": request.topic,
-                "constraints": {"count": request.count},
-            }),
-            timeout=15.0,
-        )
-        if result.get("status") == "success":
-            raw = result.get("content", [])
-            if isinstance(raw, list) and len(raw) > 0:
-                questions = raw
-    except asyncio.TimeoutError:
-        logger.warning(f"题目生成超时: topic={request.topic}")
-    except Exception as e:
-        logger.warning(f"题目生成异常: {e}")
-
+    questions, _ = await _generate_with_agent(
+        task="generate_questions",
+        topic=request.topic,
+        lib_key="questions",
+        kp_id=request.kp_id,
+        default_content=default_questions,
+        constraints={"count": request.count},
+        extract_content=lambda raw: raw if isinstance(raw, list) and len(raw) > 0 else None,
+    )
     return {
         "status": "success",
         "topic": request.topic,
@@ -316,71 +313,36 @@ async def generate_questions(request: QuestionsGenerateRequest, _current: str = 
 @router.post("/mindmap/generate", response_model=MindmapGenerateResponse)
 async def generate_mindmap(request: MindmapGenerateRequest, _current: str = Depends(require_auth)):
     """生成思维导图 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
-    # 优先匹配内容库
-    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
-    if lib and lib.get("mindmap"):
-        return {"status": "success", "mindmap": lib["mindmap"], "format": "json_tree"}
-
-    mindmap = {"root": request.topic, "children": []}
-
-    try:
-        result = await asyncio.wait_for(
-            _resource_agent.process({
-                "task": "generate_mindmap",
-                "topic": request.topic,
-            }),
-            timeout=15.0,
-        )
-        if result.get("status") == "success":
-            raw = result.get("content", {})
-            if isinstance(raw, dict) and raw.get("root"):
-                mindmap = raw
-    except asyncio.TimeoutError:
-        logger.warning(f"思维导图生成超时: topic={request.topic}")
-    except Exception as e:
-        logger.warning(f"思维导图生成异常: {e}")
-
+    mindmap, _ = await _generate_with_agent(
+        task="generate_mindmap",
+        topic=request.topic,
+        lib_key="mindmap",
+        kp_id=request.kp_id,
+        default_content={"root": request.topic, "children": []},
+        extract_content=lambda raw: raw if isinstance(raw, dict) and raw.get("root") else None,
+    )
     return {"status": "success", "mindmap": mindmap, "format": "json_tree"}
 
 
 @router.post("/code/generate", response_model=CodeGenerateResponse)
 async def generate_code(request: CodeGenerateRequest, _current: str = Depends(require_auth)):
     """生成代码示例 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
-    # 优先匹配内容库
-    lib = content_library.get_content(request.kp_id) or content_library.get_content_by_topic(request.topic)
-    if lib and lib.get("code"):
-        lang = request.language or "C"
-        ext = "c" if lang.lower() in ("c", "c语言") else lang.lower()
-        return {
-            "status": "success",
-            "code": lib["code"],
-            "language": lang,
-            "filename": f"{request.topic.lower().replace(' ', '_')}.{ext}",
-        }
-
-    code = f"# {request.topic} - {request.language}\n\nprint('Hello, World!')"
-
-    try:
-        result = await asyncio.wait_for(
-            _resource_agent.process({
-                "task": "generate_code_examples",
-                "topic": request.topic,
-                "constraints": {"language": request.language},
-            }),
-            timeout=15.0,
-        )
-        if result.get("status") == "success" and isinstance(result.get("content"), str):
-            code = result["content"]
-    except asyncio.TimeoutError:
-        logger.warning(f"代码生成超时: topic={request.topic}")
-    except Exception as e:
-        logger.warning(f"代码生成异常: {e}")
-
+    code, source = await _generate_with_agent(
+        task="generate_code_examples",
+        topic=request.topic,
+        lib_key="code",
+        kp_id=request.kp_id,
+        default_content=f"# {request.topic} - {request.language}\n\nprint('Hello, World!')",
+        constraints={"language": request.language},
+        extract_content=lambda raw: raw if isinstance(raw, str) else None,
+    )
+    lang = request.language or "C"
+    ext = "c" if lang.lower() in ("c", "c语言") else lang.lower()
     return {
         "status": "success",
         "code": code,
-        "language": request.language,
-        "filename": f"{request.topic.lower().replace(' ', '_')}.{request.language.lower()}",
+        "language": lang,
+        "filename": f"{request.topic.lower().replace(' ', '_')}.{ext}",
     }
 
 

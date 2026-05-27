@@ -23,12 +23,14 @@ def _load_fallback():
     _FALLBACK_LIBRARY = {}
 
 
-def get_content(kp_id: str) -> Optional[Dict[str, Any]]:
-    """根据 kp_id 从数据库获取内容"""
+def get_content(kp_id: str, db=None) -> Optional[Dict[str, Any]]:
+    """根据 kp_id 从数据库获取内容，可复用外部 db session"""
     try:
-        from ..models.database import SessionLocal
         from ..models.knowledge import KnowledgePointModel
-        db = SessionLocal()
+        own_session = db is None
+        if own_session:
+            from ..models.database import SessionLocal
+            db = SessionLocal()
         try:
             kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == kp_id).first()
             if not kp:
@@ -44,29 +46,32 @@ def get_content(kp_id: str) -> Optional[Dict[str, Any]]:
                 result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
             return result
         finally:
-            db.close()
+            if own_session:
+                db.close()
     except Exception as e:
         logger.warning(f"内容库查询失败，回退到本地数据: {e}")
         _load_fallback()
         return _FALLBACK_LIBRARY.get(kp_id)
 
 
-def get_content_by_topic(topic: str) -> Optional[Dict[str, Any]]:
-    """根据主题名称模糊匹配"""
+def get_content_by_topic(topic: str, db=None) -> Optional[Dict[str, Any]]:
+    """根据主题名称模糊匹配，可复用外部 db session"""
     try:
-        from ..models.database import SessionLocal
         from ..models.knowledge import KnowledgePointModel
-        db = SessionLocal()
+        own_session = db is None
+        if own_session:
+            from ..models.database import SessionLocal
+            db = SessionLocal()
         try:
             kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name == topic).first()
             if not kp:
-                # 模糊匹配
                 kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name.like(f"%{topic}%")).first()
             if not kp:
                 return None
-            return get_content(kp.kp_id)
+            return get_content(kp.kp_id, db=db)
         finally:
-            db.close()
+            if own_session:
+                db.close()
     except Exception as e:
         logger.warning(f"内容库主题查询失败: {e}")
         return None

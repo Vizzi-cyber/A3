@@ -3,28 +3,23 @@
 基于用户身份(student_id)做速率限制，无需额外依赖
 """
 import time
-import base64
-import json
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 
 def _extract_student_id_from_token(request: Request) -> Optional[str]:
-    """从 Authorization header 提取 student_id"""
+    """从 Authorization header 提取 student_id（使用 JWT 签名验证）"""
     auth = request.headers.get("authorization", "")
     if not auth.startswith("Bearer "):
         return None
     token = auth[7:]
     try:
-        # JWT payload 解码 (base64 + json)
-        parts = token.split(".")
-        if len(parts) >= 2:
-            payload = parts[1] + "=" * (4 - len(parts[1]) % 4)
-            decoded = base64.b64decode(payload).decode("utf-8")
-            data = json.loads(decoded)
-            return data.get("sub") or data.get("student_id")
+        from jose import jwt
+        from .config import settings
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        return payload.get("sub") or payload.get("student_id")
     except Exception:
         pass
     return None
@@ -47,6 +42,7 @@ class RateLimiter(BaseHTTPMiddleware):
         self._cleanup_counter: int = 0
         self._cleanup_interval: int = 200  # 每 200 次请求做一次全量清理
         self._max_keys: int = 10000  # 最大键数上限，防止 OOM
+        self._global_limit: int = 300  # 每客户端每窗口全局请求上限
 
     def _global_cleanup(self, now: float):
         """全量清理所有过期的 key，防止内存泄漏"""
@@ -81,6 +77,20 @@ class RateLimiter(BaseHTTPMiddleware):
             limit = 20
         else:
             limit = self.default_limit
+
+        # 全局每客户端限流（防止跨路径刷请求）
+        global_key = f"{client_id}:__global__"
+        global_records = self._records.get(global_key, [])
+        global_records = [t for t in global_records if now - t < self.window_seconds]
+        if len(global_records) >= self._global_limit:
+            reset_after = int(self.window_seconds - (now - global_records[0]))
+            return JSONResponse(
+                status_code=429,
+                content={"status": "error", "message": f"全局请求过于频繁，请 {reset_after} 秒后再试"},
+                headers={"Retry-After": str(reset_after)},
+            )
+        global_records.append(now)
+        self._records[global_key] = global_records
 
         key = f"{client_id}:{path}"
         now = time.time()

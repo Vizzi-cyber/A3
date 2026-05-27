@@ -57,6 +57,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         token: state.token,
         studentId: state.studentId,
+        userInfo: state.userInfo,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<AppState>;

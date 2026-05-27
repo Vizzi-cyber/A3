@@ -150,4 +150,4 @@ const Leaderboard: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   );
 };
 
-export default Leaderboard;
+export default React.memo(Leaderboard);

@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 from ..models.database import get_db
 from ..models.monitor import ApiMonitorModel, LlmCallModel, SystemHealthModel
 from .auth import require_auth
@@ -23,25 +23,30 @@ router = APIRouter()
 
 @router.get("/api-stats")
 async def get_api_stats(minutes: int = Query(60, ge=1, le=1440), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
-    """接口统计"""
+    """接口统计（使用 SQL 聚合避免全量加载）"""
     since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
-    rows = db.query(ApiMonitorModel).filter(ApiMonitorModel.created_at >= since).all()
-
-    from collections import defaultdict
-    stats = defaultdict(lambda: {"count": 0, "avg_duration": 0.0, "errors": 0, "max_duration": 0.0})
-    for r in rows:
-        key = f"{r.method} {r.endpoint}"
-        stats[key]["count"] += 1
-        stats[key]["avg_duration"] += r.duration_ms
-        stats[key]["max_duration"] = max(stats[key]["max_duration"], r.duration_ms)
-        if r.status_code >= 400:
-            stats[key]["errors"] += 1
+    rows = db.query(
+        ApiMonitorModel.method,
+        ApiMonitorModel.endpoint,
+        func.count().label("count"),
+        func.avg(ApiMonitorModel.duration_ms).label("avg_duration"),
+        func.max(ApiMonitorModel.duration_ms).label("max_duration"),
+        func.sum(case((ApiMonitorModel.status_code >= 400, 1), else_=0)).label("errors"),
+    ).filter(
+        ApiMonitorModel.created_at >= since,
+    ).group_by(
+        ApiMonitorModel.method, ApiMonitorModel.endpoint,
+    ).all()
 
     result = []
-    for key, s in stats.items():
-        s["avg_duration"] = round(s["avg_duration"] / s["count"], 2) if s["count"] > 0 else 0.0
-        s["endpoint"] = key
-        result.append(s)
+    for r in rows:
+        result.append({
+            "endpoint": f"{r.method} {r.endpoint}",
+            "count": r.count,
+            "avg_duration": round(float(r.avg_duration or 0), 2),
+            "max_duration": round(float(r.max_duration or 0), 2),
+            "errors": r.errors or 0,
+        })
 
     return {"status": "success", "period_minutes": minutes, "data": result}
 
@@ -50,27 +55,31 @@ async def get_api_stats(minutes: int = Query(60, ge=1, le=1440), db: Session = D
 
 @router.get("/llm-stats")
 async def get_llm_stats(minutes: int = Query(60, ge=1, le=1440), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
-    """大模型调用统计"""
+    """大模型调用统计（使用 SQL 聚合）"""
     since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
-    rows = db.query(LlmCallModel).filter(LlmCallModel.created_at >= since).all()
-
-    from collections import defaultdict
-    stats = defaultdict(lambda: {"count": 0, "success": 0, "fail": 0, "avg_duration": 0.0, "total_tokens": 0})
-    for r in rows:
-        key = r.provider
-        stats[key]["count"] += 1
-        stats[key]["avg_duration"] += r.duration_ms
-        stats[key]["total_tokens"] += r.prompt_tokens + r.completion_tokens
-        if r.success:
-            stats[key]["success"] += 1
-        else:
-            stats[key]["fail"] += 1
+    rows = db.query(
+        LlmCallModel.provider,
+        func.count().label("count"),
+        func.avg(LlmCallModel.duration_ms).label("avg_duration"),
+        func.sum(LlmCallModel.prompt_tokens + LlmCallModel.completion_tokens).label("total_tokens"),
+        func.sum(case((LlmCallModel.success == True, 1), else_=0)).label("success"),
+        func.sum(case((LlmCallModel.success == False, 1), else_=0)).label("fail"),
+    ).filter(
+        LlmCallModel.created_at >= since,
+    ).group_by(
+        LlmCallModel.provider,
+    ).all()
 
     result = []
-    for key, s in stats.items():
-        s["avg_duration"] = round(s["avg_duration"] / s["count"], 2) if s["count"] > 0 else 0.0
-        s["provider"] = key
-        result.append(s)
+    for r in rows:
+        result.append({
+            "provider": r.provider,
+            "count": r.count,
+            "avg_duration": round(float(r.avg_duration or 0), 2),
+            "total_tokens": r.total_tokens or 0,
+            "success": r.success or 0,
+            "fail": r.fail or 0,
+        })
 
     return {"status": "success", "period_minutes": minutes, "data": result}
 

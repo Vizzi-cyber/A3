@@ -2,7 +2,7 @@
 智能辅导问答记录 ORM 模型
 持久化存储学生与AI辅导助手的问答历史
 """
-from sqlalchemy import Column, String, DateTime, Text, JSON, Integer, Float, Boolean
+from sqlalchemy import Column, String, DateTime, Text, JSON, Integer, Float, Boolean, Index
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -31,3 +31,7 @@ class TutorQAModel(Base):
     # 评分/反馈（学生可对回答点赞/点踩）
     feedback = Column(String(16), nullable=True)  # like / dislike
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_tutor_qa_student_session", "student_id", "session_id", "created_at"),
+    )

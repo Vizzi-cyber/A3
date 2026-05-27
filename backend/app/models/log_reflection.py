@@ -1,7 +1,7 @@
 """
 学习日志与自我反思 ORM 模型
 """
-from sqlalchemy import Column, String, DateTime, JSON, Integer, Text, Float
+from sqlalchemy import Column, String, DateTime, JSON, Integer, Text, Float, Index
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -27,6 +27,10 @@ class LearningLogModel(Base):
     # 时间线明细
     timeline = Column(JSON, default=list)  # [{time, action, kp_id, duration}]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_learning_logs_student_date", "student_id", "date"),
+    )
 
 
 class ReflectionModel(Base):
