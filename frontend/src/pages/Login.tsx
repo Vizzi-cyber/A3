@@ -18,6 +18,7 @@ import {
   BookOutlined,
   BulbOutlined,
   MessageOutlined,
+  HomeOutlined,
 } from "@ant-design/icons";
 import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
@@ -193,6 +194,17 @@ const Login: React.FC = () => {
         />
         <div className="absolute inset-0 bg-black/50" />
       </div>
+
+      {/* 返回主页按钮 */}
+      <Button
+        type="text"
+        icon={<HomeOutlined />}
+        onClick={() => navigate("/")}
+        className="absolute top-4 left-4 z-20 text-white hover:text-white/80 hover:bg-white/10"
+        size="large"
+      >
+        返回主页
+      </Button>
 
       {/* 内容区 */}
       <div className="relative z-10 flex flex-col lg:flex-row w-full min-h-screen">
