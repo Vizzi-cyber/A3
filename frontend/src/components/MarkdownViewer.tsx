@@ -84,8 +84,9 @@ const CodeBlock: React.FC<{ language: string; children: string }> = ({
 };
 
 /** 静态 components 映射 —— 模块级单例，避免每次渲染重新创建对象 */
-const markdownComponents = {
-  code({ inline, className: cls, children, ...props }: any) {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const markdownComponents: Record<string, any> = {
+  code({ inline, className: cls, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode; [key: string]: unknown }) {
     const match = /language-(\w+)/.exec(cls || "");
     const codeText = extractText(children);
     if (!inline && match) {
@@ -97,41 +98,41 @@ const markdownComponents = {
       </code>
     );
   },
-  h1({ children }: any) {
+  h1({ children }: { children?: React.ReactNode }) {
     return <h1 className="md-h1">{children}</h1>;
   },
-  h2({ children }: any) {
+  h2({ children }: { children?: React.ReactNode }) {
     return <h2 className="md-h2">{children}</h2>;
   },
-  h3({ children }: any) {
+  h3({ children }: { children?: React.ReactNode }) {
     return <h3 className="md-h3">{children}</h3>;
   },
-  h4({ children }: any) {
+  h4({ children }: { children?: React.ReactNode }) {
     return <h4 className="md-h4">{children}</h4>;
   },
-  p({ children }: any) {
+  p({ children }: { children?: React.ReactNode }) {
     return <p className="md-p">{children}</p>;
   },
-  strong({ children }: any) {
+  strong({ children }: { children?: React.ReactNode }) {
     const text = extractText(children);
     if (text.startsWith("例")) {
       return <span className="example-title">{children}</span>;
     }
     return <strong className="md-strong">{children}</strong>;
   },
-  ul({ children }: any) {
+  ul({ children }: { children?: React.ReactNode }) {
     return <ul className="md-ul">{children}</ul>;
   },
-  ol({ children }: any) {
+  ol({ children }: { children?: React.ReactNode }) {
     return <ol className="md-ol">{children}</ol>;
   },
-  li({ children }: any) {
+  li({ children }: { children?: React.ReactNode }) {
     return <li className="md-li">{children}</li>;
   },
-  blockquote({ children }: any) {
+  blockquote({ children }: { children?: React.ReactNode }) {
     return <blockquote className="md-blockquote">{children}</blockquote>;
   },
-  table({ children }: any) {
+  table({ children }: { children?: React.ReactNode }) {
     return (
       <div className="table-wrapper">
         <table className="md-table">{children}</table>

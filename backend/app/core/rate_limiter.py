@@ -78,6 +78,9 @@ class RateLimiter(BaseHTTPMiddleware):
         else:
             limit = self.default_limit
 
+        key = f"{client_id}:{path}"
+        now = time.time()
+
         # 全局每客户端限流（防止跨路径刷请求）
         global_key = f"{client_id}:__global__"
         global_records = self._records.get(global_key, [])
@@ -91,9 +94,6 @@ class RateLimiter(BaseHTTPMiddleware):
             )
         global_records.append(now)
         self._records[global_key] = global_records
-
-        key = f"{client_id}:{path}"
-        now = time.time()
 
         # 定期全量清理，防止不活跃 key 占用内存
         self._cleanup_counter += 1

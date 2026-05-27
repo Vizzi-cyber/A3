@@ -6,7 +6,7 @@ import json
 import os
 import asyncio
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from ..core.logger import setup_logger
@@ -802,7 +802,7 @@ async def generate_ppt(
 
     outline = await generate_ppt_outline(topic, subject, llm)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     safe_topic = re.sub(r'[^\w一-鿿]', '_', topic)[:20]
     filename = f"{safe_topic}_{timestamp}.pptx"
     output_path = os.path.join(PPT_OUTPUT_DIR, filename)

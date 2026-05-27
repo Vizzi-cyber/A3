@@ -119,7 +119,7 @@ async def create_reflection(request: ReflectionCreateRequest, db: Session = Depe
         if t and t not in ("notes",):
             primary_tag = str(t)
             break
-    ts_ms = int(datetime.now().timestamp() * 1000)
+    ts_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     reflection_id = f"ref_{request.student_id}_{request.date}_{primary_tag}_{ts_ms}"
     ref = ReflectionModel(
         reflection_id=reflection_id,

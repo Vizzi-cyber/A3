@@ -226,7 +226,7 @@ def get_challenges(student_id: str, db: Session = Depends(get_db), _current: str
 @router.get("/leaderboard/{dimension}")
 def get_leaderboard(
     dimension: str,
-    period: str = Query("weekly", regex="^(daily|weekly|monthly|all)$"),
+    period: str = Query("weekly", pattern="^(daily|weekly|monthly|all)$"),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     _current: str = Depends(require_auth),
