@@ -161,26 +161,15 @@ code {
   color: #4f46e5 !important;
   font-weight: 600;
   border-radius: 0 10px 10px 0;
-  margin-right: 12px;
 }
 .ant-menu-item:hover {
   border-radius: 0 10px 10px 0;
-  margin-right: 12px;
-}
-.ant-card {
-  border-radius: var(--radius-lg) !important;
 }
 .ant-btn-primary {
   transition: all 0.2s ease;
 }
 .ant-btn-primary:hover {
   filter: brightness(1.05);
-}
-.ant-progress-inner {
-  border-radius: 100px !important;
-}
-.ant-progress-bg {
-  border-radius: 100px !important;
 }
 
 /* ===== Block Reveal 动画 ===== */

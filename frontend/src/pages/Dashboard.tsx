@@ -719,7 +719,7 @@ const Dashboard: React.FC = () => {
         {/* 左侧主内容 */}
         <Col xs={24} lg={16}>
           {/* 统计 */}
-          <div className="mb-8">
+          <div>
             <div className="flex items-center justify-between mb-4">
               <Typography.Title
                 level={5}
@@ -908,7 +908,7 @@ const Dashboard: React.FC = () => {
         {/* 右侧边栏 */}
         <Col xs={24} lg={8}>
           {/* 日历 */}
-          <div className="mb-8">
+          <div>
             <div className="flex items-center justify-between mb-4">
               <Typography.Title
                 level={5}
@@ -1037,7 +1037,7 @@ const Dashboard: React.FC = () => {
         <div className="journey-decor absolute top-[3000px] right-10 w-40 h-40 rounded-full bg-purple-100 opacity-30 blur-2xl" />
 
         {/* 旅程内容 */}
-        <div className="relative space-y-32 py-20" style={{ zIndex: 1 }}>
+        <div className="relative space-y-32 pt-12 pb-20" style={{ zIndex: 1 }}>
           {/* === Scene 1: 学习路径（左） === */}
           <div
             ref={setSceneRef(0)}

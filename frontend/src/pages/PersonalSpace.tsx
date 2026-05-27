@@ -921,28 +921,25 @@ const PersonalSpace: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Row gutter={[20, 20]}>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
         {statCardsData.map((stat, idx) => (
-          <Col xs={12} lg={6} key={idx}>
-            <StatCard
-              icon={stat.icon}
-              color={stat.color}
-              title={stat.title}
-              value={stat.value}
-              suffix={stat.suffix}
-            />
-          </Col>
-        ))}
-        <Col xs={12} lg={6}>
           <StatCard
-            icon={<ClockCircleOutlined />}
-            color="#ef4444"
-            title="今日番茄钟"
-            value={pomodoroStats.today}
-            suffix="个"
+            key={idx}
+            icon={stat.icon}
+            color={stat.color}
+            title={stat.title}
+            value={stat.value}
+            suffix={stat.suffix}
           />
-        </Col>
-      </Row>
+        ))}
+        <StatCard
+          icon={<ClockCircleOutlined />}
+          color="#ef4444"
+          title="今日番茄钟"
+          value={pomodoroStats.today}
+          suffix="个"
+        />
+      </div>
 
       <Tabs
         activeKey={activeTab}
@@ -1349,8 +1346,8 @@ const PersonalSpace: React.FC = () => {
                   <div className="font-semibold text-slate-800 mb-4">
                     康奈尔笔记法
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-1 space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-1 space-y-2">
                       <div className="text-xs font-medium text-slate-500">
                         线索栏 (Cues)
                       </div>
@@ -1367,7 +1364,7 @@ const PersonalSpace: React.FC = () => {
                         className="rounded-xl bg-slate-50 border-slate-200"
                       />
                     </div>
-                    <div className="col-span-2 space-y-2">
+                    <div className="md:col-span-2 space-y-2">
                       <div className="text-xs font-medium text-slate-500">
                         笔记栏 (Notes)
                       </div>

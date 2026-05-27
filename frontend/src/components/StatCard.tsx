@@ -10,7 +10,7 @@ interface StatCardProps {
   onClick?: () => void;
 }
 
-const CARD_BODY_STYLE = { padding: "20px" };
+const CARD_BODY_STYLE = { padding: "24px" };
 
 export const StatCard: React.FC<StatCardProps> = React.memo(
   ({ icon, color, title, value, suffix, onClick }) => {
