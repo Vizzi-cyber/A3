@@ -1,15 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Typography,
-  Card,
-  Button,
-  Tag,
-  Space,
-  Progress,
-  Row,
-  Col,
-  message,
-} from "antd";
+import { Typography, Tag, Space, Progress, Row, Col, message } from "antd";
 import {
   Radar,
   RadarChart,
@@ -29,10 +19,7 @@ import {
   AimOutlined,
   ReloadOutlined,
   BulbOutlined,
-  ArrowRightOutlined,
-  LineChartOutlined,
   NodeIndexOutlined,
-  RobotOutlined,
   ToolOutlined,
   SafetyOutlined,
   AudioOutlined,

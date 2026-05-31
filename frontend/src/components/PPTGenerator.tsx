@@ -3,11 +3,9 @@ import { Modal, Input, Button, Progress, message, Select } from "antd";
 import {
   FileTextOutlined,
   DownloadOutlined,
-  LoadingOutlined,
   CheckCircleOutlined,
 } from "@ant-design/icons";
 import { pptApi } from "../services/api";
-import { useAppStore } from "../store";
 
 interface PPTGeneratorProps {
   open: boolean;

@@ -14,8 +14,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from "recharts";
 import { useAppStore } from "../store";
 import { dashboardApi } from "../services/api";

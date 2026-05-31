@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Button, Typography, Collapse } from "antd";
+import { Button, Collapse } from "antd";
 import {
   RobotOutlined,
   CompassOutlined,
@@ -22,12 +22,10 @@ import {
   ThunderboltOutlined,
   CodeOutlined,
   BookOutlined,
-  GlobalOutlined,
   LockOutlined,
   EyeOutlined,
   DatabaseOutlined,
   BugOutlined,
-  QuestionCircleOutlined,
   DownOutlined,
 } from "@ant-design/icons";
 

@@ -5,7 +5,7 @@ const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 
 interface CodeEditorProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (_value: string) => void;
   language?: string;
   height?: string;
   readOnly?: boolean;

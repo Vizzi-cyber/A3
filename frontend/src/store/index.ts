@@ -10,17 +10,17 @@ interface UserInfo {
 
 interface AppState {
   studentId: string;
-  setStudentId: (id: string) => void;
+  setStudentId: (_id: string) => void;
 
   token: string | null;
   isLoggedIn: boolean;
   userInfo: UserInfo | null;
-  login: (token: string, studentId: string) => void;
+  login: (_token: string, _studentId: string) => void;
   logout: () => void;
-  setUserInfo: (info: UserInfo) => void;
+  setUserInfo: (_info: UserInfo) => void;
 
   toast: ToastState | null;
-  setToast: (toast: ToastState | null) => void;
+  setToast: (_toast: ToastState | null) => void;
 
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;

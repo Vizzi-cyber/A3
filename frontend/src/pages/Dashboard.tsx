@@ -67,9 +67,9 @@ import {
 } from "../services/api";
 import { buildRadarData } from "../utils/profile";
 import { calcLevel, fetchLevelConfig } from "../utils/level";
-import { StatCard } from "../components/StatCard";
+// import { StatCard } from "../components/StatCard";
 import { SectionCard } from "../components/SectionCard";
-import { StatRow } from "../components/StatRow";
+// import { StatRow } from "../components/StatRow";
 import { statusColors } from "../components/StatusTag";
 import type {
   DashboardTask,
@@ -148,7 +148,7 @@ const Dashboard: React.FC = () => {
     mastered_kps: 0,
     today_duration_min: 0,
   });
-  const [welcomeTopic, setWelcomeTopic] = useState("新知识");
+  const [_welcomeTopic, setWelcomeTopic] = useState("新知识");
 
   const [pomodoroTime, setPomodoroTime] = useState(() => {
     try {
@@ -192,7 +192,7 @@ const Dashboard: React.FC = () => {
     return 0;
   });
   const [kgModalOpen, setKgModalOpen] = useState(false);
-  const [algorithmAnalysis, setAlgorithmAnalysis] =
+  const [_algorithmAnalysis, setAlgorithmAnalysis] =
     useState<AlgorithmAnalysis | null>(null);
   const [pathExpanded, setPathExpanded] = useState(false);
   const [pathNodesState, setPathNodesState] = useState<PathNode[]>([]);
@@ -228,7 +228,7 @@ const Dashboard: React.FC = () => {
     difficulty: number;
     weak_areas: string[];
   } | null>(null);
-  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizLoading, _setQuizLoading] = useState(false);
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -305,7 +305,7 @@ const Dashboard: React.FC = () => {
           pointsRes,
           tasksRes,
           kgRes,
-          levelCfg,
+          _levelCfg,
           dailyQuizRes,
         ] = await Promise.all([
           profileApi.get(studentId).catch(() => null),

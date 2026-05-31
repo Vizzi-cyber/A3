@@ -13,7 +13,6 @@ import {
   LockFilled,
   AimOutlined,
   RocketOutlined,
-  HeartOutlined,
 } from "@ant-design/icons";
 import gsap from "gsap";
 import { useAppStore } from "../store";
@@ -100,9 +99,9 @@ const DIFFICULTY_LABEL: Record<number, string> = {
 const ExploreMap: React.FC<{
   nodes: ChallengeMapNode[];
   activeIdx: number;
-  onSelect: (idx: number) => void;
+  onSelect: (_idx: number) => void;
   challenges: ChallengeItem[];
-}> = ({ nodes, activeIdx, onSelect, challenges }) => {
+}> = ({ nodes, activeIdx, onSelect, challenges: _challenges }) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -148,7 +147,7 @@ const ExploreMap: React.FC<{
     };
   });
 
-  const maxX = Math.max(...layoutNodes.map((n) => n.x)) + 120;
+  const _maxX = Math.max(...layoutNodes.map((n) => n.x)) + 120;
   const maxY = Math.max(...layoutNodes.map((n) => n.y)) + 120;
 
   // 找到对应的challenge数据

@@ -7,7 +7,6 @@ import {
   Space,
   Tag,
   Typography,
-  Spin,
   Tooltip,
   Modal,
 } from "antd";
@@ -27,7 +26,7 @@ import type { ChatMessage, VisionContentItem } from "../types";
 interface ChatPanelProps {
   messages: ChatMessage[];
   loading: boolean;
-  onSend: (content: string | VisionContentItem[]) => void;
+  onSend: (_content: string | VisionContentItem[]) => void;
   placeholder?: string;
   suggestions?: string[];
   showAvatars?: boolean;

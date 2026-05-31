@@ -2,14 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Typography, Tag, message, Space, Tooltip } from "antd";
 import {
   RobotOutlined,
-  BulbOutlined,
   BookOutlined,
   NodeIndexOutlined,
-  ToolOutlined,
-  SafetyOutlined,
   ApartmentOutlined,
   FlagFilled,
-  CheckCircleFilled,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import { tutorApi } from "../services/api";

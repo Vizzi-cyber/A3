@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Spin, Tag, message } from "antd";
 import {
   TrophyOutlined,
@@ -201,7 +201,7 @@ const ParticleCanvas: React.FC<{
 // ==================== 增强SVG树 ====================
 const TreeSVG: React.FC<{ state: string; growthValue: number }> = ({
   state,
-  growthValue,
+  growthValue: _growthValue,
 }) => {
   const cfg = TREE_CONFIG[state] || TREE_CONFIG.seedling;
   const isSeedling = state === "seedling";
@@ -221,10 +221,10 @@ const TreeSVG: React.FC<{ state: string; growthValue: number }> = ({
 
     gsap.set([trunk, ...crown, ...branches], { opacity: 0 });
     if (trunk) tl.to(trunk, { opacity: 1, duration: 0.6, ease: "power2.out" });
-    branches.forEach((b, i) => {
+    branches.forEach((b) => {
       tl.to(b, { opacity: 1, duration: 0.3, ease: "power2.out" }, `-=${0.15}`);
     });
-    crown.forEach((c, i) => {
+    crown.forEach((c) => {
       tl.fromTo(
         c,
         { opacity: 0, scale: 0.5, transformOrigin: "center center" },

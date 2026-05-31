@@ -20,7 +20,6 @@ import {
 } from "antd";
 import {
   CodeOutlined,
-  MessageOutlined,
   CheckCircleOutlined,
   ArrowLeftOutlined,
   SendOutlined,
@@ -156,7 +155,7 @@ const ResourceDetail: React.FC = () => {
           setDocContent(docRes.data.document || "");
           setQuestions(qRes.data.questions || []);
         }
-      } catch (e) {
+      } catch (_e) {
         if (!ignore) message.error("资源加载失败");
       } finally {
         if (!ignore) setLoading(false);

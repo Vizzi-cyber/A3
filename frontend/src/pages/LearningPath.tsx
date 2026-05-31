@@ -11,7 +11,6 @@ import {
   Button,
   Tag,
   Space,
-  Timeline,
   Drawer,
   Slider,
   Radio,
@@ -20,17 +19,12 @@ import {
   List,
   message,
   Input,
-  Badge,
   Tooltip,
-  Divider,
   Popconfirm,
-  Checkbox,
 } from "antd";
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
-  LockOutlined,
-  EnvironmentOutlined,
   SwapOutlined,
   BookOutlined,
   PlayCircleOutlined,
@@ -47,7 +41,6 @@ import {
   BulbOutlined,
   SaveOutlined,
   StepForwardOutlined,
-  CloseCircleOutlined,
   UndoOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
@@ -59,10 +52,10 @@ import {
   learningDataApi,
   logReflectionApi,
 } from "../services/api";
-import { buildRadarData } from "../utils/profile";
+// import { buildRadarData } from "../utils/profile";
 import { StatusIcon } from "../components/StatusIcon";
 import {
-  StatusTag,
+  // StatusTag,
   statusColors,
   statusBg,
   statusLabels,
@@ -70,7 +63,7 @@ import {
 import type {
   PathNode,
   PathStage,
-  StudentProfile,
+  // StudentProfile,
   LearningPathData,
 } from "../types";
 
@@ -145,7 +138,7 @@ const LearningPathPage: React.FC = () => {
     moved: boolean;
   } | null>(null);
   const animFrameRef = useRef<number>(0);
-  const [graphTick, setGraphTick] = useState(0);
+  const [_graphTick, setGraphTick] = useState(0);
 
   // 加载本地保存的偏好和路径数据
   useEffect(() => {
@@ -451,7 +444,7 @@ const LearningPathPage: React.FC = () => {
   );
 
   const handleGraphPointerUp = useCallback(
-    (e: React.PointerEvent) => {
+    (_e: React.PointerEvent) => {
       if (!dragRef.current) return;
       if (!dragRef.current.moved) {
         // 没有移动，视为点击 → 打开节点详情
@@ -706,7 +699,7 @@ const LearningPathPage: React.FC = () => {
     ? Math.round((completedCount / pathNodes.length) * 100)
     : 0;
 
-  const timelineItems = useMemo(
+  const _timelineItems = useMemo(
     () =>
       pathNodes.map((node) => ({
         dot: (

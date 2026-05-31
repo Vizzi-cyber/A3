@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Button, Tag, Timeline, Spin, message } from "antd";
+import { Button, Tag, Timeline, message } from "antd";
 import {
   RobotOutlined,
   UserOutlined,
@@ -166,7 +166,7 @@ const FlowConnector: React.FC<{ active: boolean; completed: boolean }> = ({
 
 /** 主组件 */
 const AgentFlowPanel: React.FC<{
-  onRun?: (taskType: string) => void;
+  onRun?: (_taskType: string) => void;
 }> = React.memo(({ onRun }) => {
   const studentId = useAppStore((s) => s.studentId);
   const [runData, setRunData] = useState<AgentFlowRun | null>(null);

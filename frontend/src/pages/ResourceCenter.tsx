@@ -13,7 +13,6 @@ import {
   message,
   Spin,
   Tooltip,
-  Badge,
   Modal,
 } from "antd";
 import {
@@ -35,10 +34,8 @@ import {
   LikeOutlined,
   DislikeOutlined,
   SafetyOutlined,
-  ToolOutlined,
   ApartmentOutlined,
   ThunderboltOutlined,
-  StarOutlined,
   ReloadOutlined,
   PictureOutlined,
 } from "@ant-design/icons";
@@ -95,7 +92,7 @@ const ResourceCenter: React.FC = () => {
     {},
   );
   const [quizScore, setQuizScore] = useState<number | null>(null);
-  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizSubmitting, _setQuizSubmitting] = useState(false);
   const [mindmap, setMindmap] = useState<{
     root: string;
     children: { name: string }[];
@@ -111,10 +108,10 @@ const ResourceCenter: React.FC = () => {
     notes: "",
     summary: "",
   });
-  const [feynmanMode, setFeynmanMode] = useState(false);
+  const [_feynmanMode, _setFeynmanMode] = useState(false);
   const [feynmanInput, setFeynmanInput] = useState("");
   const [ragActive, setRagActive] = useState(true);
-  const [multiAgentStep, setMultiAgentStep] = useState<
+  const [multiAgentStep, _setMultiAgentStep] = useState<
     "planner" | "worker" | "critic" | "done"
   >("done");
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
@@ -210,7 +207,7 @@ const ResourceCenter: React.FC = () => {
         } else if (menu.length > 0 && menu[0].children.length > 0) {
           setActiveKey(menu[0].children[0].key);
         }
-      } catch (e) {
+      } catch (_e) {
         if (!ignore) message.error("课程目录加载失败");
       } finally {
         if (!ignore) setMenuLoading(false);
@@ -337,7 +334,7 @@ const ResourceCenter: React.FC = () => {
             }[],
           });
         }
-      } catch (e) {
+      } catch (_e) {
         if (!ignore) message.error("资源加载失败，显示默认内容");
       } finally {
         if (!ignore) setResLoading(false);

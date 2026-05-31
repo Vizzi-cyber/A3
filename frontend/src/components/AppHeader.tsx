@@ -22,7 +22,6 @@ import {
   SettingOutlined,
   LogoutOutlined,
   FileTextOutlined,
-  CheckCircleOutlined,
   RocketOutlined,
   TrophyOutlined,
   CloseOutlined,

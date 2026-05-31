@@ -49,7 +49,7 @@ import {
 import type {
   ReflectionEntry,
   StudentProfile,
-  DashboardStats,
+  // DashboardStats,
   Achievement,
 } from "../types";
 import { useAppStore } from "../store";
@@ -226,7 +226,7 @@ const PersonalSpace: React.FC = () => {
     string,
     unknown
   > | null>(null);
-  const [points, setPoints] = useState<Record<string, unknown> | null>(null);
+  const [_points, setPoints] = useState<Record<string, unknown> | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [reflections, setReflections] = useState<ReflectionEntry[]>([]);
   const [newReflection, setNewReflection] = useState("");
@@ -642,7 +642,7 @@ const PersonalSpace: React.FC = () => {
       setReflections([entry, ...reflections]);
       setNewReflection("");
       message.success("反思已保存");
-    } catch (e) {
+    } catch (_e) {
       message.error("保存失败");
     }
   };
@@ -677,7 +677,7 @@ const PersonalSpace: React.FC = () => {
         ...prev,
       ]);
       message.success("康奈尔笔记已保存");
-    } catch (e) {
+    } catch (_e) {
       message.error("保存失败");
     }
   };
@@ -705,7 +705,7 @@ const PersonalSpace: React.FC = () => {
       ]);
       message.success("费曼练习已保存");
       setFeynmanInput("");
-    } catch (e) {
+    } catch (_e) {
       message.error("保存失败");
     }
   };
@@ -807,7 +807,7 @@ const PersonalSpace: React.FC = () => {
       message.success("已更新");
       setEditDrawerOpen(false);
       setEditingNote(null);
-    } catch (e) {
+    } catch (_e) {
       message.error("更新失败");
     } finally {
       setSavingEdit(false);
@@ -826,7 +826,7 @@ const PersonalSpace: React.FC = () => {
       message.success("已删除");
       setEditDrawerOpen(false);
       setEditingNote(null);
-    } catch (e) {
+    } catch (_e) {
       message.error("删除失败");
     } finally {
       setSavingEdit(false);

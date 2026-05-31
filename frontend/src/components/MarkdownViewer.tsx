@@ -1,4 +1,4 @@
-import React, { useState, ReactNode, useMemo } from "react";
+import React, { useState, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -84,9 +84,19 @@ const CodeBlock: React.FC<{ language: string; children: string }> = ({
 };
 
 /** 静态 components 映射 —— 模块级单例，避免每次渲染重新创建对象 */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 const markdownComponents: Record<string, any> = {
-  code({ inline, className: cls, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode; [key: string]: unknown }) {
+  code({
+    inline,
+    className: cls,
+    children,
+    ...props
+  }: {
+    inline?: boolean;
+    className?: string;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) {
     const match = /language-(\w+)/.exec(cls || "");
     const codeText = extractText(children);
     if (!inline && match) {

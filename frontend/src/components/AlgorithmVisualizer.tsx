@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Button, Select, Slider, Tag, Space } from "antd";
+import { Button, Select, Slider, Tag } from "antd";
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -361,7 +361,7 @@ function generateSelectionSteps(arr: number[]): AlgoStep[] {
 
 const ALGO_MAP: Record<
   string,
-  { name: string; generate: (arr: number[]) => AlgoStep[] }
+  { name: string; generate: (_arr: number[]) => AlgoStep[] }
 > = {
   bubble: { name: "冒泡排序", generate: generateBubbleSteps },
   quick: { name: "快速排序", generate: generateQuickSteps },

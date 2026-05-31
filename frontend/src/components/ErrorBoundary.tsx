@@ -21,7 +21,7 @@ function withNavigate(WrappedComponent: React.ComponentClass<InnerProps>) {
 }
 
 interface InnerProps extends Props {
-  navigate?: (to: string) => void;
+  navigate?: (_to: string) => void;
 }
 
 class ErrorBoundaryInner extends Component<InnerProps, State> {
@@ -38,7 +38,9 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
     console.error("ErrorBoundary caught:", error, errorInfo);
     try {
       import("@sentry/react").then((Sentry) => {
-        Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
+        Sentry.captureException(error, {
+          extra: { componentStack: errorInfo.componentStack },
+        });
       });
     } catch {}
   }

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Card, Button, Progress, Tag, Spin, Space } from "antd";
 import {
   GiftOutlined,
-  TrophyOutlined,
   RocketOutlined,
   CheckCircleOutlined,
   FireOutlined,
