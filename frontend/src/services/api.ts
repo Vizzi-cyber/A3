@@ -725,6 +725,41 @@ export const knowledgeApi = {
     }>(`/knowledge/search`, { params: { q } }),
 };
 
+// ---------- 每日练习 ----------
+export const dailyQuizApi = {
+  getDaily: (count?: number) =>
+    api.get<{
+      status: string;
+      data: {
+        date: string;
+        total_questions: number;
+        difficulty_level: string;
+        difficulty: number;
+        questions: Array<{
+          q_id: string;
+          type: string;
+          content: string;
+          difficulty: number;
+          source: string;
+          hint: string;
+          tags: string[];
+          options?: Array<{ id: string; text: string }>;
+          correct_answer?: string;
+        }>;
+        weak_areas: string[];
+      };
+    }>("/daily-quiz/daily", count ? { params: { count } } : undefined),
+  getStats: () =>
+    api.get<{
+      status: string;
+      data: {
+        total_questions: number;
+        today_completed: number;
+        knowledge_points_covered: number;
+      };
+    }>("/daily-quiz/stats"),
+};
+
 // ---------- Agent 工作流 ----------
 export const agentFlowApi = {
   startRun: (data: {

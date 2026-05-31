@@ -23,6 +23,8 @@ from .agent_flow import router as agent_flow_router
 from .gamification_tree import router as gamification_tree_router
 from .gamification_challenge import router as gamification_challenge_router
 from .ppt import router as ppt_router
+from .knowledge_graph import router as knowledge_graph_router
+from .daily_quiz import router as daily_quiz_router
 
 router = APIRouter()
 
@@ -46,3 +48,5 @@ router.include_router(agent_flow_router, prefix="/agent-flow", tags=["Agent工�
 router.include_router(gamification_tree_router, prefix="/gamification-tree", tags=["知识树成长"])
 router.include_router(gamification_challenge_router, prefix="/gamification-challenge", tags=["学习挑战与排行榜"])
 router.include_router(ppt_router, prefix="/ppt", tags=["PPT生成"])
+router.include_router(knowledge_graph_router, prefix="/knowledge-graph", tags=["知识图谱"])
+router.include_router(daily_quiz_router, prefix="/daily-quiz", tags=["每日练习"])

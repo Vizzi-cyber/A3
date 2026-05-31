@@ -7,6 +7,7 @@ from .profiler import ProfilerAgent
 from .resource_generator import ResourceGeneratorAgent
 from .path_planner import PathPlannerAgent
 from .tutor import TutorAgent
+from .knowledge_graph_builder import KnowledgeGraphBuilderAgent
 
 __all__ = [
     "BaseAgent",
@@ -17,4 +18,5 @@ __all__ = [
     "ResourceGeneratorAgent",
     "PathPlannerAgent",
     "TutorAgent",
+    "KnowledgeGraphBuilderAgent",
 ]

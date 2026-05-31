@@ -63,6 +63,7 @@ import {
   pathApi,
   gamificationApi,
   knowledgeApi,
+  dailyQuizApi,
 } from "../services/api";
 import { buildRadarData } from "../utils/profile";
 import { calcLevel, fetchLevelConfig } from "../utils/level";
@@ -208,6 +209,30 @@ const Dashboard: React.FC = () => {
     { id: string; name: string; prerequisites: string[] }[]
   >([]);
 
+  // 每日练习
+  const [dailyQuiz, setDailyQuiz] = useState<{
+    date: string;
+    total_questions: number;
+    questions: Array<{
+      q_id: string;
+      type: string;
+      content: string;
+      difficulty: number;
+      source: string;
+      hint: string;
+      tags: string[];
+      options?: Array<{ id: string; text: string }>;
+      correct_answer?: string;
+    }>;
+    difficulty_level: string;
+    difficulty: number;
+    weak_areas: string[];
+  } | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [showAnswer, setShowAnswer] = useState(false);
+
   const studentId = useAppStore((s) => s.studentId);
   const journeyRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
@@ -281,6 +306,7 @@ const Dashboard: React.FC = () => {
           tasksRes,
           kgRes,
           levelCfg,
+          dailyQuizRes,
         ] = await Promise.all([
           profileApi.get(studentId).catch(() => null),
           dashboardApi.getSummary(studentId).catch(() => null),
@@ -290,6 +316,7 @@ const Dashboard: React.FC = () => {
           gamificationApi.getTasks(studentId).catch(() => null),
           knowledgeApi.list().catch(() => null),
           fetchLevelConfig().catch(() => null),
+          dailyQuizApi.getDaily(5).catch(() => null),
         ]);
 
         if (profileRes?.data?.data) {
@@ -378,6 +405,10 @@ const Dashboard: React.FC = () => {
               prerequisites: k.prerequisites || [],
             })),
           );
+        }
+
+        if (dailyQuizRes?.data?.data) {
+          setDailyQuiz(dailyQuizRes.data.data);
         }
       } catch {
         message.error("部分数据加载失败");
@@ -900,6 +931,217 @@ const Dashboard: React.FC = () => {
                     );
                   }}
                 />
+              </Spin>
+            </div>
+          </div>
+
+          {/* 每日推送练习题 */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <Typography.Title
+                level={5}
+                className="!m-0 text-slate-800 font-semibold"
+              >
+                <BookOutlined className="mr-2 text-primary" />
+                每日练习
+              </Typography.Title>
+              {dailyQuiz && (
+                <div className="flex items-center gap-2">
+                  <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs">
+                    难度: {dailyQuiz.difficulty_level}
+                  </Tag>
+                  <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
+                    {dailyQuiz.total_questions} 题
+                  </Tag>
+                </div>
+              )}
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 p-5">
+              <Spin spinning={quizLoading}>
+                {dailyQuiz && dailyQuiz.questions.length > 0 ? (
+                  <div>
+                    {/* 题目进度条 */}
+                    <div className="flex items-center gap-3 mb-5">
+                      {dailyQuiz.questions.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex-1 h-2 rounded-full transition-all cursor-pointer ${
+                            idx === currentQuizIdx
+                              ? "bg-primary"
+                              : idx < currentQuizIdx
+                                ? "bg-emerald-400"
+                                : "bg-slate-100"
+                          }`}
+                          onClick={() => {
+                            setCurrentQuizIdx(idx);
+                            setSelectedAnswer(null);
+                            setShowAnswer(false);
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* 当前题目 */}
+                    {(() => {
+                      const q = dailyQuiz.questions[currentQuizIdx];
+                      if (!q) return null;
+                      return (
+                        <div>
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                              {currentQuizIdx + 1}
+                            </span>
+                            <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
+                              {q.type}
+                            </Tag>
+                            <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-xs">
+                              难度 {q.difficulty}/5
+                            </Tag>
+                            {q.source && (
+                              <Tag className="rounded-full border-0 bg-blue-50 text-blue-600 text-xs">
+                                来源: {q.source}
+                              </Tag>
+                            )}
+                          </div>
+
+                          <div className="text-slate-800 text-sm mb-4 leading-relaxed">
+                            {q.content}
+                          </div>
+
+                          {/* 选项（选择题） */}
+                          {q.options && q.options.length > 0 && (
+                            <div className="space-y-2 mb-4">
+                              {q.options.map((opt) => (
+                                <div
+                                  key={opt.id}
+                                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all text-sm ${
+                                    selectedAnswer === opt.id
+                                      ? showAnswer
+                                        ? opt.id === q.correct_answer
+                                          ? "bg-emerald-50 border-emerald-300"
+                                          : "bg-red-50 border-red-300"
+                                        : "bg-primary/5 border-primary"
+                                      : showAnswer &&
+                                          opt.id === q.correct_answer
+                                        ? "bg-emerald-50 border-emerald-300"
+                                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                  }`}
+                                  onClick={() => {
+                                    if (!showAnswer) {
+                                      setSelectedAnswer(opt.id);
+                                    }
+                                  }}
+                                >
+                                  <span
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                                      selectedAnswer === opt.id
+                                        ? "bg-primary text-white"
+                                        : "bg-slate-100 text-slate-600"
+                                    }`}
+                                  >
+                                    {opt.id}
+                                  </span>
+                                  <span className="text-slate-700">
+                                    {opt.text}
+                                  </span>
+                                  {showAnswer &&
+                                    opt.id === q.correct_answer && (
+                                      <CheckCircleOutlined className="text-emerald-500 ml-auto" />
+                                    )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 提示 */}
+                          {showAnswer && q.hint && (
+                            <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 mb-3">
+                              <div className="text-xs text-amber-800">
+                                <span className="font-medium">提示：</span>
+                                {q.hint}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 操作按钮 */}
+                          <div className="flex items-center gap-2">
+                            {!showAnswer && q.options && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                className="rounded-lg bg-primary"
+                                disabled={!selectedAnswer}
+                                onClick={() => setShowAnswer(true)}
+                              >
+                                提交答案
+                              </Button>
+                            )}
+                            {!showAnswer && !q.options && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                className="rounded-lg bg-primary"
+                                onClick={() => setShowAnswer(true)}
+                              >
+                                查看提示
+                              </Button>
+                            )}
+                            <Button
+                              size="small"
+                              className="rounded-lg"
+                              onClick={() => {
+                                if (
+                                  currentQuizIdx <
+                                  dailyQuiz.questions.length - 1
+                                ) {
+                                  setCurrentQuizIdx(currentQuizIdx + 1);
+                                  setSelectedAnswer(null);
+                                  setShowAnswer(false);
+                                }
+                              }}
+                              disabled={
+                                currentQuizIdx >= dailyQuiz.questions.length - 1
+                              }
+                            >
+                              下一题 <ArrowRightOutlined />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 薄弱知识点提示 */}
+                    {dailyQuiz.weak_areas.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-slate-100">
+                        <div className="text-xs text-slate-400 mb-2">
+                          今日练习重点覆盖你的薄弱知识点：
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {dailyQuiz.weak_areas.slice(0, 3).map((area) => (
+                            <Tag
+                              key={area}
+                              className="rounded-full border-0 bg-red-50 text-red-500 text-xs"
+                            >
+                              {area}
+                            </Tag>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-300 text-xl mx-auto mb-2">
+                      <BookOutlined />
+                    </div>
+                    <div className="text-sm text-slate-500 mb-1">
+                      暂无练习题
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      完善学习资料后将为你推荐练习题
+                    </div>
+                  </div>
+                )}
               </Spin>
             </div>
           </div>

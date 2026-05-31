@@ -94,3 +94,17 @@ class ResourceTaskModel(Base):
     message = Column(String(512), default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class KnowledgeGraphModel(Base):
+    """知识图表 —— 存储结构化知识图谱，约束 LLM 路径规划与资源生成"""
+    __tablename__ = "knowledge_graph"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    kg_id = Column(String(64), unique=True, index=True)       # 图谱ID，如 "kg_c_language"
+    name = Column(String(256), nullable=False)                 # 图谱名称，如 "C语言知识图谱"
+    subject = Column(String(64), nullable=False, index=True)   # 学科
+    graph_data = Column(JSON, nullable=False)                  # 完整图谱 JSON {nodes, edges}
+    version = Column(Integer, default=1)                       # 版本号
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
