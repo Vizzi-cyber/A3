@@ -308,6 +308,15 @@ export const dashboardApi = {
         };
       };
     }>(`/dashboard/${studentId}/timeline`),
+  getActiveDates: (studentId: string, year?: number, month?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", String(year));
+    if (month) params.append("month", String(month));
+    const qs = params.toString();
+    return api.get<{ status: string; data: string[] }>(
+      `/dashboard/${studentId}/active-dates${qs ? `?${qs}` : ""}`,
+    );
+  },
 };
 
 // ---------- Favorites ----------

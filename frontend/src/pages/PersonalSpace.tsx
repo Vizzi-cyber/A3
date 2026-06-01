@@ -45,6 +45,8 @@ import {
   CheckCircleOutlined,
   ReloadOutlined,
   BookOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
 } from "@ant-design/icons";
 import type {
   ReflectionEntry,
@@ -238,6 +240,99 @@ const PersonalSpace: React.FC = () => {
     today: 0,
     streak: 0,
   });
+
+  // 番茄钟
+  const POMODORO_FOCUS = 25 * 60;
+  const POMODORO_BREAK = 5 * 60;
+  const pomodoroEndRef = useRef<number | null>(null);
+  const isBreakRef = useRef(false);
+  const [pomodoroTime, setPomodoroTime] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        return s.time ?? POMODORO_FOCUS;
+      }
+    } catch {}
+    return POMODORO_FOCUS;
+  });
+  const [isPomodoroRunning, setIsPomodoroRunning] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.running && s.endTime) pomodoroEndRef.current = s.endTime;
+        return s.running ?? false;
+      }
+    } catch {}
+    return false;
+  });
+  const [isBreak, setIsBreak] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        isBreakRef.current = s.isBreak ?? false;
+        return s.isBreak ?? false;
+      }
+    } catch {}
+    return false;
+  });
+  const [pomodoroCount, setPomodoroCount] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) return JSON.parse(saved).count ?? 0;
+    } catch {}
+    return 0;
+  });
+
+  // 番茄钟定时器
+  useEffect(() => {
+    if (!isPomodoroRunning) {
+      pomodoroEndRef.current = null;
+      return;
+    }
+    if (pomodoroEndRef.current == null) {
+      pomodoroEndRef.current = Date.now() + pomodoroTime * 1000;
+    }
+    const tick = () => {
+      const end = pomodoroEndRef.current;
+      if (end == null) return;
+      const remain = Math.max(0, Math.round((end - Date.now()) / 1000));
+      setPomodoroTime(remain);
+      if (remain <= 0) {
+        setIsPomodoroRunning(false);
+        pomodoroEndRef.current = null;
+        if (!isBreakRef.current) {
+          setPomodoroCount((c: number) => c + 1);
+          message.success("专注时间结束！休息一下吧");
+          isBreakRef.current = true;
+          setIsBreak(true);
+          setPomodoroTime(POMODORO_BREAK);
+        } else {
+          message.success("休息结束，继续专注！");
+          isBreakRef.current = false;
+          setIsBreak(false);
+          setPomodoroTime(POMODORO_FOCUS);
+        }
+      }
+    };
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [isPomodoroRunning]);
+
+  // 持久化番茄钟状态
+  useEffect(() => {
+    const state = {
+      time: pomodoroTime,
+      running: isPomodoroRunning,
+      isBreak: isBreak,
+      count: pomodoroCount,
+      endTime: pomodoroEndRef.current,
+    };
+    sessionStorage.setItem("pomodoro_state", JSON.stringify(state));
+  }, [pomodoroTime, isPomodoroRunning, isBreak, pomodoroCount]);
+
   const [cornellNotes, setCornellNotes] = useState({
     cues: "",
     notes: "",
@@ -963,6 +1058,62 @@ const PersonalSpace: React.FC = () => {
             ),
             children: (
               <div className="space-y-5">
+                {/* 番茄专注钟 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2">
+                      <ClockCircleOutlined className="text-primary text-lg" />
+                      <span className="font-semibold text-slate-800">
+                        番茄专注钟
+                      </span>
+                    </div>
+                    <Tag className="rounded-full border-0 bg-primary-50 text-primary text-xs font-medium">
+                      {pomodoroCount} 个番茄
+                    </Tag>
+                  </div>
+                  <div className="text-center py-2">
+                    <div
+                      className={`text-6xl font-bold tracking-tight mb-3 ${isBreak ? "text-emerald-500" : "text-primary"}`}
+                    >
+                      {Math.floor(pomodoroTime / 60)
+                        .toString()
+                        .padStart(2, "0")}
+                      :{(pomodoroTime % 60).toString().padStart(2, "0")}
+                    </div>
+                    <div className="text-xs text-slate-400 mb-5">
+                      {isBreak ? "休息时间 · 恢复精力" : "专注时间 · 保持高效"}
+                    </div>
+                    <Space>
+                      <Button
+                        type="primary"
+                        shape="round"
+                        icon={
+                          isPomodoroRunning ? (
+                            <PauseCircleOutlined />
+                          ) : (
+                            <PlayCircleOutlined />
+                          )
+                        }
+                        onClick={() => setIsPomodoroRunning(!isPomodoroRunning)}
+                        className="bg-primary"
+                      >
+                        {isPomodoroRunning ? "暂停" : "开始"}
+                      </Button>
+                      <Button
+                        shape="round"
+                        onClick={() => {
+                          setIsPomodoroRunning(false);
+                          setPomodoroTime(
+                            isBreak ? POMODORO_BREAK : POMODORO_FOCUS,
+                          );
+                        }}
+                      >
+                        重置
+                      </Button>
+                    </Space>
+                  </div>
+                </div>
+
                 <Row gutter={[20, 20]}>
                   <Col xs={24} lg={12}>
                     <div className="bg-white rounded-2xl border border-slate-100 p-6">

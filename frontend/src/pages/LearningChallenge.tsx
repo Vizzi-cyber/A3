@@ -101,7 +101,7 @@ const ExploreMap: React.FC<{
   activeIdx: number;
   onSelect: (_idx: number) => void;
   challenges: ChallengeItem[];
-}> = ({ nodes, activeIdx, onSelect, challenges: _challenges }) => {
+}> = ({ nodes, activeIdx, onSelect, challenges }) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

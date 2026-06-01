@@ -45,6 +45,8 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useAppStore } from "../store";
 import {
   pathApi,
@@ -66,6 +68,8 @@ import type {
   // StudentProfile,
   LearningPathData,
 } from "../types";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const resourceTypeMeta: Record<
   string,
@@ -139,6 +143,7 @@ const LearningPathPage: React.FC = () => {
   } | null>(null);
   const animFrameRef = useRef<number>(0);
   const [_graphTick, setGraphTick] = useState(0);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   // 加载本地保存的偏好和路径数据
   useEffect(() => {
@@ -287,6 +292,85 @@ const LearningPathPage: React.FC = () => {
     }
     return edges;
   }, [pathNodes]);
+
+  // 时间轴滚动动画
+  useEffect(() => {
+    if (viewMode !== "timeline" || !timelineRef.current) return;
+
+    const timelineEl = timelineRef.current;
+    const nodeEls = timelineEl.querySelectorAll(".timeline-node");
+    const pathEl = timelineEl.querySelector(".timeline-path") as SVGPathElement;
+    const pathActiveEl = timelineEl.querySelector(
+      ".timeline-path-active",
+    ) as SVGPathElement;
+
+    const animations: gsap.core.Tween[] = [];
+
+    // 路径描边动画
+    if (pathEl && pathActiveEl) {
+      const pathLength = pathEl.getTotalLength();
+      gsap.set(pathActiveEl, {
+        strokeDasharray: pathLength,
+        strokeDashoffset: pathLength,
+      });
+
+      const pathAnim = gsap.to(pathActiveEl, {
+        strokeDashoffset: 0,
+        ease: "none",
+        scrollTrigger: {
+          trigger: timelineEl,
+          start: "top 70%",
+          end: "bottom 30%",
+          scrub: 1.5,
+        },
+      });
+      animations.push(pathAnim);
+    }
+
+    // 节点出现动画
+    nodeEls.forEach((el, i) => {
+      gsap.set(el, {
+        opacity: 0,
+        x: i % 2 === 0 ? -30 : 30,
+      });
+
+      const tween = gsap.to(el, {
+        opacity: 1,
+        x: 0,
+        duration: 0.6,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: el,
+          start: "top 85%",
+          end: "top 60%",
+          toggleActions: "play none none reverse",
+        },
+      });
+      animations.push(tween);
+
+      // 节点圆点弹跳效果
+      const dot = el.querySelector(".absolute.left-1\\/2");
+      if (dot) {
+        gsap.set(dot, { scale: 0 });
+        const dotAnim = gsap.to(dot, {
+          scale: 1,
+          duration: 0.5,
+          ease: "back.out(1.7)",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+        });
+        animations.push(dotAnim);
+      }
+    });
+
+    return () => {
+      animations.forEach((t) => t.kill());
+      ScrollTrigger.getAll().forEach((t) => t.kill());
+    };
+  }, [viewMode, pathNodes]);
 
   // 力导向模拟
   useEffect(() => {
@@ -749,6 +833,12 @@ const LearningPathPage: React.FC = () => {
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Space>
+            <Button
+              type="text"
+              icon={<ArrowRightOutlined className="rotate-180" />}
+              className="text-slate-500 hover:text-primary"
+              onClick={() => navigate("/")}
+            />
             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
               <FlagOutlined />
             </div>
@@ -1164,11 +1254,85 @@ const LearningPathPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* 自定义时间轴：避免 antd Timeline label 挤压 */}
-              <div className="relative">
-                {/* 中心线 */}
-                <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-slate-100 -translate-x-1/2" />
-                <div className="space-y-8">
+              {/* 弯曲时间轴 */}
+              <div className="relative overflow-hidden" ref={timelineRef}>
+                {/* SVG 弯曲路径背景 */}
+                <svg
+                  className="absolute left-1/2 top-0 -translate-x-1/2 pointer-events-none"
+                  style={{
+                    zIndex: 0,
+                    width: "200px",
+                    height: `${pathNodes.length * 140 + 40}px`,
+                  }}
+                  viewBox={`0 0 200 ${pathNodes.length * 140 + 40}`}
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    className="timeline-path"
+                    d={(() => {
+                      const totalNodes = pathNodes.length;
+                      const segH = 140;
+                      const amp = 60;
+                      const cx = 100;
+                      let d = `M ${cx} 20`;
+                      for (let i = 0; i < totalNodes; i++) {
+                        const y1 = 20 + i * segH + segH * 0.3;
+                        const y2 = 20 + i * segH + segH * 0.7;
+                        const y3 = 20 + (i + 1) * segH;
+                        const dir = i % 2 === 0 ? 1 : -1;
+                        d += ` C ${cx + amp * dir} ${y1}, ${cx + amp * dir} ${y2}, ${cx} ${y3}`;
+                      }
+                      return d;
+                    })()}
+                    fill="none"
+                    stroke="#FF5F0A"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    opacity="0.15"
+                  />
+                  <path
+                    className="timeline-path-active"
+                    d={(() => {
+                      const totalNodes = pathNodes.length;
+                      const segH = 140;
+                      const amp = 60;
+                      const cx = 100;
+                      let d = `M ${cx} 20`;
+                      for (let i = 0; i < totalNodes; i++) {
+                        const y1 = 20 + i * segH + segH * 0.3;
+                        const y2 = 20 + i * segH + segH * 0.7;
+                        const y3 = 20 + (i + 1) * segH;
+                        const dir = i % 2 === 0 ? 1 : -1;
+                        d += ` C ${cx + amp * dir} ${y1}, ${cx + amp * dir} ${y2}, ${cx} ${y3}`;
+                      }
+                      return d;
+                    })()}
+                    fill="none"
+                    stroke="#FF5F0A"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                  />
+                </svg>
+
+                {/* 节点内容 */}
+                <div className="relative" style={{ zIndex: 1 }}>
+                  {/* 起点标记 */}
+                  <div className="timeline-node relative py-4">
+                    <div className="absolute left-1/2 -translate-x-1/2 top-4 z-10">
+                      <div className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg border-4 border-white transition-all duration-300 bg-gradient-to-br from-orange-400 to-orange-600 scale-110">
+                        <CheckCircleOutlined className="text-xl" />
+                      </div>
+                    </div>
+                    <div className="text-center pt-20">
+                      <Typography.Text className="text-orange-600 font-bold text-sm">
+                        学习起点
+                      </Typography.Text>
+                      <div className="text-xs text-slate-400 mt-1">
+                        共 {pathNodes.length} 个阶段 · 向下滚动探索路径
+                      </div>
+                    </div>
+                  </div>
+
                   {pathNodes.map((node, idx) => {
                     const cumulativeMinutes = pathNodes
                       .slice(0, idx)
@@ -1181,65 +1345,70 @@ const LearningPathPage: React.FC = () => {
                     return (
                       <div
                         key={node.id}
-                        className={`relative flex items-start gap-4 md:gap-8 ${isLeft ? "md:flex-row" : "md:flex-row-reverse"}`}
+                        className="timeline-node relative py-7"
                       >
-                        {/* 移动端：左侧固定；桌面端：交替 */}
-                        <div className="hidden md:block flex-1" />
-                        {/* 时间轴节点圆点 */}
-                        <div className="relative z-10 shrink-0">
+                        {/* 节点圆点 - 居中 */}
+                        <div className="absolute left-1/2 -translate-x-1/2 top-7 z-10">
                           <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm text-sm"
-                            style={{ background: statusColors[node.status] }}
+                            className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg border-4 border-white transition-all duration-300 ${
+                              node.status === "completed"
+                                ? "bg-gradient-to-br from-orange-400 to-orange-600 scale-110"
+                                : "bg-slate-300"
+                            }`}
                           >
-                            <StatusIcon
-                              status={node.status}
-                              pendingIcon={
-                                <span className="text-xs font-bold">
-                                  {idx + 1}
-                                </span>
-                              }
-                            />
-                          </div>
-                        </div>
-                        {/* 内容卡片 */}
-                        <div
-                          className={`flex-1 ${isLeft ? "md:text-left" : "md:text-right"}`}
-                        >
-                          {/* 日期标签 */}
-                          <div
-                            className={`mb-2 text-xs leading-relaxed ${isLeft ? "md:text-left" : "md:text-right"}`}
-                          >
-                            <span className="font-bold text-slate-600 mr-2">
-                              第 {dayNum} 天
-                            </span>
-                            <span className="text-slate-400">
-                              {(node.resources || 3) * 20} 分钟
-                            </span>
-                            {isMilestone && (
-                              <span className="text-amber-500 font-medium ml-2">
-                                第 {weekNum} 周
+                            {node.status === "completed" ? (
+                              <CheckCircleOutlined className="text-xl" />
+                            ) : (
+                              <span className="text-sm font-bold">
+                                {idx + 1}
                               </span>
                             )}
                           </div>
-                          {/* 卡片 */}
+                        </div>
+
+                        {/* 内容卡片 - 交替左右 */}
+                        <div
+                          className={`${isLeft ? "pr-[55%] pl-4" : "pl-[55%] pr-4"}`}
+                        >
                           <div
-                            className={`inline-block p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer max-w-sm text-left ${isMilestone ? "ring-2 ring-amber-100" : ""}`}
+                            className={`p-5 rounded-2xl bg-white border-2 transition-all cursor-pointer hover:shadow-lg ${
+                              node.status === "completed"
+                                ? "border-orange-200 shadow-md bg-gradient-to-br from-white to-orange-50"
+                                : "border-slate-100 hover:border-orange-200"
+                            } ${isMilestone ? "ring-2 ring-amber-200" : ""}`}
                             onClick={() => openNodeDetail(node)}
                           >
-                            {isMilestone && (
-                              <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-xs mb-2">
-                                <FlagOutlined /> 里程碑 · 第 {weekNum} 周
-                              </Tag>
-                            )}
+                            {/* 日期标签 */}
+                            <div className="mb-2 text-xs">
+                              <span className="font-bold text-orange-600 mr-2">
+                                第 {dayNum} 天
+                              </span>
+                              <span className="text-slate-400">
+                                {(node.resources || 3) * 20} 分钟
+                              </span>
+                              {isMilestone && (
+                                <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-xs ml-2">
+                                  <FlagOutlined /> 里程碑
+                                </Tag>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <Tag
                                 className="rounded-full border-0 text-xs font-medium"
                                 style={{
-                                  background: statusBg[node.status],
-                                  color: statusColors[node.status],
+                                  background:
+                                    node.status === "completed"
+                                      ? "#FFF3E0"
+                                      : statusBg[node.status],
+                                  color:
+                                    node.status === "completed"
+                                      ? "#FF5F0A"
+                                      : statusColors[node.status],
                                 }}
                               >
-                                {statusLabels[node.status]}
+                                {node.status === "completed"
+                                  ? "已完成"
+                                  : statusLabels[node.status]}
                               </Tag>
                               <span className="text-xs text-slate-400">
                                 {node.type}
@@ -1249,12 +1418,10 @@ const LearningPathPage: React.FC = () => {
                               {node.title}
                             </Typography.Text>
                             <Typography.Text className="text-slate-400 text-sm">
-                              {node.resources} 个资源
+                              {node.resources} 个资源 · 点击查看详情
                             </Typography.Text>
                           </div>
                         </div>
-                        {/* 移动端占位 */}
-                        <div className="md:hidden flex-1" />
                       </div>
                     );
                   })}
