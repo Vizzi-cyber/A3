@@ -89,7 +89,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
         )
         raw_path = result.get("path", {}) if isinstance(result, dict) else {}
     except asyncio.TimeoutError:
-        logger.warning(f"路径规划超时: student_id={student_id}")
+        logger.warning(f"路径规划超时: student_id={request.student_id}")
         raw_path = {}
     except Exception as e:
         logger.warning(f"路径规划异常: {e}")

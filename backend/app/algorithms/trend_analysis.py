@@ -12,6 +12,7 @@
 """
 from typing import Dict, Any, List
 from datetime import datetime, timedelta, timezone
+from collections import defaultdict, Counter
 import math
 
 
@@ -128,7 +129,7 @@ class MultiFactorTrendAnalyzer:
         if not learning_records:
             return 0.0
         # 按天累计加权动作数（complete 计 1.0，practice 0.6，read/watch 0.3）
-        from collections import defaultdict
+        # (defaultdict imported at top level)
         daily_weight = defaultdict(float)
         for r in learning_records:
             date = r.get("created_at", "")[:10] if isinstance(r.get("created_at"), str) else ""
@@ -172,7 +173,7 @@ class MultiFactorTrendAnalyzer:
         if not recent_weak_tags:
             return 0.0
         # 计算薄弱点集中度（重复出现比例高 -> 更需要关注，得分更低）
-        from collections import Counter
+        # (Counter imported at top level)
         tag_counts = Counter(recent_weak_tags)
         max_count = max(tag_counts.values())
         total_count = len(recent_weak_tags)
@@ -187,7 +188,7 @@ class MultiFactorTrendAnalyzer:
         """连续学习稳定性：基于最近7天学习天数占比和标准差"""
         if not learning_records:
             return 0.0
-        from collections import defaultdict
+        # (defaultdict imported at top level)
         daily_duration = defaultdict(int)
         for r in learning_records:
             date = r.get("created_at", "")[:10] if isinstance(r.get("created_at"), str) else ""

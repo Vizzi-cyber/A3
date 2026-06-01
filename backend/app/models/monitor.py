@@ -43,6 +43,7 @@ class LlmCallModel(Base):
 
     __table_args__ = (
         Index("ix_llm_calls_created_at", "created_at"),
+        Index("ix_llm_calls_provider", "provider"),
     )
 
 

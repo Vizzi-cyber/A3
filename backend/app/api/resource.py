@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
+import ast
 import asyncio
 
 from ..core.logger import setup_logger
@@ -35,6 +36,9 @@ router = APIRouter()
 
 _resource_agent = ResourceGeneratorAgent()
 
+# LLM并发控制 - 最多同时3个LLM调用
+_llm_semaphore = asyncio.Semaphore(3)
+
 
 async def _generate_with_agent(
     task: str,
@@ -54,10 +58,11 @@ async def _generate_with_agent(
         agent_input: Dict[str, Any] = {"task": task, "topic": topic}
         if constraints:
             agent_input["constraints"] = constraints
-        result = await asyncio.wait_for(
-            _resource_agent.process(agent_input),
-            timeout=15.0,
-        )
+        async with _llm_semaphore:
+            result = await asyncio.wait_for(
+                _resource_agent.process(agent_input),
+                timeout=15.0,
+            )
         if result.get("status") == "success":
             raw = result.get("content", default_content)
             if extract_content:
@@ -348,8 +353,6 @@ async def generate_code(request: CodeGenerateRequest, _current: str = Depends(re
 
 # ---------- 代码安全分析 ----------
 
-import ast
-
 _DANGEROUS_MODULES = {
     "os", "sys", "subprocess", "shutil", "socket", "ctypes",
     "urllib", "http", "ftplib", "telnetlib", "pathlib",
@@ -485,6 +488,105 @@ def _assign_to_job(job_handle, pid: int):
         kernel32.CloseHandle(proc_handle)
 
 
+def _decode_bytes(b: bytes) -> str:
+    """多编码尝试解码（C 程序输出可能是 GBK/UTF-8）"""
+    for enc in ("utf-8", "gbk", "gb2312"):
+        try:
+            return b.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return b.decode("utf-8", errors="replace")
+
+
+def _run_subprocess_safe(
+    cmd: list,
+    *,
+    timeout: int = 10,
+    env: dict = None,
+    cleanup_paths: list = None,
+    binary_mode: bool = False,
+) -> dict:
+    """
+    通用安全子进程执行函数：
+    - 平台相关资源限制（Unix rlimit / Windows Job Object）
+    - 超时保护
+    - 多编码输出解码
+    - 临时文件清理
+    """
+    import subprocess
+    import os
+
+    output = ""
+    error = ""
+    try:
+        preexec = None
+        job_handle = None
+        creation_flags = 0
+        if os.name != "nt":
+            def _set_limits():
+                import resource
+                resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
+                resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
+                resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
+            preexec = _set_limits
+        else:
+            job_handle = _create_win_job_object(128)
+            creation_flags = 0x00000200  # CREATE_BREAKAWAY_FROM_JOB
+
+        if job_handle:
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                creationflags=creation_flags, env=env,
+            )
+            _assign_to_job(job_handle, proc.pid)
+            try:
+                stdout_bytes, stderr_bytes = proc.communicate(timeout=timeout)
+                if binary_mode:
+                    output = _decode_bytes(stdout_bytes)[:5000]
+                    error = _decode_bytes(stderr_bytes)[:5000] if proc.returncode != 0 else ""
+                else:
+                    output = (stdout_bytes or b"").decode("utf-8", errors="replace")[:5000]
+                    error = (stderr_bytes or b"").decode("utf-8", errors="replace")[:5000] if proc.returncode != 0 else ""
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                raise
+            finally:
+                import ctypes
+                ctypes.windll.kernel32.CloseHandle(job_handle)
+        else:
+            result = subprocess.run(
+                cmd, capture_output=True,
+                timeout=timeout, preexec_fn=preexec, env=env,
+            )
+            if binary_mode:
+                output = _decode_bytes(result.stdout or b"")[:5000]
+                error = _decode_bytes(result.stderr or b"")[:5000] if result.returncode != 0 else ""
+            else:
+                output = (result.stdout or b"").decode("utf-8", errors="replace")[:5000]
+                error = (result.stderr or b"").decode("utf-8", errors="replace")[:5000] if result.returncode != 0 else ""
+    except subprocess.TimeoutExpired:
+        output = ""
+        error = "代码执行超时（限制 10 秒）"
+    except Exception as e:
+        output = ""
+        error = f"执行异常: {str(e)}"
+    finally:
+        for p in (cleanup_paths or []):
+            try:
+                if p and os.path.exists(p):
+                    os.remove(p)
+            except Exception:
+                pass
+
+    if not error and output:
+        explanation = "代码执行成功，上方为输出结果。"
+    elif error:
+        explanation = "代码执行过程中出现错误，请检查语法或逻辑。"
+    else:
+        explanation = "代码执行完成，无输出。"
+    return {"status": "success", "output": output, "error": error, "explanation": explanation}
+
+
 def _run_c_code(code: str) -> dict:
     """同步函数：编译并运行 C 代码（供 asyncio.to_thread 调用）"""
     import subprocess
@@ -492,7 +594,6 @@ def _run_c_code(code: str) -> dict:
     import os
     import shutil
 
-    # 安全检查：限制代码长度（防止超大文件）
     if len(code) > 50_000:
         return {"status": "success", "output": "", "error": "代码过长（超过 50KB），已拒绝执行。", "explanation": "安全限制。"}
 
@@ -502,8 +603,7 @@ def _run_c_code(code: str) -> dict:
         gcc_path = msys2_gcc
     if not gcc_path:
         return {
-            "status": "success",
-            "output": "",
+            "status": "success", "output": "",
             "error": "当前服务器未安装 gcc，无法编译运行 C 代码。建议将代码复制到本地 IDE（如 Dev-C++、VS Code）中运行。",
             "explanation": "C 代码需要 gcc 编译器，当前环境未提供。",
         }
@@ -517,106 +617,40 @@ def _run_c_code(code: str) -> dict:
         f.write(code)
         src_path = f.name
     exe_path = src_path.replace(".c", ".exe" if os.name == "nt" else "")
-    output = ""
-    error = ""
+
     try:
         compile_res = subprocess.run(
             [gcc_path, src_path, "-o", exe_path, "-finput-charset=UTF-8"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            env=env,
+            capture_output=True, text=True, timeout=10, env=env,
         )
         compile_stderr = getattr(compile_res, 'stderr', None) or ""
         if compile_res.returncode != 0:
+            for p in (src_path, exe_path):
+                try:
+                    if p and os.path.exists(p): os.remove(p)
+                except Exception:
+                    pass
             return {
-                "status": "success",
-                "output": "",
+                "status": "success", "output": "",
                 "error": compile_stderr[:2000] or "编译失败",
                 "explanation": "C 代码编译出错，请检查语法。",
             }
-
-        # 资源限制：Unix 用 preexec_fn，Windows 用 Job Object
-        preexec = None
-        job_handle = None
-        creation_flags = 0
-        if os.name != "nt":
-            def _set_limits():
-                import resource
-                resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
-                resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
-                resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
-            preexec = _set_limits
-        else:
-            job_handle = _create_win_job_object(128)
-            creation_flags = 0x00000200  # CREATE_BREAKAWAY_FROM_JOB
-
-        run_returncode = 0
-        if job_handle:
-            proc = subprocess.Popen(
-                [exe_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                env=env, creationflags=creation_flags,
-            )
-            _assign_to_job(job_handle, proc.pid)
-            try:
-                run_stdout_bytes, run_stderr_bytes = proc.communicate(timeout=10)
-                run_returncode = proc.returncode
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                run_stdout_bytes, run_stderr_bytes = proc.communicate()
-                raise
-            finally:
-                import ctypes
-                ctypes.windll.kernel32.CloseHandle(job_handle)
-        else:
-            run_res = subprocess.run(
-                [exe_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                timeout=10, env=env, preexec_fn=preexec,
-            )
-            run_stdout_bytes = run_res.stdout or b""
-            run_stderr_bytes = run_res.stderr or b""
-            run_returncode = run_res.returncode
-
-        def _decode(b: bytes) -> str:
-            for enc in ("utf-8", "gbk", "gb2312"):
-                try:
-                    return b.decode(enc)
-                except UnicodeDecodeError:
-                    continue
-            return b.decode("utf-8", errors="replace")
-
-        run_stdout = _decode(run_stdout_bytes)
-        run_stderr = _decode(run_stderr_bytes)
-        output = run_stdout[:5000]
-        if run_returncode != 0:
-            error = run_stderr[:5000] or f"程序异常退出，返回码: {run_returncode}"
-    except subprocess.TimeoutExpired:
-        error = "代码执行超时（限制 10 秒）"
     except Exception as e:
-        error = f"执行异常: {str(e)}"
-    finally:
         for p in (src_path, exe_path):
             try:
-                if p and os.path.exists(p):
-                    os.remove(p)
+                if p and os.path.exists(p): os.remove(p)
             except Exception:
                 pass
-    if error:
-        explanation = "代码执行过程中出现错误，请检查语法或逻辑。"
-    elif output:
-        explanation = "代码执行成功，上方为输出结果。"
-    else:
-        explanation = "代码执行完成，无输出。"
-    return {"status": "success", "output": output, "error": error, "explanation": explanation}
+        return {"status": "success", "output": "", "error": f"编译异常: {e}", "explanation": "编译过程出错。"}
+
+    return _run_subprocess_safe([exe_path], env=env, cleanup_paths=[src_path, exe_path], binary_mode=True)
 
 
 def _run_python_code(code: str) -> dict:
     """同步函数：执行 Python 代码（供 asyncio.to_thread 调用）"""
-    import subprocess
     import tempfile
     import os
 
-    # 安全检查：限制代码长度
     if len(code) > 50_000:
         return {"status": "success", "output": "", "error": "代码过长（超过 50KB），已拒绝执行。", "explanation": "安全限制。"}
 
@@ -626,7 +660,6 @@ def _run_python_code(code: str) -> dict:
 
     blocked_keywords = ["__import__", "os.system", "os.popen", "subprocess.call", "subprocess.run",
                         "subprocess.Popen", "eval(", "exec(", "compile("]
-    # 规范化空白字符，防止通过插入空格绕过检测（如 os . system）
     normalized_code = "".join(code.lower().split())
     for kw in blocked_keywords:
         if "".join(kw.lower().split()) in normalized_code:
@@ -636,66 +669,7 @@ def _run_python_code(code: str) -> dict:
         f.write(code)
         tmp_path = f.name
 
-    output = ""
-    error = ""
-    try:
-        # 资源限制：Unix 用 preexec_fn，Windows 用 Job Object
-        preexec = None
-        job_handle = None
-        creation_flags = 0
-        if os.name != "nt":
-            def _set_limits():
-                import resource
-                resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
-                resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
-                resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
-            preexec = _set_limits
-        else:
-            job_handle = _create_win_job_object(128)
-            creation_flags = 0x00000200  # CREATE_BREAKAWAY_FROM_JOB
-
-        if job_handle:
-            proc = subprocess.Popen(
-                ["python", tmp_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                text=True, creationflags=creation_flags,
-            )
-            _assign_to_job(job_handle, proc.pid)
-            try:
-                stdout, stderr = proc.communicate(timeout=10)
-                output = stdout[:5000]
-                error = stderr[:5000] if proc.returncode != 0 else ""
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                raise
-            finally:
-                import ctypes
-                ctypes.windll.kernel32.CloseHandle(job_handle)
-        else:
-            result = subprocess.run(
-                ["python", tmp_path], capture_output=True, text=True,
-                timeout=10, preexec_fn=preexec,
-            )
-            output = result.stdout[:5000]
-            error = result.stderr[:5000] if result.returncode != 0 else ""
-    except subprocess.TimeoutExpired:
-        output = ""
-        error = "代码执行超时（限制 10 秒）"
-    except Exception as e:
-        output = ""
-        error = f"执行异常: {str(e)}"
-    finally:
-        try:
-            os.remove(tmp_path)
-        except Exception:
-            pass
-
-    explanation = ""
-    if not error and output:
-        explanation = "代码执行成功，上方为输出结果。"
-    elif error:
-        explanation = "代码执行过程中出现错误，请检查语法或逻辑。"
-
-    return {"status": "success", "output": output, "error": error, "explanation": explanation}
+    return _run_subprocess_safe(["python", tmp_path], cleanup_paths=[tmp_path])
 
 
 @router.post("/code/execute", response_model=CodeExecuteResponse)

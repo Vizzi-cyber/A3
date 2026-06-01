@@ -6,6 +6,7 @@
 """
 from typing import Dict, Any, List
 from datetime import datetime, timezone
+from collections import Counter
 import math
 
 
@@ -89,7 +90,7 @@ class LearningEffectEvaluator:
         """薄弱点集中度：0~1，越高说明薄弱点越集中"""
         if not quiz_history or not weak_areas:
             return 0.0
-        from collections import Counter
+        # (Counter imported at top level)
         all_weak_tags = []
         for q in quiz_history[-5:]:
             all_weak_tags.extend(q.get("weak_tags", []))
@@ -115,7 +116,7 @@ class LearningEffectEvaluator:
         """潜在失分点预测"""
         if not quiz_history:
             return []
-        from collections import Counter
+        # (Counter imported at top level)
         all_weak_tags = []
         for q in quiz_history[-5:]:
             all_weak_tags.extend(q.get("weak_tags", []))
@@ -144,7 +145,7 @@ class LearningEffectEvaluator:
 
     def _weak_area_distribution(self, quiz_history: List[Dict[str, Any]]) -> Dict[str, int]:
         """薄弱点分布"""
-        from collections import Counter
+        # (Counter imported at top level)
         all_tags = []
         for q in quiz_history:
             all_tags.extend(q.get("weak_tags", []))

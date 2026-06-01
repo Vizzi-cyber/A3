@@ -35,14 +35,28 @@ export interface KnowledgeBase {
   [key: string]: unknown;
 }
 
+export interface ErrorPattern {
+  pattern_type?: string;
+  description?: string;
+  frequency?: number;
+  [key: string]: unknown;
+}
+
+export interface LearningGoal {
+  goal?: string;
+  target_date?: string;
+  priority?: number;
+  [key: string]: unknown;
+}
+
 export interface StudentProfile {
   student_id: string;
   knowledge_base: KnowledgeBase;
   cognitive_style: CognitiveStyle;
   weak_areas: string[];
-  error_patterns: unknown[];
-  learning_goals: unknown[];
-  interest_areas: unknown[];
+  error_patterns: ErrorPattern[];
+  learning_goals: LearningGoal[];
+  interest_areas: string[];
   learning_tempo: LearningTempo;
   practical_preferences: PracticalPreferences;
   created_at?: string;

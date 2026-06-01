@@ -62,10 +62,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = React.memo(
     const [imageModalOpen, setImageModalOpen] = useState(false);
     const [imageUrlInput, setImageUrlInput] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = useCallback(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
     }, []);
 
     useEffect(() => {
@@ -212,7 +216,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = React.memo(
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto pr-2 space-y-5 mb-4 min-h-0">
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto pr-2 space-y-5 mb-4 min-h-0"
+        >
           {messages.map((msg, idx) => (
             <div
               key={idx}

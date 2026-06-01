@@ -17,6 +17,7 @@ from .core.config import settings
 from .core.logger import setup_logger
 from .core.rate_limiter import RateLimiter
 from .core.exceptions import validation_exception_handler, http_exception_handler, global_exception_handler
+from .middleware.api_monitor import APIMonitorMiddleware
 
 # 设置日志
 logger = setup_logger()
@@ -36,16 +37,13 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
 
-    # 跳过 Alembic 迁移（表已通过 create_all 创建）
-    # from alembic.config import Config
-    # from alembic.command import upgrade
-    # alembic_cfg = Config("alembic.ini")
-    # await asyncio.to_thread(upgrade, alembic_cfg, "head")
-    # logger.info("Database migrations applied")
+    # 启动监控定期刷新
+    flush_task = asyncio.create_task(APIMonitorMiddleware.start_periodic_flush())
 
     yield
 
     # 关闭时执行
+    flush_task.cancel()
     logger.info("Shutting down application")
 
 
@@ -69,47 +67,7 @@ app.add_middleware(
 # 请求限流
 app.add_middleware(RateLimiter, default_limit=60, window_seconds=60)
 
-
-# API 性能监控中间件
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-import time
-
-class APIMonitorMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        start = time.time()
-        status_code = 500
-        try:
-            response = await call_next(request)
-            status_code = response.status_code
-            return response
-        except Exception:
-            status_code = 500
-            raise
-        finally:
-            duration_ms = (time.time() - start) * 1000
-            # 异步写入，不阻塞事件循环
-            try:
-                from .models.database import SessionLocal
-                from .models.monitor import ApiMonitorModel
-
-                def _write_monitor():
-                    db = SessionLocal()
-                    try:
-                        db.add(ApiMonitorModel(
-                            endpoint=request.url.path,
-                            method=request.method,
-                            status_code=status_code,
-                            duration_ms=round(duration_ms, 2),
-                        ))
-                        db.commit()
-                    finally:
-                        db.close()
-
-                asyncio.create_task(asyncio.to_thread(_write_monitor))
-            except Exception as e:
-                logger.warning(f"API监控写入失败: {e}")
-
+# API 性能监控（批量写入模式）
 app.add_middleware(APIMonitorMiddleware)
 
 # 注册异常处理器

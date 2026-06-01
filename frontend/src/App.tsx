@@ -36,33 +36,34 @@ const InitLoader = () => (
   </div>
 );
 
-/** 页面进入动画包装器：只在自身挂载时触发，不强制重挂载 Routes/Suspense */
+/** 页面进入动画包装器 */
 const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setReady(false);
-    const timer = setTimeout(() => setReady(true), 20);
-    return () => clearTimeout(timer);
-  }, []);
+    // 页面切换时滚动到顶部
+    window.scrollTo(0, 0);
 
-  useEffect(() => {
-    if (!ready || !ref.current) return;
-    ref.current.style.opacity = "0";
-    ref.current.style.transform = "translateY(10px)";
-    requestAnimationFrame(() => {
-      if (!ref.current) return;
-      ref.current.style.transition =
-        "opacity 0.35s ease-out, transform 0.35s ease-out";
-      ref.current.style.opacity = "1";
-      ref.current.style.transform = "translateY(0)";
+    const el = ref.current;
+    if (!el) return;
+    el.style.opacity = "0";
+    el.style.transform = "translateY(10px)";
+    el.style.transition = "opacity 0.3s ease-out, transform 0.3s ease-out";
+
+    const frame = requestAnimationFrame(() => {
+      el.style.opacity = "1";
+      el.style.transform = "translateY(0)";
     });
-  }, [ready]);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      el.style.opacity = "0";
+    };
+  }, []);
 
   return (
     <div ref={ref} style={{ opacity: 0 }}>
-      {ready ? children : null}
+      {children}
     </div>
   );
 };

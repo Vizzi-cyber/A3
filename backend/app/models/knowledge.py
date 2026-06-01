@@ -95,6 +95,11 @@ class ResourceTaskModel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    __table_args__ = (
+        Index("ix_resource_tasks_status", "status"),
+        Index("ix_resource_tasks_created_at", "created_at"),
+    )
+
 
 class KnowledgeGraphModel(Base):
     """知识图表 —— 存储结构化知识图谱，约束 LLM 路径规划与资源生成"""

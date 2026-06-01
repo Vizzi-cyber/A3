@@ -29,11 +29,34 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 120000,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+// 请求去重：相同 key 的并发请求只保留最新一个
+const pendingControllers = new Map<string, AbortController>();
+
+/**
+ * 创建带去重的请求函数
+ * @param key 去重 key（如 "GET:/profile/123"）
+ * @param fn 实际请求函数，接收 AbortSignal
+ */
+export function withDedup<T>(
+  key: string,
+  fn: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const existing = pendingControllers.get(key);
+  if (existing) existing.abort();
+  const controller = new AbortController();
+  pendingControllers.set(key, controller);
+  return fn(controller.signal).finally(() => {
+    if (pendingControllers.get(key) === controller) {
+      pendingControllers.delete(key);
+    }
+  });
+}
 
 // 请求拦截器
 api.interceptors.request.use(
@@ -51,6 +74,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
+    // 网络错误 / 离线状态
+    if (!error.response) {
+      if (error.code === "ERR_NETWORK" || error.code === "ERR_FAILED") {
+        return Promise.reject(new Error("网络连接失败，请检查网络状态"));
+      }
+      if (error.code === "ECONNABORTED") {
+        return Promise.reject(new Error("请求超时，请稍后再试"));
+      }
+      return Promise.reject(new Error("网络异常，请稍后再试"));
+    }
     const status = error.response?.status;
     const data = error.response?.data;
     const message =
@@ -59,6 +92,18 @@ api.interceptors.response.use(
       useAppStore.getState().logout();
       window.dispatchEvent(new CustomEvent("auth:expired"));
       return Promise.reject(new Error("登录已过期，请重新登录"));
+    }
+    if (status === 403) {
+      return Promise.reject(new Error("没有权限执行此操作"));
+    }
+    if (status === 404) {
+      return Promise.reject(new Error("请求的资源不存在"));
+    }
+    if (status === 429) {
+      return Promise.reject(new Error("请求过于频繁，请稍后再试"));
+    }
+    if (status === 503) {
+      return Promise.reject(new Error("服务暂时不可用，请稍后再试"));
     }
     return Promise.reject(new Error(message));
   },
@@ -215,7 +260,15 @@ export const imageApi = {
   getResult: (taskId: string) =>
     api.get<ImageResultResponse>(`/image/result/${taskId}`),
   listTasks: () =>
-    api.get<{ status: string; tasks: unknown[] }>("/image/tasks"),
+    api.get<{
+      status: string;
+      tasks: Array<{
+        task_id: string;
+        status: string;
+        image_urls?: string[];
+        created_at?: string;
+      }>;
+    }>("/image/tasks"),
 };
 
 export const authApi = {
@@ -308,15 +361,6 @@ export const dashboardApi = {
         };
       };
     }>(`/dashboard/${studentId}/timeline`),
-  getActiveDates: (studentId: string, year?: number, month?: number) => {
-    const params = new URLSearchParams();
-    if (year) params.append("year", String(year));
-    if (month) params.append("month", String(month));
-    const qs = params.toString();
-    return api.get<{ status: string; data: string[] }>(
-      `/dashboard/${studentId}/active-dates${qs ? `?${qs}` : ""}`,
-    );
-  },
 };
 
 // ---------- Favorites ----------
@@ -582,8 +626,18 @@ export const learningDataApi = {
     api.get<{
       status: string;
       student_id: string;
-      records: unknown[];
-      quizzes: unknown[];
+      records: Array<{
+        kp_id: string;
+        progress: number;
+        created_at?: string;
+        [key: string]: unknown;
+      }>;
+      quizzes: Array<{
+        kp_id: string;
+        score: number;
+        created_at?: string;
+        [key: string]: unknown;
+      }>;
     }>(`/learning-data/${studentId}/history`, {
       params: { limit: limit || 50 },
     }),
@@ -667,7 +721,11 @@ export const logReflectionApi = {
         mistakes: string[];
         path_progress: number;
         completed_tasks: string[];
-        timeline: unknown[];
+        timeline: Array<{
+          time: string;
+          activity: string;
+          [key: string]: unknown;
+        }>;
       }>;
     }>(
       `/log-reflection/${studentId}/logs`,
@@ -677,9 +735,18 @@ export const logReflectionApi = {
     api.get<{
       status: string;
       student_id: string;
-      summary: unknown;
-      daily_logs: unknown[];
-      reflections: unknown[];
+      summary: Record<string, unknown>;
+      daily_logs: Array<{
+        date: string;
+        total_duration: number;
+        [key: string]: unknown;
+      }>;
+      reflections: Array<{
+        reflection_id: string;
+        content: string;
+        created_at?: string;
+        [key: string]: unknown;
+      }>;
     }>(`/log-reflection/${studentId}/review`),
 };
 

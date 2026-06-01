@@ -16,7 +16,7 @@ class PointsModel(Base):
     total_points = Column(Integer, default=0)
     daily_points = Column(Integer, default=0)
     weekly_points = Column(Integer, default=0)
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class AchievementModel(Base):

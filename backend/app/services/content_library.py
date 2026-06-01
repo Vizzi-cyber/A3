@@ -65,10 +65,22 @@ def get_content_by_topic(topic: str, db=None) -> Optional[Dict[str, Any]]:
         try:
             kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name == topic).first()
             if not kp:
-                kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name.like(f"%{topic}%")).first()
+                # 转义 LIKE 通配符，防止注入
+                escaped = topic.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.name.like(f"%{escaped}%", escape="\\")).first()
             if not kp:
                 return None
-            return get_content(kp.kp_id, db=db)
+            # 直接从已查询的 kp 对象提取内容，避免二次查询
+            result: Dict[str, Any] = {}
+            if kp.document:
+                result["document"] = kp.document
+            if kp.code_example:
+                result["code"] = kp.code_example
+            if kp.questions:
+                result["questions"] = kp.questions if isinstance(kp.questions, list) else json.loads(kp.questions)
+            if kp.mindmap:
+                result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
+            return result
         finally:
             if own_session:
                 db.close()

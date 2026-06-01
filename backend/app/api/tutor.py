@@ -158,7 +158,22 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
 
     try:
         while True:
-            data = await websocket.receive_json()
+            raw = await websocket.receive_text()
+            if len(raw) > 10_000:
+                await manager.send_message(session_id, {
+                    "type": "error",
+                    "message": "消息过长（超过10KB），请缩短后重试",
+                })
+                continue
+            import json as _json
+            try:
+                data = _json.loads(raw)
+            except Exception:
+                await manager.send_message(session_id, {
+                    "type": "error",
+                    "message": "消息格式无效，请发送合法JSON",
+                })
+                continue
             message_type = data.get("type", "message")
 
             if message_type == "message":
@@ -245,24 +260,30 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
 
                 # 真实流式输出
                 full_answer = ""
+                client_disconnected = False
                 try:
                     async for chunk in llm.astream(messages, temperature=0.6, max_tokens=1024):
                         if not chunk:
                             continue
                         full_answer += chunk
-                        await manager.send_message(session_id, {
-                            "type": "chunk",
-                            "content": chunk,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                        })
+                        try:
+                            await manager.send_message(session_id, {
+                                "type": "chunk",
+                                "content": chunk,
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            })
+                        except Exception:
+                            client_disconnected = True
+                            break
                 except Exception as e:
                     if not full_answer:
                         full_answer = f"流式输出异常：{str(e)}"
-                        await manager.send_message(session_id, {
-                            "type": "chunk",
-                            "content": full_answer,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                        })
+                        if not client_disconnected:
+                            await manager.send_message(session_id, {
+                                "type": "chunk",
+                                "content": full_answer,
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            })
 
                 # Step 3: critic —— 输出安全审核
                 await manager.send_message(session_id, {

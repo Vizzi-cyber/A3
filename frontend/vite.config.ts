@@ -16,7 +16,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === "development",
     rollupOptions: {
       output: {
         manualChunks: {
@@ -29,6 +29,7 @@ export default defineConfig({
             "remark-gfm",
           ],
           "vendor-gsap": ["gsap"],
+          "vendor-monaco": ["@monaco-editor/react", "monaco-editor"],
         },
       },
     },

@@ -27,6 +27,8 @@ router = APIRouter()
 @router.get("/{student_id}/points")
 async def get_points(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生积分"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's points")
     points = ensure_points(db, student_id)
     db.commit()
     return {
@@ -49,6 +51,8 @@ class AddPointsRequest(BaseModel):
 @router.post("/points/add")
 async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """增加积分"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot add points for other student")
     total = award_points(db, request.student_id, request.points, request.reason)
     db.commit()
     return {"status": "success", "total_points": total}
@@ -59,6 +63,8 @@ async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _
 @router.get("/{student_id}/achievements")
 async def get_achievements(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取已解锁成就"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's achievements")
     achievements = db.query(AchievementModel).filter(AchievementModel.student_id == student_id).all()
     return {
         "status": "success",
@@ -86,6 +92,8 @@ class UnlockAchievementRequest(BaseModel):
 @router.post("/achievements/unlock")
 async def unlock_achievement(request: UnlockAchievementRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """解锁成就"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot unlock achievement for other student")
     existing = db.query(AchievementModel).filter(
         AchievementModel.student_id == request.student_id,
         AchievementModel.achievement_id == request.achievement_id,
@@ -109,6 +117,8 @@ async def unlock_achievement(request: UnlockAchievementRequest, db: Session = De
 @router.get("/{student_id}/tasks")
 async def get_tasks(student_id: str, task_type: Optional[str] = None, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取任务列表"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's tasks")
     query = db.query(TaskModel).filter(TaskModel.student_id == student_id)
     if task_type:
         query = query.filter(TaskModel.task_type == task_type)
@@ -143,6 +153,8 @@ class CreateTaskRequest(BaseModel):
 @router.post("/tasks/create")
 async def create_task(request: CreateTaskRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """创建任务"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot create task for other student")
     task = TaskModel(
         student_id=request.student_id,
         task_id=request.task_id,
@@ -165,6 +177,8 @@ class UpdateTaskProgressRequest(BaseModel):
 @router.post("/tasks/progress")
 async def update_task_progress(request: UpdateTaskProgressRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """更新任务进度"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot update other student's task")
     task = db.query(TaskModel).filter(
         TaskModel.student_id == request.student_id,
         TaskModel.task_id == request.task_id,

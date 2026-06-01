@@ -291,12 +291,17 @@ const ResourceCenter: React.FC = () => {
     const load = async () => {
       setResLoading(true);
       try {
-        const [docRes, codeRes, qRes, mapRes] = await Promise.all([
-          resourceApi.generateDocument({
-            student_id: studentId,
-            topic: currentTopic,
-            kp_id: activeKey,
-          }),
+        // 优先加载文档（用户最常查看），其余资源延迟加载
+        const docRes = await resourceApi.generateDocument({
+          student_id: studentId,
+          topic: currentTopic,
+          kp_id: activeKey,
+        });
+        if (ignore) return;
+        if (docRes.data.document) setDocContent(docRes.data.document);
+
+        // 并行加载剩余资源
+        const [codeRes, qRes, mapRes] = await Promise.all([
           resourceApi.generateCode({
             student_id: studentId,
             topic: currentTopic,
@@ -316,7 +321,6 @@ const ResourceCenter: React.FC = () => {
           }),
         ]);
         if (ignore) return;
-        if (docRes.data.document) setDocContent(docRes.data.document);
         if (codeRes.data.code) setCodeContent(codeRes.data.code);
         const qs = Array.isArray(qRes.data.questions)
           ? qRes.data.questions

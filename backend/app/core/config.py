@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         cors_env = os.getenv("CORS_ORIGINS")
         if cors_env:
             extra = [o.strip() for o in cors_env.split(",") if o.strip()]
-            object.__setattr__(self, 'ALLOWED_ORIGINS', self.ALLOWED_ORIGINS + extra)
+            object.__setattr__(self, 'ALLOWED_ORIGINS', list(dict.fromkeys(self.ALLOWED_ORIGINS + extra)))
 
         if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
             if not self.DEBUG:

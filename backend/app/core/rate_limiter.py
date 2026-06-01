@@ -104,6 +104,9 @@ class RateLimiter(BaseHTTPMiddleware):
         # 清理过期记录
         records = self._records.get(key, [])
         records = [t for t in records if now - t < self.window_seconds]
+        # 单 key 记录数上限，防止恶意客户端刷爆内存
+        if len(records) > limit * 3:
+            records = records[-limit * 3:]
         if records:
             self._records[key] = records
         else:

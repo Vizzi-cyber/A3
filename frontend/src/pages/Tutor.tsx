@@ -60,12 +60,28 @@ const Tutor: React.FC = () => {
   } | null>(null);
   const token = useAppStore((s) => s.token);
 
-  // 持久化聊天记录到 sessionStorage
+  // 持久化聊天记录到 sessionStorage（限制 100 条，防止超出 5MB 上限）
   useEffect(() => {
-    sessionStorage.setItem(
-      `tutor_messages_${studentId}`,
-      JSON.stringify(messages),
-    );
+    const MAX_MESSAGES = 100;
+    const toSave =
+      messages.length > MAX_MESSAGES ? messages.slice(-MAX_MESSAGES) : messages;
+    try {
+      sessionStorage.setItem(
+        `tutor_messages_${studentId}`,
+        JSON.stringify(toSave),
+      );
+    } catch {
+      // sessionStorage 满时清除旧数据
+      try {
+        sessionStorage.removeItem(`tutor_messages_${studentId}`);
+        sessionStorage.setItem(
+          `tutor_messages_${studentId}`,
+          JSON.stringify(toSave.slice(-50)),
+        );
+      } catch {
+        /* give up */
+      }
+    }
   }, [messages, studentId]);
 
   const wsRef = useRef<WebSocket | null>(null);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Typography, Tag, Space, Progress, Row, Col, message } from "antd";
+import { Typography, Tag, Progress, Row, Col, message } from "antd";
 import {
   Radar,
   RadarChart,
@@ -266,7 +266,7 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       {/* 快捷操作 */}
       <div className="flex flex-wrap gap-3">
         {quickActions.map((action, idx) => (
@@ -297,12 +297,12 @@ const Profile: React.FC = () => {
         ))}
       </div>
 
-      <Row gutter={[20, 20]} align="stretch">
+      <Row gutter={16} align="stretch">
         {/* AI画像师聊天 */}
         <Col xs={24} lg={9}>
           <PageCard
-            className="h-[calc(100vh-220px)]"
-            bodyStyle={{ height: "100%", padding: "24px" }}
+            className="h-full"
+            bodyStyle={{ height: "100%", padding: "20px" }}
           >
             <ChatPanel
               messages={messages}
@@ -318,194 +318,207 @@ const Profile: React.FC = () => {
 
         {/* 画像雷达 + 维度 + 偏好 + 智能体 —— 2x2 紧凑布局 */}
         <Col xs={24} lg={15}>
-          <Row gutter={[20, 20]}>
+          <Row gutter={16} className="h-full">
+            {/* 左列：雷达 + 多智能体 */}
             <Col xs={24} md={12}>
-              <PageCard
-                title={
-                  <Space>
+              <div className="flex flex-col gap-4 h-full">
+                <PageCard
+                  title={
                     <span className="font-semibold text-slate-800">
                       六维画像雷达
                     </span>
-                  </Space>
-                }
-              >
-                <div className="h-52">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart
-                      cx="50%"
-                      cy="50%"
-                      outerRadius="70%"
-                      data={profileData}
-                    >
-                      <PolarGrid stroke="#e2e8f0" />
-                      <PolarAngleAxis
-                        dataKey="subject"
-                        tick={{ fill: "#64748b", fontSize: 11 }}
-                      />
-                      <PolarRadiusAxis
-                        angle={30}
-                        domain={[0, 100]}
-                        tick={false}
-                        axisLine={false}
-                      />
-                      <Radar
-                        name="当前画像"
-                        dataKey="A"
-                        stroke="#4f46e5"
-                        fill="#4f46e5"
-                        fillOpacity={0.15}
-                        strokeWidth={2}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              </PageCard>
-            </Col>
-
-            <Col xs={24} md={12}>
-              <PageCard
-                title={
-                  <span className="font-semibold text-slate-800">维度详情</span>
-                }
-              >
-                <div className="space-y-3">
-                  {dimensions.length === 0 ? (
-                    <div className="text-xs text-slate-400 py-3 text-center">
-                      尚未生成画像，可在左侧对话或点击「重新画像」
-                    </div>
-                  ) : (
-                    dimensions.map((dim) => (
-                      <div key={dim.label}>
-                        <div className="flex justify-between mb-1">
-                          <Typography.Text className="text-sm text-slate-600 font-medium">
-                            {dim.label}
-                          </Typography.Text>
-                          <Typography.Text
-                            className="text-sm font-bold"
-                            style={{ color: dim.color }}
-                          >
-                            {dim.value}
-                          </Typography.Text>
-                        </div>
-                        <Progress
-                          percent={dim.value}
-                          showInfo={false}
-                          strokeColor={dim.color}
-                          trailColor="#f1f5f9"
-                          size="small"
+                  }
+                  bodyStyle={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div className="w-full h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart
+                        cx="50%"
+                        cy="50%"
+                        outerRadius="75%"
+                        data={profileData}
+                      >
+                        <PolarGrid stroke="#e2e8f0" />
+                        <PolarAngleAxis
+                          dataKey="subject"
+                          tick={{ fill: "#64748b", fontSize: 11 }}
                         />
-                      </div>
-                    ))
-                  )}
-                </div>
-              </PageCard>
-            </Col>
+                        <PolarRadiusAxis
+                          angle={30}
+                          domain={[0, 100]}
+                          tick={false}
+                          axisLine={false}
+                        />
+                        <Radar
+                          name="当前画像"
+                          dataKey="A"
+                          stroke="#4f46e5"
+                          fill="#4f46e5"
+                          fillOpacity={0.15}
+                          strokeWidth={2}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </PageCard>
 
-            <Col xs={24} md={12}>
-              <PageCard
-                title={
-                  <span className="font-semibold text-slate-800">交互偏好</span>
-                }
-              >
-                <div className="flex gap-2">
-                  {[
-                    {
-                      key: "video",
-                      icon: <VideoCameraOutlined />,
-                      label: "视频",
-                    },
-                    { key: "text", icon: <ReadOutlined />, label: "图文" },
-                    { key: "audio", icon: <AudioOutlined />, label: "语音" },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      onClick={() => {
-                        const pref = item.key as "video" | "text" | "audio";
-                        setInteractionPref(pref);
-                        profileApi
-                          .update(studentId, {
-                            dimension: "practice",
-                            updates: { interaction_pref: pref },
-                          })
-                          .catch(() => {});
-                      }}
-                      className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${interactionPref === item.key ? "bg-primary-50 border-primary text-primary" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"}`}
-                    >
-                      <div className="text-lg">{item.icon}</div>
-                      <span className="text-xs font-medium">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-2 text-xs text-slate-400">
-                  优先推送
-                  {interactionPref === "video"
-                    ? "视频讲解类"
-                    : interactionPref === "audio"
-                      ? "音频播客类"
-                      : "图文文档类"}
-                  资源。
-                </div>
-              </PageCard>
-            </Col>
-
-            <Col xs={24} md={12}>
-              <PageCard
-                title={
-                  <span className="font-semibold text-slate-800">
-                    多智能体协作
-                  </span>
-                }
-              >
-                <div className="space-y-2">
-                  {[
-                    {
-                      key: "planner",
-                      icon: <NodeIndexOutlined />,
-                      label: "Planner",
-                      desc: "拆解学习目标",
-                      active: multiAgentStatus.planner,
-                    },
-                    {
-                      key: "worker",
-                      icon: <ToolOutlined />,
-                      label: "Worker",
-                      desc: "生成导图与习题",
-                      active: multiAgentStatus.worker,
-                    },
-                    {
-                      key: "critic",
-                      icon: <SafetyOutlined />,
-                      label: "Critic",
-                      desc: "防幻觉过滤",
-                      active: multiAgentStatus.critic,
-                    },
-                  ].map((agent) => (
-                    <div
-                      key={agent.key}
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${agent.active ? "bg-white border-slate-200" : "bg-slate-50 border-slate-100 opacity-60"}`}
-                    >
+                <PageCard
+                  title={
+                    <span className="font-semibold text-slate-800">
+                      多智能体协作
+                    </span>
+                  }
+                  className="flex-1"
+                >
+                  <div className="space-y-2">
+                    {[
+                      {
+                        key: "planner",
+                        icon: <NodeIndexOutlined />,
+                        label: "Planner",
+                        desc: "拆解学习目标",
+                        active: multiAgentStatus.planner,
+                      },
+                      {
+                        key: "worker",
+                        icon: <ToolOutlined />,
+                        label: "Worker",
+                        desc: "生成导图与习题",
+                        active: multiAgentStatus.worker,
+                      },
+                      {
+                        key: "critic",
+                        icon: <SafetyOutlined />,
+                        label: "Critic",
+                        desc: "防幻觉过滤",
+                        active: multiAgentStatus.critic,
+                      },
+                    ].map((agent) => (
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ${agent.active ? "bg-primary" : "bg-slate-300"}`}
+                        key={agent.key}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${agent.active ? "bg-white border-slate-200" : "bg-slate-50 border-slate-100 opacity-60"}`}
                       >
-                        {agent.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-slate-800 truncate">
-                          {agent.label}
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ${agent.active ? "bg-primary" : "bg-slate-300"}`}
+                        >
+                          {agent.icon}
                         </div>
-                        <div className="text-xs text-slate-400 truncate">
-                          {agent.desc}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-slate-800 truncate">
+                            {agent.label}
+                          </div>
+                          <div className="text-xs text-slate-400 truncate">
+                            {agent.desc}
+                          </div>
                         </div>
+                        <Tag
+                          className={`rounded-full border-0 text-xs ${agent.active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"}`}
+                        >
+                          {agent.active ? "运行中" : "待机"}
+                        </Tag>
                       </div>
-                      <Tag
-                        className={`rounded-full border-0 text-xs ${agent.active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"}`}
+                    ))}
+                  </div>
+                </PageCard>
+              </div>
+            </Col>
+
+            {/* 右列：维度详情 + 交互偏好 */}
+            <Col xs={24} md={12}>
+              <div className="flex flex-col gap-4 h-full">
+                <PageCard
+                  title={
+                    <span className="font-semibold text-slate-800">
+                      维度详情
+                    </span>
+                  }
+                >
+                  <div className="space-y-2.5">
+                    {dimensions.length === 0 ? (
+                      <div className="text-xs text-slate-400 py-3 text-center">
+                        尚未生成画像，可在左侧对话或点击「重新画像」
+                      </div>
+                    ) : (
+                      dimensions.map((dim) => (
+                        <div key={dim.label}>
+                          <div className="flex justify-between mb-1">
+                            <Typography.Text className="text-sm text-slate-600 font-medium">
+                              {dim.label}
+                            </Typography.Text>
+                            <Typography.Text
+                              className="text-sm font-bold"
+                              style={{ color: dim.color }}
+                            >
+                              {dim.value}
+                            </Typography.Text>
+                          </div>
+                          <Progress
+                            percent={dim.value}
+                            showInfo={false}
+                            strokeColor={dim.color}
+                            trailColor="#f1f5f9"
+                            size="small"
+                          />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </PageCard>
+
+                <PageCard
+                  title={
+                    <span className="font-semibold text-slate-800">
+                      交互偏好
+                    </span>
+                  }
+                  className="flex-1"
+                >
+                  <div className="flex gap-2">
+                    {[
+                      {
+                        key: "video",
+                        icon: <VideoCameraOutlined />,
+                        label: "视频",
+                      },
+                      { key: "text", icon: <ReadOutlined />, label: "图文" },
+                      { key: "audio", icon: <AudioOutlined />, label: "语音" },
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        onClick={() => {
+                          const pref = item.key as "video" | "text" | "audio";
+                          setInteractionPref(pref);
+                          profileApi
+                            .update(studentId, {
+                              dimension: "practice",
+                              updates: { interaction_pref: pref },
+                            })
+                            .catch(() => {});
+                        }}
+                        className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${interactionPref === item.key ? "bg-primary-50 border-primary text-primary" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"}`}
                       >
-                        {agent.active ? "运行中" : "待机"}
-                      </Tag>
-                    </div>
-                  ))}
-                </div>
-              </PageCard>
+                        <div className="text-lg">{item.icon}</div>
+                        <span className="text-xs font-medium">
+                          {item.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">
+                    优先推送
+                    {interactionPref === "video"
+                      ? "视频讲解类"
+                      : interactionPref === "audio"
+                        ? "音频播客类"
+                        : "图文文档类"}
+                    资源。
+                  </div>
+                </PageCard>
+              </div>
             </Col>
           </Row>
         </Col>
@@ -521,7 +534,7 @@ const Profile: React.FC = () => {
           </Tag>
         }
       >
-        <div className="h-64">
+        <div className="h-56">
           {historyData.length === 0 ? (
             <div className="h-full flex items-center justify-center text-slate-400 text-sm">
               暂无趋势数据，完成几道练习后再来看
@@ -582,9 +595,9 @@ const Profile: React.FC = () => {
           </Tag>
         }
       >
-        <Row gutter={[24, 24]}>
+        <Row gutter={20}>
           <Col xs={24} lg={12}>
-            <div className="h-64">
+            <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={[

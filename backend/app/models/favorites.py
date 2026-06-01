@@ -1,7 +1,7 @@
 """
 收藏夹/书签 ORM 模型
 """
-from sqlalchemy import Column, String, DateTime, Text, JSON
+from sqlalchemy import Column, String, DateTime, Text, JSON, Index
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -18,3 +18,8 @@ class FavoriteModel(Base):
     url = Column(Text, nullable=True)
     meta = Column(JSON, default=dict)  # icon, color, description, tags 等
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_favorites_student_type", "student_id", "resource_type"),
+        Index("ix_favorites_created_at", "created_at"),
+    )

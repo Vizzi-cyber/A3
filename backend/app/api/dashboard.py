@@ -369,37 +369,3 @@ async def get_growth_timeline(student_id: str, db: Session = Depends(get_db), _c
             },
         },
     }
-
-
-@router.get("/{student_id}/active-dates")
-async def get_active_dates(
-    student_id: str,
-    year: int = None,
-    month: int = None,
-    db: Session = Depends(get_db),
-    _current: str = Depends(require_auth),
-):
-    """获取指定月份有学习记录的日期列表，用于日历标记"""
-    now = datetime.now()
-    y = year or now.year
-    m = month or now.month
-
-    month_start = datetime(y, m, 1)
-    if m == 12:
-        month_end = datetime(y + 1, 1, 1)
-    else:
-        month_end = datetime(y, m + 1, 1)
-
-    rows = (
-        db.query(func.date(LearningRecordModel.created_at))
-        .filter(
-            LearningRecordModel.student_id == student_id,
-            LearningRecordModel.created_at >= month_start,
-            LearningRecordModel.created_at < month_end,
-        )
-        .distinct()
-        .all()
-    )
-
-    active_dates = [str(row[0]) for row in rows if row[0]]
-    return {"status": "success", "data": active_dates}

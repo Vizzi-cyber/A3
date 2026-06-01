@@ -45,14 +45,24 @@ async def create_kp(request: KnowledgePointCreate, db: Session = Depends(get_db)
 
 
 @router.get("/list")
-async def list_kps(subject: Optional[str] = None, db: Session = Depends(get_db), _current: str = Depends(get_current_student_id)):
-    """列出知识点"""
+async def list_kps(
+    subject: Optional[str] = None,
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    _current: str = Depends(get_current_student_id),
+):
+    """列出知识点（分页）"""
     query = db.query(KnowledgePointModel)
     if subject:
         query = query.filter(KnowledgePointModel.subject == subject)
-    kps = query.all()
+    total = query.count()
+    kps = query.order_by(KnowledgePointModel.created_at.asc()).offset(offset).limit(limit).all()
     return {
         "status": "success",
+        "total": total,
+        "offset": offset,
+        "limit": limit,
         "data": [
             {
                 "kp_id": k.kp_id,

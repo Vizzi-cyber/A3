@@ -3,10 +3,9 @@
 所有智能体继承此类，实现统一的接口规范
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Callable
 from datetime import datetime, timezone
 from enum import Enum
-import json
 
 class AgentStatus(Enum):
     IDLE = "idle"
@@ -100,7 +99,7 @@ class BaseAgent(ABC):
         priority: str = "normal",
         requires_response: bool = True
     ) -> AgentMessage:
-        """发送消息"""
+        """创建消息（供上层调度器转发）"""
         message = AgentMessage(
             from_agent=self.agent_id,
             to_agent=to_agent,
@@ -155,12 +154,14 @@ class BaseAgent(ABC):
         self,
         context: Dict[str, Any],
         max_iterations: int = 3,
-        quality_threshold: float = 0.8
+        quality_threshold: float = 0.8,
+        timeout_per_iteration: float = 30.0,
     ) -> Dict[str, Any]:
         """
         带反思的执行流程
         执行-评估-修正的循环
         """
+        import asyncio
         best_result = None
         best_score = 0.0
         iteration = 0
@@ -168,8 +169,15 @@ class BaseAgent(ABC):
         for iteration in range(max_iterations):
             self.logger.info(f"Reflection iteration {iteration + 1}/{max_iterations}")
 
-            # 执行
-            result = await self.process(context)
+            # 执行（带超时保护）
+            try:
+                result = await asyncio.wait_for(self.process(context), timeout=timeout_per_iteration)
+            except asyncio.TimeoutError:
+                self.logger.warning(f"Process timeout at iteration {iteration + 1}")
+                result = {"status": "error", "message": "Processing timeout"}
+            except Exception as e:
+                self.logger.warning(f"Process error at iteration {iteration + 1}: {e}")
+                result = {"status": "error", "message": str(e)}
 
             # 自我评估
             score = await self._self_evaluate(result)

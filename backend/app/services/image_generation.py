@@ -1,6 +1,7 @@
 """
 火山引擎文生图服务
 支持火山方舟（ARK）优先，回退到视觉智能 OpenAPI
+使用共享 httpx.AsyncClient 复用 TCP 连接
 """
 import json
 import httpx
@@ -12,6 +13,17 @@ from .volc_signature import sign_request
 
 class ImageGenerationError(Exception):
     pass
+
+
+# 共享 HTTP 客户端（连接池复用）
+_shared_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None or _shared_client.is_closed:
+        _shared_client = httpx.AsyncClient(timeout=120.0, limits=httpx.Limits(max_connections=10))
+    return _shared_client
 
 
 # ---------- ARK (火山方舟) 方式 ----------
@@ -43,9 +55,9 @@ async def _ark_generate(
         "Authorization": f"Bearer {settings.ARK_API_KEY}",
     }
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(url, headers=headers, json=payload)
-        data = resp.json()
+    client = _get_client()
+    resp = await client.post(url, headers=headers, json=payload)
+    data = resp.json()
 
     # 方舟返回格式可能包含 images 数组
     images = data.get("images") or data.get("data", {}).get("images", [])
@@ -127,9 +139,9 @@ async def submit_image_task(
     )
 
     url = f"{_BASE_URL}?{query}"
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(url, headers=signed_headers, content=body.encode("utf-8"))
-        data = resp.json()
+    client = _get_client()
+    resp = await client.post(url, headers=signed_headers, content=body.encode("utf-8"))
+    data = resp.json()
 
     if data.get("code") != 10000:
         raise ImageGenerationError(f"Submit failed: {data.get('message')} (code={data.get('code')})")
@@ -170,9 +182,9 @@ async def get_image_result(task_id: str) -> Dict[str, Any]:
     )
 
     url = f"{_BASE_URL}?{query}"
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(url, headers=signed_headers, content=body.encode("utf-8"))
-        data = resp.json()
+    client = _get_client()
+    resp = await client.post(url, headers=signed_headers, content=body.encode("utf-8"))
+    data = resp.json()
 
     if data.get("code") != 10000:
         raise ImageGenerationError(f"Query failed: {data.get('message')} (code={data.get('code')})")

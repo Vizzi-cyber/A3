@@ -3,8 +3,10 @@
 当前仅使用智谱AI（BigModel / GLM-4.6v）
 为业务层提供一致的调用接口
 """
+import asyncio
 import json
 import re
+import time
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Dict, Any, List, Optional
 
@@ -124,8 +126,6 @@ class OpenAICompatibleLLM(BaseLLM):
 
     async def ainvoke(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> str:
         """非流式调用，默认关闭智谱 thinking 以加快响应，含指数退避重试"""
-        import time, asyncio
-
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -172,8 +172,6 @@ class OpenAICompatibleLLM(BaseLLM):
 
     async def astream(self, messages: List[Dict[str, Any]], temperature=0.7, max_tokens=1024, thinking: bool = False) -> AsyncIterator[str]:
         """流式调用，关闭 thinking，只输出正式回答 content，含指数退避重试"""
-        import time, asyncio
-
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,

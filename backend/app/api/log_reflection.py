@@ -22,6 +22,8 @@ router = APIRouter()
 @router.get("/{student_id}/logs")
 async def get_learning_logs(student_id: str, date: Optional[str] = None, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学习日志"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's logs")
     query = db.query(LearningLogModel).filter(LearningLogModel.student_id == student_id)
     if date:
         query = query.filter(LearningLogModel.date == date)
@@ -62,6 +64,8 @@ class UpsertLogRequest(BaseModel):
 @router.post("/logs/upsert")
 async def upsert_learning_log(request: UpsertLogRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """创建或更新学习日志"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's logs")
     existing = db.query(LearningLogModel).filter(
         LearningLogModel.student_id == request.student_id,
         LearningLogModel.date == request.date,
@@ -113,6 +117,8 @@ async def create_reflection(request: ReflectionCreateRequest, db: Session = Depe
     每次调用都会生成新的 reflection_id（含毫秒时间戳 + 主标签），
     避免 cornell / feynman / 普通反思同日互相覆盖。
     """
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot create reflection for other student")
     # 主标签：tags 中第一个非通用值，或 'reflection'
     primary_tag = "reflection"
     for t in (request.tags or []):
@@ -178,6 +184,8 @@ async def delete_reflection(reflection_id: str, db: Session = Depends(get_db), _
 @router.get("/{student_id}/reflections")
 async def get_reflections(student_id: str, limit: int = 30, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取反思记录列表"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's reflections")
     refs = (
         db.query(ReflectionModel)
         .filter(ReflectionModel.student_id == student_id)
@@ -205,6 +213,8 @@ async def get_reflections(student_id: str, limit: int = 30, db: Session = Depend
 @router.get("/{student_id}/review")
 async def get_learning_review(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """学习复盘数据接口（聚合日志与反思）"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's review")
     logs = (
         db.query(LearningLogModel)
         .filter(LearningLogModel.student_id == student_id)

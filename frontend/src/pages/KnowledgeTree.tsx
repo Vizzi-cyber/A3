@@ -109,6 +109,7 @@ const ParticleCanvas: React.FC<{
 }> = ({ state, width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
+  const visibleRef = useRef(true);
   const particlesRef = useRef<
     Array<{
       x: number;
@@ -122,6 +123,20 @@ const ParticleCanvas: React.FC<{
       maxLife: number;
     }>
   >([]);
+
+  // IntersectionObserver: 不可见时暂停动画
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.isIntersecting;
+      },
+      { threshold: 0 },
+    );
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -157,6 +172,8 @@ const ParticleCanvas: React.FC<{
     };
 
     const animate = () => {
+      animRef.current = requestAnimationFrame(animate);
+      if (!visibleRef.current) return;
       ctx.clearRect(0, 0, width, height);
       if (Math.random() < 0.12) spawn();
 
@@ -181,8 +198,6 @@ const ParticleCanvas: React.FC<{
 
         return true;
       });
-
-      animRef.current = requestAnimationFrame(animate);
     };
 
     animate();
@@ -631,18 +646,18 @@ const StatCard: React.FC<{
   color: string;
   sub?: string;
 }> = ({ icon, label, value, color, sub }) => (
-  <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5">
-    <div className="flex items-center gap-3">
+  <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5 h-full">
+    <div className="flex items-center gap-3 h-full">
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg"
+        className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg shrink-0"
         style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}
       >
         {icon}
       </div>
-      <div>
+      <div className="min-w-0">
         <div className="text-xs text-slate-400 font-medium">{label}</div>
         <div className="text-xl font-bold text-slate-800">{value}</div>
-        {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+        <div className="text-xs text-slate-400 mt-0.5 h-4">{sub || "\u00A0"}</div>
       </div>
     </div>
   </div>
@@ -659,14 +674,12 @@ const GrowthLogItem: React.FC<{
     heart: <HeartOutlined className="text-pink-500" />,
   };
   return (
-    <div className="flex items-start gap-3 py-2.5 group">
-      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-sm border border-slate-100 group-hover:border-indigo-200 transition-colors">
+    <div className="flex flex-col items-center text-center py-3 px-2 group hover:bg-slate-50 rounded-xl transition-colors">
+      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-sm border border-slate-100 group-hover:border-indigo-200 transition-colors mb-2">
         {iconMap[log.icon] || <StarOutlined className="text-slate-400" />}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-slate-700 font-medium">{log.message}</div>
-        <div className="text-xs text-slate-400 mt-0.5">{log.date}</div>
-      </div>
+      <div className="text-sm text-slate-700 font-medium leading-snug">{log.message}</div>
+      <div className="text-xs text-slate-400 mt-1">{log.date}</div>
     </div>
   );
 };
@@ -840,21 +853,23 @@ const KnowledgeTree: React.FC = () => {
 
   return (
     <div ref={containerRef} className="max-w-6xl mx-auto space-y-6">
+      {/* 等级进度 */}
+      <div className="anim-card">
+        <LevelProgress level={data.level} totalPoints={data.total_points} />
+      </div>
+
       {/* 页面标题 */}
-      <div className="anim-card flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-            <span className="text-3xl">
-              {stateEmoji[data.tree_state] || "🌱"}
-            </span>
-            知识树
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
+      <div className="anim-card flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl px-5 py-3">
+        <span className="text-2xl">{stateEmoji[data.tree_state] || "🌱"}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-base font-bold text-slate-800">知识树</span>
+          <span className="text-sm text-slate-500 mx-2">·</span>
+          <span className="text-sm text-slate-500">
             每一次学习都在浇灌你的知识之树 · 见证成长的力量
-          </p>
+          </span>
         </div>
         <Tag
-          className="rounded-full px-4 py-1.5 text-sm font-bold border-0"
+          className="rounded-full px-3 py-0.5 text-xs font-bold border-0 shrink-0"
           style={{
             background: `${stateColor[data.tree_state]}20`,
             color: stateColor[data.tree_state],
@@ -918,17 +933,13 @@ const KnowledgeTree: React.FC = () => {
             </div>
           </div>
 
-          {/* 等级进度 */}
-          <div className="anim-card">
-            <LevelProgress level={data.level} totalPoints={data.total_points} />
-          </div>
         </div>
 
         {/* 右侧：数据面板 */}
         <div className="lg:col-span-2 space-y-4">
           {/* 统计卡片 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<FireOutlined />}
                 label="连续学习"
@@ -936,7 +947,7 @@ const KnowledgeTree: React.FC = () => {
                 color="#ef4444"
               />
             </div>
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<BookOutlined />}
                 label="掌握知识点"
@@ -945,7 +956,7 @@ const KnowledgeTree: React.FC = () => {
                 sub={`/ ${data.touched_kps} 已学习`}
               />
             </div>
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<RiseOutlined />}
                 label="掌握率"
@@ -953,7 +964,7 @@ const KnowledgeTree: React.FC = () => {
                 color="#10b981"
               />
             </div>
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<ClockCircleOutlined />}
                 label="学习时长"
@@ -964,7 +975,7 @@ const KnowledgeTree: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<TrophyOutlined />}
                 label="测验次数"
@@ -973,7 +984,7 @@ const KnowledgeTree: React.FC = () => {
                 sub={`均分 ${data.avg_score}`}
               />
             </div>
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<StarOutlined />}
                 label="解锁成就"
@@ -981,7 +992,7 @@ const KnowledgeTree: React.FC = () => {
                 color="#8b5cf6"
               />
             </div>
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<ThunderboltOutlined />}
                 label="总积分"
@@ -989,7 +1000,7 @@ const KnowledgeTree: React.FC = () => {
                 color="#f97316"
               />
             </div>
-            <div className="anim-card">
+            <div className="anim-card h-full">
               <StatCard
                 icon={<RiseOutlined />}
                 label="趋势因子"
@@ -1094,7 +1105,7 @@ const KnowledgeTree: React.FC = () => {
               {data.growth_logs.length} 条记录
             </Tag>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {data.growth_logs.map((log, idx) => (
               <GrowthLogItem key={`${log.date}-${idx}`} log={log} />
             ))}

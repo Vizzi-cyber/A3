@@ -101,8 +101,9 @@ const ExploreMap: React.FC<{
   activeIdx: number;
   onSelect: (_idx: number) => void;
   challenges: ChallengeItem[];
-}> = ({ nodes, activeIdx, onSelect, challenges }) => {
+}> = ({ nodes, activeIdx, onSelect, challenges: _challenges }) => {
   const mapRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -135,30 +136,28 @@ const ExploreMap: React.FC<{
 
   if (nodes.length === 0) return null;
 
-  // 计算地图布局 — 蛇形路径
+  // 计算地图布局 — 蛇形路径，使用百分比定位
+  const cols = 4;
+  const rows = Math.ceil(nodes.length / cols);
   const layoutNodes = nodes.map((n, i) => {
-    const cols = 4;
     const row = Math.floor(i / cols);
     const col = row % 2 === 0 ? i % cols : cols - 1 - (i % cols);
     return {
       ...n,
-      x: 60 + col * 200,
-      y: 60 + row * 160,
+      xPercent: 12 + (col / (cols - 1)) * 76, // 12% ~ 88%
+      yPercent: 20 + (row / Math.max(rows - 1, 1)) * 60, // 20% ~ 80%
     };
   });
 
-  const _maxX = Math.max(...layoutNodes.map((n) => n.x)) + 120;
-  const maxY = Math.max(...layoutNodes.map((n) => n.y)) + 120;
-
   // 找到对应的challenge数据
-  const findChallenge = (cid: string) => challenges.find((c) => c.id === cid);
+  const findChallenge = (cid: string) => _challenges.find((c) => c.id === cid);
 
   return (
     <div
-      ref={mapRef}
+      ref={containerRef}
       className="relative rounded-2xl border border-slate-100 overflow-hidden"
       style={{
-        minHeight: maxY,
+        minHeight: 280,
         background:
           "linear-gradient(135deg, #f0f9ff 0%, #faf5ff 50%, #f0fdf4 100%)",
       }}
@@ -177,6 +176,7 @@ const ExploreMap: React.FC<{
 
       {/* SVG连线 */}
       <svg
+        ref={mapRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ zIndex: 1 }}
       >
@@ -189,10 +189,10 @@ const ExploreMap: React.FC<{
             <line
               key={`path-${idx}`}
               className="map-path"
-              x1={prev.x + 28}
-              y1={prev.y + 28}
-              x2={node.x + 28}
-              y2={node.y + 28}
+              x1={`${prev.xPercent}%`}
+              y1={`${prev.yPercent}%`}
+              x2={`${node.xPercent}%`}
+              y2={`${node.yPercent}%`}
               stroke={completed ? "#10b981" : "#cbd5e1"}
               strokeWidth={3}
               strokeDasharray={completed ? "none" : "8 4"}
@@ -215,8 +215,12 @@ const ExploreMap: React.FC<{
         return (
           <div
             key={node.node_id}
-            className="map-node absolute cursor-pointer transition-all duration-300"
-            style={{ left: node.x, top: node.y, zIndex: isActive ? 10 : 2 }}
+            className="map-node absolute cursor-pointer transition-all duration-300 -translate-x-1/2 -translate-y-1/2"
+            style={{
+              left: `${node.xPercent}%`,
+              top: `${node.yPercent}%`,
+              zIndex: isActive ? 10 : 2,
+            }}
             onClick={() => !isLocked && onSelect(idx)}
           >
             {/* 节点光环 */}
@@ -532,17 +536,17 @@ const LearningChallenge: React.FC = () => {
       </div>
 
       {/* 当前挑战详情 + 挑战列表 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* 左侧：当前挑战详情 */}
         <div className="lg:col-span-1 anim-item">
           {activeChallenge && (
-            <div className="space-y-4">
+            <div className="space-y-3 sticky top-4">
               {/* 区域信息 */}
               <div
-                className={`rounded-2xl border border-slate-100 p-4 bg-gradient-to-br ${activeRegion.bg}`}
+                className={`rounded-2xl border border-slate-100 p-3 bg-gradient-to-br ${activeRegion.bg}`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">{activeRegion.icon}</span>
+                  <span className="text-lg">{activeRegion.icon}</span>
                   <span className="font-bold text-slate-800 text-sm">
                     {activeRegion.name}
                   </span>
@@ -561,7 +565,7 @@ const LearningChallenge: React.FC = () => {
         </div>
 
         {/* 右侧：全部挑战列表 */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="lg:col-span-3 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <RocketOutlined className="text-indigo-500" />
             <span className="text-sm font-bold text-slate-700">全部挑战</span>
@@ -569,18 +573,21 @@ const LearningChallenge: React.FC = () => {
               {summary.total - summary.completed} 个可挑战
             </Tag>
           </div>
-          {challenges.map((ch, idx) => {
-            const region = WORLD_LORE.regions[idx % WORLD_LORE.regions.length];
-            return (
-              <div
-                key={ch.id}
-                className="anim-item cursor-pointer"
-                onClick={() => setActiveNodeIdx(idx)}
-              >
-                <ChallengeDetail challenge={ch} region={region} />
-              </div>
-            );
-          })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {challenges.map((ch, idx) => {
+              const region =
+                WORLD_LORE.regions[idx % WORLD_LORE.regions.length];
+              return (
+                <div
+                  key={ch.id}
+                  className="anim-item cursor-pointer"
+                  onClick={() => setActiveNodeIdx(idx)}
+                >
+                  <ChallengeDetail challenge={ch} region={region} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

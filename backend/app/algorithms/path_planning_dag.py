@@ -211,9 +211,29 @@ class DAGPathPlanner:
                 - abs(difficulty - 3)
             )
 
-        # 先按拓扑序分组（保证前置知识点在前），再按权重排序
-        # 使用稳定排序：按拓扑序作为次要键
-        return sorted(kp_ids, key=lambda k: (-score(k), topo_order.get(k, 0)))
+        # 严格保证拓扑序：前置知识点一定排在后续知识点之前
+        # 在每个拓扑层级内部按权重排序
+        topo_sorted = self._topological_sort(kp_ids)
+        kp_set = set(kp_ids)
+
+        # 计算每个节点的拓扑层级（最长前置链长度）
+        level_cache: Dict[str, int] = {}
+        def topo_level(kp_id: str) -> int:
+            if kp_id in level_cache:
+                return level_cache[kp_id]
+            prereqs = [p for p in self.kp_graph.get(kp_id, []) if p in kp_set]
+            if not prereqs:
+                level_cache[kp_id] = 0
+                return 0
+            lv = max(topo_level(p) for p in prereqs) + 1
+            level_cache[kp_id] = lv
+            return lv
+
+        for k in kp_ids:
+            topo_level(k)
+
+        # 先按拓扑层级排序，层级内按权重降序排序（稳定排序）
+        return sorted(kp_ids, key=lambda k: (level_cache.get(k, 0), -score(k)))
 
     def _stage_division(
         self,
@@ -354,9 +374,11 @@ class DAGPathPlanner:
         sorted_kps = [kp_costs_map[sid] for sid in sorted_ids if sid in kp_costs_map]
 
         # 5. 自适应阶段划分
-        daily_duration = profile.get("learning_tempo", {}).get("weekly_study_capacity", 10)
-        if daily_duration < 1:
-            daily_duration = 10
+        weekly_capacity = profile.get("learning_tempo", {}).get("weekly_study_capacity", 10)
+        if weekly_capacity < 1:
+            weekly_capacity = 10
+        # 转换为每日学习时长（分钟），假设每周学习 5 天
+        daily_duration = max(15, int(weekly_capacity * 60 / 5))
         preference = profile.get("preference", "balanced")
 
         stages = self._stage_division(sorted_kps, daily_duration, preference)
