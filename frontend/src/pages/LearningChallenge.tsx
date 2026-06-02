@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Spin, Tag, Progress, message } from "antd";
+import { Spin, Tag, Progress, Button, message } from "antd";
 import {
   BookOutlined,
   TrophyOutlined,
@@ -14,6 +14,7 @@ import {
   AimOutlined,
   RocketOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { useAppStore } from "../store";
 import { challengeApi } from "../services/api";
@@ -102,7 +103,7 @@ const ExploreMap: React.FC<{
   onSelect: (_idx: number) => void;
   challenges: ChallengeItem[];
 }> = ({ nodes, activeIdx, onSelect, challenges: _challenges }) => {
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -155,25 +156,9 @@ const ExploreMap: React.FC<{
   return (
     <div
       ref={containerRef}
-      className="relative rounded-2xl border border-slate-100 overflow-hidden"
-      style={{
-        minHeight: 280,
-        background:
-          "linear-gradient(135deg, #f0f9ff 0%, #faf5ff 50%, #f0fdf4 100%)",
-      }}
+      className="relative rounded-lg border border-gray-200 overflow-hidden bg-gray-50"
+      style={{ minHeight: 280 }}
     >
-      {/* 背景装饰 */}
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, #6366f1 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-      <div className="absolute top-10 right-10 w-40 h-40 rounded-full bg-indigo-100 blur-3xl opacity-30" />
-      <div className="absolute bottom-10 left-10 w-48 h-48 rounded-full bg-emerald-100 blur-3xl opacity-30" />
-
       {/* SVG连线 */}
       <svg
         ref={mapRef}
@@ -294,12 +279,8 @@ const ChallengeDetail: React.FC<{
       {/* 头部 */}
       <div className="flex items-start gap-3 mb-3">
         <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl shrink-0"
-          style={{
-            background: challenge.completed
-              ? "#10b981"
-              : `linear-gradient(135deg, ${color}, ${color}cc)`,
-          }}
+          className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg shrink-0"
+          style={{ background: challenge.completed ? "#10b981" : color }}
         >
           {challenge.completed ? (
             <CheckCircleFilled />
@@ -309,25 +290,25 @@ const ChallengeDetail: React.FC<{
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-slate-800">{challenge.name}</span>
+            <span className="font-semibold text-gray-800">
+              {challenge.name}
+            </span>
             <Tag
-              className="rounded-full border-0 text-[10px] px-1.5"
-              style={{ background: `${color}15`, color }}
+              color={DIFFICULTY_COLOR[challenge.difficulty]}
+              className="text-xs"
             >
               {DIFFICULTY_LABEL[challenge.difficulty]}
             </Tag>
-            <Tag className="rounded-full border-0 text-[10px] px-1.5 bg-amber-50 text-amber-600">
-              +{challenge.reward} 成长值
-            </Tag>
+            <Tag className="text-xs">+{challenge.reward} 成长值</Tag>
           </div>
-          <div className="text-xs text-slate-400 mt-1">
+          <div className="text-xs text-gray-400 mt-1">
             {region.icon} {region.name}
           </div>
         </div>
       </div>
 
       {/* 叙事描述 */}
-      <div className="bg-slate-50 rounded-xl p-3 mb-3 text-sm text-slate-600 leading-relaxed">
+      <div className="bg-gray-50 rounded p-3 mb-3 text-sm text-gray-600">
         {challenge.description}
       </div>
 
@@ -403,14 +384,12 @@ const StatsBar: React.FC<{
         >
           <div
             className="w-9 h-9 rounded-lg mx-auto mb-1.5 flex items-center justify-center text-white"
-            style={{
-              background: `linear-gradient(135deg, ${item.color}, ${item.color}cc)`,
-            }}
+            style={{ background: item.color }}
           >
             {item.icon}
           </div>
-          <div className="text-xl font-bold text-slate-800">{item.value}</div>
-          <div className="text-xs text-slate-400">{item.label}</div>
+          <div className="text-xl font-bold text-gray-800">{item.value}</div>
+          <div className="text-xs text-gray-400">{item.label}</div>
         </div>
       ))}
     </div>
@@ -419,6 +398,7 @@ const StatsBar: React.FC<{
 
 // ==================== 学习挑战主页面 ====================
 const LearningChallenge: React.FC = () => {
+  const navigate = useNavigate();
   const studentId = useAppStore((s) => s.studentId);
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
   const [mapNodes, setMapNodes] = useState<ChallengeMapNode[]>([]);
@@ -482,31 +462,37 @@ const LearningChallenge: React.FC = () => {
     <div ref={pageRef} className="max-w-6xl mx-auto space-y-6">
       {/* 世界观标题 */}
       <div className="anim-item">
-        <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-gradient-to-r from-indigo-50 via-white to-purple-50 p-6">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-100 rounded-full blur-3xl opacity-20 -translate-y-1/2 translate-x-1/4" />
-          <div className="relative flex items-center justify-between">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
                 <span className="text-3xl">🗺️</span>
                 {WORLD_LORE.title}
               </h1>
-              <p className="text-sm text-slate-400 mt-1.5 max-w-lg">
+              <p className="text-sm text-gray-400 mt-1.5 max-w-lg">
                 {WORLD_LORE.subtitle}
               </p>
             </div>
-            <div className="hidden md:flex items-center gap-3">
-              <div className="text-center px-4 py-2 rounded-xl bg-white border border-slate-100 shadow-card">
-                <div className="text-2xl font-bold text-emerald-600">
+            <div className="hidden md:flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-800">
                   {summary.completed}
                 </div>
-                <div className="text-xs text-slate-400">已征服</div>
+                <div className="text-xs text-gray-400">已征服</div>
               </div>
-              <div className="text-center px-4 py-2 rounded-xl bg-white border border-slate-100 shadow-card">
-                <div className="text-2xl font-bold text-indigo-600">
+              <div className="w-px h-10 bg-gray-200" />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-800">
                   {summary.total}
                 </div>
-                <div className="text-xs text-slate-400">总挑战</div>
+                <div className="text-xs text-gray-400">总挑战</div>
               </div>
+              <Button
+                icon={<TrophyOutlined />}
+                onClick={() => navigate("/leaderboard")}
+              >
+                排行榜
+              </Button>
             </div>
           </div>
         </div>
@@ -542,18 +528,14 @@ const LearningChallenge: React.FC = () => {
           {activeChallenge && (
             <div className="space-y-3 sticky top-4">
               {/* 区域信息 */}
-              <div
-                className={`rounded-2xl border border-slate-100 p-3 bg-gradient-to-br ${activeRegion.bg}`}
-              >
+              <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">{activeRegion.icon}</span>
-                  <span className="font-bold text-slate-800 text-sm">
+                  <span className="font-semibold text-gray-800 text-sm">
                     {activeRegion.name}
                   </span>
                 </div>
-                <div className="text-xs text-slate-500">
-                  {activeRegion.desc}
-                </div>
+                <div className="text-xs text-gray-500">{activeRegion.desc}</div>
               </div>
 
               <ChallengeDetail

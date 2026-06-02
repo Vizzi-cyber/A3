@@ -22,7 +22,7 @@ import {
 } from "@ant-design/icons";
 import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
-import { authApi } from "../services/api";
+import { authApi, teacherAuthApi } from "../services/api";
 import { useAppStore } from "../store";
 import { extractApiError } from "../utils/error";
 
@@ -46,7 +46,8 @@ const features = [
 
 const tabItems = [
   { key: "login", label: "登录" },
-  { key: "register", label: "注册" },
+  { key: "register", label: "学生注册" },
+  { key: "teacher-register", label: "教师注册" },
 ];
 
 const Login: React.FC = () => {
@@ -144,9 +145,11 @@ const Login: React.FC = () => {
       }
       login(token, values.student_id);
 
+      let role = "student";
       try {
         const meRes = await authApi.me();
         const u = meRes.data.data;
+        role = u.role;
         setUserInfo({
           student_id: u.student_id,
           username: u.username,
@@ -157,7 +160,7 @@ const Login: React.FC = () => {
       }
 
       message.success("登录成功");
-      navigate("/");
+      navigate(role === "teacher" || role === "admin" ? "/teacher" : "/");
     } catch (e: unknown) {
       message.error(extractApiError(e, "登录失败"));
     } finally {
@@ -175,6 +178,24 @@ const Login: React.FC = () => {
     try {
       await authApi.register(values);
       message.success("注册成功，请登录");
+      setActiveTab("login");
+    } catch (e: unknown) {
+      message.error(extractApiError(e, "注册失败"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTeacherRegister = async (values: {
+    student_id: string;
+    username: string;
+    email?: string;
+    password: string;
+  }) => {
+    setLoading(true);
+    try {
+      await teacherAuthApi.register(values);
+      message.success("教师注册成功，请登录");
       setActiveTab("login");
     } catch (e: unknown) {
       message.error(extractApiError(e, "注册失败"));
@@ -341,6 +362,73 @@ const Login: React.FC = () => {
                         className="rounded-lg bg-primary h-10"
                       >
                         注册
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                )}
+
+                {activeTab === "teacher-register" && (
+                  <Form layout="vertical" onFinish={handleTeacherRegister}>
+                    <Form.Item
+                      label="工号"
+                      name="student_id"
+                      rules={[{ required: true, message: "请输入工号" }]}
+                    >
+                      <Input
+                        prefix={<UserOutlined className="text-slate-400" />}
+                        placeholder="请输入工号"
+                        className="rounded-lg"
+                        size="large"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="姓名"
+                      name="username"
+                      rules={[{ required: true, message: "请输入姓名" }]}
+                    >
+                      <Input
+                        prefix={<UserOutlined className="text-slate-400" />}
+                        placeholder="请输入姓名"
+                        className="rounded-lg"
+                        size="large"
+                      />
+                    </Form.Item>
+                    <Form.Item label="邮箱（可选）" name="email">
+                      <Input
+                        prefix={<MailOutlined className="text-slate-400" />}
+                        placeholder="请输入邮箱"
+                        className="rounded-lg"
+                        size="large"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="密码"
+                      name="password"
+                      rules={[
+                        { required: true, message: "请输入密码" },
+                        { min: 8, message: "密码至少8位" },
+                        {
+                          pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/,
+                          message: "密码必须包含字母和数字",
+                        },
+                      ]}
+                    >
+                      <Input.Password
+                        prefix={<LockOutlined className="text-slate-400" />}
+                        placeholder="请输入密码"
+                        className="rounded-lg"
+                        size="large"
+                      />
+                    </Form.Item>
+                    <Form.Item className="mb-0">
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        block
+                        loading={loading}
+                        className="rounded-lg bg-primary h-10"
+                      >
+                        教师注册
                       </Button>
                     </Form.Item>
                   </Form>

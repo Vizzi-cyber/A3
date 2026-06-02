@@ -643,38 +643,23 @@ const Dashboard: React.FC = () => {
               </span>
             )}
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
             学
           </div>
         </div>
       </div>
 
       {/* ===== 学习进度横幅 ===== */}
-      <div className="bg-[#1e1b4b] rounded-3xl p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 text-white relative overflow-hidden">
-        {/* 装饰背景 */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)`,
-            backgroundSize: "24px 24px",
-          }}
-        />
-        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-indigo-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-1/4 w-48 h-48 rounded-full bg-purple-500/15 blur-3xl" />
-        <div className="absolute top-1/3 right-1/3 w-32 h-32 rounded-full bg-blue-400/10 blur-2xl" />
-
+      <div className="bg-gray-900 rounded-2xl p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 text-white">
         {/* 左侧 */}
-        <div className="flex-1 flex flex-col justify-center relative z-10 min-w-[240px]">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 w-fit mb-4">
+        <div className="flex-1 flex flex-col justify-center min-w-[240px]">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 w-fit mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-indigo-100">欢迎回来，学习者</span>
+            <span className="text-xs text-gray-300">欢迎回来，学习者</span>
           </div>
           <div className="text-2xl lg:text-[2rem] font-bold mb-6 leading-tight">
             你本周已完成{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
-              {completedCount}
-            </span>{" "}
-            节课!
+            <span className="text-white font-bold">{completedCount}</span> 节课!
           </div>
           <Button
             className="w-fit rounded-full bg-white text-[#1e1b4b] border-0 font-semibold hover:bg-indigo-50 hover:shadow-lg hover:shadow-indigo-900/20 transition-all px-6"
@@ -1828,7 +1813,7 @@ const Dashboard: React.FC = () => {
                 }
               >
                 <div
-                  className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 cursor-pointer hover:shadow-card transition-all"
+                  className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => setKgModalOpen(true)}
                 >
                   <div className="w-12 h-12 rounded-xl bg-indigo-500 flex items-center justify-center text-white text-xl shrink-0">

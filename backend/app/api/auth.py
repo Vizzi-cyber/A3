@@ -96,6 +96,23 @@ async def require_auth(credentials: Optional[HTTPAuthorizationCredentials] = Dep
     return student_id
 
 
+async def require_teacher(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+) -> str:
+    """教师权限认证：验证token且role为teacher或admin"""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = credentials.credentials
+    student_id = _verify_token(token)
+    if not student_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = db.query(UserModel).filter(UserModel.student_id == student_id).first()
+    if not user or user.role not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="教师权限不足")
+    return student_id
+
+
 def verify_token(token: str) -> Optional[str]:
     """公开token校验函数，供其他模块使用"""
     return _verify_token(token)
@@ -141,6 +158,27 @@ async def debug_validate(password: str):
         return {"valid": True, "password": req.password}
     except ValidationError as e:
         return {"valid": False, "errors": e.errors()}
+
+
+@router.post("/register-teacher")
+async def register_teacher(request: UserRegisterRequest, db: Session = Depends(get_db)):
+    """教师注册"""
+    existing = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="student_id already exists")
+    hashed = await asyncio.to_thread(pwd_context.hash, request.password)
+    user = UserModel(
+        student_id=request.student_id,
+        username=request.username,
+        email=request.email,
+        hashed_password=hashed,
+        is_active=True,
+        role="teacher",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"status": "success", "message": "Teacher registered", "student_id": user.student_id}
 
 
 @router.post("/login", response_model=TokenResponse)

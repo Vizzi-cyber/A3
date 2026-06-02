@@ -25,6 +25,13 @@ from .gamification_challenge import router as gamification_challenge_router
 from .ppt import router as ppt_router
 from .knowledge_graph import router as knowledge_graph_router
 from .daily_quiz import router as daily_quiz_router
+from .error_catcher import router as error_catcher_router
+from .misconception_tracer import router as misconception_tracer_router
+from .project_decomposer import router as project_decomposer_router
+from .role_matcher import router as role_matcher_router
+from .collaboration_supervisor import router as collaboration_supervisor_router
+from .result_evaluator import router as result_evaluator_router
+from .teacher import router as teacher_router
 
 router = APIRouter()
 
@@ -50,3 +57,10 @@ router.include_router(gamification_challenge_router, prefix="/gamification-chall
 router.include_router(ppt_router, prefix="/ppt", tags=["PPT生成"])
 router.include_router(knowledge_graph_router, prefix="/knowledge-graph", tags=["知识图谱"])
 router.include_router(daily_quiz_router, prefix="/daily-quiz", tags=["每日练习"])
+router.include_router(error_catcher_router, prefix="/error-catcher", tags=["错误捕捉"])
+router.include_router(misconception_tracer_router, prefix="/misconception-tracer", tags=["思维溯源"])
+router.include_router(project_decomposer_router, prefix="/project-decomposer", tags=["项目拆解"])
+router.include_router(role_matcher_router, prefix="/role-matcher", tags=["角色匹配"])
+router.include_router(collaboration_supervisor_router, prefix="/collaboration-supervisor", tags=["协作督导"])
+router.include_router(result_evaluator_router, prefix="/result-evaluator", tags=["成果评估"])
+router.include_router(teacher_router, prefix="/teacher", tags=["教师端"])

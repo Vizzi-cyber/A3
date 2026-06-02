@@ -851,4 +851,245 @@ export const agentFlowApi = {
     api.get<import("../types").AgentFlowRun>(`/agent-flow/${runId}/status`),
 };
 
+// ---------- 协作督导 ----------
+export interface TeamMember {
+  student_id: string;
+  name: string;
+  skills?: string[];
+  current_task?: string;
+}
+
+export const collaborationApi = {
+  dailyReport: (data: {
+    project_id: string;
+    team_members: TeamMember[];
+    progress_data?: Record<string, unknown>;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      report: Record<string, unknown>;
+    }>("/collaboration-supervisor/daily-report", data),
+
+  detectBlockers: (data: {
+    team_members: TeamMember[];
+    progress_data?: Record<string, unknown>;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      blockers: unknown[];
+      analysis: Record<string, unknown>;
+    }>("/collaboration-supervisor/detect-blockers", data),
+
+  resolveConflict: (data: {
+    conflict_description: string;
+    involved_members: TeamMember[];
+    project_context?: string;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      resolution: Record<string, unknown>;
+    }>("/collaboration-supervisor/resolve-conflict", data),
+
+  knowledgeSharing: (data: {
+    team_members: TeamMember[];
+    project_modules?: Record<string, unknown>[];
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      plan: Record<string, unknown>;
+    }>("/collaboration-supervisor/knowledge-sharing", data),
+
+  syncProgress: (data: {
+    project_id: string;
+    team_members: TeamMember[];
+    progress_data?: Record<string, unknown>;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      project_id: string;
+      overall_progress: number;
+      total_tasks: number;
+      completed_tasks: number;
+      member_progress: unknown[];
+      sync_time: string;
+    }>("/collaboration-supervisor/sync-progress", data),
+};
+
+// ---------- 成果评估 ----------
+export const evaluationApi = {
+  evaluateCode: (data: {
+    code_submission: { file_name?: string; code: string; student_id?: string };
+    language?: string;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      evaluation: Record<string, unknown>;
+    }>("/result-evaluator/evaluate-code", data),
+
+  evaluateCollaboration: (data: {
+    team_members: TeamMember[];
+    collaboration_data?: Record<string, unknown>;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      evaluation: Record<string, unknown>;
+    }>("/result-evaluator/evaluate-collaboration", data),
+
+  evaluateDeliverable: (data: {
+    project_info: Record<string, unknown>;
+    deliverables?: Record<string, unknown>[];
+    team_level?: string;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      evaluation: Record<string, unknown>;
+    }>("/result-evaluator/evaluate-deliverable", data),
+
+  evaluateLearning: (data: {
+    team_members: TeamMember[];
+    project_info?: Record<string, unknown>;
+    knowledge_points?: string[];
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      evaluation: Record<string, unknown>;
+    }>("/result-evaluator/evaluate-learning", data),
+
+  fullReport: (data: {
+    project_info: Record<string, unknown>;
+    team_members: TeamMember[];
+    code_submissions?: { file_name?: string; code: string }[];
+    collaboration_data?: Record<string, unknown>;
+    deliverables?: Record<string, unknown>[];
+    knowledge_points?: string[];
+    team_level?: string;
+  }) =>
+    api.post<{
+      status: string;
+      task: string;
+      report: Record<string, unknown>;
+    }>("/result-evaluator/full-report", data),
+};
+
+// ---------- 教师端 ----------
+export const teacherApi = {
+  getStudents: () =>
+    api.get<{
+      status: string;
+      students: Array<{
+        student_id: string;
+        username: string;
+        email: string | null;
+        is_active: boolean;
+        created_at: string | null;
+        total_points: number;
+        trend_state: string;
+        trend_factor: number;
+      }>;
+      total: number;
+    }>("/teacher/students"),
+
+  getOverview: () =>
+    api.get<{
+      status: string;
+      overview: {
+        total_students: number;
+        active_students: number;
+        avg_weekly_hours: number;
+        avg_score: number;
+        total_quizzes: number;
+        total_records: number;
+      };
+    }>("/teacher/overview"),
+
+  getStudentDetail: (studentId: string) =>
+    api.get<{ status: string; student: Record<string, unknown> }>(
+      `/teacher/student/${studentId}/detail`,
+    ),
+
+  getStudentProgress: (studentId: string, limit?: number) =>
+    api.get<{
+      status: string;
+      student_id: string;
+      records: Array<Record<string, unknown>>;
+      total: number;
+    }>(`/teacher/student/${studentId}/progress`, {
+      params: { limit: limit || 50 },
+    }),
+
+  getStudentScores: (studentId: string, limit?: number) =>
+    api.get<{
+      status: string;
+      student_id: string;
+      quizzes: Array<Record<string, unknown>>;
+      avg_score: number;
+      total: number;
+    }>(`/teacher/student/${studentId}/scores`, {
+      params: { limit: limit || 30 },
+    }),
+
+  getStudentTrends: (studentId: string, days?: number) =>
+    api.get<{
+      status: string;
+      student_id: string;
+      trends: Array<Record<string, unknown>>;
+    }>(`/teacher/student/${studentId}/trends`, {
+      params: { days: days || 30 },
+    }),
+
+  getStudentReflections: (studentId: string, limit?: number) =>
+    api.get<{
+      status: string;
+      student_id: string;
+      reflections: Array<Record<string, unknown>>;
+    }>(`/teacher/student/${studentId}/reflections`, {
+      params: { limit: limit || 20 },
+    }),
+
+  getRanking: (sortBy?: string, limit?: number) =>
+    api.get<{
+      status: string;
+      ranking: Array<{
+        student_id: string;
+        username: string;
+        total_points: number;
+        total_hours: number;
+        avg_score: number;
+      }>;
+      sort_by: string;
+    }>("/teacher/ranking", {
+      params: { sort_by: sortBy || "points", limit: limit || 20 },
+    }),
+
+  getWeakPoints: () =>
+    api.get<{
+      status: string;
+      weak_tags: Array<{ tag: string; count: number }>;
+      weak_areas: Array<{ area: string; count: number }>;
+    }>("/teacher/weak-points"),
+};
+
+// ---------- 教师注册 ----------
+export const teacherAuthApi = {
+  register: (data: {
+    student_id: string;
+    username: string;
+    email?: string;
+    password: string;
+  }) =>
+    api.post<{ status: string; message: string; student_id: string }>(
+      "/auth/register-teacher",
+      data,
+    ),
+};
+
 export default api;

@@ -13,21 +13,35 @@ import {
   ApartmentOutlined,
   FlagOutlined,
   TrophyOutlined,
+  BugOutlined,
+  ProjectOutlined,
+  ThunderboltOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import { dashboardApi } from "../services/api";
 
 const { Sider } = Layout;
 
-const menuItems = [
+const studentMenuItems = [
   { key: "/", icon: <DashboardOutlined />, label: "学习仪表盘" },
   { key: "/profile", icon: <PieChartOutlined />, label: "对话画像" },
   { key: "/learning-path", icon: <NodeIndexOutlined />, label: "学习路径" },
   { key: "/resources", icon: <ReadOutlined />, label: "学习中心" },
   { key: "/knowledge-tree", icon: <ApartmentOutlined />, label: "知识树" },
-  { key: "/challenges", icon: <FlagOutlined />, label: "学习挑战" },
-  { key: "/leaderboard", icon: <TrophyOutlined />, label: "排行榜" },
+  { key: "/challenges", icon: <ThunderboltOutlined />, label: "游戏化中心" },
   { key: "/tutor", icon: <RobotOutlined />, label: "智能辅导" },
+  { key: "/error-diagnosis", icon: <BugOutlined />, label: "错误诊断" },
+  {
+    key: "/project-collaboration",
+    icon: <ProjectOutlined />,
+    label: "项目协作",
+  },
+  { key: "/personal", icon: <UserOutlined />, label: "个人空间" },
+];
+
+const teacherMenuItems = [
+  { key: "/teacher", icon: <ExperimentOutlined />, label: "教师工作台" },
   { key: "/personal", icon: <UserOutlined />, label: "个人空间" },
 ];
 
@@ -37,6 +51,9 @@ const Sidebar: React.FC = () => {
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const studentId = useAppStore((s) => s.studentId);
+  const userInfo = useAppStore((s) => s.userInfo);
+  const isTeacher = userInfo?.role === "teacher" || userInfo?.role === "admin";
+  const menuItems = isTeacher ? teacherMenuItems : studentMenuItems;
   const [todayMinutes, setTodayMinutes] = useState(0);
 
   useEffect(() => {

@@ -22,6 +22,11 @@ const Tutor = React.lazy(() => import("./pages/Tutor"));
 const KnowledgeTree = React.lazy(() => import("./pages/KnowledgeTree"));
 const LearningChallenge = React.lazy(() => import("./pages/LearningChallenge"));
 const LeaderboardPlus = React.lazy(() => import("./pages/LeaderboardPlus"));
+const ErrorDiagnosis = React.lazy(() => import("./pages/ErrorDiagnosis"));
+const ProjectCollaboration = React.lazy(
+  () => import("./pages/ProjectCollaboration"),
+);
+const TeacherDashboard = React.lazy(() => import("./pages/TeacherDashboard"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -68,6 +73,19 @@ const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
+/** 根据角色选择首页 */
+const HomeRoute: React.FC = () => {
+  const userInfo = useAppStore((s) => s.userInfo);
+  if (userInfo?.role === "teacher" || userInfo?.role === "admin") {
+    return <Navigate to="/teacher" replace />;
+  }
+  return (
+    <PageWrapper>
+      <Dashboard />
+    </PageWrapper>
+  );
+};
+
 const { Content } = Layout;
 
 const PrivateLayout: React.FC = () => {
@@ -86,14 +104,7 @@ const PrivateLayout: React.FC = () => {
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <PageWrapper>
-                      <Dashboard />
-                    </PageWrapper>
-                  }
-                />
+                <Route path="/" element={<HomeRoute />} />
                 <Route
                   path="/profile"
                   element={
@@ -163,6 +174,30 @@ const PrivateLayout: React.FC = () => {
                   element={
                     <PageWrapper>
                       <Tutor />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/error-diagnosis"
+                  element={
+                    <PageWrapper>
+                      <ErrorDiagnosis />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/project-collaboration"
+                  element={
+                    <PageWrapper>
+                      <ProjectCollaboration />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher"
+                  element={
+                    <PageWrapper>
+                      <TeacherDashboard />
                     </PageWrapper>
                   }
                 />
