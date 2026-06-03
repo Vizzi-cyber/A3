@@ -22,6 +22,11 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 } from "recharts";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -45,6 +50,9 @@ import {
   CheckCircleOutlined,
   ReloadOutlined,
   BookOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
+  ArrowRightOutlined,
 } from "@ant-design/icons";
 import type {
   ReflectionEntry,
@@ -97,6 +105,7 @@ import {
   logReflectionApi,
   trendApi,
 } from "../services/api";
+import { buildRadarData } from "../utils/profile";
 import { StatCard } from "../components/StatCard";
 import Leaderboard from "../components/Leaderboard";
 import GrowthTimeline from "../components/GrowthTimeline";
@@ -216,12 +225,163 @@ const defaultBadges = [
   },
 ];
 
+// 番茄钟组件
+const POMODORO_FOCUS = 25 * 60;
+const POMODORO_BREAK = 5 * 60;
+
+const PomodoroTimer: React.FC = () => {
+  const [pomodoroTime, setPomodoroTime] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        return s.time ?? POMODORO_FOCUS;
+      }
+    } catch {}
+    return POMODORO_FOCUS;
+  });
+  const pomodoroEndRef = useRef<number | null>(null);
+  const [isPomodoroRunning, setIsPomodoroRunning] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.running && s.endTime) pomodoroEndRef.current = s.endTime;
+        return s.running ?? false;
+      }
+    } catch {}
+    return false;
+  });
+  const isBreakRef = useRef(false);
+  const [isBreak, setIsBreak] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        isBreakRef.current = s.isBreak ?? false;
+        return s.isBreak ?? false;
+      }
+    } catch {}
+    return false;
+  });
+  const [pomodoroCount, setPomodoroCount] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("pomodoro_state");
+      if (saved) return JSON.parse(saved).count ?? 0;
+    } catch {}
+    return 0;
+  });
+
+  // Pomodoro timer
+  useEffect(() => {
+    if (!isPomodoroRunning) {
+      pomodoroEndRef.current = null;
+      return;
+    }
+    if (pomodoroEndRef.current == null) {
+      pomodoroEndRef.current = Date.now() + pomodoroTime * 1000;
+    }
+    const tick = () => {
+      const end = pomodoroEndRef.current;
+      if (end == null) return;
+      const remain = Math.max(0, Math.round((end - Date.now()) / 1000));
+      setPomodoroTime(remain);
+      if (remain <= 0) {
+        setIsPomodoroRunning(false);
+        pomodoroEndRef.current = null;
+        if (!isBreakRef.current) {
+          setPomodoroCount((c: number) => c + 1);
+          message.success("专注时间结束！休息一下吧");
+          isBreakRef.current = true;
+          setIsBreak(true);
+          setPomodoroTime(POMODORO_BREAK);
+        } else {
+          message.success("休息结束，继续专注！");
+          isBreakRef.current = false;
+          setIsBreak(false);
+          setPomodoroTime(POMODORO_FOCUS);
+        }
+      }
+    };
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [isPomodoroRunning]);
+
+  // 持久化番茄钟状态到 sessionStorage
+  useEffect(() => {
+    const state = {
+      time: pomodoroTime,
+      running: isPomodoroRunning,
+      isBreak: isBreak,
+      count: pomodoroCount,
+      endTime: pomodoroEndRef.current,
+    };
+    sessionStorage.setItem("pomodoro_state", JSON.stringify(state));
+  }, [pomodoroTime, isPomodoroRunning, isBreak, pomodoroCount]);
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-6">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <ClockCircleOutlined className="text-primary text-lg" />
+          <span className="font-semibold text-slate-800">番茄专注钟</span>
+        </div>
+        <Tag className="rounded-full border-0 bg-primary-50 text-primary text-xs font-medium">
+          {pomodoroCount} 个番茄
+        </Tag>
+      </div>
+      <div className="text-center py-4">
+        <div
+          className={`text-7xl font-bold tracking-tight mb-4 ${isBreak ? "text-emerald-500" : "text-primary"}`}
+        >
+          {Math.floor(pomodoroTime / 60)
+            .toString()
+            .padStart(2, "0")}
+          :{(pomodoroTime % 60).toString().padStart(2, "0")}
+        </div>
+        <div className="text-sm text-slate-400 mb-6">
+          {isBreak ? "休息时间 · 恢复精力" : "专注时间 · 保持高效"}
+        </div>
+        <Space>
+          <Button
+            type="primary"
+            shape="round"
+            size="large"
+            icon={
+              isPomodoroRunning ? (
+                <PauseCircleOutlined />
+              ) : (
+                <PlayCircleOutlined />
+              )
+            }
+            onClick={() => setIsPomodoroRunning(!isPomodoroRunning)}
+            className="bg-primary"
+          >
+            {isPomodoroRunning ? "暂停" : "开始"}
+          </Button>
+          <Button
+            shape="round"
+            size="large"
+            onClick={() => {
+              setIsPomodoroRunning(false);
+              setPomodoroTime(isBreak ? POMODORO_BREAK : POMODORO_FOCUS);
+            }}
+          >
+            重置
+          </Button>
+        </Space>
+      </div>
+    </div>
+  );
+};
+
 const PersonalSpace: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "history";
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [profileData, setProfileData] = useState(buildRadarData(null));
   const [dashboardStats, setDashboardStats] = useState<Record<
     string,
     unknown
@@ -335,7 +495,10 @@ const PersonalSpace: React.FC = () => {
       loadedTabs.current.add(activeTab);
 
       try {
-        if (pRes?.data?.data) setProfile(pRes.data.data);
+        if (pRes?.data?.data) {
+          setProfile(pRes.data.data);
+          setProfileData(buildRadarData(pRes.data.data));
+        }
         if (dRes?.data)
           setDashboardStats(dRes.data as unknown as Record<string, unknown>);
         if (ptRes?.data?.data) setPoints(ptRes.data.data);
@@ -1654,163 +1817,237 @@ const PersonalSpace: React.FC = () => {
               </span>
             ),
             children: (
-              <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                <Typography.Title
-                  level={5}
-                  className="mb-5 font-semibold text-slate-800"
-                >
-                  画像数据解读
-                </Typography.Title>
-                <div className="space-y-4 text-slate-600 leading-relaxed">
-                  {/* 趋势状态卡片 */}
-                  {trendInfo && (
-                    <div
-                      className={`p-4 rounded-xl border flex items-start gap-3 ${
-                        trendInfo.state === "growth"
-                          ? "bg-emerald-50 border-emerald-100 text-emerald-700"
-                          : trendInfo.state === "warning"
-                            ? "bg-red-50 border-red-100 text-red-700"
-                            : trendInfo.state === "decline"
-                              ? "bg-amber-50 border-amber-100 text-amber-700"
-                              : "bg-slate-50 border-slate-100 text-slate-600"
-                      }`}
+              <div className="space-y-5">
+                {/* 画像摘要雷达图 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <Typography.Title
+                      level={5}
+                      className="!m-0 font-semibold text-slate-800"
                     >
-                      {trendInfo.state === "growth" ? (
-                        <RiseOutlined className="text-xl mt-1" />
-                      ) : trendInfo.state === "warning" ? (
-                        <AlertOutlined className="text-xl mt-1" />
-                      ) : trendInfo.state === "decline" ? (
-                        <FallOutlined className="text-xl mt-1" />
-                      ) : (
-                        <BulbOutlined className="text-xl mt-1" />
-                      )}
-                      <div className="flex-1">
-                        <div className="font-semibold mb-1">
-                          趋势状态：
-                          {trendInfo.state === "growth"
-                            ? "上升期"
-                            : trendInfo.state === "warning"
-                              ? "预警"
-                              : trendInfo.state === "decline"
-                                ? "下滑期"
-                                : "平稳期"}
-                          <span className="ml-2 text-xs opacity-70">
-                            趋势因子 {trendInfo.factor.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="text-sm leading-relaxed">
-                          {trendInfo.intervention || "暂无干预建议"}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="p-5 rounded-xl bg-slate-50 border border-slate-100">
-                    <p className="mb-2">
-                      <strong className="text-slate-800">认知风格：</strong>{" "}
-                      你的主要认知风格为{" "}
-                      <Tag className="rounded-full border-0 bg-purple-50 text-purple-600">
-                        {cognitivePrimary}
+                      画像摘要
+                    </Typography.Title>
+                    <Button
+                      type="link"
+                      className="text-primary font-medium"
+                      onClick={() => navigate("/profile")}
+                    >
+                      详情 <ArrowRightOutlined />
+                    </Button>
+                  </div>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart
+                        cx="50%"
+                        cy="50%"
+                        outerRadius="70%"
+                        data={profileData}
+                      >
+                        <PolarGrid stroke="#e2e8f0" />
+                        <PolarAngleAxis
+                          dataKey="subject"
+                          tick={{ fill: "#64748b", fontSize: 12 }}
+                        />
+                        <PolarRadiusAxis
+                          angle={30}
+                          domain={[0, 100]}
+                          tick={false}
+                          axisLine={false}
+                        />
+                        <Radar
+                          name="当前画像"
+                          dataKey="A"
+                          stroke="#4f46e5"
+                          fill="#4f46e5"
+                          fillOpacity={0.15}
+                          strokeWidth={2}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-center mt-3">
+                    {profileData.map((item) => (
+                      <Tag
+                        key={item.subject}
+                        className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs"
+                      >
+                        {item.subject}: {Math.round(item.A)}
                       </Tag>
-                      ，系统会优先推送
-                      {cognitivePrimary === "visual"
-                        ? "图表与动画类资源（内存模型图、指针示意图）"
-                        : cognitivePrimary === "auditory"
-                          ? "讲解视频与对话式讲义"
-                          : cognitivePrimary === "kinesthetic"
-                            ? "代码实战与可交互练习"
-                            : "多模态混合资源"}
-                      。
-                    </p>
-                    <p className="mb-2">
-                      <strong className="text-slate-800">学习节奏：</strong>{" "}
-                      当前学习节奏评估为{" "}
-                      <Tag className="rounded-full border-0 bg-blue-50 text-blue-600">
-                        {studySpeed}
-                      </Tag>
-                      {trendInfo?.dimensions?.speed_ratio !== undefined && (
-                        <span className="text-xs text-slate-500 ml-1">
-                          （速度比 {trendInfo.dimensions.speed_ratio.toFixed(2)}
-                          {trendInfo.dimensions.speed_ratio > 0.2
-                            ? " · 偏快"
-                            : trendInfo.dimensions.speed_ratio < -0.2
-                              ? " · 偏慢"
-                              : " · 适中"}
-                          ）
-                        </span>
-                      )}
-                      ，系统在推荐内容时会自动调整讲解深度与练习量。
-                    </p>
-                    <p className="mb-2">
-                      <strong className="text-slate-800">薄弱点：</strong>{" "}
-                      {weakAreas.length
-                        ? weakAreas.join("、")
-                        : "暂无明显薄弱点"}
-                      {trendInfo?.dimensions?.weakness_priority !==
-                        undefined && (
-                        <span className="text-xs text-slate-500 ml-1">
-                          （优先级得分{" "}
-                          {trendInfo.dimensions.weakness_priority.toFixed(2)}
-                          {trendInfo.dimensions.weakness_priority < -0.2
-                            ? " · 需重点关注"
-                            : ""}
-                          ）
-                        </span>
-                      )}
-                      {weakAreas.length
-                        ? "，系统已自动增加相关练习推送和可视化讲解。"
-                        : "。"}
-                    </p>
-                    {trendInfo?.dimensions?.completion_rate !== undefined && (
-                      <p className="mb-2">
-                        <strong className="text-slate-800">完成率：</strong>{" "}
-                        <Tag className="rounded-full border-0 bg-amber-50 text-amber-600">
-                          {trendInfo.dimensions.completion_rate >= 0.4
-                            ? "高"
-                            : trendInfo.dimensions.completion_rate >= -0.2
-                              ? "中"
-                              : "偏低"}
-                        </Tag>
-                        （得分 {trendInfo.dimensions.completion_rate.toFixed(2)}
-                        ）
-                        {trendInfo.dimensions.completion_rate < -0.2
-                          ? "，建议浏览过的章节尽量点击「标记完成」并配合练习。"
-                          : trendInfo.dimensions.completion_rate >= 0.4
-                            ? "，保持当前节奏，可挑战更高难度的综合题。"
-                            : "，可以结合练习巩固已学内容。"}
-                      </p>
-                    )}
-                    {trendInfo?.dimensions?.stability !== undefined && (
-                      <p className="mb-2">
-                        <strong className="text-slate-800">学习稳定性：</strong>{" "}
-                        <Tag className="rounded-full border-0 bg-slate-100 text-slate-600">
-                          {trendInfo.dimensions.stability >= 0.2
-                            ? "稳定"
-                            : trendInfo.dimensions.stability >= -0.2
-                              ? "一般"
-                              : "波动较大"}
-                        </Tag>
-                        （得分 {trendInfo.dimensions.stability.toFixed(2)}）
-                      </p>
-                    )}
-                    <p>
-                      <strong className="text-slate-800">兴趣方向：</strong>{" "}
-                      {profile?.interest_areas?.length
-                        ? profile.interest_areas.join("、")
-                        : "C语言程序设计与系统开发"}
-                      。
-                    </p>
+                    ))}
                   </div>
                 </div>
-                <Button
-                  type="primary"
-                  className="mt-5 rounded-lg bg-primary"
-                  onClick={() => navigate("/profile")}
-                >
-                  手动修正画像
-                </Button>
+
+                {/* 画像数据解读 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <Typography.Title
+                    level={5}
+                    className="mb-5 font-semibold text-slate-800"
+                  >
+                    画像数据解读
+                  </Typography.Title>
+                  <div className="space-y-4 text-slate-600 leading-relaxed">
+                    {/* 趋势状态卡片 */}
+                    {trendInfo && (
+                      <div
+                        className={`p-4 rounded-xl border flex items-start gap-3 ${
+                          trendInfo.state === "growth"
+                            ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                            : trendInfo.state === "warning"
+                              ? "bg-red-50 border-red-100 text-red-700"
+                              : trendInfo.state === "decline"
+                                ? "bg-amber-50 border-amber-100 text-amber-700"
+                                : "bg-slate-50 border-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {trendInfo.state === "growth" ? (
+                          <RiseOutlined className="text-xl mt-1" />
+                        ) : trendInfo.state === "warning" ? (
+                          <AlertOutlined className="text-xl mt-1" />
+                        ) : trendInfo.state === "decline" ? (
+                          <FallOutlined className="text-xl mt-1" />
+                        ) : (
+                          <BulbOutlined className="text-xl mt-1" />
+                        )}
+                        <div className="flex-1">
+                          <div className="font-semibold mb-1">
+                            趋势状态：
+                            {trendInfo.state === "growth"
+                              ? "上升期"
+                              : trendInfo.state === "warning"
+                                ? "预警"
+                                : trendInfo.state === "decline"
+                                  ? "下滑期"
+                                  : "平稳期"}
+                            <span className="ml-2 text-xs opacity-70">
+                              趋势因子 {trendInfo.factor.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="text-sm leading-relaxed">
+                            {trendInfo.intervention || "暂无干预建议"}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-5 rounded-xl bg-slate-50 border border-slate-100">
+                      <p className="mb-2">
+                        <strong className="text-slate-800">认知风格：</strong>{" "}
+                        你的主要认知风格为{" "}
+                        <Tag className="rounded-full border-0 bg-purple-50 text-purple-600">
+                          {cognitivePrimary}
+                        </Tag>
+                        ，系统会优先推送
+                        {cognitivePrimary === "visual"
+                          ? "图表与动画类资源（内存模型图、指针示意图）"
+                          : cognitivePrimary === "auditory"
+                            ? "讲解视频与对话式讲义"
+                            : cognitivePrimary === "kinesthetic"
+                              ? "代码实战与可交互练习"
+                              : "多模态混合资源"}
+                        。
+                      </p>
+                      <p className="mb-2">
+                        <strong className="text-slate-800">学习节奏：</strong>{" "}
+                        当前学习节奏评估为{" "}
+                        <Tag className="rounded-full border-0 bg-blue-50 text-blue-600">
+                          {studySpeed}
+                        </Tag>
+                        {trendInfo?.dimensions?.speed_ratio !== undefined && (
+                          <span className="text-xs text-slate-500 ml-1">
+                            （速度比{" "}
+                            {trendInfo.dimensions.speed_ratio.toFixed(2)}
+                            {trendInfo.dimensions.speed_ratio > 0.2
+                              ? " · 偏快"
+                              : trendInfo.dimensions.speed_ratio < -0.2
+                                ? " · 偏慢"
+                                : " · 适中"}
+                            ）
+                          </span>
+                        )}
+                        ，系统在推荐内容时会自动调整讲解深度与练习量。
+                      </p>
+                      <p className="mb-2">
+                        <strong className="text-slate-800">薄弱点：</strong>{" "}
+                        {weakAreas.length
+                          ? weakAreas.join("、")
+                          : "暂无明显薄弱点"}
+                        {trendInfo?.dimensions?.weakness_priority !==
+                          undefined && (
+                          <span className="text-xs text-slate-500 ml-1">
+                            （优先级得分{" "}
+                            {trendInfo.dimensions.weakness_priority.toFixed(2)}
+                            {trendInfo.dimensions.weakness_priority < -0.2
+                              ? " · 需重点关注"
+                              : ""}
+                            ）
+                          </span>
+                        )}
+                        {weakAreas.length
+                          ? "，系统已自动增加相关练习推送和可视化讲解。"
+                          : "。"}
+                      </p>
+                      {trendInfo?.dimensions?.completion_rate !== undefined && (
+                        <p className="mb-2">
+                          <strong className="text-slate-800">完成率：</strong>{" "}
+                          <Tag className="rounded-full border-0 bg-amber-50 text-amber-600">
+                            {trendInfo.dimensions.completion_rate >= 0.4
+                              ? "高"
+                              : trendInfo.dimensions.completion_rate >= -0.2
+                                ? "中"
+                                : "偏低"}
+                          </Tag>
+                          （得分{" "}
+                          {trendInfo.dimensions.completion_rate.toFixed(2)}）
+                          {trendInfo.dimensions.completion_rate < -0.2
+                            ? "，建议浏览过的章节尽量点击「标记完成」并配合练习。"
+                            : trendInfo.dimensions.completion_rate >= 0.4
+                              ? "，保持当前节奏，可挑战更高难度的综合题。"
+                              : "，可以结合练习巩固已学内容。"}
+                        </p>
+                      )}
+                      {trendInfo?.dimensions?.stability !== undefined && (
+                        <p className="mb-2">
+                          <strong className="text-slate-800">
+                            学习稳定性：
+                          </strong>{" "}
+                          <Tag className="rounded-full border-0 bg-slate-100 text-slate-600">
+                            {trendInfo.dimensions.stability >= 0.2
+                              ? "稳定"
+                              : trendInfo.dimensions.stability >= -0.2
+                                ? "一般"
+                                : "波动较大"}
+                          </Tag>
+                          （得分 {trendInfo.dimensions.stability.toFixed(2)}）
+                        </p>
+                      )}
+                      <p>
+                        <strong className="text-slate-800">兴趣方向：</strong>{" "}
+                        {profile?.interest_areas?.length
+                          ? profile.interest_areas.join("、")
+                          : "C语言程序设计与系统开发"}
+                        。
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="primary"
+                    className="mt-5 rounded-lg bg-primary"
+                    onClick={() => navigate("/profile")}
+                  >
+                    手动修正画像
+                  </Button>
+                </div>
               </div>
             ),
+          },
+          {
+            key: "pomodoro",
+            label: (
+              <span className="flex items-center gap-1.5">
+                <ClockCircleOutlined /> 番茄专注钟
+              </span>
+            ),
+            children: <PomodoroTimer />,
           },
         ]}
       />
