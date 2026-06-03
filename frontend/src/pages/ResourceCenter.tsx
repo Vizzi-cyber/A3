@@ -713,7 +713,7 @@ const ResourceCenter: React.FC = () => {
 
       <div className="flex gap-5 items-start">
         {/* 左侧列 —— 目录 + 线索栏（加宽填充） */}
-        <div className="hidden xl:flex flex-shrink-0 w-80 sticky top-5 self-start z-10 flex-col gap-4 h-[calc(100vh-6rem)]">
+        <div className="hidden xl:flex flex-shrink-0 w-80 sticky top-16 self-start z-10 flex-col gap-4 h-[calc(100vh-5rem)]">
           {/* 课程目录 */}
           <Card
             className="border border-slate-100 rounded-2xl max-h-[calc(100vh-24rem)] overflow-y-auto"
@@ -832,9 +832,7 @@ const ResourceCenter: React.FC = () => {
         </div>
 
         {/* 中间主内容区 */}
-        <div
-          className={`flex-1 min-w-0 space-y-5 transition-all ${chatOpen ? "lg:pr-64" : ""}`}
-        >
+        <div className="flex-1 min-w-0 space-y-5">
           {/* 图文讲义 */}
           <Card
             className="border border-slate-100 rounded-2xl"
@@ -1296,11 +1294,11 @@ const ResourceCenter: React.FC = () => {
           </Card>
         </div>
 
-        {/* 右侧 AI 辅导 —— fixed 悬浮，避开 header */}
+        {/* 右侧 AI 辅导 */}
         {chatOpen && (
-          <div className="fixed right-0 top-16 bottom-0 w-64 z-40 hidden lg:block">
+          <div className="hidden xl:block w-64 flex-shrink-0 sticky top-16 self-start h-[calc(100vh-5rem)]">
             <Card
-              className="border-0 rounded-none h-full flex flex-col bg-white"
+              className="border border-slate-100 rounded-2xl h-full flex flex-col"
               styles={{
                 body: {
                   padding: "16px",
