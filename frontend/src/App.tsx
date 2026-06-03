@@ -19,7 +19,6 @@ const ResourceCenter = React.lazy(() => import("./pages/ResourceCenter"));
 const ResourceDetail = React.lazy(() => import("./pages/ResourceDetail"));
 const PersonalSpace = React.lazy(() => import("./pages/PersonalSpace"));
 const Tutor = React.lazy(() => import("./pages/Tutor"));
-const KnowledgeTree = React.lazy(() => import("./pages/KnowledgeTree"));
 const LearningChallenge = React.lazy(() => import("./pages/LearningChallenge"));
 const LeaderboardPlus = React.lazy(() => import("./pages/LeaderboardPlus"));
 const ErrorDiagnosis = React.lazy(() => import("./pages/ErrorDiagnosis"));
@@ -142,14 +141,6 @@ const PrivateLayout: React.FC = () => {
                   element={
                     <PageWrapper>
                       <PersonalSpace />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/knowledge-tree"
-                  element={
-                    <PageWrapper>
-                      <KnowledgeTree />
                     </PageWrapper>
                   }
                 />

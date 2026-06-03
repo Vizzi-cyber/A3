@@ -26,7 +26,7 @@ import type { KnowledgeTreeData } from "../services/api";
 import { calcLevel, getLevelConfig, fetchLevelConfig } from "../utils/level";
 
 // ==================== 树状态配置 ====================
-const TREE_CONFIG: Record<
+export const TREE_CONFIG: Record<
   string,
   {
     crown: string;
@@ -102,7 +102,7 @@ const TREE_CONFIG: Record<
 };
 
 // ==================== 粒子Canvas ====================
-const ParticleCanvas: React.FC<{
+export const ParticleCanvas: React.FC<{
   state: string;
   width: number;
   height: number;
@@ -214,7 +214,7 @@ const ParticleCanvas: React.FC<{
 };
 
 // ==================== 增强SVG树 ====================
-const TreeSVG: React.FC<{ state: string; growthValue: number }> = ({
+export const TreeSVG: React.FC<{ state: string; growthValue: number }> = ({
   state,
   growthValue: _growthValue,
 }) => {
@@ -580,7 +580,9 @@ const TreeSVG: React.FC<{ state: string; growthValue: number }> = ({
 };
 
 // ==================== AI成长评语 ====================
-const AIGrowthComment: React.FC<{ data: KnowledgeTreeData }> = ({ data }) => {
+export const AIGrowthComment: React.FC<{ data: KnowledgeTreeData }> = ({
+  data,
+}) => {
   const comments: string[] = [];
 
   if (data.streak_days >= 7) {
@@ -639,7 +641,7 @@ const AIGrowthComment: React.FC<{ data: KnowledgeTreeData }> = ({ data }) => {
 };
 
 // ==================== 统计卡片 ====================
-const StatCard: React.FC<{
+export const StatCard: React.FC<{
   icon: React.ReactNode;
   label: string;
   value: string | number;
@@ -657,14 +659,16 @@ const StatCard: React.FC<{
       <div className="min-w-0">
         <div className="text-xs text-slate-400 font-medium">{label}</div>
         <div className="text-xl font-bold text-slate-800">{value}</div>
-        <div className="text-xs text-slate-400 mt-0.5 h-4">{sub || "\u00A0"}</div>
+        <div className="text-xs text-slate-400 mt-0.5 h-4">
+          {sub || "\u00A0"}
+        </div>
       </div>
     </div>
   </div>
 );
 
 // ==================== 成长日志 ====================
-const GrowthLogItem: React.FC<{
+export const GrowthLogItem: React.FC<{
   log: { date: string; type: string; message: string; icon: string };
 }> = ({ log }) => {
   const iconMap: Record<string, React.ReactNode> = {
@@ -678,17 +682,19 @@ const GrowthLogItem: React.FC<{
       <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-sm border border-slate-100 group-hover:border-indigo-200 transition-colors mb-2">
         {iconMap[log.icon] || <StarOutlined className="text-slate-400" />}
       </div>
-      <div className="text-sm text-slate-700 font-medium leading-snug">{log.message}</div>
+      <div className="text-sm text-slate-700 font-medium leading-snug">
+        {log.message}
+      </div>
       <div className="text-xs text-slate-400 mt-1">{log.date}</div>
     </div>
   );
 };
 
 // ==================== 等级进度条 ====================
-const LevelProgress: React.FC<{ level: number; totalPoints: number }> = ({
-  level,
-  totalPoints,
-}) => {
+export const LevelProgress: React.FC<{
+  level: number;
+  totalPoints: number;
+}> = ({ level, totalPoints }) => {
   const lvInfo = calcLevel(totalPoints);
   const cfg = getLevelConfig();
   const barRef = useRef<HTMLDivElement>(null);
@@ -852,7 +858,7 @@ const KnowledgeTree: React.FC = () => {
   };
 
   return (
-    <div ref={containerRef} className="max-w-6xl mx-auto space-y-6">
+    <div ref={containerRef} className="space-y-5">
       {/* 等级进度 */}
       <div className="anim-card">
         <LevelProgress level={data.level} totalPoints={data.total_points} />
@@ -885,8 +891,7 @@ const KnowledgeTree: React.FC = () => {
         <div className="lg:col-span-1 space-y-4">
           <div
             ref={treeContainerRef}
-            className="anim-card bg-white rounded-2xl border border-slate-100 shadow-card p-6 text-center relative overflow-hidden"
-            style={{ minHeight: 360 }}
+            className="anim-card bg-white rounded-2xl border border-slate-100 shadow-card p-6 text-center relative overflow-hidden h-full flex flex-col items-center justify-center"
           >
             {/* 背景网格 */}
             <div
@@ -932,7 +937,6 @@ const KnowledgeTree: React.FC = () => {
               </div>
             </div>
           </div>
-
         </div>
 
         {/* 右侧：数据面板 */}

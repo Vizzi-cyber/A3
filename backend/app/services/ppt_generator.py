@@ -29,6 +29,7 @@ async def generate_ppt_outline(
     """用 LLM 生成深度教学 PPT 大纲"""
 
     prompt = f"""你是一位资深的{subject}教师，需要为学生制作一份关于「{topic}」的深度学习课件。
+目标学生是计算机专业本科生，课件需要兼顾概念讲解和实战代码。
 
 请严格按照以下JSON格式输出，不要输出任何其他内容：
 
@@ -266,15 +267,172 @@ TOPIC_OUTLINES: Dict[str, Dict[str, Any]] = {
             {"type": "summary", "title": "总结", "points": ["链表通过指针实现动态存储，插入删除效率高", "头插法/尾插法是建表的两种基本方式", "插入删除操作的核心是正确修改指针顺序", "头结点简化了边界条件的处理"], "next_topic": "双向链表 或 循环链表"},
         ],
     },
+    "栈": {
+        "title": "栈",
+        "subtitle": "后进先出的线性结构 · 递归与回溯的基础",
+        "slides": [
+            {"type": "title", "title": "栈详解", "subtitle": "数据结构 · LIFO 原理与应用"},
+            {"type": "definition", "title": "什么是栈", "concept": "栈 (Stack)",
+             "definition": "栈是一种仅允许在一端（栈顶）进行插入和删除操作的线性表。后进先出（LIFO）是其核心特性。",
+             "key_properties": ["后进先出 LIFO", "只在栈顶操作", "push 入栈 / pop 出栈", "应用：递归、表达式求值、括号匹配"],
+             "analogy": "像弹夹：最后压入的子弹最先射出"},
+            {"type": "structure", "title": "栈的存储结构", "description": "顺序栈和链栈是两种基本实现方式",
+             "fields": [{"name": "data", "type": "int[]", "desc": "存储栈元素的数组"}, {"name": "top", "type": "int", "desc": "栈顶指针，指向栈顶元素位置"}, {"name": "maxSize", "type": "int", "desc": "栈的最大容量"}],
+             "code": "#define MAXSIZE 100\ntypedef struct {\n    int data[MAXSIZE];\n    int top;  // 栈顶指针\n} SqStack;"},
+            {"type": "algorithm", "title": "入栈与出栈操作", "description": "栈的核心操作：push 和 pop",
+             "steps": ["push: 检查栈是否满 → top++ → 存入元素", "pop: 检查栈是否空 → 取出元素 → top--", "peek: 返回栈顶元素但不修改 top", "isEmpty: 判断 top 是否为 -1"],
+             "code": "Status Push(SqStack *S, int e) {\n    if (S->top == MAXSIZE - 1) return ERROR;\n    S->top++;\n    S->data[S->top] = e;\n    return OK;\n}\n\nStatus Pop(SqStack *S, int *e) {\n    if (S->top == -1) return ERROR;\n    *e = S->data[S->top];\n    S->top--;\n    return OK;\n}",
+             "complexity": {"time": "O(1)", "space": "O(n)", "explanation": "入栈出栈只修改栈顶指针，O(1)；存储需要O(n)空间"}},
+            {"type": "algorithm", "title": "括号匹配", "description": "栈的经典应用：检验表达式中括号是否匹配",
+             "steps": ["遍历表达式每个字符", "遇到左括号：入栈", "遇到右括号：检查栈顶是否匹配的左括号", "遍历结束：栈为空则匹配成功"],
+             "code": "bool bracketMatch(char *expr) {\n    Stack S;\n    InitStack(&S);\n    for (int i = 0; expr[i]; i++) {\n        if (expr[i] == '(' || expr[i] == '[' || expr[i] == '{')\n            Push(&S, expr[i]);\n        else if (expr[i] == ')' || expr[i] == ']' || expr[i] == '}') {\n            if (IsEmpty(S)) return false;\n            char top;\n            Pop(&S, &top);\n            if (expr[i] == ')' && top != '(') return false;\n            if (expr[i] == ']' && top != '[') return false;\n            if (expr[i] == '}' && top != '{') return false;\n        }\n    }\n    return IsEmpty(S);\n}",
+             "complexity": {"time": "O(n)", "space": "O(n)", "explanation": "遍历一次表达式O(n)；最坏情况所有字符都是左括号，栈空间O(n)"}},
+            {"type": "comparison", "title": "顺序栈 vs 链栈",
+             "headers": ["对比项", "顺序栈", "链栈"],
+             "rows": [["存储方式", "连续数组", "离散链表"], ["容量", "固定 maxSize", "动态扩展"], ["内存", "可能浪费", "按需分配"], ["实现难度", "简单", "稍复杂"], ["适用场景", "已知最大深度", "深度不确定"]]},
+            {"type": "mistakes", "title": "常见易错点",
+             "items": [
+                 {"point": "顺序栈判断满的条件写错", "correct": "栈满条件是 top == MAXSIZE-1，不是 top == MAXSIZE", "code_example": "❌ if (S->top == MAXSIZE) // 越界\n✅ if (S->top == MAXSIZE - 1)"},
+                 {"point": "出栈前未判空", "correct": "pop 前必须检查栈是否为空，否则会访问非法内存"},
+                 {"point": "混淆栈顶指针的初始值", "correct": "top=-1 表示空栈（指向栈顶元素），top=0 表示指向下一个空位"}
+             ]},
+            {"type": "quiz", "title": "练习题",
+             "questions": [
+                 {"q": "若入栈序列为1,2,3,4，则不可能的出栈序列是？", "options": ["A. 4,3,2,1", "B. 1,2,3,4", "C. 1,3,2,4", "D. 4,1,2,3"], "answer": "D", "explain": "4先出栈意味着1,2,3,4都已入栈，此时栈顶到栈底为3,2,1。接下来只能按3→2→1顺序出栈，不可能先出1再出2"},
+                 {"q": "用两个栈模拟队列，最少需要多少次操作完成一次入队？", "options": ["A. 1次", "B. 2次", "C. n次", "D. 不可能"], "answer": "B", "explain": "入队：push到栈A（1次）。出队：若栈B空，将A全部pop到B（摊还O(1)），再pop B。均摊后入队O(1)"},
+                 {"q": "递归调用使用的栈空间最大深度取决于？", "options": ["A. 变量个数", "B. 递归层数", "C. 数据规模", "D. 返回值大小"], "answer": "B", "explain": "每层递归在系统调用栈上占用一帧，最大深度等于最深递归层数"}
+             ]},
+            {"type": "summary", "title": "总结", "points": ["栈是LIFO线性结构，只在栈顶操作", "顺序栈和链栈各有适用场景", "栈的经典应用：括号匹配、表达式求值、递归", "注意判空判满和栈顶指针初始值"], "next_topic": "队列"},
+        ],
+    },
+    "队列": {
+        "title": "队列",
+        "subtitle": "先进先出的线性结构 · BFS与缓冲的核心",
+        "slides": [
+            {"type": "title", "title": "队列详解", "subtitle": "数据结构 · FIFO 原理与实现"},
+            {"type": "definition", "title": "什么是队列", "concept": "队列 (Queue)",
+             "definition": "队列是一种只允许在一端（队尾）插入、另一端（队头）删除的线性表。先进先出（FIFO）是其核心特性。",
+             "key_properties": ["先进先出 FIFO", "队尾入队 enQueue", "队头出队 deQueue", "应用：BFS、任务调度、缓冲区"],
+             "analogy": "像排队买票：先来的先走"},
+            {"type": "structure", "title": "循环队列结构", "description": "用数组实现的队列，通过取模运算解决假溢出问题",
+             "fields": [{"name": "data", "type": "int[]", "desc": "存储队列元素的数组"}, {"name": "front", "type": "int", "desc": "队头指针"}, {"name": "rear", "type": "int", "desc": "队尾指针"}],
+             "code": "#define MAXSIZE 100\ntypedef struct {\n    int data[MAXSIZE];\n    int front;  // 队头\n    int rear;   // 队尾\n} SqQueue;"},
+            {"type": "algorithm", "title": "循环队列操作", "description": "入队、出队、判空、判满",
+             "steps": ["入队: rear = (rear+1) % MAXSIZE → 存入元素", "出队: 取 front 元素 → front = (front+1) % MAXSIZE", "判空: front == rear", "判满: (rear+1) % MAXSIZE == front（牺牲一个位置）"],
+             "code": "Status EnQueue(SqQueue *Q, int e) {\n    if ((Q->rear+1) % MAXSIZE == Q->front) return ERROR;\n    Q->rear = (Q->rear + 1) % MAXSIZE;\n    Q->data[Q->rear] = e;\n    return OK;\n}\n\nStatus DeQueue(SqQueue *Q, int *e) {\n    if (Q->front == Q->rear) return ERROR;\n    Q->front = (Q->front + 1) % MAXSIZE;\n    *e = Q->data[Q->front];\n    return OK;\n}",
+             "complexity": {"time": "O(1)", "space": "O(n)", "explanation": "入队出队都是修改指针取模运算，O(1)"}},
+            {"type": "comparison", "title": "队列的三种实现",
+             "headers": ["实现方式", "优点", "缺点"],
+             "rows": [["顺序队列（数组）", "简单直观", "假溢出问题"], ["循环队列", "解决假溢出", "牺牲一个空间判满"], ["链式队列", "无容量限制", "每个节点额外指针开销"]]},
+            {"type": "mistakes", "title": "常见易错点",
+             "items": [
+                 {"point": "循环队列判满条件写错", "correct": "判满是 (rear+1)%MAXSIZE==front，不是 rear==front（那是判空）", "code_example": "❌ if (Q->rear == Q->front) // 这是判空！\n✅ if ((Q->rear+1) % MAXSIZE == Q->front)"},
+                 {"point": "队列元素个数计算错误", "correct": "元素个数 = (rear - front + MAXSIZE) % MAXSIZE，不能直接 rear-front"},
+                 {"point": "出队后忘记更新 front", "correct": "出队必须 front = (front+1)%MAXSIZE，否则队头元素还在"}
+             ]},
+            {"type": "quiz", "title": "练习题",
+             "questions": [
+                 {"q": "循环队列中，若MAXSIZE=10，front=2，rear=5，则队列中有几个元素？", "options": ["A. 3", "B. 5", "C. 7", "D. 8"], "answer": "A", "explain": "(rear-front+MAXSIZE)%MAXSIZE = (5-2+10)%10 = 3"},
+                 {"q": "BFS遍历图使用什么数据结构？", "options": ["A. 栈", "B. 队列", "C. 数组", "D. 树"], "answer": "B", "explain": "BFS按层次遍历，先访问的节点的邻居也先被处理，符合FIFO特性"},
+                 {"q": "用链表实现队列，队头指针的作用是？", "options": ["A. 指向队尾", "B. 指向队头节点", "C. 指向头结点", "D. 记录队列长度"], "answer": "B", "explain": "队头指针直接指向第一个数据节点，方便出队操作"}
+             ]},
+            {"type": "summary", "title": "总结", "points": ["队列是FIFO线性结构", "循环队列通过取模运算解决假溢出", "判满判空条件要区分清楚", "BFS是队列最重要的应用之一"], "next_topic": "树与二叉树"},
+        ],
+    },
+    "排序": {
+        "title": "排序算法",
+        "subtitle": "从基础到高级 · 时间复杂度与稳定性的权衡",
+        "slides": [
+            {"type": "title", "title": "排序算法详解", "subtitle": "数据结构 · 经典排序全面对比"},
+            {"type": "definition", "title": "排序概述", "concept": "排序 (Sorting)",
+             "definition": "排序是将一个无序序列按照关键字的大小关系排列成有序序列的过程。排序算法的评价指标包括时间复杂度、空间复杂度和稳定性。",
+             "key_properties": ["稳定性：相等元素的相对顺序是否改变", "原地排序：是否需要额外空间", "比较排序：基于比较的下界为O(nlogn)", "非比较排序：基数排序、计数排序可突破下界"],
+             "analogy": "像整理书架：按不同标准（书名、作者、颜色）排列"},
+            {"type": "algorithm", "title": "快速排序", "description": "分治思想的经典应用，平均性能最优的排序算法",
+             "steps": ["步骤1：选择基准元素（pivot）", "步骤2：分区：比pivot小的放左边，大的放右边", "步骤3：递归对左右子数组执行快排", "递归出口：子数组长度<=1"],
+             "code": "void quickSort(int arr[], int low, int high) {\n    if (low >= high) return;\n    int pivot = arr[low];  // 选第一个元素为基准\n    int i = low, j = high;\n    while (i < j) {\n        while (i < j && arr[j] >= pivot) j--;\n        while (i < j && arr[i] <= pivot) i++;\n        if (i < j) swap(&arr[i], &arr[j]);\n    }\n    swap(&arr[low], &arr[i]);  // pivot归位\n    quickSort(arr, low, i - 1);\n    quickSort(arr, i + 1, high);\n}",
+             "complexity": {"time": "平均O(nlogn)，最坏O(n²)", "space": "O(logn)", "explanation": "平均情况下每次分区约均分，递归深度logn；最坏情况（已排序数组）每次只减少1个元素"}},
+            {"type": "algorithm", "title": "归并排序", "description": "稳定的分治排序，空间换时间的典型代表",
+             "steps": ["步骤1：将数组从中间分成两半", "步骤2：递归排序左右两半", "步骤3：将两个有序子数组合并", "合并：双指针依次比较，取较小者"],
+             "code": "void merge(int arr[], int temp[], int left, int mid, int right) {\n    int i = left, j = mid + 1, k = left;\n    while (i <= mid && j <= right) {\n        if (arr[i] <= arr[j])\n            temp[k++] = arr[i++];\n        else\n            temp[k++] = arr[j++];\n    }\n    while (i <= mid) temp[k++] = arr[i++];\n    while (j <= right) temp[k++] = arr[j++];\n    for (int i = left; i <= right; i++)\n        arr[i] = temp[i];\n}\n\nvoid mergeSort(int arr[], int temp[], int left, int right) {\n    if (left >= right) return;\n    int mid = (left + right) / 2;\n    mergeSort(arr, temp, left, mid);\n    mergeSort(arr, temp, mid + 1, right);\n    merge(arr, temp, left, mid, right);\n}",
+             "complexity": {"time": "O(nlogn)", "space": "O(n)", "explanation": "每次均分O(logn)层，每层合并O(n)；需要O(n)辅助数组"}},
+            {"type": "comparison", "title": "经典排序算法对比",
+             "headers": ["算法", "平均时间", "最坏时间", "空间", "稳定性"],
+             "rows": [["冒泡排序", "O(n²)", "O(n²)", "O(1)", "稳定"], ["选择排序", "O(n²)", "O(n²)", "O(1)", "不稳定"], ["插入排序", "O(n²)", "O(n²)", "O(1)", "稳定"], ["快速排序", "O(nlogn)", "O(n²)", "O(logn)", "不稳定"], ["归并排序", "O(nlogn)", "O(nlogn)", "O(n)", "稳定"], ["堆排序", "O(nlogn)", "O(nlogn)", "O(1)", "不稳定"]]},
+            {"type": "mistakes", "title": "常见易错点",
+             "items": [
+                 {"point": "快排最坏情况的触发条件", "correct": "当数组已排序且选第一个元素为基准时，每次分区只减少1个元素，退化为O(n²)", "code_example": "避免方法：随机选基准 或 三数取中法"},
+                 {"point": "归并排序的辅助空间容易忽略", "correct": "归并需要O(n)额外空间，不适合内存受限场景"},
+                 {"point": "不稳定排序的例子记混", "correct": "选择排序、快排、堆排是不稳定的。例：[5a, 5b, 3] 选择排序后可能变成 [3, 5b, 5a]"}
+             ]},
+            {"type": "quiz", "title": "练习题",
+             "questions": [
+                 {"q": "对10个记录进行快排，最坏情况下的比较次数是？", "options": ["A. 45", "B. 90", "C. 100", "D. 1023"], "answer": "B", "explain": "最坏情况每次只排除1个元素：9+8+7+...+1 = 45次分区，但每次分区内的比较次数合计约n(n-1)/2 = 45*2 = 90"},
+                 {"q": "以下哪个排序算法在最好情况下时间复杂度为O(n)？", "options": ["A. 快排", "B. 归并", "C. 插入排序", "D. 堆排序"], "answer": "C", "explain": "插入排序在数组已排序时只需遍历一次，O(n)。其他算法最好情况也是O(nlogn)"},
+                 {"q": "需要稳定排序且空间有限时，应选择？", "options": ["A. 快排", "B. 归并", "C. 插入排序", "D. 堆排"], "answer": "C", "explain": "插入排序稳定且O(1)空间，但O(n²)时间。归并稳定但O(n)空间。需根据数据规模权衡"}
+             ]},
+            {"type": "summary", "title": "总结", "points": ["快排平均O(nlogn)但不稳定，归并稳定但需O(n)空间", "没有完美的排序算法，需根据场景选择", "稳定性在多关键字排序中很重要", "理解每种算法的适用场景比记住复杂度更重要"], "next_topic": "查找算法"},
+        ],
+    },
+    "图": {
+        "title": "图",
+        "subtitle": "非线性结构的核心 · 关系建模的利器",
+        "slides": [
+            {"type": "title", "title": "图详解", "subtitle": "数据结构 · 顶点与边的艺术"},
+            {"type": "definition", "title": "什么是图", "concept": "图 (Graph)",
+             "definition": "图是由顶点集合和边集合组成的数据结构，用于表示多对多的关系。分为有向图和无向图，带权图和无权图。",
+             "key_properties": ["顶点(Vertex)和边(Edge)", "有向图 vs 无向图", "度(Degree)：与顶点相连的边数", "路径：从一个顶点到另一个顶点的边序列"],
+             "analogy": "像城市交通网络：城市是顶点，道路是边"},
+            {"type": "structure", "title": "图的存储结构", "description": "邻接矩阵和邻接表是两种主要存储方式",
+             "fields": [{"name": "adj matrix", "type": "int[][]", "desc": "邻接矩阵：用二维数组表示顶点间的连接"}, {"name": "adj list", "type": "Node*[]", "desc": "邻接表：每个顶点维护一个链表存储邻接点"}],
+             "code": "// 邻接矩阵\ntypedef struct {\n    int vexnum, arcnum;\n    int adj[MAX][MAX];\n} MGraph;\n\n// 邻接表\ntypedef struct ArcNode {\n    int adjvex;\n    struct ArcNode *next;\n} ArcNode;\ntypedef struct {\n    int data;\n    ArcNode *first;\n} VNode;"},
+            {"type": "algorithm", "title": "深度优先搜索 DFS", "description": "沿着一条路径尽可能深地搜索，回溯后探索其他路径",
+             "steps": ["步骤1：访问起始顶点，标记为已访问", "步骤2：对其未访问的邻接顶点递归执行DFS", "步骤3：回溯：当没有未访问邻接点时返回", "步骤4：重复直到所有连通顶点都被访问"],
+             "code": "bool visited[MAX];\n\nvoid DFS(MGraph G, int v) {\n    visited[v] = true;\n    printf(\"%d \", v);\n    for (int w = 0; w < G.vexnum; w++) {\n        if (G.adj[v][w] && !visited[w])\n            DFS(G, w);\n    }\n}",
+             "complexity": {"time": "O(n²)邻接矩阵 / O(n+e)邻接表", "space": "O(n)", "explanation": "每个顶点访问一次，邻接矩阵需遍历所有可能边，邻接表只需遍历实际边"}},
+            {"type": "algorithm", "title": "广度优先搜索 BFS", "description": "逐层搜索：先访问所有距离为1的顶点，再访问距离为2的...",
+             "steps": ["步骤1：起始顶点入队并标记", "步骤2：队头顶点出队并访问", "步骤3：将出队顶点的所有未访问邻接入队并标记", "步骤4：重复2-3直到队列为空"],
+             "code": "void BFS(MGraph G, int v) {\n    Queue Q;\n    InitQueue(&Q);\n    visited[v] = true;\n    EnQueue(&Q, v);\n    while (!IsEmpty(Q)) {\n        int u = DeQueue(&Q);\n        printf(\"%d \", u);\n        for (int w = 0; w < G.vexnum; w++) {\n            if (G.adj[u][w] && !visited[w]) {\n                visited[w] = true;\n                EnQueue(&Q, w);\n            }\n        }\n    }\n}",
+             "complexity": {"time": "O(n²) / O(n+e)", "space": "O(n)", "explanation": "与DFS相同的时间复杂度；队列空间最坏O(n)"}},
+            {"type": "comparison", "title": "DFS vs BFS",
+             "headers": ["对比项", "DFS", "BFS"],
+             "rows": [["数据结构", "栈（递归调用栈）", "队列"], ["搜索策略", "深度优先，一条路走到黑", "广度优先，逐层扩展"], ["空间", "O(h)递归深度", "O(w)最大层宽"], ["最短路径", "不保证", "无权图保证"], ["适用场景", "拓扑排序、连通分量", "最短路径、层序遍历"]]},
+            {"type": "mistakes", "title": "常见易错点",
+             "items": [
+                 {"point": "DFS和BFS的visited标记时机", "correct": "入栈/入队时就标记，不是出栈/出队时。否则会重复入队", "code_example": "❌ 出队时标记 → 同一顶点可能多次入队\n✅ 入队时标记 → 每个顶点只入队一次"},
+                 {"point": "邻接矩阵和邻接表的遍历复杂度混淆", "correct": "邻接矩阵必须检查所有n²个元素；邻接表只需检查实际边数e"},
+                 {"point": "有向图和无向图的度数计算", "correct": "无向图度=边数；有向图分出度和入度"}
+             ]},
+            {"type": "quiz", "title": "练习题",
+             "questions": [
+                 {"q": "一个有n个顶点e条边的无向图，用邻接表存储，DFS的时间复杂度是？", "options": ["A. O(n)", "B. O(n²)", "C. O(n+e)", "D. O(ne)"], "answer": "C", "explain": "每个顶点访问一次O(n)，每条边检查两次（无向图）O(e)，合计O(n+e)"},
+                 {"q": "BFS可以用来求解什么问题？", "options": ["A. 拓扑排序", "B. 无权图最短路径", "C. 关键路径", "D. 最小生成树"], "answer": "B", "explain": "BFS按层扩展，第一次到达某顶点的路径就是最短路径（无权图）"},
+                 {"q": "以下关于图的说法，错误的是？", "options": ["A. 有向图的邻接矩阵不一定对称", "B. 无向图的邻接矩阵一定对称", "C. BFS需要队列", "D. DFS只能用递归实现"], "answer": "D", "explain": "DFS可以用显式栈非递归实现，不一定用递归"}
+             ]},
+            {"type": "summary", "title": "总结", "points": ["图是多对多关系的数学模型", "邻接矩阵适合稠密图，邻接表适合稀疏图", "DFS用栈/递归，BFS用队列", "BFS可求无权图最短路径"], "next_topic": "最短路径算法 (Dijkstra)"},
+        ],
+    },
 }
 
 
 def _default_outline(topic: str, subject: str) -> Dict[str, Any]:
     """根据主题匹配深度大纲，匹配不到则生成通用大纲"""
-    # 尝试匹配预设大纲
+    # 尝试匹配预设大纲（支持部分匹配）
+    topic_lower = topic.lower()
     for key, outline in TOPIC_OUTLINES.items():
-        if key in topic or topic in key:
+        if key in topic_lower or topic_lower in key:
             return outline
+    # 扩展匹配：排序相关、查找相关、树相关
+    if any(k in topic_lower for k in ["排序", "快排", "归并", "冒泡", "选择排序", "插入排序", "堆排"]):
+        return TOPIC_OUTLINES["排序"]
+    if any(k in topic_lower for k in ["查找", "二分", "搜索"]):
+        pass  # fall through to generic outline below
+    if any(k in topic_lower for k in ["栈", "stack"]):
+        return TOPIC_OUTLINES["栈"]
+    if any(k in topic_lower for k in ["队列", "queue"]):
+        return TOPIC_OUTLINES["队列"]
+    if any(k in topic_lower for k in ["图", "graph", "dfs", "bfs"]):
+        return TOPIC_OUTLINES["图"]
 
     # 通用深度大纲
     return {
