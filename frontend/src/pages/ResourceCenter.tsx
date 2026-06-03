@@ -19,7 +19,6 @@ import {
   FileTextOutlined,
   CodeOutlined,
   MessageOutlined,
-  EditOutlined,
   MenuFoldOutlined,
   BookOutlined,
   CheckCircleOutlined,
@@ -29,7 +28,6 @@ import {
   CopyOutlined,
   BulbOutlined,
   NodeIndexOutlined,
-  FormOutlined,
   CameraOutlined,
   LikeOutlined,
   DislikeOutlined,
@@ -109,8 +107,6 @@ const ResourceCenter: React.FC = () => {
     notes: "",
     summary: "",
   });
-  const [_feynmanMode, _setFeynmanMode] = useState(false);
-  const [feynmanInput, setFeynmanInput] = useState("");
   const [ragActive, setRagActive] = useState(true);
   const [multiAgentStep, _setMultiAgentStep] = useState<
     "planner" | "worker" | "critic" | "done"
@@ -128,9 +124,6 @@ const ResourceCenter: React.FC = () => {
   const [generatedImage, setGeneratedImage] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
   const [pptModalOpen, setPptModalOpen] = useState(false);
-  const [savingNotes, setSavingNotes] = useState(false);
-  const [savingCornell, setSavingCornell] = useState(false);
-  const [savingFeynman, setSavingFeynman] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const studentId = useAppStore((s) => s.studentId);
   const location = useLocation();
@@ -278,10 +271,6 @@ const ResourceCenter: React.FC = () => {
             });
           }
         }
-        const feynman = refs.find((r) =>
-          String(r.tags || "").includes("feynman"),
-        );
-        if (feynman) setFeynmanInput(String(feynman.content || ""));
       } catch {
         /* ignore */
       }
@@ -561,77 +550,6 @@ const ResourceCenter: React.FC = () => {
       message.error(extractApiError(e, "标记失败"));
     } finally {
       setMarkingComplete(false);
-    }
-  };
-
-  const handleSaveNotes = async () => {
-    if (!notes.trim()) {
-      message.warning("笔记内容为空");
-      return;
-    }
-    setSavingNotes(true);
-    try {
-      await logReflectionApi.createReflection({
-        student_id: studentId,
-        date: new Date().toISOString().slice(0, 10),
-        content: notes.trim(),
-        mood: "neutral",
-        tags: ["notes"],
-      });
-      message.success("笔记已保存");
-    } catch (e: unknown) {
-      message.error(extractApiError(e, "保存失败"));
-    } finally {
-      setSavingNotes(false);
-    }
-  };
-
-  const handleSaveCornell = async () => {
-    if (
-      !cornellNotes.cues.trim() &&
-      !cornellNotes.notes.trim() &&
-      !cornellNotes.summary.trim()
-    ) {
-      message.warning("康奈尔笔记内容为空");
-      return;
-    }
-    setSavingCornell(true);
-    try {
-      await logReflectionApi.createReflection({
-        student_id: studentId,
-        date: new Date().toISOString().slice(0, 10),
-        content: JSON.stringify(cornellNotes),
-        mood: "neutral",
-        tags: ["cornell"],
-      });
-      message.success("康奈尔笔记已保存");
-    } catch (e: unknown) {
-      message.error(extractApiError(e, "保存失败"));
-    } finally {
-      setSavingCornell(false);
-    }
-  };
-
-  const handleSubmitFeynman = async () => {
-    if (!feynmanInput.trim()) {
-      message.warning("请先输入费曼练习内容");
-      return;
-    }
-    setSavingFeynman(true);
-    try {
-      await logReflectionApi.createReflection({
-        student_id: studentId,
-        date: new Date().toISOString().slice(0, 10),
-        content: feynmanInput.trim(),
-        mood: "neutral",
-        tags: ["feynman"],
-      });
-      message.success("费曼练习已保存");
-      setFeynmanInput("");
-    } catch (e: unknown) {
-      message.error(extractApiError(e, "保存失败"));
-    } finally {
-      setSavingFeynman(false);
     }
   };
 
@@ -1315,137 +1233,6 @@ const ResourceCenter: React.FC = () => {
                         ))}
                       </div>
                     </Card>
-                  ),
-                },
-                {
-                  key: "notes",
-                  label: (
-                    <span className="flex items-center gap-1.5 text-sm">
-                      <FormOutlined /> 我的笔记
-                    </span>
-                  ),
-                  children: (
-                    <div className="space-y-3">
-                      <Input.TextArea
-                        rows={8}
-                        placeholder="在这里记录学习笔记，数据会同步到画像分析..."
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="rounded-xl bg-slate-50 border-slate-200"
-                      />
-                      <Button
-                        type="primary"
-                        className="rounded-lg bg-primary"
-                        onClick={handleSaveNotes}
-                        loading={savingNotes}
-                      >
-                        <CheckCircleOutlined /> 保存笔记
-                      </Button>
-                    </div>
-                  ),
-                },
-                {
-                  key: "cornell",
-                  label: (
-                    <span className="flex items-center gap-1.5 text-sm">
-                      <EditOutlined /> 康奈尔笔记
-                    </span>
-                  ),
-                  children: (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="md:col-span-1 space-y-2">
-                          <div className="text-xs font-medium text-slate-500">
-                            线索栏 (Cues)
-                          </div>
-                          <Input.TextArea
-                            rows={8}
-                            placeholder="记录关键词、问题..."
-                            value={cornellNotes.cues}
-                            onChange={(e) =>
-                              setCornellNotes({
-                                ...cornellNotes,
-                                cues: e.target.value,
-                              })
-                            }
-                            className="rounded-xl bg-slate-50 border-slate-200"
-                          />
-                        </div>
-                        <div className="md:col-span-2 space-y-2">
-                          <div className="text-xs font-medium text-slate-500">
-                            笔记栏 (Notes)
-                          </div>
-                          <Input.TextArea
-                            rows={8}
-                            placeholder="记录课堂/阅读笔记..."
-                            value={cornellNotes.notes}
-                            onChange={(e) =>
-                              setCornellNotes({
-                                ...cornellNotes,
-                                notes: e.target.value,
-                              })
-                            }
-                            className="rounded-xl bg-slate-50 border-slate-200"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium text-slate-500">
-                          总结栏 (Summary)
-                        </div>
-                        <Input.TextArea
-                          rows={3}
-                          placeholder="用一句话总结本页核心内容..."
-                          value={cornellNotes.summary}
-                          onChange={(e) =>
-                            setCornellNotes({
-                              ...cornellNotes,
-                              summary: e.target.value,
-                            })
-                          }
-                          className="rounded-xl bg-slate-50 border-slate-200"
-                        />
-                      </div>
-                      <Button
-                        type="primary"
-                        className="rounded-lg bg-primary"
-                        onClick={handleSaveCornell}
-                        loading={savingCornell}
-                      >
-                        <CheckCircleOutlined /> 保存康奈尔笔记
-                      </Button>
-                    </div>
-                  ),
-                },
-                {
-                  key: "feynman",
-                  label: (
-                    <span className="flex items-center gap-1.5 text-sm">
-                      <BulbOutlined /> 费曼学习
-                    </span>
-                  ),
-                  children: (
-                    <div className="space-y-3">
-                      <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-sm text-amber-800">
-                        <strong>费曼学习法：</strong>
-                        尝试用最简单的语言向一个"小孩"解释你学到的概念。如果你卡住了，就回到材料中重新学习。
-                      </div>
-                      <Input.TextArea
-                        rows={6}
-                        placeholder="用你自己的话，尝试向一个外行解释当前知识点..."
-                        value={feynmanInput}
-                        onChange={(e) => setFeynmanInput(e.target.value)}
-                        className="rounded-xl bg-slate-50 border-slate-200"
-                      />
-                      <Button
-                        type="primary"
-                        className="rounded-lg bg-primary"
-                        onClick={handleSubmitFeynman}
-                        loading={savingFeynman}
-                      >
-                        <ThunderboltOutlined /> 提交费曼练习
-                      </Button>
-                    </div>
                   ),
                 },
                 {
