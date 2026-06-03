@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Spin, Tag, Progress, Button, message } from "antd";
+import { Spin, Tag, Progress, Button, Row, Col, message } from "antd";
 import {
   BookOutlined,
   TrophyOutlined,
@@ -13,12 +13,18 @@ import {
   LockFilled,
   AimOutlined,
   RocketOutlined,
+  CodeOutlined,
+  BulbOutlined,
+  ApartmentOutlined,
+  MessageOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { useAppStore } from "../store";
-import { challengeApi } from "../services/api";
+import { challengeApi, gamificationApi } from "../services/api";
 import type { ChallengeItem, ChallengeMapNode } from "../services/api";
+import type { Achievement } from "../types";
 
 // ==================== 世界观定义 ====================
 const WORLD_LORE = {
@@ -95,6 +101,26 @@ const DIFFICULTY_LABEL: Record<number, string> = {
   4: "大师",
   5: "传说",
 };
+
+// 成就徽章相关
+const badgeIcon = (name: string): { icon: React.ReactNode; color: string } => {
+  if (/code|代码|编程/i.test(name))
+    return { icon: <CodeOutlined />, color: "#3b82f6" };
+  if (/king|王|大师|高级/i.test(name))
+    return { icon: <CrownOutlined />, color: "#ef4444" };
+  if (/streak|全勤|连续|打卡/i.test(name))
+    return { icon: <FireOutlined />, color: "#10b981" };
+  if (/star|新人|入门|出茅庐/i.test(name))
+    return { icon: <StarOutlined />, color: "#f59e0b" };
+  return { icon: <TrophyOutlined />, color: "#8b5cf6" };
+};
+
+interface BadgeView {
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+  unlocked: boolean;
+}
 
 // ==================== 探索地图 ====================
 const ExploreMap: React.FC<{
@@ -410,19 +436,37 @@ const LearningChallenge: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [activeNodeIdx, setActiveNodeIdx] = useState(0);
+  const [badgesState, setBadgesState] = useState<BadgeView[]>([]);
   const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let ignore = false;
     setLoading(true);
-    challengeApi
-      .getChallenges(studentId)
-      .then((res) => {
+    Promise.all([
+      challengeApi.getChallenges(studentId),
+      gamificationApi.getAchievements(studentId).catch(() => null),
+    ])
+      .then(([challengeRes, achieveRes]) => {
         if (ignore) return;
-        const data = res.data.data;
+        const data = challengeRes.data.data;
         setChallenges(data.challenges);
         setMapNodes(data.map_nodes);
         setSummary(data.summary);
+
+        if (achieveRes?.data?.data) {
+          setBadgesState(
+            achieveRes.data.data.map((a: Achievement) => {
+              const name = a.name || a.achievement_id;
+              const meta = badgeIcon(name);
+              return {
+                name,
+                icon: meta.icon,
+                color: meta.color,
+                unlocked: !!a.unlocked_at,
+              };
+            }),
+          );
+        }
       })
       .catch(() => {
         if (!ignore) message.error("获取挑战数据失败");
@@ -570,6 +614,54 @@ const LearningChallenge: React.FC = () => {
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* 成就徽章 */}
+      <div className="anim-item">
+        <div className="bg-white rounded-2xl border border-slate-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <TrophyOutlined className="text-amber-500" />
+              <span className="font-bold text-slate-800">成就徽章</span>
+            </div>
+            <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
+              已解锁 {badgesState.filter((b) => b.unlocked).length} /{" "}
+              {badgesState.length}
+            </Tag>
+          </div>
+          <Row gutter={[20, 20]}>
+            {badgesState.map((badge, idx) => (
+              <Col xs={12} sm={8} lg={6} key={idx}>
+                <div
+                  className={`flex flex-col items-center gap-3 p-5 rounded-xl border transition-all ${
+                    badge.unlocked
+                      ? "bg-white border-slate-100 hover:shadow-card"
+                      : "bg-slate-50 border-slate-100 opacity-50"
+                  }`}
+                >
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl"
+                    style={{
+                      background: badge.unlocked ? badge.color : "#cbd5e1",
+                    }}
+                  >
+                    {badge.icon}
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-slate-800 text-sm">
+                      {badge.name}
+                    </div>
+                  </div>
+                  {badge.unlocked && (
+                    <Tag className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">
+                      已解锁
+                    </Tag>
+                  )}
+                </div>
+              </Col>
+            ))}
+          </Row>
         </div>
       </div>
     </div>

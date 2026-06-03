@@ -361,6 +361,10 @@ export const dashboardApi = {
         };
       };
     }>(`/dashboard/${studentId}/timeline`),
+  getActiveDates: (studentId: string, year: number, month: number) =>
+    api.get<{ status: string; data: string[] }>(
+      `/dashboard/${studentId}/active-dates?year=${year}&month=${month}`,
+    ),
 };
 
 // ---------- Favorites ----------
