@@ -71,6 +71,10 @@ async def list_kps(
                 "difficulty": k.difficulty,
                 "prerequisites": k.prerequisites,
                 "tags": k.tags,
+                "document": k.document,
+                "code_example": k.code_example,
+                "questions": k.questions,
+                "mindmap": k.mindmap,
             }
             for k in kps
         ],
@@ -132,5 +136,9 @@ async def get_kp(kp_id: str, db: Session = Depends(get_db), _current: str = Depe
             "prerequisites": kp.prerequisites,
             "description": kp.description,
             "tags": kp.tags,
+            "document": kp.document,
+            "code_example": kp.code_example,
+            "questions": kp.questions,
+            "mindmap": kp.mindmap,
         },
     }

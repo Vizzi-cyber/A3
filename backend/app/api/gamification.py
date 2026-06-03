@@ -198,7 +198,34 @@ async def update_task_progress(request: UpdateTaskProgressRequest, db: Session =
 
 @router.get("/leaderboard/{period}")
 async def get_leaderboard(period: str = "weekly", limit: int = Query(20, ge=1, le=100), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
-    """获取排行榜"""
+    """获取排行榜。total/weekly/monthly 优先查 leaderboard 表，无数据时回退到 game_points 表。"""
+    if period in ("total", "all"):
+        # total: 从 game_points 直接取总积分排行
+        points_rows = (
+            db.query(PointsModel.student_id, PointsModel.total_points)
+            .order_by(PointsModel.total_points.desc())
+            .limit(limit)
+            .all()
+        )
+        student_ids = [r.student_id for r in points_rows]
+        users = db.query(UserModel.student_id, UserModel.username).filter(UserModel.student_id.in_(student_ids)).all()
+        username_map = {u.student_id: u.username for u in users}
+        return {
+            "status": "success",
+            "period": period,
+            "data": [
+                {
+                    "rank": idx + 1,
+                    "student_id": r.student_id,
+                    "username": username_map.get(r.student_id, ""),
+                    "points": r.total_points,
+                    "streak_days": 0,
+                    "level": (r.total_points or 0) // 1000 + 1,
+                }
+                for idx, r in enumerate(points_rows)
+            ],
+        }
+
     rows = (
         db.query(LeaderboardModel)
         .filter(LeaderboardModel.period == period)
@@ -206,14 +233,39 @@ async def get_leaderboard(period: str = "weekly", limit: int = Query(20, ge=1, l
         .limit(limit)
         .all()
     )
-    # 批量获取用户名
     student_ids = [r.student_id for r in rows]
     users = db.query(UserModel.student_id, UserModel.username).filter(UserModel.student_id.in_(student_ids)).all()
     username_map = {u.student_id: u.username for u in users}
 
-    # 批量获取积分和连胜天数
     points_list = db.query(PointsModel.student_id, PointsModel.total_points).filter(PointsModel.student_id.in_(student_ids)).all()
     points_map = {p.student_id: p.total_points for p in points_list}
+
+    # 如果 leaderboard 表无数据，回退到 game_points
+    if not rows:
+        points_rows = (
+            db.query(PointsModel.student_id, PointsModel.total_points)
+            .order_by(PointsModel.total_points.desc())
+            .limit(limit)
+            .all()
+        )
+        student_ids = [r.student_id for r in points_rows]
+        users = db.query(UserModel.student_id, UserModel.username).filter(UserModel.student_id.in_(student_ids)).all()
+        username_map = {u.student_id: u.username for u in users}
+        return {
+            "status": "success",
+            "period": period,
+            "data": [
+                {
+                    "rank": idx + 1,
+                    "student_id": r.student_id,
+                    "username": username_map.get(r.student_id, ""),
+                    "points": r.total_points,
+                    "streak_days": 0,
+                    "level": (r.total_points or 0) // 1000 + 1,
+                }
+                for idx, r in enumerate(points_rows)
+            ],
+        }
 
     return {
         "status": "success",

@@ -192,7 +192,7 @@ async def get_completed_kps(student_id: str, db: Session = Depends(get_db), _cur
         db.query(LearningRecordModel.kp_id)
         .filter(
             LearningRecordModel.student_id == student_id,
-            LearningRecordModel.action == "complete",
+            LearningRecordModel.progress >= 1.0,
         )
         .distinct()
         .all()

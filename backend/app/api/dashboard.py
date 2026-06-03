@@ -2,7 +2,7 @@
 Dashboard 聚合数据 API
 把多个表的数据聚合成前端 Dashboard 需要的格式
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
@@ -368,4 +368,33 @@ async def get_growth_timeline(student_id: str, db: Session = Depends(get_db), _c
                 "achievement_count": len(achievements),
             },
         },
+    }
+
+
+@router.get("/{student_id}/active-dates")
+async def get_active_dates(student_id: str, year: int = Query(None), month: int = Query(None), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """获取学生指定月份有学习活动的日期列表（用于日历高亮）"""
+    now = datetime.now(timezone.utc)
+    y = year or now.year
+    m = month or now.month
+    start = datetime(y, m, 1, tzinfo=timezone.utc)
+    if m == 12:
+        end = datetime(y + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        end = datetime(y, m + 1, 1, tzinfo=timezone.utc)
+
+    records = db.query(LearningRecordModel).filter(
+        LearningRecordModel.student_id == student_id,
+        LearningRecordModel.created_at >= start,
+        LearningRecordModel.created_at < end,
+    ).all()
+
+    active_dates = sorted(set(
+        r.created_at.strftime("%Y-%m-%d")
+        for r in records if r.created_at
+    ))
+
+    return {
+        "status": "success",
+        "data": active_dates,
     }
