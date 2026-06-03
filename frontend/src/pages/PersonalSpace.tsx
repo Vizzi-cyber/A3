@@ -509,19 +509,32 @@ const PersonalSpace: React.FC = () => {
         const quizzesRaw =
           (hRes?.data?.quizzes as unknown as Record<string, unknown>[]) || [];
 
-        // 最近列表（前 5 条）展示
+        // 最近列表（前 5 条）展示 — 精确到小节
         if (recordsRaw.length) {
-          const mapped = recordsRaw.slice(0, 5).map((r) => ({
-            title: `${r.action || "学习"} ${r.kp_id || ""}`,
-            time: r.created_at
-              ? new Date(String(r.created_at)).toLocaleString()
-              : "近期",
-            type: String(r.action || "").includes("代码")
-              ? "code"
-              : String(r.action || "").includes("测验")
-                ? "quiz"
-                : "doc",
-          }));
+          const mapped = recordsRaw.slice(0, 5).map((r) => {
+            const actionLabel =
+              r.action === "complete"
+                ? "已完成"
+                : r.action === "watch"
+                  ? "观看视频"
+                  : r.action === "read"
+                    ? "阅读文档"
+                    : r.action === "practice"
+                      ? "练习代码"
+                      : r.action || "学习";
+            const kpName = r.kp_name || r.kp_id || "";
+            return {
+              title: `${actionLabel} · ${kpName}`,
+              time: r.created_at
+                ? new Date(String(r.created_at)).toLocaleString()
+                : "近期",
+              type: String(r.action || "").includes("代码")
+                ? "code"
+                : String(r.action || "").includes("测验")
+                  ? "quiz"
+                  : "doc",
+            };
+          });
           setLearningHistory(mapped);
         }
 
@@ -1287,6 +1300,88 @@ const PersonalSpace: React.FC = () => {
                                   {item.time}
                                 </span>
                               </Space>
+                            }
+                          />
+                        </List.Item>
+                      );
+                    }}
+                  />
+                </div>
+
+                {/* 笔记记录 */}
+                <div className="mt-6 bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="font-semibold text-slate-800 mb-4">
+                    笔记记录
+                  </div>
+                  <List
+                    itemLayout="horizontal"
+                    dataSource={
+                      notesHistory.length
+                        ? notesHistory.filter((n) =>
+                            ["notes", "cornell", "cues"].includes(n.type),
+                          )
+                        : [
+                            {
+                              id: "empty",
+                              date: "",
+                              type: "notes" as const,
+                              title: "暂无笔记记录",
+                              content: "在学习中心记录笔记后，这里会自动同步",
+                            },
+                          ]
+                    }
+                    renderItem={(n) => {
+                      const typeMeta: Record<
+                        string,
+                        { label: string; color: string; bg: string }
+                      > = {
+                        cornell: {
+                          label: "康奈尔笔记",
+                          color: "#0ea5e9",
+                          bg: "#e0f2fe",
+                        },
+                        cues: {
+                          label: "线索栏",
+                          color: "#10b981",
+                          bg: "#d1fae5",
+                        },
+                        notes: {
+                          label: "普通笔记",
+                          color: "#f59e0b",
+                          bg: "#fef3c7",
+                        },
+                      };
+                      const meta = typeMeta[n.type] || typeMeta.notes;
+                      return (
+                        <List.Item className="hover:bg-slate-50 rounded-xl transition-colors px-2">
+                          <List.Item.Meta
+                            title={
+                              <Typography.Text className="text-slate-700 font-medium text-sm">
+                                {n.title}
+                              </Typography.Text>
+                            }
+                            description={
+                              <div className="space-y-1">
+                                <div className="text-xs text-slate-500 line-clamp-2">
+                                  {n.content}
+                                </div>
+                                <Space>
+                                  <Tag
+                                    className="rounded-full text-xs border-0"
+                                    style={{
+                                      color: meta.color,
+                                      background: meta.bg,
+                                    }}
+                                  >
+                                    {meta.label}
+                                  </Tag>
+                                  {n.date && (
+                                    <span className="text-slate-400 text-xs">
+                                      {n.date}
+                                    </span>
+                                  )}
+                                </Space>
+                              </div>
                             }
                           />
                         </List.Item>

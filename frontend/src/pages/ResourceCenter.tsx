@@ -72,7 +72,7 @@ const ResourceCenter: React.FC = () => {
   const getElapsed = useElapsedTime([activeKey]);
   const [courseMenu, setCourseMenu] = useState<CourseMenuItem[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "ai",
@@ -218,6 +218,37 @@ const ResourceCenter: React.FC = () => {
       ignore = true;
     };
   }, []);
+
+  // 加载已完成知识点列表，初始化目录打勾状态
+  useEffect(() => {
+    if (!studentId) return;
+    let ignore = false;
+    const syncCompleted = async () => {
+      try {
+        const res = await learningDataApi.getCompleted(studentId);
+        const completedKps = res.data?.completed_kps || [];
+        if (!ignore && completedKps.length > 0) {
+          setCourseMenu((prev) =>
+            prev.map((ch) => ({
+              ...ch,
+              children:
+                ch.children?.map((item) =>
+                  completedKps.includes(item.key)
+                    ? { ...item, completed: true }
+                    : item,
+                ) || [],
+            })),
+          );
+        }
+      } catch {
+        // 静默失败
+      }
+    };
+    syncCompleted();
+    return () => {
+      ignore = true;
+    };
+  }, [studentId, courseMenu.length]);
 
   // 加载已保存的笔记/反思
   useEffect(() => {
@@ -514,6 +545,16 @@ const ResourceCenter: React.FC = () => {
         duration: elapsedSec,
         progress: 1.0,
       });
+      // 同步更新目录打勾状态
+      setCourseMenu((prev) =>
+        prev.map((ch) => ({
+          ...ch,
+          children:
+            ch.children?.map((item) =>
+              item.key === activeKey ? { ...item, completed: true } : item,
+            ) || [],
+        })),
+      );
       message.success("已标记完成");
     } catch (e: unknown) {
       message.error(extractApiError(e, "标记失败"));
@@ -811,6 +852,55 @@ const ResourceCenter: React.FC = () => {
                 )}
               />
             </Spin>
+
+            {/* 线索栏 Cues */}
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <Typography.Text className="font-semibold text-slate-800 block mb-2 text-sm">
+                线索栏 / Cues
+              </Typography.Text>
+              <Input.TextArea
+                rows={3}
+                value={cornellNotes.cues}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  setCornellNotes((prev) => ({ ...prev, cues: text }));
+                  // debounce 自动保存 + 同步画像师
+                  if (
+                    (window as unknown as Record<string, unknown>)._cuesDebounce
+                  ) {
+                    clearTimeout(
+                      (window as unknown as Record<string, unknown>)
+                        ._cuesDebounce as ReturnType<typeof setTimeout>,
+                    );
+                  }
+                  (window as unknown as Record<string, unknown>)._cuesDebounce =
+                    setTimeout(() => {
+                      if (!text.trim() || !studentId) return;
+                      // 保存为 reflection
+                      logReflectionApi
+                        .createReflection({
+                          student_id: studentId,
+                          date: new Date().toISOString().slice(0, 10),
+                          content: text.trim(),
+                          tags: ["cues", `kp_${activeKey}`],
+                        })
+                        .catch(() => {});
+                      // 同步到画像师
+                      profileApi
+                        .analyzeConversation(
+                          studentId,
+                          `学生在学习${currentTopic || "当前知识点"}时记录的线索/疑问：${text.trim()}`,
+                        )
+                        .catch(() => {});
+                    }, 1500);
+                }}
+                placeholder="记录关键词、疑问或线索..."
+                className="rounded-lg bg-slate-50 border-slate-200 text-sm"
+              />
+              <Typography.Text className="text-[10px] text-slate-400 block mt-1">
+                自动保存，同步到画像师
+              </Typography.Text>
+            </div>
           </Card>
         </div>
 
