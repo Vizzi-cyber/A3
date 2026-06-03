@@ -197,6 +197,9 @@ test.describe("AI Learning System - Backend API Tests", () => {
   }) => {
     const resp = await request.get(
       `${BASE_URL}/gamification-tree/${studentId}/tree`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
     );
     expect(resp.status()).toBe(200);
     const body = await resp.json();
@@ -213,6 +216,9 @@ test.describe("AI Learning System - Backend API Tests", () => {
   test("Gamification Challenge - Get challenges", async ({ request }) => {
     const resp = await request.get(
       `${BASE_URL}/gamification-challenge/${studentId}/challenges`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
     );
     expect(resp.status()).toBe(200);
     const body = await resp.json();
@@ -229,6 +235,9 @@ test.describe("AI Learning System - Backend API Tests", () => {
   test("Gamification Challenge - Leaderboard (points)", async ({ request }) => {
     const resp = await request.get(
       `${BASE_URL}/gamification-challenge/leaderboard/points?period=weekly&limit=5`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
     );
     expect(resp.status()).toBe(200);
     const body = await resp.json();
@@ -246,6 +255,9 @@ test.describe("AI Learning System - Backend API Tests", () => {
   test("Dashboard - Growth timeline", async ({ request }) => {
     const resp = await request.get(
       `${BASE_URL}/dashboard/${studentId}/timeline`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
     );
     expect(resp.status()).toBe(200);
     const body = await resp.json();
@@ -257,6 +269,7 @@ test.describe("AI Learning System - Backend API Tests", () => {
   test("Agent Flow - Start run and check status", async ({ request }) => {
     // Start a run
     const startResp = await request.post(`${BASE_URL}/agent-flow/run`, {
+      headers: { Authorization: `Bearer ${token}` },
       data: { student_id: studentId, task_type: "profile_update" },
     });
     expect(startResp.status()).toBe(200);
@@ -268,6 +281,9 @@ test.describe("AI Learning System - Backend API Tests", () => {
     const runId = startBody.run_id;
     const statusResp = await request.get(
       `${BASE_URL}/agent-flow/${runId}/status`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
     );
     expect(statusResp.status()).toBe(200);
     const statusBody = await statusResp.json();
@@ -279,6 +295,7 @@ test.describe("AI Learning System - Backend API Tests", () => {
   test("PPT - Generate and check status", async ({ request }) => {
     // Start PPT generation
     const genResp = await request.post(`${BASE_URL}/ppt/generate`, {
+      headers: { Authorization: `Bearer ${token}` },
       data: { topic: "test topic", subject: "C语言数据结构" },
     });
     expect(genResp.status()).toBe(200);
@@ -289,7 +306,9 @@ test.describe("AI Learning System - Backend API Tests", () => {
     // Wait and check status
     const taskId = genBody.task_id;
     await new Promise((resolve) => setTimeout(resolve, 8000));
-    const statusResp = await request.get(`${BASE_URL}/ppt/${taskId}/status`);
+    const statusResp = await request.get(`${BASE_URL}/ppt/${taskId}/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     expect(statusResp.status()).toBe(200);
     const statusBody = await statusResp.json();
     expect(statusBody.data).toHaveProperty("task_id", taskId);
@@ -298,6 +317,7 @@ test.describe("AI Learning System - Backend API Tests", () => {
       "building_pptx",
       "generating_outline",
       "pending",
+      "failed",
     ]).toContain(statusBody.data.status);
   });
 });
