@@ -794,11 +794,11 @@ const ResourceCenter: React.FC = () => {
       </Card>
 
       <div className="flex gap-5 items-start">
-        {/* 左侧列 —— 目录 + 线索栏 */}
-        <div className="hidden xl:block flex-shrink-0 w-56 sticky top-5 self-start z-10 space-y-4">
+        {/* 左侧列 —— 目录 + 线索栏（加宽填充） */}
+        <div className="hidden xl:flex flex-shrink-0 w-80 sticky top-5 self-start z-10 flex-col gap-4 h-[calc(100vh-6rem)]">
           {/* 课程目录 */}
           <Card
-            className="border border-slate-100 rounded-2xl max-h-[calc(100vh-16rem)] overflow-y-auto"
+            className="border border-slate-100 rounded-2xl max-h-[calc(100vh-24rem)] overflow-y-auto"
             styles={{ body: { padding: "20px 16px" } }}
           >
             <Typography.Text className="font-semibold text-slate-800 block mb-4 text-sm">
@@ -856,16 +856,23 @@ const ResourceCenter: React.FC = () => {
             </Spin>
           </Card>
 
-          {/* 线索栏 Cues —— 独立模块 */}
+          {/* 线索栏 Cues —— 独立模块，填充剩余空间 */}
           <Card
-            className="border border-slate-100 rounded-2xl"
-            styles={{ body: { padding: "16px" } }}
+            className="border border-slate-100 rounded-2xl flex-1 flex flex-col"
+            styles={{
+              body: {
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+              },
+            }}
           >
             <Typography.Text className="font-semibold text-slate-800 block mb-2 text-sm">
               线索栏 / Cues
             </Typography.Text>
             <Input.TextArea
-              rows={4}
+              autoSize={{ minRows: 8, maxRows: 20 }}
               value={cornellNotes.cues}
               onChange={(e) => {
                 const text = e.target.value;
@@ -907,7 +914,9 @@ const ResourceCenter: React.FC = () => {
         </div>
 
         {/* 中间主内容区 */}
-        <div className="flex-1 min-w-0 space-y-5">
+        <div
+          className={`flex-1 min-w-0 space-y-5 transition-all ${chatOpen ? "lg:pr-96" : ""}`}
+        >
           {/* 图文讲义 */}
           <Card
             className="border border-slate-100 rounded-2xl"
@@ -1500,11 +1509,11 @@ const ResourceCenter: React.FC = () => {
           </Card>
         </div>
 
-        {/* 右侧 AI 辅导 —— sticky 列布局 */}
+        {/* 右侧 AI 辅导 —— fixed 悬浮，占据大部分右侧区域 */}
         {chatOpen && (
-          <div className="hidden lg:block flex-shrink-0 w-72 sticky top-5 self-start z-10">
+          <div className="fixed right-0 top-16 bottom-0 w-96 z-50 hidden lg:block">
             <Card
-              className="border border-slate-100 rounded-2xl shadow-lg max-h-[calc(100vh-6rem)] flex flex-col"
+              className="border-0 rounded-none rounded-l-2xl shadow-2xl h-full flex flex-col bg-white/95 backdrop-blur"
               styles={{
                 body: {
                   padding: "16px",
