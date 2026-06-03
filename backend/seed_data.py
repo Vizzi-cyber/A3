@@ -33,6 +33,11 @@ STUDENT_ID = "student_001"
 STUDENT2 = "student_002"
 STUDENT3 = "student_003"
 TEST_USER = "test_001"
+TEACHER = "teacher_001"
+TOP_STUDENT = "student_004"
+BEGINNER = "student_005"
+COMPETITOR = "student_006"
+STEADY = "student_007"
 
 # ---------- 清空旧数据（保留表结构） ----------
 for tbl in [
@@ -52,6 +57,16 @@ users = [
     UserModel(student_id=STUDENT3, username="王五", email="wangwu@example.com",
               hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
     UserModel(student_id=TEST_USER, username="测试用户", email="test@example.com",
+              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+    UserModel(student_id=TEACHER, username="赵老师", email="teacher@example.com",
+              hashed_password=pwd_context.hash("123456"), is_active=True, role="teacher"),
+    UserModel(student_id=TOP_STUDENT, username="陈学霸", email="chenxueba@example.com",
+              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+    UserModel(student_id=BEGINNER, username="刘小白", email="liuxiaobai@example.com",
+              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+    UserModel(student_id=COMPETITOR, username="孙竞赛", email="sunjingsai@example.com",
+              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+    UserModel(student_id=STEADY, username="周稳步", email="zhouwenbu@example.com",
               hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
 ]
 db.add_all(users)
@@ -102,6 +117,66 @@ profiles = [
         interest_areas=["编程基础", "算法"],
         learning_tempo={"study_speed": "moderate", "optimal_session_duration": 45, "weekly_study_capacity": 10, "focus_score": 70},
         practical_preferences={"overall_score": 75, "coding_proficiency": {"c": 0.55, "python": 0.4}, "preferred_practice_types": ["代码实操", "算法练习"]},
+    ),
+    # teacher_001 赵老师 — 教师账号，全面掌握
+    StudentProfileModel(
+        student_id=TEACHER,
+        knowledge_base={"overall_score": 98, "C语言概述": 0.99, "数据类型与变量": 0.98, "控制结构": 0.97, "指针": 0.96, "结构体": 0.95, "文件操作": 0.94},
+        cognitive_style={"primary": "reading", "scores": {"visual": 0.8, "auditory": 0.9, "reading": 0.95, "kinesthetic": 0.7}},
+        weak_areas=[],
+        error_patterns=[],
+        learning_goals=[{"goal": "监督学生学习进度并提供指导", "deadline": "2026-12-01"}],
+        interest_areas=["教学研究", "课程设计", "学生评估"],
+        learning_tempo={"study_speed": "fast", "optimal_session_duration": 90, "weekly_study_capacity": 30, "focus_score": 95},
+        practical_preferences={"overall_score": 98, "coding_proficiency": {"c": 0.98, "python": 0.9, "java": 0.85}, "preferred_practice_types": ["项目实战", "教学案例"]},
+    ),
+    # student_004 陈学霸 — 高水平快速学习者
+    StudentProfileModel(
+        student_id=TOP_STUDENT,
+        knowledge_base={"overall_score": 95, "C语言概述": 0.98, "数据类型与变量": 0.95, "控制结构": 0.93, "指针": 0.9, "结构体": 0.88, "文件操作": 0.85},
+        cognitive_style={"primary": "reading", "scores": {"visual": 0.7, "auditory": 0.5, "reading": 0.95, "kinesthetic": 0.6}},
+        weak_areas=[],
+        error_patterns=[],
+        learning_goals=[{"goal": "精通C语言并参加程序设计竞赛", "deadline": "2026-05-01"}],
+        interest_areas=["算法竞赛", "操作系统", "编译原理"],
+        learning_tempo={"study_speed": "fast", "optimal_session_duration": 90, "weekly_study_capacity": 25, "focus_score": 95},
+        practical_preferences={"overall_score": 96, "coding_proficiency": {"c": 0.95, "python": 0.9, "rust": 0.6}, "preferred_practice_types": ["算法竞赛", "项目实战"]},
+    ),
+    # student_005 刘小白 — 零基础挣扎初学者
+    StudentProfileModel(
+        student_id=BEGINNER,
+        knowledge_base={"overall_score": 20, "C语言概述": 0.3, "数据类型与变量": 0.15, "控制结构": 0.05},
+        cognitive_style={"primary": "kinesthetic", "scores": {"visual": 0.6, "auditory": 0.5, "reading": 0.3, "kinesthetic": 0.9}},
+        weak_areas=["数学基础", "编程语法", "逻辑思维", "英语阅读"],
+        error_patterns=[{"type": "语法错误", "desc": "分号括号经常遗漏"}, {"type": "逻辑错误", "desc": "if条件判断方向写反"}, {"type": "概念混淆", "desc": "变量和常量分不清"}],
+        learning_goals=[{"goal": "能独立编写Hello World程序", "deadline": "2026-09-01"}],
+        interest_areas=["游戏开发"],
+        learning_tempo={"study_speed": "slow", "optimal_session_duration": 20, "weekly_study_capacity": 5, "focus_score": 35},
+        practical_preferences={"overall_score": 15, "coding_proficiency": {"c": 0.1}, "preferred_practice_types": ["视频教程", "互动练习", "拖拽编程"]},
+    ),
+    # student_006 孙竞赛 — 竞赛型选手，算法强但基础有盲区
+    StudentProfileModel(
+        student_id=COMPETITOR,
+        knowledge_base={"overall_score": 88, "C语言概述": 0.8, "数据类型与变量": 0.85, "控制结构": 0.95, "指针": 0.92, "结构体": 0.9, "文件操作": 0.6},
+        cognitive_style={"primary": "kinesthetic", "scores": {"visual": 0.5, "auditory": 0.3, "reading": 0.6, "kinesthetic": 0.95}},
+        weak_areas=["文件操作", "预处理器"],
+        error_patterns=[{"type": "粗心错误", "desc": "边界条件经常遗漏"}],
+        learning_goals=[{"goal": "获得蓝桥杯C/C++组省一等奖", "deadline": "2026-04-01"}],
+        interest_areas=["算法竞赛", "数据结构", "动态规划", "图论"],
+        learning_tempo={"study_speed": "fast", "optimal_session_duration": 120, "weekly_study_capacity": 30, "focus_score": 90},
+        practical_preferences={"overall_score": 92, "coding_proficiency": {"c": 0.92, "cpp": 0.95}, "preferred_practice_types": ["算法竞赛", "限时挑战"]},
+    ),
+    # student_007 周稳步 — 中等水平稳步前进
+    StudentProfileModel(
+        student_id=STEADY,
+        knowledge_base={"overall_score": 62, "C语言概述": 0.75, "数据类型与变量": 0.7, "控制结构": 0.6, "指针": 0.4},
+        cognitive_style={"primary": "visual", "scores": {"visual": 0.85, "auditory": 0.6, "reading": 0.65, "kinesthetic": 0.5}},
+        weak_areas=["指针", "动态内存"],
+        error_patterns=[{"type": "概念模糊", "desc": "指针与数组的关系理解不深"}],
+        learning_goals=[{"goal": "通过C语言期末考试拿到85分以上", "deadline": "2026-06-15"}],
+        interest_areas=["Web开发", "移动应用"],
+        learning_tempo={"study_speed": "moderate", "optimal_session_duration": 50, "weekly_study_capacity": 12, "focus_score": 72},
+        practical_preferences={"overall_score": 65, "coding_proficiency": {"c": 0.55, "python": 0.5, "javascript": 0.4}, "preferred_practice_types": ["代码实操", "图文讲义"]},
     ),
 ]
 db.add_all(profiles)
@@ -2166,9 +2241,10 @@ db.commit()
 
 # ---------- 学习记录 ----------
 actions = ["watch", "read", "practice", "review"]
+ALL_USERS = [STUDENT_ID, STUDENT2, STUDENT3, TEST_USER, TEACHER, TOP_STUDENT, BEGINNER, COMPETITOR, STEADY]
 records = []
-for i in range(40):
-    sid = STUDENT_ID if i % 4 == 0 else (STUDENT2 if i % 4 == 1 else (STUDENT3 if i % 4 == 2 else TEST_USER))
+for i in range(72):
+    sid = ALL_USERS[i % len(ALL_USERS)]
     kp = kps[i % len(kps)].kp_id
     records.append(LearningRecordModel(
         record_id=f"lr_{i:03d}",
@@ -2185,8 +2261,8 @@ db.commit()
 
 # ---------- 测验结果 ----------
 quizzes = []
-for i in range(28):
-    sid = STUDENT_ID if i % 4 == 0 else (STUDENT2 if i % 4 == 1 else (STUDENT3 if i % 4 == 2 else TEST_USER))
+for i in range(45):
+    sid = ALL_USERS[i % len(ALL_USERS)]
     kp = kps[i % len(kps)].kp_id
     correct = 3 + (i % 3)
     total = 5
@@ -2207,34 +2283,36 @@ db.commit()
 # ---------- 趋势数据 ----------
 trends = []
 base_date = datetime.now() - timedelta(days=14)
+
+# 每个学生的趋势参数：(base_mastery, growth_rate, base_speed, base_efficiency, base_stability, base_factor, growth_day, intervention_msg)
+trend_profiles = {
+    STUDENT_ID:    (0.50, 0.020, 0.60, 0.70, 0.80, -0.20, 8, "建议加强薄弱点练习"),
+    STUDENT2:      (0.70, 0.015, 0.75, 0.82, 0.88, -0.10, 5, "可以尝试更高难度题目"),
+    STUDENT3:      (0.25, 0.025, 0.40, 0.50, 0.60, -0.30, 10, "建议从基础语法重新学习"),
+    TEST_USER:     (0.45, 0.018, 0.55, 0.65, 0.75, -0.15, 7, "建议复习指针与内存"),
+    TEACHER:       (0.95, 0.003, 0.90, 0.92, 0.95, 0.01, 0, None),
+    TOP_STUDENT:   (0.85, 0.010, 0.82, 0.88, 0.92, -0.05, 3, "已超越大部分同学，保持节奏"),
+    BEGINNER:      (0.10, 0.015, 0.25, 0.30, 0.40, -0.35, 12, "建议放慢节奏，多做基础练习"),
+    COMPETITOR:    (0.80, 0.012, 0.85, 0.85, 0.88, -0.08, 4, "算法能力突出，注意补全基础知识"),
+    STEADY:        (0.40, 0.022, 0.55, 0.62, 0.72, -0.18, 9, "稳步提升中，建议增加练习量"),
+}
+
 for i in range(14):
     d = (base_date + timedelta(days=i)).strftime("%Y-%m-%d")
-    trends.append(TrendDataModel(
-        student_id=STUDENT_ID,
-        date=d,
-        mastery_trend=0.5 + i * 0.02,
-        speed_ratio=0.6 + (i % 3) * 0.05,
-        time_efficiency=0.7 - (i % 5) * 0.02,
-        weakness_priority=0.4 + (i % 2) * 0.1,
-        stability=0.8 - (i % 7) * 0.03,
-        trend_factor=-0.2 + i * 0.03,
-        trend_state="growth" if i > 7 else "stable",
-        predicted_mastery_3d=0.5 + i * 0.025,
-        intervention="建议加强薄弱点练习" if i % 3 == 0 else None,
-    ))
-    trends.append(TrendDataModel(
-        student_id=TEST_USER,
-        date=d,
-        mastery_trend=0.45 + i * 0.018,
-        speed_ratio=0.55 + (i % 4) * 0.04,
-        time_efficiency=0.65 - (i % 6) * 0.015,
-        weakness_priority=0.5 + (i % 3) * 0.08,
-        stability=0.75 - (i % 5) * 0.02,
-        trend_factor=-0.15 + i * 0.025,
-        trend_state="growth" if i > 6 else "stable",
-        predicted_mastery_3d=0.45 + i * 0.022,
-        intervention="建议复习指针与内存" if i % 4 == 0 else None,
-    ))
+    for sid, (bm, gr, bs, be, bst, bf, gi, itv) in trend_profiles.items():
+        trends.append(TrendDataModel(
+            student_id=sid,
+            date=d,
+            mastery_trend=bm + i * gr,
+            speed_ratio=bs + (i % 3) * 0.03,
+            time_efficiency=be - (i % 5) * 0.01,
+            weakness_priority=0.4 + (i % 3) * 0.1,
+            stability=bst - (i % 7) * 0.02,
+            trend_factor=bf + i * 0.02,
+            trend_state="growth" if i > gi else "stable",
+            predicted_mastery_3d=bm + i * (gr + 0.005),
+            intervention=itv if itv and i % 4 == 0 else None,
+        ))
 db.add_all(trends)
 db.commit()
 
@@ -2244,6 +2322,11 @@ points = [
     PointsModel(student_id=STUDENT2, total_points=2100, daily_points=200, weekly_points=800),
     PointsModel(student_id=STUDENT3, total_points=350, daily_points=50, weekly_points=150),
     PointsModel(student_id=TEST_USER, total_points=880, daily_points=90, weekly_points=320),
+    PointsModel(student_id=TEACHER, total_points=5000, daily_points=300, weekly_points=1200),
+    PointsModel(student_id=TOP_STUDENT, total_points=4200, daily_points=250, weekly_points=1000),
+    PointsModel(student_id=BEGINNER, total_points=80, daily_points=10, weekly_points=40),
+    PointsModel(student_id=COMPETITOR, total_points=3800, daily_points=220, weekly_points=900),
+    PointsModel(student_id=STEADY, total_points=650, daily_points=80, weekly_points=280),
 ]
 db.add_all(points)
 db.commit()
@@ -2258,6 +2341,32 @@ achievements = [
     AchievementModel(student_id=STUDENT3, achievement_id="ach_001", name="初出茅庐", description="完成首个学习模块", icon="trophy"),
     AchievementModel(student_id=TEST_USER, achievement_id="ach_001", name="初出茅庐", description="完成首个学习模块", icon="trophy"),
     AchievementModel(student_id=TEST_USER, achievement_id="ach_005", name="C语言学徒", description="完成C语言概述学习", icon="code"),
+    # 赵老师 — 教师成就
+    AchievementModel(student_id=TEACHER, achievement_id="ach_001", name="初出茅庐", description="完成首个学习模块", icon="trophy"),
+    AchievementModel(student_id=TEACHER, achievement_id="ach_002", name="持之以恒", description="连续打卡7天", icon="fire"),
+    AchievementModel(student_id=TEACHER, achievement_id="ach_004", name="学霸", description="测验平均分超过90", icon="star"),
+    AchievementModel(student_id=TEACHER, achievement_id="ach_006", name="全栈大师", description="掌握所有知识点", icon="crown"),
+    AchievementModel(student_id=TEACHER, achievement_id="ach_007", name="教学先锋", description="创建10个教学案例", icon="book"),
+    # 陈学霸 — 高水平成就
+    AchievementModel(student_id=TOP_STUDENT, achievement_id="ach_001", name="初出茅庐", description="完成首个学习模块", icon="trophy"),
+    AchievementModel(student_id=TOP_STUDENT, achievement_id="ach_002", name="持之以恒", description="连续打卡7天", icon="fire"),
+    AchievementModel(student_id=TOP_STUDENT, achievement_id="ach_003", name="代码高手", description="完成10次代码练习", icon="code"),
+    AchievementModel(student_id=TOP_STUDENT, achievement_id="ach_004", name="学霸", description="测验平均分超过90", icon="star"),
+    AchievementModel(student_id=TOP_STUDENT, achievement_id="ach_008", name="算法王者", description="完成50道算法题", icon="crown"),
+    # 刘小白 — 初学者成就
+    AchievementModel(student_id=BEGINNER, achievement_id="ach_001", name="初出茅庐", description="完成首个学习模块", icon="trophy"),
+    AchievementModel(student_id=BEGINNER, achievement_id="ach_009", name="勇敢迈出第一步", description="完成第一次编程练习", icon="rocket"),
+    # 孙竞赛 — 竞赛成就
+    AchievementModel(student_id=COMPETITOR, achievement_id="ach_001", name="初出茅庐", description="完成首个学习模块", icon="trophy"),
+    AchievementModel(student_id=COMPETITOR, achievement_id="ach_002", name="持之以恒", description="连续打卡7天", icon="fire"),
+    AchievementModel(student_id=COMPETITOR, achievement_id="ach_003", name="代码高手", description="完成10次代码练习", icon="code"),
+    AchievementModel(student_id=COMPETITOR, achievement_id="ach_004", name="学霸", description="测验平均分超过90", icon="star"),
+    AchievementModel(student_id=COMPETITOR, achievement_id="ach_008", name="算法王者", description="完成50道算法题", icon="crown"),
+    AchievementModel(student_id=COMPETITOR, achievement_id="ach_010", name="竞赛达人", description="获得竞赛奖项", icon="medal"),
+    # 周稳步 — 稳步前进成就
+    AchievementModel(student_id=STEADY, achievement_id="ach_001", name="初出茅庐", description="完成首个学习模块", icon="trophy"),
+    AchievementModel(student_id=STEADY, achievement_id="ach_002", name="持之以恒", description="连续打卡7天", icon="fire"),
+    AchievementModel(student_id=STEADY, achievement_id="ach_005", name="C语言学徒", description="完成C语言概述学习", icon="code"),
 ]
 db.add_all(achievements)
 db.commit()
@@ -2273,59 +2382,88 @@ tasks = [
     TaskModel(student_id=TEST_USER, task_id="t_007", title="阅读C语言概述", description="完成C语言概述章节", task_type="daily", reward_points=30, progress=1.0, completed=True, completed_at=datetime.now()),
     TaskModel(student_id=TEST_USER, task_id="t_008", title="完成指针练习", description="完成3道指针相关习题", task_type="daily", reward_points=40, progress=0.5, completed=False),
     TaskModel(student_id=TEST_USER, task_id="t_009", title="本周学习10小时", description="累计学习时长目标", task_type="weekly", reward_points=80, progress=0.6, completed=False),
+    # 赵老师 — 教师任务
+    TaskModel(student_id=TEACHER, task_id="t_010", title="审查学生进度", description="检查本周学生学习报告", task_type="daily", reward_points=100, progress=1.0, completed=True, completed_at=datetime.now()),
+    TaskModel(student_id=TEACHER, task_id="t_011", title="设计期中测验", description="编写C语言期中考试题目", task_type="weekly", reward_points=200, progress=0.7, completed=False),
+    # 陈学霸 — 高水平任务
+    TaskModel(student_id=TOP_STUDENT, task_id="t_012", title="完成高级指针练习", description="多级指针与函数指针专项", task_type="daily", reward_points=80, progress=1.0, completed=True, completed_at=datetime.now()),
+    TaskModel(student_id=TOP_STUDENT, task_id="t_013", title="LeetCode每日一题", description="完成今日LeetCode挑战", task_type="daily", reward_points=60, progress=1.0, completed=True, completed_at=datetime.now()),
+    TaskModel(student_id=TOP_STUDENT, task_id="t_014", title="实现链表库", description="用C实现通用双向链表", task_type="challenge", reward_points=300, progress=0.6, completed=False),
+    # 刘小白 — 初学者任务
+    TaskModel(student_id=BEGINNER, task_id="t_015", title="看C语言入门视频", description="观看第一章教学视频", task_type="daily", reward_points=15, progress=0.8, completed=False),
+    TaskModel(student_id=BEGINNER, task_id="t_016", title="练习Hello World", description="成功运行第一个程序", task_type="daily", reward_points=10, progress=0.0, completed=False),
+    # 孙竞赛 — 竞赛任务
+    TaskModel(student_id=COMPETITOR, task_id="t_017", title="每日算法训练", description="完成3道中等难度算法题", task_type="daily", reward_points=90, progress=1.0, completed=True, completed_at=datetime.now()),
+    TaskModel(student_id=COMPETITOR, task_id="t_018", title="备战蓝桥杯", description="完成蓝桥杯历年真题一套", task_type="challenge", reward_points=500, progress=0.4, completed=False),
+    TaskModel(student_id=COMPETITOR, task_id="t_019", title="学习动态规划", description="完成DP专题训练", task_type="weekly", reward_points=200, progress=0.7, completed=False),
+    # 周稳步 — 稳步学习任务
+    TaskModel(student_id=STEADY, task_id="t_020", title="阅读控制结构讲义", description="完成if/switch/循环章节", task_type="daily", reward_points=40, progress=1.0, completed=True, completed_at=datetime.now()),
+    TaskModel(student_id=STEADY, task_id="t_021", title="完成指针入门练习", description="理解指针基本概念", task_type="daily", reward_points=50, progress=0.3, completed=False),
+    TaskModel(student_id=STEADY, task_id="t_022", title="本周学习12小时", description="累计学习时长目标", task_type="weekly", reward_points=100, progress=0.55, completed=False),
 ]
 db.add_all(tasks)
 db.commit()
 
 # ---------- 排行榜 ----------
 leaderboard = [
-    LeaderboardModel(student_id=STUDENT2, period="weekly", score=2100, rank=1),
-    LeaderboardModel(student_id=STUDENT_ID, period="weekly", score=1250, rank=2),
-    LeaderboardModel(student_id=TEST_USER, period="weekly", score=880, rank=3),
-    LeaderboardModel(student_id=STUDENT3, period="weekly", score=350, rank=4),
-    LeaderboardModel(student_id=STUDENT2, period="monthly", score=8500, rank=1),
-    LeaderboardModel(student_id=STUDENT_ID, period="monthly", score=5200, rank=2),
-    LeaderboardModel(student_id=TEST_USER, period="monthly", score=3200, rank=3),
-    LeaderboardModel(student_id=STUDENT3, period="monthly", score=1200, rank=4),
+    # weekly 排名（不含教师）
+    LeaderboardModel(student_id=TOP_STUDENT, period="weekly", score=4200, rank=1),
+    LeaderboardModel(student_id=COMPETITOR, period="weekly", score=3800, rank=2),
+    LeaderboardModel(student_id=STUDENT2, period="weekly", score=2100, rank=3),
+    LeaderboardModel(student_id=STUDENT_ID, period="weekly", score=1250, rank=4),
+    LeaderboardModel(student_id=TEST_USER, period="weekly", score=880, rank=5),
+    LeaderboardModel(student_id=STEADY, period="weekly", score=650, rank=6),
+    LeaderboardModel(student_id=STUDENT3, period="weekly", score=350, rank=7),
+    LeaderboardModel(student_id=BEGINNER, period="weekly", score=80, rank=8),
+    # monthly 排名
+    LeaderboardModel(student_id=TOP_STUDENT, period="monthly", score=16800, rank=1),
+    LeaderboardModel(student_id=COMPETITOR, period="monthly", score=15200, rank=2),
+    LeaderboardModel(student_id=STUDENT2, period="monthly", score=8500, rank=3),
+    LeaderboardModel(student_id=STUDENT_ID, period="monthly", score=5200, rank=4),
+    LeaderboardModel(student_id=TEST_USER, period="monthly", score=3200, rank=5),
+    LeaderboardModel(student_id=STEADY, period="monthly", score=2600, rank=6),
+    LeaderboardModel(student_id=STUDENT3, period="monthly", score=1200, rank=7),
+    LeaderboardModel(student_id=BEGINNER, period="monthly", score=280, rank=8),
 ]
 db.add_all(leaderboard)
 db.commit()
 
 # ---------- 学习日志 ----------
 logs = []
+# 每个学生的日志参数：(base_duration, duration_inc, base_kp, base_quiz, base_score, mistakes_key, base_progress, start_hour)
+log_profiles = {
+    STUDENT_ID:    (3600, 300, 2, 1, 70, "概念混淆", 0.10, "10:00"),
+    STUDENT2:      (5400, 200, 4, 2, 88, "动态内存", 0.30, "09:00"),
+    STUDENT3:      (1800, 150, 1, 1, 45, "语法错误", 0.05, "15:00"),
+    TEST_USER:     (2400, 200, 1, 1, 65, "指针错误", 0.15, "14:00"),
+    TEACHER:       (7200, 100, 6, 3, 96, None, 0.50, "08:00"),
+    TOP_STUDENT:   (6000, 250, 5, 2, 92, "边界遗漏", 0.40, "08:30"),
+    BEGINNER:      (900, 100, 1, 0, 30, "语法错误", 0.02, "16:00"),
+    COMPETITOR:    (5400, 300, 3, 2, 85, "粗心错误", 0.35, "09:30"),
+    STEADY:        (2700, 200, 2, 1, 62, "概念模糊", 0.12, "13:00"),
+}
 for i in range(7):
     d = (datetime.now() - timedelta(days=6 - i)).strftime("%Y-%m-%d")
-    logs.append(LearningLogModel(
-        log_id=f"log_{STUDENT_ID}_{d}",
-        student_id=STUDENT_ID,
-        date=d,
-        total_duration=3600 + i * 300,
-        kp_count=2 + i,
-        quiz_count=1 + (i % 2),
-        avg_score=70 + i * 2,
-        mistakes=["概念混淆"] if i % 3 == 0 else [],
-        path_progress=0.1 + i * 0.05,
-        completed_tasks=[f"task_{j}" for j in range(i)],
-        timeline=[{"time": "10:00", "action": "read", "kp_id": "kp_c01", "duration": 1800}],
-    ))
-    logs.append(LearningLogModel(
-        log_id=f"log_{TEST_USER}_{d}",
-        student_id=TEST_USER,
-        date=d,
-        total_duration=2400 + i * 200,
-        kp_count=1 + (i % 3),
-        quiz_count=1 if i % 2 == 0 else 0,
-        avg_score=65 + i * 3,
-        mistakes=["指针错误"] if i % 4 == 0 else [],
-        path_progress=0.15 + i * 0.04,
-        completed_tasks=[f"task_{j}" for j in range(max(0, i - 1))],
-        timeline=[{"time": "14:00", "action": "practice", "kp_id": "kp_c02", "duration": 1200}],
-    ))
+    for sid, (bd, di, bk, bq, bs, mk, bp, sh) in log_profiles.items():
+        logs.append(LearningLogModel(
+            log_id=f"log_{sid}_{d}",
+            student_id=sid,
+            date=d,
+            total_duration=bd + i * di,
+            kp_count=bk + (i % 3),
+            quiz_count=bq + (i % 2),
+            avg_score=bs + i * 2,
+            mistakes=[mk] if mk and i % 3 == 0 else [],
+            path_progress=bp + i * 0.04,
+            completed_tasks=[f"task_{j}" for j in range(max(0, i - 1))],
+            timeline=[{"time": sh, "action": "read" if i % 2 == 0 else "practice", "kp_id": f"kp_c{(i % 8) + 1:02d}", "duration": 1200 + i * 200}],
+        ))
 db.add_all(logs)
 db.commit()
 
 # ---------- 反思记录 ----------
 reflections = [
+    # 张三 — 中等水平学生
     ReflectionModel(reflection_id=f"ref_{STUDENT_ID}_2026-04-14", student_id=STUDENT_ID, date="2026-04-14",
                     content="今天复习了指针的概念，对解引用运算符*的理解更深入了，但多级指针还是有点晕。",
                     mood="neutral", tags=["指针", "学习感悟"], ai_feedback="建议从简单的单级指针开始，逐步过渡到二级指针。"),
@@ -2335,28 +2473,68 @@ reflections = [
     ReflectionModel(reflection_id=f"ref_{STUDENT_ID}_2026-04-16", student_id=STUDENT_ID, date="2026-04-16",
                     content="动态内存管理好难，malloc 和 free 总是配对出错，漏掉了 free 导致内存泄漏。",
                     mood="frustrated", tags=["内存管理", "困难"], ai_feedback="养成良好的习惯：malloc 后立即写下对应的 free，或者使用 RAII 思想。"),
+    # 李四 — 高水平学生
     ReflectionModel(reflection_id=f"ref_{STUDENT2}_2026-04-17", student_id=STUDENT2, date="2026-04-17",
                     content="今天用文件操作实现了一个简单的日志系统，fwrite 和 fread 真的很好用！",
                     mood="happy", tags=["文件操作", "项目实战"], ai_feedback="可以尝试加入错误处理和文件加密功能。"),
+    # 测试用户
     ReflectionModel(reflection_id=f"ref_{TEST_USER}_2026-04-20", student_id=TEST_USER, date="2026-04-20",
                     content="今天学习了C语言的数据类型，对int和float的精度区别有了更深的理解。",
                     mood="happy", tags=["C语言", "基础"], ai_feedback="可以尝试编写几个类型转换的小程序加深理解。"),
     ReflectionModel(reflection_id=f"ref_{TEST_USER}_2026-04-21", student_id=TEST_USER, date="2026-04-21",
                     content="指针好难啊，今天花了两个小时才搞明白指针和数组的关系。",
                     mood="neutral", tags=["C语言", "指针"], ai_feedback="指针是C语言的核心，建议多画图辅助理解内存布局。"),
+    # 赵老师 — 教师反思
+    ReflectionModel(reflection_id=f"ref_{TEACHER}_2026-04-18", student_id=TEACHER, date="2026-04-18",
+                    content="本周批改了30份作业，发现大部分学生在指针部分存在共性问题，需要调整教学策略。",
+                    mood="neutral", tags=["教学反思", "指针"], ai_feedback="建议在下周增加指针专题辅导课，配合可视化工具演示内存模型。"),
+    ReflectionModel(reflection_id=f"ref_{TEACHER}_2026-04-20", student_id=TEACHER, date="2026-04-20",
+                    content="新设计的C语言实验课效果不错，学生们通过实际操作理解了变量的内存布局。",
+                    mood="happy", tags=["实验课", "教学改进"], ai_feedback="可以将这个实验课的设计思路推广到其他章节。"),
+    # 陈学霸 — 高水平反思
+    ReflectionModel(reflection_id=f"ref_{TOP_STUDENT}_2026-04-19", student_id=TOP_STUDENT, date="2026-04-19",
+                    content="今天用递归实现了快速排序，时间复杂度分析已经很熟练了。接下来挑战红黑树。",
+                    mood="excited", tags=["排序算法", "递归", "数据结构"], ai_feedback="红黑树的旋转操作是关键，建议先画图理解左旋和右旋。"),
+    ReflectionModel(reflection_id=f"ref_{TOP_STUDENT}_2026-04-21", student_id=TOP_STUDENT, date="2026-04-21",
+                    content="函数指针和回调函数终于搞懂了，qsort的实现原理比想象中优雅。",
+                    mood="happy", tags=["函数指针", "回调", "标准库"], ai_feedback="可以尝试用函数指针实现一个简单的事件系统。"),
+    # 刘小白 — 零基础挣扎
+    ReflectionModel(reflection_id=f"ref_{BEGINNER}_2026-04-20", student_id=BEGINNER, date="2026-04-20",
+                    content="第一个程序终于跑起来了！虽然只是Hello World，但看到屏幕输出的那一刻好开心。",
+                    mood="excited", tags=["Hello World", "第一步"], ai_feedback="恭喜迈出第一步！接下来尝试修改程序输出自己的名字。"),
+    ReflectionModel(reflection_id=f"ref_{BEGINNER}_2026-04-21", student_id=BEGINNER, date="2026-04-21",
+                    content="变量好难理解啊，为什么int a = 5;后面还要加分号？总是忘。",
+                    mood="frustrated", tags=["变量", "语法", "困惑"], ai_feedback="分号是C语言语句结束的标志，就像中文的句号。多写几遍就记住了。"),
+    ReflectionModel(reflection_id=f"ref_{BEGINNER}_2026-04-22", student_id=BEGINNER, date="2026-04-22",
+                    content="今天终于理解了if语句，原来程序可以自己做判断！写了猜数字的小程序。",
+                    mood="happy", tags=["条件判断", "进步"], ai_feedback="很棒的进步！可以尝试加入else if实现更多的判断分支。"),
+    # 孙竞赛 — 竞赛反思
+    ReflectionModel(reflection_id=f"ref_{COMPETITOR}_2026-04-19", student_id=COMPETITOR, date="2026-04-19",
+                    content="今天的动态规划训练做了一道背包问题，状态转移方程想了很久才想通。DP还是我的弱项。",
+                    mood="neutral", tags=["动态规划", "背包问题", "训练"], ai_feedback="背包问题是DP的经典入门，建议从01背包开始，画表格理解状态转移过程。"),
+    ReflectionModel(reflection_id=f"ref_{COMPETITOR}_2026-04-21", student_id=COMPETITOR, date="2026-04-21",
+                    content="蓝桥杯省赛拿了二等奖，离一等奖差了2道题。最后两题的边界条件没处理好。",
+                    mood="frustrated", tags=["蓝桥杯", "竞赛", "边界条件"], ai_feedback="边界条件是竞赛中最容易丢分的地方，建议写完代码后专门用极端数据测试。"),
+    # 周稳步 — 稳步学习反思
+    ReflectionModel(reflection_id=f"ref_{STEADY}_2026-04-20", student_id=STEADY, date="2026-04-20",
+                    content="for循环终于搞懂了，原来循环变量的初始化、条件、递增三部分缺一不可。",
+                    mood="happy", tags=["循环", "for", "进步"], ai_feedback="建议多练习不同类型的循环题目，熟练掌握循环的执行流程。"),
+    ReflectionModel(reflection_id=f"ref_{STEADY}_2026-04-22", student_id=STEADY, date="2026-04-22",
+                    content="指针的概念还是不太清楚，int *p = &a;这里的&和*到底是什么意思？",
+                    mood="neutral", tags=["指针", "困惑"], ai_feedback="&是取地址运算符，*是解引用运算符。建议画一个内存示意图来理解。"),
 ]
 db.add_all(reflections)
 db.commit()
 
 db.close()
 print("[DONE] Seed data inserted successfully!")
-print(f"   users: 4")
-print(f"   profiles: 4")
+print(f"   users: {len(users)}")
+print(f"   profiles: {len(profiles)}")
 print(f"   knowledge_points: {len(kps)}")
 print(f"   learning_records: {len(records)}")
 print(f"   quiz_results: {len(quizzes)}")
 print(f"   trend_data: {len(trends)}")
-print(f"   points: 4")
+print(f"   points: {len(points)}")
 print(f"   achievements: {len(achievements)}")
 print(f"   tasks: {len(tasks)}")
 print(f"   leaderboard: {len(leaderboard)}")
