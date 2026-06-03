@@ -914,9 +914,7 @@ const ResourceCenter: React.FC = () => {
         </div>
 
         {/* 中间主内容区 */}
-        <div
-          className={`flex-1 min-w-0 space-y-5 transition-all ${chatOpen ? "lg:pr-96" : ""}`}
-        >
+        <div className="flex-1 min-w-0 space-y-5">
           {/* 图文讲义 */}
           <Card
             className="border border-slate-100 rounded-2xl"
@@ -1509,11 +1507,11 @@ const ResourceCenter: React.FC = () => {
           </Card>
         </div>
 
-        {/* 右侧 AI 辅导 —— fixed 悬浮，占据大部分右侧区域 */}
+        {/* 右侧 AI 辅导 —— flex 列，不遮挡不覆盖 */}
         {chatOpen && (
-          <div className="fixed right-0 top-16 bottom-0 w-96 z-50 hidden lg:block">
+          <div className="hidden lg:block flex-shrink-0 w-96 sticky top-5 self-start z-10">
             <Card
-              className="border-0 rounded-none rounded-l-2xl shadow-2xl h-full flex flex-col bg-white/95 backdrop-blur"
+              className="border border-slate-100 rounded-2xl shadow-lg max-h-[calc(100vh-8rem)] flex flex-col"
               styles={{
                 body: {
                   padding: "16px",
