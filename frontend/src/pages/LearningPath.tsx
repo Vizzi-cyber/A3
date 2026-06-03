@@ -1,5 +1,6 @@
 import React, {
   useEffect,
+  useLayoutEffect,
   useState,
   useMemo,
   useRef,
@@ -30,11 +31,9 @@ import {
   PlayCircleOutlined,
   FileTextOutlined,
   CodeOutlined,
-  GlobalOutlined,
   FlagOutlined,
   RocketOutlined,
   ArrowRightOutlined,
-  NodeIndexOutlined,
   ReloadOutlined,
   ExclamationCircleOutlined,
   ApartmentOutlined,
@@ -84,15 +83,7 @@ const resourceTypeMeta: Record<
 };
 
 const LearningPathPage: React.FC = () => {
-  const [viewMode, setViewMode] = useState<"map" | "timeline" | "graph">(() => {
-    if (typeof window === "undefined") return "map";
-    return (
-      (localStorage.getItem("learning_path_view_mode") as
-        | "map"
-        | "timeline"
-        | "graph") || "map"
-    );
-  });
+  const viewMode = "timeline";
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<PathNode | null>(null);
   const [pathData, setPathData] = useState<Record<string, unknown> | null>(
@@ -123,22 +114,19 @@ const LearningPathPage: React.FC = () => {
   const [submittingReflection, setSubmittingReflection] = useState(false);
   const studentId = useAppStore((s) => s.studentId);
   const navigate = useNavigate();
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const strokePathRef = useRef<SVGPathElement>(null);
+  const [timelineHeight, setTimelineHeight] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(0);
+  const visibleCountRef = useRef(visibleCount);
+  useEffect(() => {
+    visibleCountRef.current = visibleCount;
+  }, [visibleCount]);
 
-  // 力导向拓扑图相关 refs
-  const graphRef = useRef<SVGSVGElement>(null);
-  const nodePositionsRef = useRef<
-    Map<number, { x: number; y: number; vx: number; vy: number }>
-  >(new Map());
-  const dragRef = useRef<{
-    id: number;
-    offsetX: number;
-    offsetY: number;
-    startX: number;
-    startY: number;
-    moved: boolean;
-  } | null>(null);
-  const animFrameRef = useRef<number>(0);
-  const [_graphTick, setGraphTick] = useState(0);
+  const lineD = useMemo(() => {
+    const h = Math.max(timelineHeight, 1);
+    return `M 8 0 L 8 ${h}`;
+  }, [timelineHeight]);
 
   // 加载本地保存的偏好和路径数据
   useEffect(() => {
@@ -215,6 +203,57 @@ const LearningPathPage: React.FC = () => {
     };
   }, [studentId]);
 
+  // 时间轴 SVG 高度随内容自适应
+  useLayoutEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+    const update = () => {
+      const h = el.scrollHeight;
+      if (h > 0) setTimelineHeight(h);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pathNodes.length]);
+
+  // scroll-powered SVG stroke：随滚动逐渐绘制时间轴线
+  useEffect(() => {
+    const path = strokePathRef.current;
+    const container = timelineRef.current;
+    if (!path || !container || timelineHeight <= 0) return;
+
+    const len = path.getTotalLength();
+    path.style.strokeDasharray = `${len}`;
+    path.style.strokeDashoffset = `${len}`;
+
+    const onScroll = () => {
+      const rect = container.getBoundingClientRect();
+      const vh = window.innerHeight;
+      // 当容器进入视口 80% 时开始绘制，底部到达视口 20% 时完成
+      const start = rect.top - vh * 0.8;
+      const end = rect.bottom - vh * 0.2;
+      const range = end - start;
+      const progress = Math.max(0, Math.min(1, -start / range));
+      path.style.strokeDashoffset = `${len * (1 - progress)}`;
+
+      // 随 path 绘制进度逐步显现节点（只增不减）
+      const count = Math.min(
+        pathNodes.length,
+        Math.max(
+          visibleCountRef.current,
+          Math.ceil(progress * pathNodes.length),
+        ),
+      );
+      setVisibleCount(count);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [timelineHeight, pathNodes.length]);
+
   // 从后端同步已完成节点（避免刷新后丢失）
   useEffect(() => {
     if (!studentId || pathNodes.length === 0) return;
@@ -243,239 +282,6 @@ const LearningPathPage: React.FC = () => {
     };
     // 只在 studentId 变化或首次拿到 nodes 时执行
   }, [studentId, pathNodes.length]);
-
-  // 初始化节点位置
-  useEffect(() => {
-    if (pathNodes.length === 0) return;
-    const W = 900,
-      H = 600;
-    const existing = nodePositionsRef.current;
-    pathNodes.forEach((node, i) => {
-      if (!existing.has(node.id)) {
-        const angle = (2 * Math.PI * i) / pathNodes.length;
-        const rx = W * 0.3,
-          ry = H * 0.3;
-        existing.set(node.id, {
-          x: W / 2 + rx * Math.cos(angle) + (Math.random() - 0.5) * 40,
-          y: H / 2 + ry * Math.sin(angle) + (Math.random() - 0.5) * 40,
-          vx: 0,
-          vy: 0,
-        });
-      }
-    });
-  }, [pathNodes]);
-
-  // 构建边列表
-  const graphEdges = useMemo(() => {
-    const edges: [number, number][] = [];
-    for (let i = 0; i < pathNodes.length - 1; i++) {
-      edges.push([pathNodes[i].id, pathNodes[i + 1].id]);
-    }
-    // 同阶段内节点互连（每 4 个一组）
-    for (let i = 0; i < pathNodes.length; i += 4) {
-      for (let j = i; j < Math.min(i + 4, pathNodes.length) - 1; j++) {
-        if (
-          !edges.some(
-            ([a, b]) =>
-              (a === pathNodes[j].id && b === pathNodes[j + 1].id) ||
-              (b === pathNodes[j].id && a === pathNodes[j + 1].id),
-          )
-        ) {
-          edges.push([pathNodes[j].id, pathNodes[j + 1].id]);
-        }
-      }
-    }
-    return edges;
-  }, [pathNodes]);
-
-  // 力导向模拟
-  useEffect(() => {
-    if (pathNodes.length === 0) return;
-    const W = 900,
-      H = 600;
-    let settled = false;
-    let iterations = 0;
-    const MAX_ITERATIONS = 200;
-
-    const step = () => {
-      if (settled || iterations++ > MAX_ITERATIONS) return;
-      const pos = nodePositionsRef.current;
-      let totalMovement = 0;
-
-      // 斥力（所有节点对）
-      for (let i = 0; i < pathNodes.length; i++) {
-        for (let j = i + 1; j < pathNodes.length; j++) {
-          const a = pos.get(pathNodes[i].id);
-          const b = pos.get(pathNodes[j].id);
-          if (!a || !b) continue;
-          let dx = b.x - a.x,
-            dy = b.y - a.y;
-          let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          if (dist < 300) {
-            const force = 2000 / (dist * dist);
-            const fx = (dx / dist) * force,
-              fy = (dy / dist) * force;
-            if (dragRef.current?.id !== pathNodes[i].id) {
-              a.vx -= fx;
-              a.vy -= fy;
-            }
-            if (dragRef.current?.id !== pathNodes[j].id) {
-              b.vx += fx;
-              b.vy += fy;
-            }
-          }
-        }
-      }
-
-      // 引力（相连节点）
-      const springLen = 140;
-      for (const [id1, id2] of graphEdges) {
-        const a = pos.get(id1),
-          b = pos.get(id2);
-        if (!a || !b) continue;
-        const dx = b.x - a.x,
-          dy = b.y - a.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const force = (dist - springLen) * 0.005;
-        const fx = (dx / dist) * force,
-          fy = (dy / dist) * force;
-        if (dragRef.current?.id !== id1) {
-          a.vx += fx;
-          a.vy += fy;
-        }
-        if (dragRef.current?.id !== id2) {
-          b.vx -= fx;
-          b.vy -= fy;
-        }
-      }
-
-      // 居中力 + 边界 + 阻尼
-      for (const node of pathNodes) {
-        const p = pos.get(node.id);
-        if (!p) continue;
-        if (dragRef.current?.id !== node.id) {
-          p.vx += (W / 2 - p.x) * 0.0003;
-          p.vy += (H / 2 - p.y) * 0.0003;
-          p.vx *= 0.9;
-          p.vy *= 0.9;
-          p.x += p.vx;
-          p.y += p.vy;
-          p.x = Math.max(50, Math.min(W - 50, p.x));
-          p.y = Math.max(50, Math.min(H - 50, p.y));
-        }
-        totalMovement += Math.abs(p.vx) + Math.abs(p.vy);
-      }
-
-      setGraphTick((t) => t + 1);
-
-      if (totalMovement < 0.5) {
-        settled = true;
-      }
-      animFrameRef.current = requestAnimationFrame(step);
-    };
-
-    animFrameRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [pathNodes, graphEdges]);
-
-  // 拖拽交互
-  const getNodeRadius = (status: string) =>
-    status === "completed"
-      ? 32
-      : status === "in-progress"
-        ? 30
-        : status === "locked"
-          ? 26
-          : 28;
-
-  const svgCoords = useCallback((e: React.PointerEvent | MouseEvent) => {
-    const svg = graphRef.current;
-    if (!svg) return { x: 0, y: 0 };
-    const rect = svg.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) * (900 / rect.width),
-      y: (e.clientY - rect.top) * (600 / rect.height),
-    };
-  }, []);
-
-  const handleGraphPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      const { x: mx, y: my } = svgCoords(e);
-
-      for (const node of pathNodes) {
-        const p = nodePositionsRef.current.get(node.id);
-        if (!p) continue;
-        const r = getNodeRadius(node.status) + 8;
-        if (Math.hypot(mx - p.x, my - p.y) < r) {
-          dragRef.current = {
-            id: node.id,
-            offsetX: mx - p.x,
-            offsetY: my - p.y,
-            startX: mx,
-            startY: my,
-            moved: false,
-          };
-          return;
-        }
-      }
-    },
-    [pathNodes, svgCoords],
-  );
-
-  const handleGraphPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!dragRef.current) return;
-      const { x: mx, y: my } = svgCoords(e);
-      if (
-        Math.hypot(mx - dragRef.current.startX, my - dragRef.current.startY) > 5
-      ) {
-        dragRef.current.moved = true;
-      }
-      if (!dragRef.current.moved) return;
-      const p = nodePositionsRef.current.get(dragRef.current.id);
-      if (!p) return;
-      p.x = mx - dragRef.current.offsetX;
-      p.y = my - dragRef.current.offsetY;
-      p.x = Math.max(50, Math.min(850, p.x));
-      p.y = Math.max(50, Math.min(550, p.y));
-      p.vx = 0;
-      p.vy = 0;
-      setGraphTick((t) => t + 1);
-    },
-    [svgCoords],
-  );
-
-  const handleGraphPointerUp = useCallback(
-    (_e: React.PointerEvent) => {
-      if (!dragRef.current) return;
-      if (!dragRef.current.moved) {
-        // 没有移动，视为点击 → 打开节点详情
-        const node = pathNodes.find((n) => n.id === dragRef.current!.id);
-        if (node) openNodeDetail(node);
-      }
-      dragRef.current = null;
-    },
-    [pathNodes],
-  );
-
-  // 重置布局
-  const resetGraphLayout = useCallback(() => {
-    const W = 900,
-      H = 600;
-    nodePositionsRef.current.clear();
-    pathNodes.forEach((node, i) => {
-      const angle = (2 * Math.PI * i) / pathNodes.length;
-      const rx = W * 0.3,
-        ry = H * 0.3;
-      nodePositionsRef.current.set(node.id, {
-        x: W / 2 + rx * Math.cos(angle),
-        y: H / 2 + ry * Math.sin(angle),
-        vx: 0,
-        vy: 0,
-      });
-    });
-    setGraphTick((t) => t + 1);
-  }, [pathNodes]);
 
   // 提交学习反思
   const handleSubmitReflection = async () => {
@@ -764,26 +570,9 @@ const LearningPathPage: React.FC = () => {
             </div>
           </Space>
           <Space>
-            <Radio.Group
-              value={viewMode}
-              onChange={(e) => {
-                const v = e.target.value as "map" | "timeline" | "graph";
-                setViewMode(v);
-                localStorage.setItem("learning_path_view_mode", v);
-              }}
-              buttonStyle="solid"
-              className="rounded-lg overflow-hidden"
-            >
-              <Radio.Button value="map">
-                <GlobalOutlined /> 地图视图
-              </Radio.Button>
-              <Radio.Button value="timeline">
-                <ClockCircleOutlined /> 时间轴
-              </Radio.Button>
-              <Radio.Button value="graph">
-                <NodeIndexOutlined /> 知识图谱
-              </Radio.Button>
-            </Radio.Group>
+            <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs cursor-default">
+              <ClockCircleOutlined /> 时间轴视图
+            </Tag>
             <Tooltip title="基于知识图谱约束的 LLM 路径规划">
               <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs cursor-default">
                 <ApartmentOutlined /> KG 约束
@@ -859,279 +648,6 @@ const LearningPathPage: React.FC = () => {
         </div>
       )}
 
-      {/* 地图视图 — 球状力导向拓扑图 */}
-      {viewMode === "map" && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8">
-          {pathNodes.length === 0 ? (
-            <div className="text-center py-12">
-              <RocketOutlined className="text-3xl text-slate-300 mb-3" />
-              <Typography.Text className="text-slate-400 text-sm block">
-                暂无学习路径
-              </Typography.Text>
-              <Button
-                type="primary"
-                className="rounded-lg bg-primary mt-4"
-                onClick={handleGeneratePath}
-                loading={loading}
-              >
-                立即生成 <ArrowRightOutlined />
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-end mb-3">
-                <Button
-                  size="small"
-                  className="rounded-lg border-slate-200 text-slate-500"
-                  icon={<ReloadOutlined />}
-                  onClick={resetGraphLayout}
-                >
-                  重置布局
-                </Button>
-              </div>
-              <div className="w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-100">
-                <svg
-                  ref={graphRef}
-                  viewBox="0 0 900 600"
-                  className="w-full h-auto select-none"
-                  style={{
-                    cursor: dragRef.current ? "grabbing" : "default",
-                    minHeight: 400,
-                  }}
-                  onPointerDown={handleGraphPointerDown}
-                  onPointerMove={handleGraphPointerMove}
-                  onPointerUp={handleGraphPointerUp}
-                  onPointerCancel={handleGraphPointerUp}
-                >
-                  <defs>
-                    {/* 球体渐变 */}
-                    {pathNodes.map((node) => {
-                      const c = statusColors[node.status];
-                      return (
-                        <radialGradient
-                          key={`grad-${node.id}`}
-                          id={`grad-${node.id}`}
-                          cx="35%"
-                          cy="30%"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#fff"
-                            stopOpacity="0.6"
-                          />
-                          <stop offset="50%" stopColor={c} stopOpacity="0.9" />
-                          <stop offset="100%" stopColor={c} stopOpacity="1" />
-                        </radialGradient>
-                      );
-                    })}
-                    {/* 阴影 */}
-                    <filter
-                      id="ball-shadow"
-                      x="-30%"
-                      y="-20%"
-                      width="160%"
-                      height="160%"
-                    >
-                      <feDropShadow
-                        dx="0"
-                        dy="4"
-                        stdDeviation="6"
-                        floodColor="#000"
-                        floodOpacity="0.12"
-                      />
-                    </filter>
-                    {/* 发光 */}
-                    <filter
-                      id="ball-glow"
-                      x="-50%"
-                      y="-50%"
-                      width="200%"
-                      height="200%"
-                    >
-                      <feGaussianBlur
-                        in="SourceGraphic"
-                        stdDeviation="8"
-                        result="blur"
-                      />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                  </defs>
-
-                  {/* 连线 */}
-                  {graphEdges.map(([id1, id2]) => {
-                    const p1 = nodePositionsRef.current.get(id1);
-                    const p2 = nodePositionsRef.current.get(id2);
-                    if (!p1 || !p2) return null;
-                    const n1 = pathNodes.find((n) => n.id === id1);
-                    const bothDone = n1?.status === "completed";
-                    const isLineDone =
-                      bothDone &&
-                      pathNodes.find((n) => n.id === id2)?.status ===
-                        "completed";
-                    return (
-                      <line
-                        key={`edge-${id1}-${id2}`}
-                        x1={p1.x}
-                        y1={p1.y}
-                        x2={p2.x}
-                        y2={p2.y}
-                        stroke={isLineDone ? "#10b981" : "#cbd5e1"}
-                        strokeWidth={isLineDone ? 2.5 : 1.5}
-                        strokeDasharray={isLineDone ? undefined : "6 4"}
-                        strokeLinecap="round"
-                        opacity={isLineDone ? 0.8 : 0.5}
-                      />
-                    );
-                  })}
-
-                  {/* 节点球体 */}
-                  {pathNodes.map((node, idx) => {
-                    const p = nodePositionsRef.current.get(node.id);
-                    if (!p) return null;
-                    const r = getNodeRadius(node.status);
-                    const isDragged = dragRef.current?.id === node.id;
-                    return (
-                      <g
-                        key={node.id}
-                        style={{ cursor: isDragged ? "grabbing" : "grab" }}
-                      >
-                        {/* 外发光（进行中） */}
-                        {node.status === "in-progress" && (
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            r={r + 10}
-                            fill="none"
-                            stroke="#4f46e5"
-                            strokeWidth="2"
-                            opacity="0.15"
-                          >
-                            <animate
-                              attributeName="r"
-                              values={`${r + 8};${r + 14};${r + 8}`}
-                              dur="2s"
-                              repeatCount="indefinite"
-                            />
-                            <animate
-                              attributeName="opacity"
-                              values="0.15;0.05;0.15"
-                              dur="2s"
-                              repeatCount="indefinite"
-                            />
-                          </circle>
-                        )}
-                        {/* 球体 */}
-                        <circle
-                          cx={p.x}
-                          cy={p.y}
-                          r={r}
-                          fill={`url(#grad-${node.id})`}
-                          filter="url(#ball-shadow)"
-                          stroke={
-                            isDragged ? "#4f46e5" : "rgba(255,255,255,0.5)"
-                          }
-                          strokeWidth={isDragged ? 3 : 1.5}
-                        />
-                        {/* 高光 */}
-                        <ellipse
-                          cx={p.x - r * 0.2}
-                          cy={p.y - r * 0.3}
-                          rx={r * 0.4}
-                          ry={r * 0.2}
-                          fill="rgba(255,255,255,0.35)"
-                        />
-                        {/* 编号 */}
-                        <text
-                          x={p.x}
-                          y={p.y - 4}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill="white"
-                          fontSize="14"
-                          fontWeight="bold"
-                          style={{
-                            pointerEvents: "none",
-                            textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-                          }}
-                        >
-                          {idx + 1}
-                        </text>
-                        {/* 标题 */}
-                        <text
-                          x={p.x}
-                          y={p.y + 12}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill="white"
-                          fontSize="8"
-                          opacity="0.9"
-                          style={{ pointerEvents: "none" }}
-                        >
-                          {node.title.length > 5
-                            ? node.title.slice(0, 5) + ".."
-                            : node.title}
-                        </text>
-                        {/* 底部标题标签 */}
-                        <text
-                          x={p.x}
-                          y={p.y + r + 16}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill="#475569"
-                          fontSize="11"
-                          fontWeight="600"
-                          style={{ pointerEvents: "none" }}
-                        >
-                          {node.title.length > 8
-                            ? node.title.slice(0, 8) + ".."
-                            : node.title}
-                        </text>
-                        {/* 状态标签 */}
-                        <text
-                          x={p.x}
-                          y={p.y + r + 30}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill={statusColors[node.status]}
-                          fontSize="9"
-                          style={{ pointerEvents: "none" }}
-                        >
-                          {statusLabels[node.status]}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-              {/* 图例 */}
-              <div className="flex justify-center gap-6 mt-4 flex-wrap">
-                {Object.entries(statusLabels).map(([key, label]) => (
-                  <div key={key} className="flex items-center gap-1.5">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ background: statusColors[key] }}
-                    />
-                    <span className="text-xs text-slate-500">{label}</span>
-                  </div>
-                ))}
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-0 border-t-2 border-slate-300 border-dashed" />
-                  <span className="text-xs text-slate-500">依赖</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-0 border-t-2 border-emerald-400" />
-                  <span className="text-xs text-slate-500">已完成</span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* 时间轴视图 — 带日期和里程碑 */}
       {viewMode === "timeline" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
           {pathNodes.length === 0 ? (
@@ -1167,9 +683,32 @@ const LearningPathPage: React.FC = () => {
               </div>
 
               {/* 自定义时间轴：避免 antd Timeline label 挤压 */}
-              <div className="relative">
-                {/* 中心线 */}
-                <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-slate-100 -translate-x-1/2" />
+              <div className="relative" ref={timelineRef}>
+                {/* scroll-powered SVG stroke 中心线（背景层） */}
+                <svg
+                  className="absolute left-4 md:left-1/2 top-0 -translate-x-1/2 pointer-events-none overflow-visible"
+                  width={16}
+                  height={timelineHeight}
+                  viewBox={`0 0 16 ${Math.max(timelineHeight, 1)}`}
+                >
+                  {/* 底色参考线 */}
+                  <path
+                    d={lineD}
+                    stroke="#e2e8f0"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                  {/* scroll-powered 深绿色绘制线 */}
+                  <path
+                    ref={strokePathRef}
+                    d={lineD}
+                    stroke="#10b981"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
                 <div className="space-y-8">
                   {pathNodes.map((node, idx) => {
                     const cumulativeMinutes = pathNodes
@@ -1183,7 +722,7 @@ const LearningPathPage: React.FC = () => {
                     return (
                       <div
                         key={node.id}
-                        className={`relative flex items-start gap-4 md:gap-8 ${isLeft ? "md:flex-row" : "md:flex-row-reverse"}`}
+                        className={`relative flex items-start gap-4 md:gap-8 transition-opacity transition-transform duration-700 ${idx < visibleCount ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"} ${isLeft ? "md:flex-row" : "md:flex-row-reverse"}`}
                       >
                         {/* 移动端：左侧固定；桌面端：交替 */}
                         <div className="hidden md:block flex-1" />
@@ -1260,6 +799,20 @@ const LearningPathPage: React.FC = () => {
                       </div>
                     );
                   })}
+                  {/* 最后一个节点后的“未完待续”标记 */}
+                  <div className="relative flex items-start gap-4 md:gap-8">
+                    <div className="hidden md:block flex-1" />
+                    <div className="relative z-10 shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm text-sm bg-emerald-500">
+                        <span className="text-lg leading-none">…</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="inline-block px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-xs font-medium text-emerald-600">
+                        未完待续 · 更多知识点持续更新中
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1268,76 +821,6 @@ const LearningPathPage: React.FC = () => {
       )}
 
       {/* 知识图谱视图 */}
-      {viewMode === "graph" && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
-          <div className="text-center mb-8">
-            <Typography.Title level={5} className="!m-0 text-slate-800">
-              知识图谱路径规划
-            </Typography.Title>
-            <Typography.Text className="text-slate-400 text-xs block mt-1">
-              基于结构化知识图谱约束 LLM 生成，确保路径科学性
-            </Typography.Text>
-          </div>
-          <div className="relative max-w-3xl mx-auto">
-            {pathNodes.length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-sm">
-                尚未生成学习路径，请先在右上角点击「重新生成」
-              </div>
-            ) : (
-              <div className="flex flex-wrap justify-center gap-4">
-                {pathNodes.map((node, idx) => {
-                  const level = Math.floor(idx / 3) + 1;
-                  return (
-                    <div key={node.id} className="flex flex-col items-center">
-                      <div
-                        className="w-32 p-3 rounded-xl border text-center cursor-pointer transition-all hover:shadow-card"
-                        style={{
-                          borderColor: statusColors[node.status],
-                          background: statusBg[node.status],
-                        }}
-                        onClick={() => openNodeDetail(node)}
-                      >
-                        <div className="text-xs text-slate-400 mb-1">
-                          L{level}
-                        </div>
-                        <div className="text-sm font-medium text-slate-800 truncate">
-                          {node.title}
-                        </div>
-                      </div>
-                      {idx < pathNodes.length - 1 && (
-                        <div className="h-6 w-0.5 bg-slate-200 my-1" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <div className="mt-6 flex flex-wrap gap-2 justify-center">
-              {pathNodes
-                .filter((n) => n.status === "completed")
-                .map((n) => (
-                  <Tag
-                    key={n.id}
-                    className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs"
-                  >
-                    {n.title}
-                  </Tag>
-                ))}
-              {pathNodes
-                .filter((n) => n.status === "in-progress")
-                .map((n) => (
-                  <Tag
-                    key={n.id}
-                    className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs"
-                  >
-                    {n.title}
-                  </Tag>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 节点详情/调整抽屉 */}
       <Drawer
         title={

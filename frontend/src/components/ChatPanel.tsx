@@ -36,6 +36,7 @@ interface ChatPanelProps {
   tag?: string;
   extraHeader?: React.ReactNode;
   inputPrefix?: React.ReactNode;
+  preInput?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -54,6 +55,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = React.memo(
     tag = "在线",
     extraHeader,
     inputPrefix,
+    preInput,
     className = "",
     style,
   }) => {
@@ -278,6 +280,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = React.memo(
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {preInput}
 
         <div className="space-y-3 pt-3 border-t border-slate-100">
           {attachedImages.length > 0 && (
