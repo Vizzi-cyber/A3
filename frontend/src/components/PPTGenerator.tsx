@@ -1,9 +1,10 @@
-import React, { useState, useRef, useCallback } from "react";
-import { Modal, Input, Button, Progress, message, Select } from "antd";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { Modal, Input, Button, Progress, message, Select, Tag } from "antd";
 import {
   FileTextOutlined,
   DownloadOutlined,
   CheckCircleOutlined,
+  BulbOutlined,
 } from "@ant-design/icons";
 import { pptApi } from "../services/api";
 
@@ -11,6 +12,7 @@ interface PPTGeneratorProps {
   open: boolean;
   onClose: () => void;
   defaultTopic?: string;
+  defaultSubject?: string;
 }
 
 const SUBJECTS = [
@@ -23,13 +25,35 @@ const SUBJECTS = [
   "数据库原理",
 ];
 
+// 主题关联推荐
+const TOPIC_SUGGESTIONS: Record<string, string[]> = {
+  二叉树: ["二叉树的遍历", "二叉搜索树", "哈夫曼树", "AVL树"],
+  链表: ["单链表", "双向链表", "循环链表", "链表逆转"],
+  栈: ["括号匹配", "表达式求值", "递归原理"],
+  队列: ["循环队列", "BFS广度优先搜索", "优先队列"],
+  排序: ["快速排序", "归并排序", "堆排序", "冒泡排序"],
+  图: ["DFS深度优先搜索", "BFS广度优先搜索", "最短路径", "最小生成树"],
+  查找: ["二分查找", "哈希表", "二叉搜索树查找"],
+};
+
+function getSuggestions(topic: string): string[] {
+  if (!topic) return [];
+  for (const [key, suggestions] of Object.entries(TOPIC_SUGGESTIONS)) {
+    if (topic.includes(key) || key.includes(topic)) {
+      return suggestions;
+    }
+  }
+  return [];
+}
+
 const PPTGenerator: React.FC<PPTGeneratorProps> = ({
   open,
   onClose,
   defaultTopic = "",
+  defaultSubject,
 }) => {
   const [topic, setTopic] = useState(defaultTopic);
-  const [subject, setSubject] = useState("C语言数据结构");
+  const [subject, setSubject] = useState(defaultSubject || "C语言数据结构");
   const [generating, setGenerating] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("");
@@ -37,6 +61,14 @@ const PPTGenerator: React.FC<PPTGeneratorProps> = ({
   const [filename, setFilename] = useState<string | null>(null);
   const [slideCount, setSlideCount] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 同步外部传入的默认值
+  useEffect(() => {
+    if (open) {
+      if (defaultTopic) setTopic(defaultTopic);
+      if (defaultSubject) setSubject(defaultSubject);
+    }
+  }, [open, defaultTopic, defaultSubject]);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -141,6 +173,21 @@ const PPTGenerator: React.FC<PPTGeneratorProps> = ({
             size="large"
             className="rounded-xl"
           />
+          {/* 智能推荐 */}
+          {getSuggestions(topic).length > 0 && !generating && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <BulbOutlined className="text-amber-500 text-xs mt-0.5" />
+              {getSuggestions(topic).map((s) => (
+                <Tag
+                  key={s}
+                  className="cursor-pointer rounded-full text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  onClick={() => setTopic(s)}
+                >
+                  {s}
+                </Tag>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 学科选择 */}

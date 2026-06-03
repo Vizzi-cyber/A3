@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Spin, Tag, Progress, Button, Row, Col, message } from "antd";
+import { Tag, Progress, Button, Row, Col, message } from "antd";
 import {
   BookOutlined,
   TrophyOutlined,
@@ -11,13 +11,8 @@ import {
   StarOutlined,
   CheckCircleFilled,
   LockFilled,
-  AimOutlined,
   RocketOutlined,
   CodeOutlined,
-  BulbOutlined,
-  ApartmentOutlined,
-  MessageOutlined,
-  CheckCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import gsap from "gsap";
@@ -25,6 +20,7 @@ import { useAppStore } from "../store";
 import { challengeApi, gamificationApi } from "../services/api";
 import type { ChallengeItem, ChallengeMapNode } from "../services/api";
 import type { Achievement } from "../types";
+import KnowledgeTree from "./KnowledgeTree";
 
 // ==================== 世界观定义 ====================
 const WORLD_LORE = {
@@ -156,7 +152,7 @@ const ExploreMap: React.FC<{
         opacity: 1,
         duration: 0.4,
         stagger: 0.08,
-        ease: "back.out(1.7)",
+        ease: "power2.out",
       },
     );
   }, [nodes]);
@@ -226,13 +222,22 @@ const ExploreMap: React.FC<{
         return (
           <div
             key={node.node_id}
-            className="map-node absolute cursor-pointer transition-all duration-300 -translate-x-1/2 -translate-y-1/2"
+            role="button"
+            tabIndex={isLocked ? -1 : 0}
+            aria-label={`${node.name}${completed ? " (已完成)" : isLocked ? " (锁定)" : ""}`}
+            className="map-node absolute cursor-pointer transition-all duration-300 -translate-x-1/2 -translate-y-1/2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded-full"
             style={{
               left: `${node.xPercent}%`,
               top: `${node.yPercent}%`,
               zIndex: isActive ? 10 : 2,
             }}
             onClick={() => !isLocked && onSelect(idx)}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && !isLocked) {
+                e.preventDefault();
+                onSelect(idx);
+              }
+            }}
           >
             {/* 节点光环 */}
             {isActive && (
@@ -327,7 +332,7 @@ const ChallengeDetail: React.FC<{
             </Tag>
             <Tag className="text-xs">+{challenge.reward} 成长值</Tag>
           </div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-xs text-gray-500 mt-1">
             {region.icon} {region.name}
           </div>
         </div>
@@ -352,72 +357,6 @@ const ChallengeDetail: React.FC<{
           {challenge.progress}/{challenge.target}
         </span>
       </div>
-    </div>
-  );
-};
-
-// ==================== 统计概览 ====================
-const StatsBar: React.FC<{
-  summary: {
-    total: number;
-    completed: number;
-    total_reward: number;
-    streak_days: number;
-  };
-}> = ({ summary }) => {
-  const barRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (barRef.current) {
-      gsap.fromTo(
-        barRef.current.querySelectorAll(".stat-item"),
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.4, stagger: 0.1, ease: "power2.out" },
-      );
-    }
-  }, []);
-
-  return (
-    <div ref={barRef} className="grid grid-cols-4 gap-3">
-      {[
-        {
-          icon: <AimOutlined />,
-          label: "已完成",
-          value: summary.completed,
-          color: "#10b981",
-        },
-        {
-          icon: <CompassOutlined />,
-          label: "进行中",
-          value: summary.total - summary.completed,
-          color: "#0ea5e9",
-        },
-        {
-          icon: <ThunderboltOutlined />,
-          label: "成长值",
-          value: summary.total_reward,
-          color: "#f59e0b",
-        },
-        {
-          icon: <FireOutlined />,
-          label: "连续天数",
-          value: summary.streak_days,
-          color: "#ef4444",
-        },
-      ].map((item) => (
-        <div
-          key={item.label}
-          className="stat-item bg-white rounded-xl border border-slate-100 shadow-card p-3 text-center hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5"
-        >
-          <div
-            className="w-9 h-9 rounded-lg mx-auto mb-1.5 flex items-center justify-center text-white"
-            style={{ background: item.color }}
-          >
-            {item.icon}
-          </div>
-          <div className="text-xl font-bold text-gray-800">{item.value}</div>
-          <div className="text-xs text-gray-400">{item.label}</div>
-        </div>
-      ))}
     </div>
   );
 };
@@ -491,19 +430,44 @@ const LearningChallenge: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Spin size="large" />
-        <div className="text-sm text-slate-400">正在加载数据结构大陆...</div>
+      <div className="max-w-6xl mx-auto space-y-6 animate-pulse">
+        {/* 骨架屏：标题区 */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="h-8 bg-slate-100 rounded w-48 mb-3" />
+          <div className="h-4 bg-slate-100 rounded w-80" />
+        </div>
+        {/* 骨架屏：知识树区 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 h-80" />
+          <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-xl border border-slate-100 p-4 h-24"
+                />
+              ))}
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 p-5 h-48" />
+          </div>
+        </div>
+        {/* 骨架屏：地图区 */}
+        <div className="bg-gray-50 rounded-lg border border-gray-200 h-72" />
+        {/* 骨架屏：挑战卡片 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-100 p-5 h-32"
+            />
+          ))}
+        </div>
       </div>
     );
   }
 
-  const activeChallenge = challenges[activeNodeIdx];
-  const activeRegion =
-    WORLD_LORE.regions[activeNodeIdx % WORLD_LORE.regions.length];
-
   return (
-    <div ref={pageRef} className="max-w-6xl mx-auto space-y-6">
+    <div ref={pageRef} className="max-w-6xl mx-auto space-y-5">
       {/* 世界观标题 */}
       <div className="anim-item">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -513,7 +477,7 @@ const LearningChallenge: React.FC = () => {
                 <span className="text-3xl">🗺️</span>
                 {WORLD_LORE.title}
               </h1>
-              <p className="text-sm text-gray-400 mt-1.5 max-w-lg">
+              <p className="text-sm text-gray-500 mt-1.5 max-w-lg">
                 {WORLD_LORE.subtitle}
               </p>
             </div>
@@ -522,14 +486,14 @@ const LearningChallenge: React.FC = () => {
                 <div className="text-2xl font-bold text-gray-800">
                   {summary.completed}
                 </div>
-                <div className="text-xs text-gray-400">已征服</div>
+                <div className="text-xs text-gray-500">已征服</div>
               </div>
               <div className="w-px h-10 bg-gray-200" />
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-800">
                   {summary.total}
                 </div>
-                <div className="text-xs text-gray-400">总挑战</div>
+                <div className="text-xs text-gray-500">总挑战</div>
               </div>
               <Button
                 icon={<TrophyOutlined />}
@@ -542,10 +506,8 @@ const LearningChallenge: React.FC = () => {
         </div>
       </div>
 
-      {/* 统计概览 */}
-      <div className="anim-item">
-        <StatsBar summary={summary} />
-      </div>
+      {/* 知识树（包含等级进度、树可视化、统计卡片、AI评语、趋势图、成长日志） */}
+      <KnowledgeTree />
 
       {/* 探索地图 */}
       <div className="anim-item">
@@ -565,55 +527,82 @@ const LearningChallenge: React.FC = () => {
         />
       </div>
 
-      {/* 当前挑战详情 + 挑战列表 */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        {/* 左侧：当前挑战详情 */}
-        <div className="lg:col-span-1 anim-item">
-          {activeChallenge && (
-            <div className="space-y-3 sticky top-4">
-              {/* 区域信息 */}
-              <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{activeRegion.icon}</span>
-                  <span className="font-semibold text-gray-800 text-sm">
-                    {activeRegion.name}
+      {/* 全部挑战 */}
+      <div className="anim-item">
+        <div className="flex items-center gap-2 mb-3">
+          <RocketOutlined className="text-indigo-500" />
+          <span className="text-sm font-bold text-slate-700">全部挑战</span>
+          <Tag className="rounded-full border-0 bg-slate-50 text-slate-500 text-xs">
+            {summary.total - summary.completed} 个可挑战
+          </Tag>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {challenges.map((ch, idx) => {
+            const region = WORLD_LORE.regions[idx % WORLD_LORE.regions.length];
+            const color = DIFFICULTY_COLOR[ch.difficulty] || "#6366f1";
+            const isActive = idx === activeNodeIdx;
+            return (
+              <div
+                key={ch.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`挑战: ${ch.name}`}
+                className={`cursor-pointer rounded-xl border p-3 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
+                  ch.completed
+                    ? "bg-emerald-50/50 border-emerald-200"
+                    : isActive
+                      ? "bg-white border-indigo-300 shadow-card ring-2 ring-indigo-100"
+                      : "bg-white border-slate-100 hover:shadow-card hover:border-slate-200"
+                }`}
+                onClick={() => setActiveNodeIdx(idx)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActiveNodeIdx(idx);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm shrink-0"
+                    style={{ background: ch.completed ? "#10b981" : color }}
+                  >
+                    {ch.completed ? (
+                      <CheckCircleFilled />
+                    ) : (
+                      ICON_MAP[ch.icon] || <StarOutlined />
+                    )}
+                  </div>
+                  <span className="font-semibold text-gray-800 text-sm truncate">
+                    {ch.name}
                   </span>
                 </div>
-                <div className="text-xs text-gray-500">{activeRegion.desc}</div>
-              </div>
-
-              <ChallengeDetail
-                challenge={activeChallenge}
-                region={activeRegion}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* 右侧：全部挑战列表 */}
-        <div className="lg:col-span-3 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <RocketOutlined className="text-indigo-500" />
-            <span className="text-sm font-bold text-slate-700">全部挑战</span>
-            <Tag className="rounded-full border-0 bg-slate-50 text-slate-500 text-xs ml-auto">
-              {summary.total - summary.completed} 个可挑战
-            </Tag>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {challenges.map((ch, idx) => {
-              const region =
-                WORLD_LORE.regions[idx % WORLD_LORE.regions.length];
-              return (
-                <div
-                  key={ch.id}
-                  className="anim-item cursor-pointer"
-                  onClick={() => setActiveNodeIdx(idx)}
-                >
-                  <ChallengeDetail challenge={ch} region={region} />
+                <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-2">
+                  <span>{region.icon}</span>
+                  <span>{region.name}</span>
+                  <Tag color={color} className="text-[10px] ml-auto">
+                    {DIFFICULTY_LABEL[ch.difficulty]}
+                  </Tag>
                 </div>
-              );
-            })}
-          </div>
+                <Progress
+                  percent={ch.progress_pct}
+                  showInfo={false}
+                  strokeColor={ch.completed ? "#10b981" : color}
+                  trailColor="#f1f5f9"
+                  size="small"
+                  className="!m-0"
+                />
+                <div className="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
+                  <span>
+                    {ch.progress}/{ch.target}
+                  </span>
+                  <span className="text-emerald-500 font-medium">
+                    +{ch.reward}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -634,9 +623,12 @@ const LearningChallenge: React.FC = () => {
             {badgesState.map((badge, idx) => (
               <Col xs={12} sm={8} lg={6} key={idx}>
                 <div
-                  className={`flex flex-col items-center gap-3 p-5 rounded-xl border transition-all ${
+                  role="status"
+                  aria-label={`${badge.name}${badge.unlocked ? " (已解锁)" : " (未解锁)"}`}
+                  tabIndex={0}
+                  className={`flex flex-col items-center gap-3 p-5 rounded-xl border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
                     badge.unlocked
-                      ? "bg-white border-slate-100 hover:shadow-card"
+                      ? "bg-white border-slate-100 hover:shadow-card hover:-translate-y-0.5"
                       : "bg-slate-50 border-slate-100 opacity-50"
                   }`}
                 >

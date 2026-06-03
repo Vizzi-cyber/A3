@@ -57,6 +57,7 @@ import { useElapsedTime } from "../hooks/useElapsedTime";
 import { ChatPanel } from "../components/ChatPanel";
 import { MarkdownViewer } from "../components/MarkdownViewer";
 import CodeEditor from "../components/CodeEditor";
+import AlgorithmVisualizer from "../components/AlgorithmVisualizer";
 import "../styles/markdown-content.css";
 
 interface CourseMenuItem {
@@ -1486,6 +1487,15 @@ const ResourceCenter: React.FC = () => {
                     </div>
                   ),
                 },
+                {
+                  key: "visualizer",
+                  label: (
+                    <span className="flex items-center gap-1.5 text-sm">
+                      <ThunderboltOutlined /> 算法可视化
+                    </span>
+                  ),
+                  children: <AlgorithmVisualizer />,
+                },
               ]}
             />
           </Card>
@@ -1646,6 +1656,7 @@ const ResourceCenter: React.FC = () => {
         open={pptModalOpen}
         onClose={() => setPptModalOpen(false)}
         defaultTopic={currentTopic}
+        defaultSubject={currentSubject}
       />
     </div>
   );
