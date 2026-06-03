@@ -790,7 +790,6 @@ const ResourceCenter: React.FC = () => {
               线索栏 / Cues
             </Typography.Text>
             <Input.TextArea
-              autoSize={{ minRows: 8, maxRows: 20 }}
               value={cornellNotes.cues}
               onChange={(e) => {
                 const text = e.target.value;
@@ -823,7 +822,8 @@ const ResourceCenter: React.FC = () => {
                   }, 1500);
               }}
               placeholder="记录关键词、疑问或线索..."
-              className="rounded-lg bg-slate-50 border-slate-200 text-sm"
+              className="rounded-lg bg-slate-50 border-slate-200 text-sm flex-1"
+              style={{ resize: "none" }}
             />
             <Typography.Text className="text-[10px] text-slate-400 block mt-1">
               自动保存，同步到画像师
