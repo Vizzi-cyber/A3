@@ -4,10 +4,30 @@
 - 预测：下次测验得分、潜在失分点、学习效率走势
 - 输出：评估报告、数据看板、干预策略
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from collections import Counter
 import math
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """安全转换为浮点数，处理None和字符串"""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    """安全转换为整数，处理None和字符串"""
+    if value is None:
+        return default
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return default
 
 
 class LearningEffectEvaluator:
@@ -52,7 +72,7 @@ class LearningEffectEvaluator:
             },
             "intervention": intervention,
             "dashboard": {
-                "score_history": [q.get("score", 0) for q in quiz_history],
+                "score_history": [_safe_float(q.get("score")) for q in quiz_history],
                 "weak_area_distribution": self._weak_area_distribution(quiz_history),
             },
         }
@@ -61,8 +81,8 @@ class LearningEffectEvaluator:
         """正确率"""
         if not quiz_history:
             return 0.0
-        total = sum(q.get("total_questions", 0) for q in quiz_history)
-        correct = sum(q.get("correct_count", 0) for q in quiz_history)
+        total = sum(_safe_int(q.get("total_questions")) for q in quiz_history)
+        correct = sum(_safe_int(q.get("correct_count")) for q in quiz_history)
         return (correct / total * 100) if total > 0 else 0.0
 
     def _calc_mastery(self, quiz_history: List[Dict[str, Any]]) -> float:
@@ -71,7 +91,7 @@ class LearningEffectEvaluator:
             return 0.0
         recent = quiz_history[-5:]
         weights = [0.1, 0.15, 0.2, 0.25, 0.3][-len(recent):]
-        scores = [q.get("score", 0) for q in recent]
+        scores = [_safe_float(q.get("score")) for q in recent]
         total_weight = sum(weights)
         if total_weight == 0:
             return 0.0
@@ -79,12 +99,37 @@ class LearningEffectEvaluator:
         return mastery
 
     def _calc_improvement_rate(self, quiz_history: List[Dict[str, Any]]) -> float:
-        """提升速率：最近3次与之前3次的平均分差异"""
-        if len(quiz_history) < 6:
+        """
+        提升速率：基于测验历史计算趋势
+        - 6次以上：最近3次与之前3次的平均分差异
+        - 3-5次：最近n次的线性回归斜率
+        - 2次：两次得分差
+        - 1次或0次：返回0
+        """
+        if not quiz_history:
             return 0.0
-        recent_avg = sum(q.get("score", 0) for q in quiz_history[-3:]) / 3.0
-        past_avg = sum(q.get("score", 0) for q in quiz_history[-6:-3]) / 3.0
-        return recent_avg - past_avg
+
+        scores = [_safe_float(q.get("score")) for q in quiz_history]
+
+        if len(scores) < 2:
+            return 0.0
+
+        # 6次以上：使用标准的3对3比较
+        if len(scores) >= 6:
+            recent_avg = sum(scores[-3:]) / 3.0
+            past_avg = sum(scores[-6:-3]) / 3.0
+            return recent_avg - past_avg
+
+        # 2-5次：使用线性回归斜率（归一化到每场变化）
+        n = len(scores)
+        x = list(range(n))
+        mean_x = sum(x) / n
+        mean_y = sum(scores) / n
+        numerator = sum((x[i] - mean_x) * (scores[i] - mean_y) for i in range(n))
+        denominator = sum((x[i] - mean_x) ** 2 for i in range(n))
+        slope = numerator / denominator if denominator != 0 else 0.0
+        # 将斜率转换为每场变化量（与3对3比较的量级相当）
+        return slope
 
     def _calc_weakness_concentration(self, quiz_history: List[Dict[str, Any]], weak_areas: List[str]) -> float:
         """薄弱点集中度：0~1，越高说明薄弱点越集中"""
@@ -93,7 +138,8 @@ class LearningEffectEvaluator:
         # (Counter imported at top level)
         all_weak_tags = []
         for q in quiz_history[-5:]:
-            all_weak_tags.extend(q.get("weak_tags", []))
+            tags = q.get("weak_tags") or []
+            all_weak_tags.extend(tags)
         if not all_weak_tags:
             return 0.0
         counts = Counter(all_weak_tags)
@@ -106,7 +152,7 @@ class LearningEffectEvaluator:
         """预测下次测验得分"""
         if not quiz_history:
             return 50.0
-        last_score = quiz_history[-1].get("score", 50.0)
+        last_score = _safe_float(quiz_history[-1].get("score"), 50.0)
         # 基于提升速率预测
         predicted = last_score + improvement_rate * 0.5
         # 添加一点随机波动模拟
@@ -119,7 +165,8 @@ class LearningEffectEvaluator:
         # (Counter imported at top level)
         all_weak_tags = []
         for q in quiz_history[-5:]:
-            all_weak_tags.extend(q.get("weak_tags", []))
+            tags = q.get("weak_tags") or []
+            all_weak_tags.extend(tags)
         if not all_weak_tags:
             return []
         counts = Counter(all_weak_tags)
@@ -148,7 +195,8 @@ class LearningEffectEvaluator:
         # (Counter imported at top level)
         all_tags = []
         for q in quiz_history:
-            all_tags.extend(q.get("weak_tags", []))
+            tags = q.get("weak_tags") or []
+            all_tags.extend(tags)
         return dict(Counter(all_tags).most_common(10))
 
     def _generate_intervention(
