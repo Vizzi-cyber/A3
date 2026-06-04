@@ -1,0 +1,235 @@
+import { create } from "zustand";
+import { kbApi } from "../services/knowledgeBaseApi";
+import type {
+  KBFolder,
+  KBNoteListItem,
+  KBNote,
+  BacklinkItem,
+} from "../types/knowledgeBase";
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+interface KBState {
+  folders: KBFolder[];
+  notes: KBNoteListItem[];
+  activeNoteId: string | null;
+  activeNote: KBNote | null;
+  currentFolderId: string | null;
+  searchQuery: string;
+  searchResults: KBNoteListItem[];
+  backlinks: BacklinkItem[];
+  isDirty: boolean;
+  currentContent: string;
+  loading: boolean;
+
+  loadFolders: () => Promise<void>;
+  loadNotes: (folderId?: string | null) => Promise<void>;
+  selectNote: (noteId: string) => Promise<void>;
+  createNote: (
+    title: string,
+    folderId?: string | null,
+  ) => Promise<string | null>;
+  updateNote: (
+    noteId: string,
+    data: { title?: string; content?: string },
+  ) => Promise<void>;
+  deleteNote: (noteId: string) => Promise<void>;
+  setContent: (content: string) => void;
+  setTitle: (title: string) => void;
+  search: (query: string) => Promise<void>;
+  loadBacklinks: (noteId: string) => Promise<void>;
+  createFolder: (name: string, parentId?: string | null) => Promise<void>;
+  deleteFolder: (folderId: string) => Promise<void>;
+  renameFolder: (folderId: string, name: string) => Promise<void>;
+}
+
+export const useKBStore = create<KBState>((set, get) => ({
+  folders: [],
+  notes: [],
+  activeNoteId: null,
+  activeNote: null,
+  currentFolderId: null,
+  searchQuery: "",
+  searchResults: [],
+  backlinks: [],
+  isDirty: false,
+  currentContent: "",
+  loading: false,
+
+  loadFolders: async () => {
+    try {
+      const res = await kbApi.listFolders();
+      if (res.data?.status === "success") {
+        set({ folders: res.data.data });
+      }
+    } catch {}
+  },
+
+  loadNotes: async (folderId?: string | null) => {
+    set({ loading: true, currentFolderId: folderId ?? null });
+    try {
+      const res = await kbApi.listNotes(folderId ?? undefined);
+      if (res.data?.status === "success") {
+        set({ notes: res.data.data });
+      }
+    } catch {}
+    set({ loading: false });
+  },
+
+  selectNote: async (noteId: string) => {
+    try {
+      const res = await kbApi.getNote(noteId);
+      if (res.data?.status === "success") {
+        const note = res.data.data;
+        set({
+          activeNoteId: noteId,
+          activeNote: note,
+          currentContent: note.content,
+          isDirty: false,
+        });
+        get().loadBacklinks(noteId);
+      }
+    } catch {}
+  },
+
+  createNote: async (title: string, folderId?: string | null) => {
+    try {
+      const res = await kbApi.createNote({
+        title,
+        content: "",
+        folder_id: folderId ?? undefined,
+      });
+      if (res.data?.status === "success") {
+        const note = res.data.data;
+        set((s) => ({
+          notes: [
+            {
+              note_id: note.note_id,
+              title: note.title,
+              content_preview: "",
+              folder_id: note.folder_id,
+              updated_at: note.updated_at,
+            },
+            ...s.notes,
+          ],
+        }));
+        await get().selectNote(note.note_id);
+        return note.note_id;
+      }
+    } catch {}
+    return null;
+  },
+
+  updateNote: async (
+    noteId: string,
+    data: { title?: string; content?: string },
+  ) => {
+    try {
+      await kbApi.updateNote(noteId, data);
+      set((s) => ({
+        notes: s.notes.map((n) =>
+          n.note_id === noteId
+            ? {
+                ...n,
+                title: data.title ?? n.title,
+                content_preview: (data.content ?? "").slice(0, 200),
+              }
+            : n,
+        ),
+        isDirty: false,
+      }));
+    } catch {}
+  },
+
+  deleteNote: async (noteId: string) => {
+    try {
+      await kbApi.deleteNote(noteId);
+      set((s) => ({
+        notes: s.notes.filter((n) => n.note_id !== noteId),
+        activeNoteId: s.activeNoteId === noteId ? null : s.activeNoteId,
+        activeNote: s.activeNoteId === noteId ? null : s.activeNote,
+        currentContent: s.activeNoteId === noteId ? "" : s.currentContent,
+      }));
+    } catch {}
+  },
+
+  setContent: (content: string) => {
+    set({ currentContent: content, isDirty: true });
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const { activeNoteId, currentContent } = get();
+      if (activeNoteId) {
+        get().updateNote(activeNoteId, { content: currentContent });
+      }
+    }, 500);
+  },
+
+  setTitle: (title: string) => {
+    const { activeNoteId, activeNote } = get();
+    if (activeNote) {
+      set({ activeNote: { ...activeNote, title } });
+    }
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (activeNoteId) {
+        get().updateNote(activeNoteId, { title });
+      }
+    }, 500);
+  },
+
+  search: async (query: string) => {
+    set({ searchQuery: query });
+    if (!query.trim()) {
+      set({ searchResults: [] });
+      return;
+    }
+    try {
+      const res = await kbApi.searchNotes(query);
+      if (res.data?.status === "success") {
+        set({ searchResults: res.data.data });
+      }
+    } catch {}
+  },
+
+  loadBacklinks: async (noteId: string) => {
+    try {
+      const res = await kbApi.getBacklinks(noteId);
+      if (res.data?.status === "success") {
+        set({ backlinks: res.data.data });
+      }
+    } catch {}
+  },
+
+  createFolder: async (name: string, parentId?: string | null) => {
+    try {
+      const res = await kbApi.createFolder({
+        name,
+        parent_id: parentId ?? undefined,
+      });
+      if (res.data?.status === "success") {
+        set((s) => ({ folders: [...s.folders, res.data.data] }));
+      }
+    } catch {}
+  },
+
+  deleteFolder: async (folderId: string) => {
+    try {
+      await kbApi.deleteFolder(folderId);
+      set((s) => ({
+        folders: s.folders.filter((f) => f.folder_id !== folderId),
+      }));
+      get().loadNotes(null);
+    } catch {}
+  },
+
+  renameFolder: async (folderId: string, name: string) => {
+    try {
+      await kbApi.renameFolder(folderId, name);
+      set((s) => ({
+        folders: s.folders.map((f) =>
+          f.folder_id === folderId ? { ...f, name } : f,
+        ),
+      }));
+    } catch {}
+  },
+}));

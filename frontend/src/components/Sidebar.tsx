@@ -16,6 +16,7 @@ import {
   ProjectOutlined,
   ThunderboltOutlined,
   ExperimentOutlined,
+  BookOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import { dashboardApi } from "../services/api";
@@ -36,6 +37,7 @@ const studentMenuItems = [
     label: "项目协作",
   },
   { key: "/personal", icon: <UserOutlined />, label: "个人空间" },
+  { key: "/knowledge-base", icon: <BookOutlined />, label: "知识库" },
 ];
 
 const teacherMenuItems = [

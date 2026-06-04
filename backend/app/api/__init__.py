@@ -32,6 +32,7 @@ from .role_matcher import router as role_matcher_router
 from .collaboration_supervisor import router as collaboration_supervisor_router
 from .result_evaluator import router as result_evaluator_router
 from .teacher import router as teacher_router
+from .knowledge_base import router as kb_router
 
 router = APIRouter()
 
@@ -64,3 +65,4 @@ router.include_router(role_matcher_router, prefix="/role-matcher", tags=["角色
 router.include_router(collaboration_supervisor_router, prefix="/collaboration-supervisor", tags=["协作督导"])
 router.include_router(result_evaluator_router, prefix="/result-evaluator", tags=["成果评估"])
 router.include_router(teacher_router, prefix="/teacher", tags=["教师端"])
+router.include_router(kb_router, prefix="/kb", tags=["知识库"])

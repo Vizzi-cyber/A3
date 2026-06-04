@@ -44,6 +44,7 @@ import {
   learningDataApi,
   logReflectionApi,
 } from "../services/api";
+import { kbApi } from "../services/knowledgeBaseApi";
 import type { ChatMessage, QuestionItem, QuestionOption } from "../types";
 import { useElapsedTime } from "../hooks/useElapsedTime";
 import { MarkdownViewer } from "../components/MarkdownViewer";
@@ -318,6 +319,17 @@ const ResourceDetail: React.FC = () => {
       });
       setCompleted(true);
       message.success("恭喜完成本知识点学习！");
+      // 自动整理到知识库
+      kbApi
+        .autoOrganize({
+          kp_id: kpId,
+          title: kpName,
+          content: docContent || `# ${kpName}\n\n学习完成。`,
+          subject: kpSubject,
+          action: "learn",
+          tags: quizScore != null ? [`quiz_score:${quizScore}`] : undefined,
+        })
+        .catch(() => {});
     } catch {
       message.error("标记失败");
     } finally {

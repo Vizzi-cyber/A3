@@ -26,6 +26,7 @@ const ProjectCollaboration = React.lazy(
   () => import("./pages/ProjectCollaboration"),
 );
 const TeacherDashboard = React.lazy(() => import("./pages/TeacherDashboard"));
+const KnowledgeBase = React.lazy(() => import("./pages/KnowledgeBase"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -189,6 +190,14 @@ const PrivateLayout: React.FC = () => {
                   element={
                     <PageWrapper>
                       <TeacherDashboard />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/knowledge-base"
+                  element={
+                    <PageWrapper>
+                      <KnowledgeBase />
                     </PageWrapper>
                   }
                 />

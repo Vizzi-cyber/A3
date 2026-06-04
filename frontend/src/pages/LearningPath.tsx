@@ -51,6 +51,7 @@ import {
   learningDataApi,
   logReflectionApi,
 } from "../services/api";
+import { kbApi } from "../services/knowledgeBaseApi";
 // import { buildRadarData } from "../utils/profile";
 import { StatusIcon } from "../components/StatusIcon";
 import {
@@ -447,6 +448,16 @@ const LearningPathPage: React.FC = () => {
           duration: elapsedSec,
           progress: 1,
         });
+        // 自动整理到知识库
+        kbApi
+          .autoOrganize({
+            kp_id: nodeKpId(node),
+            title: node.title,
+            content: `# ${node.title}\n\n学习路径节点完成。`,
+            subject: node.stage || undefined,
+            action: "learn",
+          })
+          .catch(() => {});
       } catch (e) {
         message.error((e as Error).message || "同步后端失败");
         return;
@@ -490,6 +501,18 @@ const LearningPathPage: React.FC = () => {
           }),
         ),
       );
+      // 批量自动整理到知识库
+      kbApi
+        .batchOrganize(
+          targets.map((n) => ({
+            kp_id: nodeKpId(n),
+            title: n.title,
+            content: `# ${n.title}\n\n学习路径节点完成。`,
+            subject: n.stage || undefined,
+            action: "learn" as const,
+          })),
+        )
+        .catch(() => {});
     } catch (e) {
       message.error((e as Error).message || "批量同步失败");
       return;
