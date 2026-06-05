@@ -924,6 +924,41 @@ export const collaborationApi = {
     }>("/collaboration-supervisor/sync-progress", data),
 };
 
+// ---------- 匹配推荐 ----------
+export const matchingApi = {
+  matchResources: (data: {
+    student_id: string;
+    resources: Array<Record<string, unknown>>;
+    top_k?: number;
+  }) =>
+    api.post<{
+      status: string;
+      data: {
+        matches: Array<{
+          resource_id: string;
+          score: number;
+          reasons: string[];
+        }>;
+      };
+    }>("/matching/resources", data),
+
+  matchPaths: (data: {
+    student_id: string;
+    path_candidates: Array<Record<string, unknown>>;
+    top_k?: number;
+  }) =>
+    api.post<{
+      status: string;
+      data: {
+        matches: Array<{
+          path_id: string;
+          score: number;
+          reasons: string[];
+        }>;
+      };
+    }>("/matching/paths", data),
+};
+
 // ---------- 成果评估 ----------
 export const evaluationApi = {
   evaluateCode: (data: {

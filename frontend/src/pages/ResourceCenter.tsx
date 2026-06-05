@@ -874,7 +874,7 @@ const ResourceCenter: React.FC = () => {
                       learningDataApi
                         .submitFeedback({
                           student_id: studentId,
-                          kp_id: currentTopic,
+                          kp_id: activeKey,
                           rating: "good",
                         })
                         .catch(() => {});
@@ -896,7 +896,7 @@ const ResourceCenter: React.FC = () => {
                       learningDataApi
                         .submitFeedback({
                           student_id: studentId,
-                          kp_id: currentTopic,
+                          kp_id: activeKey,
                           rating: "bad",
                         })
                         .catch(() => {});

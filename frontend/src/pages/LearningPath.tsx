@@ -1154,24 +1154,24 @@ const LearningPathPage: React.FC = () => {
                       难度偏好
                     </Typography.Text>
                     <Typography.Text className="text-xs text-slate-500">
-                      {difficulty === 1
+                      {difficulty <= 2
                         ? "简单"
-                        : difficulty === 2
+                        : difficulty <= 4
                           ? "较易"
-                          : difficulty === 3
+                          : difficulty <= 6
                             ? "适中"
-                            : difficulty === 4
+                            : difficulty <= 8
                               ? "较难"
                               : "挑战"}
                     </Typography.Text>
                   </div>
                   <Slider
                     min={1}
-                    max={5}
+                    max={10}
                     step={1}
                     value={difficulty}
                     onChange={setDifficulty}
-                    marks={{ 1: "简单", 3: "适中", 5: "挑战" }}
+                    marks={{ 1: "简单", 5: "适中", 10: "挑战" }}
                   />
                 </div>
 

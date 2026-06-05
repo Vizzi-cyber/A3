@@ -21,7 +21,7 @@ const NoteEditor: React.FC = () => {
     setTitle,
     notes,
   } = useKBStore();
-  const [viewMode, setViewMode] = useState<ViewMode>("editor");
+  const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [titleValue, setTitleValue] = useState("");
 
   useEffect(() => {

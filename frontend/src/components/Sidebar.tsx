@@ -28,7 +28,7 @@ const studentMenuItems = [
   { key: "/profile", icon: <PieChartOutlined />, label: "对话画像" },
   { key: "/learning-path", icon: <NodeIndexOutlined />, label: "学习路径" },
   { key: "/resources", icon: <ReadOutlined />, label: "学习中心" },
-  { key: "/challenges", icon: <ThunderboltOutlined />, label: "游戏化中心" },
+  { key: "/challenges", icon: <ThunderboltOutlined />, label: "知识冒险" },
   { key: "/tutor", icon: <RobotOutlined />, label: "智能辅导" },
   { key: "/error-diagnosis", icon: <BugOutlined />, label: "错误诊断" },
   {
