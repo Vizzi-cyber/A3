@@ -1,7 +1,7 @@
 """
 学生画像 ORM 模型
 """
-from sqlalchemy import Column, String, DateTime, Text, JSON
+from sqlalchemy import Column, String, DateTime, Text, JSON, Boolean
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -20,5 +20,6 @@ class StudentProfileModel(Base):
     interest_areas = Column(JSON, default=list)
     learning_tempo = Column(JSON, default=dict)
     practical_preferences = Column(JSON, default=dict)
+    onboarding_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

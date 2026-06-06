@@ -2,3 +2,13 @@
 
 /* 通用工具类 */
 .text-center { text-align: center; }
+
+/* 路径节点变化动画 */
+@keyframes pulse-once {
+  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}
+.animate-pulse-once {
+  animation: pulse-once 1.5s ease-out;
+}

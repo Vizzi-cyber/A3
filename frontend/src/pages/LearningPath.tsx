@@ -42,6 +42,7 @@ import {
   StepForwardOutlined,
   UndoOutlined,
   EyeOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store";
@@ -54,6 +55,7 @@ import {
 import { kbApi } from "../services/knowledgeBaseApi";
 // import { buildRadarData } from "../utils/profile";
 import { StatusIcon } from "../components/StatusIcon";
+import AdjustmentLogPanel from "../components/AdjustmentLogPanel";
 import {
   // StatusTag,
   statusColors,
@@ -113,6 +115,9 @@ const LearningPathPage: React.FC = () => {
   >("params");
   const [reflectionText, setReflectionText] = useState("");
   const [submittingReflection, setSubmittingReflection] = useState(false);
+  const [adjustLogOpen, setAdjustLogOpen] = useState(false);
+  const [changedNodeIds, setChangedNodeIds] = useState<Set<number>>(new Set());
+  const prevNodesRef = useRef<PathNode[]>([]);
   const studentId = useAppStore((s) => s.studentId);
   const navigate = useNavigate();
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -283,6 +288,27 @@ const LearningPathPage: React.FC = () => {
     };
     // 只在 studentId 变化或首次拿到 nodes 时执行
   }, [studentId, pathNodes.length]);
+
+  // 检测节点变化，添加动画效果
+  useEffect(() => {
+    const prevIds = new Set(
+      prevNodesRef.current.map((n) => `${n.id}-${n.status}`),
+    );
+    const changed = new Set<number>();
+    pathNodes.forEach((n) => {
+      if (!prevIds.has(`${n.id}-${n.status}`)) {
+        changed.add(n.id);
+      }
+    });
+    setChangedNodeIds(changed);
+    prevNodesRef.current = [...pathNodes];
+
+    // 2秒后清除动画
+    if (changed.size > 0) {
+      const timer = setTimeout(() => setChangedNodeIds(new Set()), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [pathNodes]);
 
   // 提交学习反思
   const handleSubmitReflection = async () => {
@@ -617,6 +643,13 @@ const LearningPathPage: React.FC = () => {
             >
               重新生成
             </Button>
+            <Button
+              className="rounded-lg border-slate-200"
+              icon={<HistoryOutlined />}
+              onClick={() => setAdjustLogOpen(true)}
+            >
+              调整记录
+            </Button>
           </Space>
         </div>
 
@@ -787,7 +820,7 @@ const LearningPathPage: React.FC = () => {
                           </div>
                           {/* 卡片 */}
                           <div
-                            className={`inline-block p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer max-w-sm text-left ${isMilestone ? "ring-2 ring-amber-100" : ""}`}
+                            className={`inline-block p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer max-w-sm text-left ${isMilestone ? "ring-2 ring-amber-100" : ""} ${changedNodeIds.has(node.id) ? "animate-pulse-once ring-2 ring-indigo-200" : ""}`}
                             onClick={() => openNodeDetail(node)}
                           >
                             {isMilestone && (
@@ -1353,6 +1386,13 @@ const LearningPathPage: React.FC = () => {
           </div>
         )}
       </Drawer>
+
+      {/* 调整记录面板 */}
+      <AdjustmentLogPanel
+        open={adjustLogOpen}
+        onClose={() => setAdjustLogOpen(false)}
+        studentId={studentId}
+      />
     </div>
   );
 };

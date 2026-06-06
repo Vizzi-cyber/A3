@@ -9,6 +9,7 @@ from .favorites import FavoriteModel
 from .monitor import ApiMonitorModel, LlmCallModel, SystemHealthModel
 from .tutor_qa import TutorQAModel
 from .kb_note import KBFolderModel, KBNoteModel
+from .path_adjustment_log import PathAdjustmentLogModel
 
 __all__ = [
     "Base", "engine", "get_db",
@@ -21,4 +22,5 @@ __all__ = [
     "ApiMonitorModel", "LlmCallModel", "SystemHealthModel",
     "TutorQAModel",
     "KBFolderModel", "KBNoteModel",
+    "PathAdjustmentLogModel",
 ]

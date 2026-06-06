@@ -59,6 +59,7 @@ export interface StudentProfile {
   interest_areas: string[];
   learning_tempo: LearningTempo;
   practical_preferences: PracticalPreferences;
+  onboarding_completed?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -395,6 +396,28 @@ export interface ResourceItem {
 }
 
 // ---------- Agent 工作流 ----------
+
+// ---------- 引导问卷 ----------
+export interface OnboardingAnswers {
+  c_knowledge_level: number;
+  difficulty_preference: number;
+  daily_duration: number;
+  learning_goal: string;
+  learning_style: string;
+}
+
+// ---------- 路径调整日志 ----------
+export interface PathAdjustmentLog {
+  id: number;
+  student_id: string;
+  trigger_type: "onboarding" | "auto" | "manual";
+  trigger_source: string;
+  reason: string;
+  old_path_snapshot?: LearningPathData;
+  new_path_snapshot?: LearningPathData;
+  confidence: number;
+  created_at: string;
+}
 export interface AgentNodeState {
   status: "idle" | "running" | "completed" | "failed";
   task: string;

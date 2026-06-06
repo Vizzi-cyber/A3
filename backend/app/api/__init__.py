@@ -33,6 +33,8 @@ from .collaboration_supervisor import router as collaboration_supervisor_router
 from .result_evaluator import router as result_evaluator_router
 from .teacher import router as teacher_router
 from .knowledge_base import router as kb_router
+from .onboarding import router as onboarding_router
+from .path_adjustment_log_api import router as adjustment_log_router
 
 router = APIRouter()
 
@@ -66,3 +68,5 @@ router.include_router(collaboration_supervisor_router, prefix="/collaboration-su
 router.include_router(result_evaluator_router, prefix="/result-evaluator", tags=["成果评估"])
 router.include_router(teacher_router, prefix="/teacher", tags=["教师端"])
 router.include_router(kb_router, prefix="/kb", tags=["知识库"])
+router.include_router(onboarding_router, prefix="/onboarding", tags=["引导问卷"])
+router.include_router(adjustment_log_router, prefix="/path-adjustment", tags=["路径调整日志"])

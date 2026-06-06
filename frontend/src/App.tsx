@@ -9,7 +9,8 @@ import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import { useAppStore } from "./store";
-import { authApi } from "./services/api";
+import { authApi, profileApi } from "./services/api";
+import OnboardingQuestionnaire from "./components/OnboardingQuestionnaire";
 import "./App.css";
 
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
@@ -222,18 +223,31 @@ const App: React.FC = () => {
   const isLoggedIn = useAppStore((s) => s.isLoggedIn);
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(!isLoggedIn); // 未登录时无需等待
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (isLoggedIn) {
       authApi
         .me()
-        .then((res) => {
+        .then(async (res) => {
           const u = res.data.data;
           useAppStore.getState().setUserInfo({
             student_id: u.student_id,
             username: u.username,
             role: u.role,
           });
+
+          // 检查是否需要引导问卷（仅学生）
+          if (u.role === "student" || u.role === "user") {
+            try {
+              const profileRes = await profileApi.get(u.student_id);
+              if (!profileRes.data?.data?.onboarding_completed) {
+                setShowOnboarding(true);
+              }
+            } catch {
+              // 静默失败
+            }
+          }
         })
         .catch(() => {
           // token invalid, handled by interceptor (will trigger logout + redirect)
@@ -257,20 +271,29 @@ const App: React.FC = () => {
   }
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={isLoggedIn ? <Navigate to="/" replace /> : <Login />}
+    <>
+      <Routes>
+        <Route
+          path="/login"
+          element={isLoggedIn ? <Navigate to="/" replace /> : <Login />}
+        />
+        <Route
+          path="/"
+          element={isLoggedIn ? <PrivateLayout /> : <LandingPage />}
+        />
+        <Route
+          path="/*"
+          element={isLoggedIn ? <PrivateLayout /> : <Navigate to="/" replace />}
+        />
+      </Routes>
+      <OnboardingQuestionnaire
+        open={showOnboarding}
+        onComplete={() => {
+          setShowOnboarding(false);
+          navigate("/learning-path");
+        }}
       />
-      <Route
-        path="/"
-        element={isLoggedIn ? <PrivateLayout /> : <LandingPage />}
-      />
-      <Route
-        path="/*"
-        element={isLoggedIn ? <PrivateLayout /> : <Navigate to="/" replace />}
-      />
-    </Routes>
+    </>
   );
 };
 

@@ -1131,4 +1131,29 @@ export const teacherAuthApi = {
     ),
 };
 
+// ---------- 引导问卷 ----------
+export const onboardingApi = {
+  check: () =>
+    api.get<{ status: string; completed: boolean }>("/onboarding/check"),
+  submit: (data: import("../types").OnboardingAnswers) =>
+    api.post<{
+      status: string;
+      data: {
+        path: import("../types").LearningPathData;
+        profile: Record<string, unknown>;
+      };
+    }>("/onboarding/submit", data),
+};
+
+// ---------- 路径调整日志 ----------
+export const adjustmentLogApi = {
+  getLogs: (studentId: string, limit?: number) =>
+    api.get<{
+      status: string;
+      data: import("../types").PathAdjustmentLog[];
+    }>(`/path-adjustment/${studentId}/logs`, {
+      params: { limit: limit || 20 },
+    }),
+};
+
 export default api;

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.log_reflection import LearningLogModel, ReflectionModel
+from ..services.path_adjustment_engine import maybe_check_path_adjustment
 from .auth import require_auth
 
 router = APIRouter()
@@ -138,6 +139,10 @@ async def create_reflection(request: ReflectionCreateRequest, db: Session = Depe
     )
     db.add(ref)
     db.commit()
+
+    # 检查是否需要调整路径
+    await maybe_check_path_adjustment(request.student_id, db)
+
     return {"status": "success", "reflection_id": reflection_id}
 
 

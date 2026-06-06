@@ -14,6 +14,7 @@ from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel, ResourceFeedbackModel
 from ..models.gamification import PointsModel, AchievementModel, LeaderboardModel
 from ..services.gamification_service import award_points, maybe_unlock_achievement
+from ..services.path_adjustment_engine import maybe_check_path_adjustment
 from .auth import require_auth
 
 router = APIRouter()
@@ -124,6 +125,9 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
 
     db.commit()
     db.refresh(quiz)
+
+    # 检查是否需要调整路径
+    await maybe_check_path_adjustment(request.student_id, db)
 
     if awarded > 0:
         return {"status": "success", "quiz_id": quiz_id, "points_awarded": awarded, "total_points": total}

@@ -14,6 +14,7 @@ from ..agents import TutorAgent
 from ..core.logger import setup_logger
 from ..models.database import get_db
 from ..models.tutor_qa import TutorQAModel
+from ..services.path_adjustment_engine import maybe_check_path_adjustment
 from .auth import get_current_student_id, require_auth
 
 logger = setup_logger()
@@ -129,6 +130,9 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
         )
         db.add(qa)
         db.commit()
+
+        # 检查是否需要调整路径
+        await maybe_check_path_adjustment(request.student_id, db)
     except Exception as e:
         logger.warning(f"问答记录持久化失败: {e}")
         db.rollback()
