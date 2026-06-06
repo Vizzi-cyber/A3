@@ -77,4 +77,16 @@ export const kbApi = {
       status: string;
       data: Array<{ note_id: string; title: string; folder_id: string }>;
     }>("/kb/batch-organize", items),
+
+  // Analyze note with LLM and save to KB
+  analyzeAndSave: (data: { content: string; kp_id?: string; title?: string }) =>
+    api.post<{
+      status: string;
+      data: {
+        note_id: string;
+        title: string;
+        folder_id: string;
+        analyzed: boolean;
+      };
+    }>("/kb/analyze-and-save", data),
 };

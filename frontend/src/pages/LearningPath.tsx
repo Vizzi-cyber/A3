@@ -322,6 +322,20 @@ const LearningPathPage: React.FC = () => {
         tags: ["learning-path", selectedNode.title],
       });
       message.success("反思已提交");
+
+      // 异步：将笔记经 Agent 分析后存入知识库
+      const nodeKpId =
+        kpMap[selectedNode.kp_id] ||
+        selectedNode.kp_id ||
+        `kp_${selectedNode.id}`;
+      kbApi
+        .analyzeAndSave({
+          content: reflectionText,
+          kp_id: nodeKpId,
+          title: selectedNode.title,
+        })
+        .catch(() => {});
+
       setReflectionText("");
     } catch (e) {
       message.error((e as Error).message || "提交失败");

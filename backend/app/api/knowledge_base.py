@@ -426,3 +426,90 @@ async def batch_organize(items: List[AutoOrganizeRequest], db: Session = Depends
         result = await auto_organize(item, db, _current)
         results.append(result["data"])
     return {"status": "success", "data": results}
+
+
+# ---------- 笔记 Agent 分析并存入知识库 ----------
+
+class AnalyzeAndSaveRequest(BaseModel):
+    """笔记分析并存入知识库请求"""
+    content: str
+    kp_id: Optional[str] = None
+    title: Optional[str] = None
+
+
+@router.post("/analyze-and-save")
+async def analyze_and_save(request: AnalyzeAndSaveRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """将笔记内容经 LLM 分析后自动存入知识库"""
+    from datetime import datetime, timezone
+    from ..services.llm_factory import LLMFactory
+
+    content = request.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="笔记内容不能为空")
+
+    # 1. 用 LLM 分析笔记，提取关键知识点
+    analyzed = content
+    try:
+        llm = LLMFactory.get_llm()
+        prompt = (
+            "你是一个学习助手。请分析以下学习笔记，提取关键知识点并整理成结构化的 Markdown 格式。\n"
+            "要求：\n"
+            "1. 保留原始内容的核心信息\n"
+            "2. 用 Markdown 标题和列表组织\n"
+            "3. 如果有代码示例，用代码块包裹\n"
+            "4. 如果有错误或困惑，标注出来\n"
+            "5. 输出简洁，不要添加多余的解释\n\n"
+            f"笔记内容：\n{content}"
+        )
+        resp = await llm.chat.completions.create(
+            model=llm.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=1024,
+        )
+        analyzed = resp.choices[0].message.content.strip()
+    except Exception:
+        # LLM 不可用时直接使用原始内容
+        analyzed = content
+
+    # 2. 确定标题
+    title = request.title or content[:30].replace("\n", " ")
+
+    # 3. 获取知识点信息（如果有 kp_id）
+    kp = None
+    subject = "学习笔记"
+    tags: List[str] = []
+    if request.kp_id:
+        kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == request.kp_id).first()
+        if kp:
+            subject = kp.subject or subject
+            tags = kp.tags or tags
+
+    # 4. 创建文件夹层级
+    subject_folder_id = _find_or_create_folder(db, _current, subject)
+    folder_id = subject_folder_id
+    if tags:
+        tag_folder_id = _find_or_create_folder(db, _current, tags[0], subject_folder_id)
+        folder_id = tag_folder_id
+
+    # 5. 创建或查找笔记并追加内容
+    note = _find_or_create_note(db, _current, title, folder_id)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    section_content = f"**记录时间**: {timestamp}\n\n{analyzed}"
+    _append_to_note(note, "学习笔记", section_content, "learn")
+
+    if not note.folder_id:
+        note.folder_id = folder_id
+
+    db.commit()
+    db.refresh(note)
+
+    return {
+        "status": "success",
+        "data": {
+            "note_id": note.note_id,
+            "title": note.title,
+            "folder_id": note.folder_id,
+            "analyzed": analyzed != content,
+        }
+    }
