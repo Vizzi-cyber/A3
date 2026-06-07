@@ -1,0 +1,568 @@
+# 电阻电路的等效变换
+
+## 一、等效变换的概念
+
+**等效变换的条件：** 两个电路，若具有相同的端口VCR（伏安特性），则它们对外电路是等效的。
+
+**等效变换的目的：** 在不影响分析结果的前提下，简化电路结构，从而简化分析计算。
+
+**等效变换的要点：**
+- 等效变换前后，电路的外部特性（伏安关系）保持不变
+- 等效变换只适用于线性电路
+- 等效变换只是对外电路等效，对内部不一定等效
+
+**核心思想：** 分析任何电路之前，首先问自己：这个电路能否进行化简？
+
+## 二、电阻的串联和并联
+
+### 电阻串联
+**定义：** 若干个电阻依次连接，流过每个电阻的电流都相同。
+
+**等效电阻：**
+$$R_{eq} = R_1 + R_2 + \cdots + R_n$$
+
+**串联分压：**
+$$u_k = rac{R_k}{R_{eq}} u$$
+
+### 电阻并联
+**定义：** 若干个电阻并列连接，每个电阻两端的电压都相同。
+
+**等效电阻：**
+$$rac{1}{R_{eq}} = rac{1}{R_1} + rac{1}{R_2} + \cdots + rac{1}{R_n}$$
+
+**并联分流：**
+$$i_k = rac{G_k}{G_{eq}} i$$
+
+**两个电阻并联：**
+$$R_{eq} = rac{R_1 R_2}{R_1 + R_2}$$
+
+**特殊阻值并联：**
+- 2倍电阻并联：$R \| 2R = rac{2R}{3}$
+- 3倍电阻并联：$R \| 3R = rac{3R}{4}$
+- n个相同电阻并联：$R \| R \| \cdots \| R = rac{R}{n}$
+
+**电路图示：**
+
+图2.2-1:
+
+图2.2-2:
+
+图2.2-3:
+
+**电路图示：**
+
+
+
+<div class="circuit-diagram">
+<svg width="400" height="160" viewBox="0 0 400 160">
+  <defs>
+    <marker id="arr_21" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- Is电流源 -->
+  <circle cx="40" cy="80" r="14" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="40" y1="70" x2="40" y2="90" stroke="#333" stroke-width="1.5" marker-end="url(#arr_21)"/>
+  <text x="10" y="60" font-size="10">I<tspan baseline-shift="sub" font-size="10">S</tspan></text>
+  <line x1="40" y1="66" x2="40" y2="30" stroke="#333" stroke-width="2"/>
+  <line x1="40" y1="94" x2="40" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 上方导线 -->
+  <line x1="40" y1="30" x2="350" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- Rs=2kΩ -->
+  <line x1="100" y1="30" x2="100" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="87" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="82" y="65" font-size="12">2kΩ</text>
+  <line x1="100" y1="75" x2="100" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- R1=40kΩ -->
+  <line x1="180" y1="30" x2="180" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="167" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="155" y="65" font-size="12">40kΩ</text>
+  <line x1="180" y1="75" x2="180" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- R2=10kΩ -->
+  <line x1="260" y1="30" x2="260" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="247" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="235" y="65" font-size="12">10kΩ</text>
+  <line x1="260" y1="75" x2="260" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- R3=25kΩ -->
+  <line x1="340" y1="30" x2="340" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="327" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="315" y="65" font-size="12">25kΩ</text>
+  <line x1="340" y1="75" x2="340" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 下方导线 -->
+  <line x1="40" y1="140" x2="350" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 电流标注 -->
+  <line x1="110" y1="40" x2="110" y2="55" stroke="#333" stroke-width="2" marker-end="url(#arr_21)"/>
+  <text x="115" y="42" font-size="12" fill="#666">I₁</text>
+  <line x1="190" y1="40" x2="190" y2="55" stroke="#333" stroke-width="2" marker-end="url(#arr_21)"/>
+  <text x="195" y="42" font-size="12" fill="#666">I₂</text>
+  <line x1="270" y1="40" x2="270" y2="55" stroke="#333" stroke-width="2" marker-end="url(#arr_21)"/>
+  <text x="275" y="42" font-size="12" fill="#666">I₃</text>
+</svg>
+</div>
+
+<div class="circuit-diagram">
+<svg width="300" height="180" viewBox="0 0 300 180">
+  <!-- 平衡电桥：6个6Ω电阻 -->
+  <!-- 上方节点A -->
+  <circle cx="150" cy="20" r="3" fill="#333"/>
+  <text x="155" y="18" font-size="12" font-weight="bold">A</text>
+
+  <!-- 左节点 -->
+  <circle cx="70" cy="80" r="3" fill="#333"/>
+  <!-- 右节点 -->
+  <circle cx="230" cy="80" r="3" fill="#333"/>
+  <!-- 下方节点B -->
+  <circle cx="150" cy="160" r="3" fill="#333"/>
+  <text x="155" y="165" font-size="12" font-weight="bold">B</text>
+
+  <!-- A到左：6Ω -->
+  <line x1="150" y1="20" x2="70" y2="80" stroke="#333" stroke-width="2"/>
+  <rect x="90" y="35" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(-45 103 45)"/>
+  <text x="78" y="48" font-size="10">6Ω</text>
+
+  <!-- A到右：6Ω -->
+  <line x1="150" y1="20" x2="230" y2="80" stroke="#333" stroke-width="2"/>
+  <rect x="180" y="35" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(45 193 45)"/>
+  <text x="195" y="48" font-size="10">6Ω</text>
+
+  <!-- 左到B：6Ω -->
+  <line x1="70" y1="80" x2="150" y2="160" stroke="#333" stroke-width="2"/>
+  <rect x="85" y="115" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(45 98 125)"/>
+  <text x="78" y="138" font-size="10">6Ω</text>
+
+  <!-- 右到B：6Ω -->
+  <line x1="230" y1="80" x2="150" y2="160" stroke="#333" stroke-width="2"/>
+  <rect x="185" y="115" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(-45 198 125)"/>
+  <text x="205" y="138" font-size="10">6Ω</text>
+
+  <!-- 中间桥路：6Ω -->
+  <line x1="70" y1="80" x2="230" y2="80" stroke="#333" stroke-width="2"/>
+  <rect x="125" y="70" width="50" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="140" y="85" font-size="10">6Ω</text>
+</svg>
+</div>
+
+<div class="circuit-diagram">
+<svg width="300" height="180" viewBox="0 0 300 180">
+  <!-- 四个4Ω电阻组成菱形，中间2Ω -->
+  <!-- 上节点 -->
+  <circle cx="150" cy="20" r="3" fill="#333"/>
+  <!-- 左节点a -->
+  <circle cx="50" cy="90" r="3" fill="#333"/>
+  <text x="30" y="88" font-size="12" font-weight="bold">a</text>
+  <!-- 右节点b -->
+  <circle cx="250" cy="90" r="3" fill="#333"/>
+  <text x="260" y="88" font-size="12" font-weight="bold">b</text>
+  <!-- 下节点 -->
+  <circle cx="150" cy="160" r="3" fill="#333"/>
+
+  <!-- a到上：4Ω -->
+  <line x1="50" y1="90" x2="150" y2="20" stroke="#333" stroke-width="2"/>
+  <rect x="75" y="38" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(-35 88 48)"/>
+  <text x="68" y="50" font-size="10">4Ω</text>
+
+  <!-- 上到b：4Ω -->
+  <line x1="150" y1="20" x2="250" y2="90" stroke="#333" stroke-width="2"/>
+  <rect x="185" y="38" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(35 198 48)"/>
+  <text x="200" y="50" font-size="10">4Ω</text>
+
+  <!-- a到下：4Ω -->
+  <line x1="50" y1="90" x2="150" y2="160" stroke="#333" stroke-width="2"/>
+  <rect x="75" y="115" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(35 88 125)"/>
+  <text x="68" y="140" font-size="10">4Ω</text>
+
+  <!-- 下到b：4Ω -->
+  <line x1="150" y1="160" x2="250" y2="90" stroke="#333" stroke-width="2"/>
+  <rect x="185" y="115" width="26" height="20" fill="none" stroke="#333" stroke-width="2" transform="rotate(-35 198 125)"/>
+  <text x="200" y="140" font-size="10">4Ω</text>
+
+  <!-- 中间2Ω -->
+  <line x1="50" y1="90" x2="250" y2="90" stroke="#333" stroke-width="2"/>
+  <rect x="125" y="80" width="50" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="140" y="95" font-size="10">2Ω</text>
+</svg>
+</div>
+
+### 对偶性
+电路中的对偶思想：电压与电流对偶、电阻与电导对偶、串联与并联对偶、KCL与KVL对偶。
+
+### 电桥结构电路
+**基本形式：** 电桥结构包含两个桥臂与一个桥路，桥路两端点位于两个对角线中间。
+
+**平衡电桥：** 当桥路满足等电位条件时，桥路无响应，既可开路、也可短路，对电路无影响。
+
+## 三、Y-Δ等效变换
+
+### Y形网络（星形网络）
+三个电阻连接到一个公共节点。
+
+### Δ形网络（三角形网络）
+三个电阻首尾相连形成三角形。
+
+### 变换公式
+**Y → Δ：**
+$$R_{12} = rac{R_1R_2 + R_2R_3 + R_3R_1}{R_3}$$
+
+**Δ → Y：**
+$$R_1 = rac{R_{12}R_{13}}{R_{12} + R_{23} + R_{13}}$$
+
+**电路图示：**
+
+图2.3-1:
+
+**电路图示：**
+
+
+
+<div class="circuit-diagram">
+<svg width="350" height="180" viewBox="0 0 350 180">
+  <!-- Y-Δ变换示意 -->
+  <!-- Y结构（左） -->
+  <text x="10" y="15" font-size="11" fill="#6b21a8" font-weight="bold">Y 形结构</text>
+  <circle cx="80" cy="40" r="3" fill="#333"/>
+  <text x="85" y="40" font-size="10">1</text>
+  <circle cx="30" cy="120" r="3" fill="#333"/>
+  <text x="10" y="120" font-size="10">2</text>
+  <circle cx="130" cy="120" r="3" fill="#333"/>
+  <text x="135" y="120" font-size="10">3</text>
+  <circle cx="80" cy="80" r="3" fill="#e74c3c"/>
+
+  <!-- Y电阻 -->
+  <line x1="80" y1="43" x2="80" y2="65" stroke="#333" stroke-width="2"/>
+  <rect x="67" y="65" width="26" height="15" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="71" y="77" font-size="12">R₁</text>
+  <line x1="80" y1="80" x2="80" y2="80" stroke="#333" stroke-width="2"/>
+
+  <line x1="78" y1="80" x2="45" y2="110" stroke="#333" stroke-width="2"/>
+  <rect x="45" y="88" width="26" height="15" fill="none" stroke="#333" stroke-width="2" transform="rotate(-50 58 95)"/>
+  <text x="38" y="100" font-size="12">R₂</text>
+
+  <line x1="82" y1="80" x2="118" y2="110" stroke="#333" stroke-width="2"/>
+  <rect x="92" y="88" width="26" height="15" fill="none" stroke="#333" stroke-width="2" transform="rotate(50 105 95)"/>
+  <text x="108" y="100" font-size="12">R₃</text>
+
+  <!-- 等号 -->
+  <text x="160" y="85" font-size="20" fill="#6b21a8">⇔</text>
+
+  <!-- Δ结构（右） -->
+  <text x="200" y="15" font-size="11" fill="#6b21a8" font-weight="bold">Δ 形结构</text>
+  <circle cx="230" cy="40" r="3" fill="#333"/>
+  <text x="235" y="40" font-size="10">1</text>
+  <circle cx="190" cy="120" r="3" fill="#333"/>
+  <text x="170" y="120" font-size="10">2</text>
+  <circle cx="270" cy="120" r="3" fill="#333"/>
+  <text x="275" y="120" font-size="10">3</text>
+
+  <!-- Δ电阻 -->
+  <line x1="230" y1="43" x2="195" y2="115" stroke="#333" stroke-width="2"/>
+  <rect x="195" y="65" width="26" height="15" fill="none" stroke="#333" stroke-width="2" transform="rotate(-60 208 72)"/>
+  <text x="185" y="80" font-size="12">R₁₂</text>
+
+  <line x1="230" y1="43" x2="265" y2="115" stroke="#333" stroke-width="2"/>
+  <rect x="242" y="65" width="26" height="15" fill="none" stroke="#333" stroke-width="2" transform="rotate(60 255 72)"/>
+  <text x="262" y="80" font-size="12">R₁₃</text>
+
+  <line x1="193" y1="120" x2="267" y2="120" stroke="#333" stroke-width="2"/>
+  <rect x="210" y="108" width="30" height="15" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="215" y="120" font-size="12">R₂₃</text>
+</svg>
+</div>
+
+**三支路电阻相等时：** $R_{\Delta} = 3R_Y$ 或 $R_Y = rac{R_{\Delta}}{3}$
+
+## 四、电压源、电流源的串联和并联
+
+### 电压源串联
+$$U_S = U_{S1} + U_{S2} + \cdots$$（极性相同取"+"，极性相反取"-"）
+
+### 电压源并联
+相同电压的电压源可以并联，对外仍等效为一个电压源。不同电压的电压源不允许并联。
+
+### 电流源串联
+相同电流的电流源可以串联，对外仍等效为一个电流源。不同电流的电流源不允许串联。
+
+### 电流源并联
+$$I_S = I_{S1} + I_{S2} + \cdots$$
+
+**与电压源并联/与电流源串联元件的处理：**
+- 与电压源并联的部分，对外不起作用，可等效去掉
+- 与电流源串联的部分，对外不起作用，可等效去掉
+- 
+
+**电路图示：**
+
+图2.4-1:
+
+图2.4-2:
+
+**电路图示：**
+
+
+
+<div class="circuit-diagram">
+<svg width="440" height="220" viewBox="0 0 440 220">
+  <defs>
+    <marker id="arr_port" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+
+  <!-- 节点坐标说明 -->
+  <!-- 左上=(50,30) 中上=(200,30) 右上=(380,30) -->
+  <!-- 左下=(50,190) 中下=(200,190) 右下=(380,190) -->
+
+  <!-- 左侧支路：2Ω电阻 + 3V电压源（串联） -->
+  <line x1="50" y1="30" x2="50" y2="65" stroke="#333" stroke-width="2"/>
+  <rect x="38" y="65" width="24" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="41" y="85" font-size="10">2Ω</text>
+  <line x1="50" y1="95" x2="50" y2="115" stroke="#333" stroke-width="2"/>
+  <!-- 3V电压源（负极在上，正极在下） -->
+  <circle cx="50" cy="135" r="14" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="38" y="132" font-size="10">−</text>
+  <text x="38" y="145" font-size="10">+</text>
+  <text x="26" y="160" font-size="11" font-weight="bold">3V</text>
+  <line x1="50" y1="149" x2="50" y2="190" stroke="#333" stroke-width="2"/>
+
+  <!-- 上方导线（左上→中上→右上） -->
+  <line x1="50" y1="30" x2="380" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- 8V电压源（上方，负极在左，正极在右） -->
+  <circle cx="200" cy="30" r="14" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="186" y="27" font-size="10">−</text>
+  <text x="206" y="27" font-size="10">+</text>
+  <text x="188" y="12" font-size="11" font-weight="bold">8V</text>
+
+  <!-- 中间支路：2A电流源 + 10Ω电阻（串联，水平） -->
+  <line x1="50" y1="90" x2="120" y2="90" stroke="#333" stroke-width="2"/>
+  <circle cx="145" cy="90" r="14" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="135" y1="90" x2="155" y2="90" stroke="#333" stroke-width="1.5" marker-end="url(#arr_port)"/>
+  <text x="163" y="94" font-size="11" font-weight="bold">2A</text>
+  <line x1="159" y1="90" x2="200" y2="90" stroke="#333" stroke-width="2"/>
+  <rect x="200" y="78" width="50" height="24" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="212" y="95" font-size="11">10Ω</text>
+  <line x1="250" y1="90" x2="380" y2="90" stroke="#333" stroke-width="2"/>
+
+  <!-- 右侧支路：5A电流源（向下） -->
+  <line x1="380" y1="30" x2="380" y2="115" stroke="#333" stroke-width="2"/>
+  <circle cx="380" cy="140" r="14" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="380" y1="130" x2="380" y2="150" stroke="#333" stroke-width="1.5" marker-end="url(#arr_port)"/>
+  <text x="360" y="144" font-size="11" font-weight="bold">5A</text>
+  <line x1="380" y1="154" x2="380" y2="190" stroke="#333" stroke-width="2"/>
+
+  <!-- 下方导线（左下→中下→右下） -->
+  <line x1="50" y1="190" x2="380" y2="190" stroke="#333" stroke-width="2"/>
+
+  <!-- 端口标注（右下角两个端子） -->
+  <circle cx="380" cy="190" r="3" fill="#333"/>
+  <text x="388" y="195" font-size="10" font-weight="bold">a</text>
+  <circle cx="200" cy="190" r="3" fill="#333"/>
+  <text x="208" y="195" font-size="10" font-weight="bold">b</text>
+
+  <!-- 端口开口标记 -->
+  <line x1="380" y1="190" x2="400" y2="205" stroke="#333" stroke-width="2"/>
+  <line x1="200" y1="190" x2="180" y2="205" stroke="#333" stroke-width="2"/>
+</svg>
+</div>
+
+<div class="circuit-diagram">
+<svg width="520" height="100" viewBox="0 0 520 100">
+  <defs>
+    <marker id="arr_src" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 电压源串联等效 -->
+  <text x="10" y="15" font-size="11" fill="#6b21a8" font-weight="bold">电压源串联</text>
+  <circle cx="40" cy="55" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="32" y="52" font-size="11">+</text>
+  <text x="32" y="62" font-size="11">−</text>
+  <text x="20" y="80" font-size="11">3V</text>
+  <line x1="52" y1="55" x2="65" y2="55" stroke="#333" stroke-width="2"/>
+  <circle cx="80" cy="55" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="72" y="52" font-size="11">+</text>
+  <text x="72" y="62" font-size="11">−</text>
+  <text x="60" y="80" font-size="11">3V</text>
+  <text x="100" y="58" font-size="14" fill="#6b21a8">=</text>
+  <circle cx="130" cy="55" r="12" fill="none" stroke="#e74c3c" stroke-width="2"/>
+  <text x="122" y="52" font-size="11">+</text>
+  <text x="122" y="62" font-size="11">−</text>
+  <text x="110" y="80" font-size="12" fill="#e74c3c">6V</text>
+
+  <!-- 电流源并联等效 -->
+  <text x="260" y="15" font-size="11" fill="#6b21a8" font-weight="bold">电流源并联</text>
+  <circle cx="300" cy="45" r="10" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="300" y1="38" x2="300" y2="52" stroke="#333" stroke-width="1.5" marker-end="url(#arr_src)"/>
+  <text x="315" y="48" font-size="12">2A</text>
+  <circle cx="340" cy="45" r="10" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="38" x2="340" y2="52" stroke="#333" stroke-width="1.5" marker-end="url(#arr_src)"/>
+  <text x="355" y="48" font-size="12">4A</text>
+  <text x="375" y="48" font-size="14" fill="#6b21a8">=</text>
+  <circle cx="410" cy="45" r="10" fill="none" stroke="#3498db" stroke-width="2"/>
+  <line x1="410" y1="38" x2="410" y2="52" stroke="#3498db" stroke-width="1.5" marker-end="url(#arr_src)"/>
+  <text x="425" y="48" font-size="12" fill="#3498db">6A</text>
+</svg>
+</div>
+
+但等效去掉后，会影响电压源电流（电流源电压）
+
+## 五、戴维宁-诺顿支路及其等效变换
+
+**戴维宁典型支路：** 一电压源与一电阻串联构成，其端口VCR为：$u = U_S + Ri$
+
+**诺顿典型支路：** 一电流源与一电阻并联构成，其端口VCR为：$u = Ri - RI_S$
+
+**戴维宁→诺顿变换：** $I_S = rac{U_S}{R}$（短路电流），$R_{eq}$ 保持不变
+
+**电路图示：**
+
+图2.5-1:
+
+**电路图示：**
+
+
+
+<div class="circuit-diagram">
+<svg width="400" height="160" viewBox="0 0 400 160">
+  <defs>
+    <marker id="arr_23" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 6V电压源 -->
+  <line x1="40" y1="30" x2="40" y2="59" stroke="#333" stroke-width="2"/>
+  <circle cx="40" cy="75" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="30" y="72" font-size="10">+</text>
+  <text x="30" y="85" font-size="10">−</text>
+  <text x="10" y="78" font-size="11">6V</text>
+  <line x1="40" y1="91" x2="40" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 上方导线 -->
+  <line x1="40" y1="30" x2="250" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- 2Ω电阻（左） -->
+  <line x1="80" y1="30" x2="80" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="67" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="71" y="65" font-size="10">2Ω</text>
+  <line x1="80" y1="75" x2="80" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 6A电流源 -->
+  <circle cx="140" cy="55" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="140" y1="47" x2="140" y2="63" stroke="#333" stroke-width="1.5" marker-end="url(#arr_23)"/>
+  <text x="155" y="58" font-size="10">6A</text>
+  <line x1="140" y1="30" x2="140" y2="43" stroke="#333" stroke-width="2"/>
+  <line x1="140" y1="67" x2="140" y2="80" stroke="#333" stroke-width="2"/>
+
+  <!-- 2A电流源 -->
+  <circle cx="140" cy="110" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="140" y1="102" x2="140" y2="118" stroke="#333" stroke-width="1.5" marker-end="url(#arr_23)"/>
+  <text x="155" y="113" font-size="10">2A</text>
+  <line x1="140" y1="80" x2="140" y2="98" stroke="#333" stroke-width="2"/>
+  <line x1="140" y1="122" x2="140" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 2Ω电阻（中） -->
+  <line x1="200" y1="30" x2="200" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="187" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="191" y="65" font-size="10">2Ω</text>
+  <line x1="200" y1="75" x2="200" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 2Ω电阻（右上） -->
+  <line x1="250" y1="30" x2="250" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="237" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="241" y="65" font-size="10">2Ω</text>
+  <line x1="250" y1="75" x2="250" y2="90" stroke="#333" stroke-width="2"/>
+
+  <!-- 7Ω电阻（右下） -->
+  <rect x="237" y="95" width="26" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="241" y="117" font-size="10">7Ω</text>
+  <line x1="250" y1="130" x2="250" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 下方导线 -->
+  <line x1="40" y1="140" x2="250" y2="140" stroke="#333" stroke-width="2"/>
+
+  <!-- 电流i -->
+  <line x1="270" y1="80" x2="300" y2="80" stroke="#333" stroke-width="1.5" marker-end="url(#arr_23)"/>
+  <text x="275" y="75" font-size="10" font-style="italic">i</text>
+</svg>
+</div>
+
+**诺顿→戴维宁变换：** $U_S = I_S \cdot R$（开路电压），$R_{eq}$ 保持不变
+
+## 六、输入电阻
+
+**定义：** 从端口看进去的等效电阻，等于端口电压与端口电流之比。
+
+**求解方法：**
+1. 外加电源法：在端口外加独立源，计算端口电压和电流
+2. 开路短路法：分别计算开路电压和短路电流
+3. 等效变换法：通过等效变换简化电路
+
+**电路图示：**
+
+图2.6-1:
+
+**电路图示：**
+
+
+
+<div class="circuit-diagram">
+<svg width="350" height="140" viewBox="0 0 350 140">
+  <defs>
+    <marker id="arr_rab" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 含受控源的等效电阻 -->
+  <!-- 端口a-b -->
+  <text x="10" y="30" font-size="12" font-weight="bold">a</text>
+  <line x1="30" y1="35" x2="60" y2="35" stroke="#333" stroke-width="2"/>
+  <text x="10" y="120" font-size="12" font-weight="bold">b</text>
+  <line x1="30" y1="110" x2="60" y2="110" stroke="#333" stroke-width="2"/>
+
+  <!-- 外加电压U -->
+  <text x="35" y="55" font-size="10" fill="#333">+</text>
+  <text x="35" y="95" font-size="10" fill="#333">−</text>
+  <text x="15" y="78" font-size="10" fill="#333" font-style="italic">U</text>
+
+  <!-- 电流I -->
+  <line x1="40" y1="45" x2="40" y2="55" stroke="#333" stroke-width="1.5" marker-end="url(#arr_rab)"/>
+  <text x="45" y="48" font-size="10" fill="#333" font-style="italic">I</text>
+
+  <!-- 3Ω电阻 -->
+  <line x1="60" y1="35" x2="90" y2="35" stroke="#333" stroke-width="2"/>
+  <rect x="90" y="25" width="30" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="98" y="40" font-size="12">3Ω</text>
+  <line x1="120" y1="35" x2="160" y2="35" stroke="#333" stroke-width="2"/>
+
+  <!-- 1Ω电阻 -->
+  <line x1="160" y1="35" x2="160" y2="50" stroke="#333" stroke-width="2"/>
+  <rect x="147" y="50" width="26" height="25" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="151" y="67" font-size="12">1Ω</text>
+  <line x1="160" y1="75" x2="160" y2="110" stroke="#333" stroke-width="2"/>
+
+  <!-- 2Ω电阻 -->
+  <line x1="160" y1="35" x2="250" y2="35" stroke="#333" stroke-width="2"/>
+  <rect x="190" y="25" width="30" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="198" y="40" font-size="12">2Ω</text>
+  <line x1="250" y1="35" x2="250" y2="110" stroke="#333" stroke-width="2"/>
+
+  <!-- 2Ω电阻（下） -->
+  <line x1="60" y1="110" x2="160" y2="110" stroke="#333" stroke-width="2"/>
+  <rect x="90" y="100" width="30" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="98" y="115" font-size="12">2Ω</text>
+  <line x1="160" y1="110" x2="250" y2="110" stroke="#333" stroke-width="2"/>
+
+  <!-- 受控源标注 -->
+  <text x="260" y="55" font-size="12" fill="#e74c3c">6I₂</text>
+  <text x="260" y="75" font-size="12" fill="#3498db">2I₁</text>
+</svg>
+</div>
+
+**注意：** 含受控源电路的输入电阻不能直接用串并联公式计算，必须使用外加电源法。
+

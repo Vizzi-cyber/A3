@@ -1,0 +1,1050 @@
+# 电路模型和电路定律
+
+## 一、电路和电路模型
+
+**理想与现实：** 理想模型是将实际电路元件进行抽象简化后得到的数学模型。在电路分析中，我们使用理想电路元件来替代实际元件，这样可以简化分析计算。
+
+**电路的基本构成：** 电路由电源（提供电能）、负载（消耗电能）和导线（连接各元件）三部分组成。电路正常运行需要满足：有闭合回路、有电源激励、有负载消耗。
+
+**元件分类：**
+- **线性元件：** 伏安特性曲线为过原点的直线
+- **非线性元件：** 伏安特性曲线不是直线
+- **时不变元件：** 特性不随时间变化
+- **时变元件：** 特性随时间变化
+- **集总参数元件：** 尺寸远小于信号波长
+- **分布参数元件：** 尺寸远小于信号波长可比拟
+
+**电路图示：**
+
+
+<div class="circuit-diagram">
+<svg width="350" height="200" viewBox="0 0 350 200">
+  <defs>
+    <marker id="arr_bridge" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 24V电压源 -->
+  <line x1="40" y1="30" x2="40" y2="59" stroke="#333" stroke-width="2"/>
+  <circle cx="40" cy="75" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="30" y="72" font-size="10">+</text>
+  <text x="30" y="85" font-size="10">−</text>
+  <text x="10" y="78" font-size="11">24V</text>
+  <line x1="40" y1="91" x2="40" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 上方导线 -->
+  <line x1="40" y1="30" x2="200" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- 4Ω电阻（上左） -->
+  <line x1="100" y1="30" x2="100" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="87" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="91" y="65" font-size="10">4Ω</text>
+  <line x1="100" y1="75" x2="100" y2="100" stroke="#333" stroke-width="2"/>
+
+  <!-- 12Ω电阻（中间竖直） -->
+  <line x1="100" y1="100" x2="100" y2="115" stroke="#333" stroke-width="2"/>
+  <rect x="87" y="115" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="87" y="135" font-size="10">12Ω</text>
+  <line x1="100" y1="145" x2="100" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 3Ω电阻（右上） -->
+  <line x1="200" y1="30" x2="200" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="187" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="191" y="65" font-size="10">3Ω</text>
+  <line x1="200" y1="75" x2="200" y2="100" stroke="#333" stroke-width="2"/>
+
+  <!-- 4Ω电阻（右下） -->
+  <line x1="200" y1="100" x2="200" y2="115" stroke="#333" stroke-width="2"/>
+  <rect x="187" y="115" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="191" y="135" font-size="10">4Ω</text>
+  <line x1="200" y1="145" x2="200" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 中间水平连接 -->
+  <line x1="100" y1="100" x2="200" y2="100" stroke="#333" stroke-width="2"/>
+
+  <!-- 下方导线 -->
+  <line x1="40" y1="170" x2="200" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 电流I标注 -->
+  <line x1="60" y1="25" x2="80" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arr_bridge)"/>
+  <text x="65" y="20" font-size="10" font-style="italic">I</text>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="520" height="280" viewBox="0 0 520 280">
+  <defs>
+    <marker id="arrow1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 电路的基本构成示意图 -->
+  <!-- 上方节点 -->
+  <circle cx="260" cy="30" r="3" fill="#333"/>
+  <text x="265" y="25" font-size="11" fill="#666">①</text>
+
+  <!-- 左支路：电压源 -->
+  <line x1="260" y1="30" x2="100" y2="30" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="30" x2="100" y2="82" stroke="#333" stroke-width="2"/>
+  <circle cx="100" cy="100" r="18" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="90" y="96" font-size="11">+</text>
+  <text x="90" y="110" font-size="11">−</text>
+  <text x="60" y="105" font-size="11" fill="#666">电压源</text>
+  <line x1="100" y1="118" x2="100" y2="155" stroke="#333" stroke-width="2"/>
+
+  <!-- 中间支路1：电阻 -->
+  <line x1="260" y1="30" x2="260" y2="60" stroke="#333" stroke-width="2"/>
+  <rect x="245" y="60" width="30" height="50" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="250" y="90" font-size="11">R</text>
+  <text x="225" y="85" font-size="10" fill="#666">电阻</text>
+  <line x1="260" y1="110" x2="260" y2="155" stroke="#333" stroke-width="2"/>
+
+  <!-- 中间支路2：电容 -->
+  <line x1="340" y1="30" x2="340" y2="100" stroke="#333" stroke-width="2"/>
+  <line x1="325" y1="100" x2="355" y2="100" stroke="#333" stroke-width="2.5"/>
+  <line x1="325" y1="110" x2="355" y2="110" stroke="#333" stroke-width="2.5"/>
+  <line x1="340" y1="110" x2="340" y2="155" stroke="#333" stroke-width="2"/>
+  <text x="360" y="108" font-size="11" fill="#666">电容</text>
+
+  <!-- 右支路：受控电流源（菱形） -->
+  <line x1="260" y1="30" x2="440" y2="30" stroke="#333" stroke-width="2"/>
+  <line x1="440" y1="30" x2="440" y2="70" stroke="#333" stroke-width="2"/>
+  <polygon points="440,70 460,100 440,130 420,100" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="440" y1="80" x2="440" y2="120" stroke="#333" stroke-width="1.5" marker-end="url(#arrow1)"/>
+  <text x="465" y="105" font-size="11" fill="#666">受控</text>
+  <text x="465" y="118" font-size="11" fill="#666">电流源</text>
+  <line x1="440" y1="130" x2="440" y2="155" stroke="#333" stroke-width="2"/>
+
+  <!-- 下方公共导线 -->
+  <line x1="100" y1="155" x2="440" y2="155" stroke="#333" stroke-width="2"/>
+  <circle cx="260" cy="155" r="3" fill="#333"/>
+  <text x="265" y="170" font-size="11" fill="#666">②</text>
+
+  <!-- 左下：独立电压源 -->
+  <line x1="100" y1="155" x2="100" y2="197" stroke="#333" stroke-width="2"/>
+  <circle cx="100" cy="215" r="18" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="90" y="211" font-size="11">+</text>
+  <text x="90" y="225" font-size="11">−</text>
+  <text x="35" y="220" font-size="10" fill="#666">独立电压源</text>
+  <line x1="100" y1="233" x2="100" y2="260" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="260" x2="260" y2="260" stroke="#333" stroke-width="2"/>
+
+  <!-- 右下：独立电流源 -->
+  <line x1="440" y1="155" x2="440" y2="197" stroke="#333" stroke-width="2"/>
+  <circle cx="440" cy="215" r="18" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="440" y1="200" x2="440" y2="230" stroke="#333" stroke-width="1.5" marker-end="url(#arrow1)"/>
+  <text x="465" y="220" font-size="10" fill="#666">独立</text>
+  <text x="465" y="233" font-size="10" fill="#666">电流源</text>
+  <line x1="440" y1="233" x2="440" y2="260" stroke="#333" stroke-width="2"/>
+  <line x1="260" y1="260" x2="440" y2="260" stroke="#333" stroke-width="2"/>
+
+  <!-- 标注 -->
+  <text x="150" y="15" font-size="12" fill="#999">电路的基本构成</text>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="520" height="140" viewBox="0 0 520 140">
+  <defs>
+    <marker id="arr_elem" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 独立电压源 -->
+  <text x="10" y="15" font-size="11" fill="#666">独立电压源</text>
+  <line x1="40" y1="30" x2="40" y2="55" stroke="#333" stroke-width="2"/>
+  <circle cx="40" cy="80" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="33" y="77" font-size="11">+</text>
+  <text x="33" y="90" font-size="11">−</text>
+  <line x1="40" y1="96" x2="40" y2="120" stroke="#333" stroke-width="2"/>
+
+  <!-- 电阻 -->
+  <text x="140" y="15" font-size="11" fill="#666">电阻</text>
+  <line x1="170" y1="30" x2="170" y2="55" stroke="#333" stroke-width="2"/>
+  <rect x="155" y="55" width="30" height="50" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="163" y="85" font-size="12" font-weight="bold">R</text>
+  <line x1="170" y1="105" x2="170" y2="120" stroke="#333" stroke-width="2"/>
+
+  <!-- 电容 -->
+  <text x="270" y="15" font-size="11" fill="#666">电容</text>
+  <line x1="300" y1="30" x2="300" y2="65" stroke="#333" stroke-width="2"/>
+  <line x1="283" y1="65" x2="317" y2="65" stroke="#333" stroke-width="2.5"/>
+  <line x1="283" y1="80" x2="317" y2="80" stroke="#333" stroke-width="2.5"/>
+  <line x1="300" y1="80" x2="300" y2="120" stroke="#333" stroke-width="2"/>
+  <text x="322" y="77" font-size="12" font-weight="bold">C</text>
+
+  <!-- 电感 -->
+  <text x="390" y="15" font-size="11" fill="#666">电感</text>
+  <line x1="420" y1="30" x2="420" y2="50" stroke="#333" stroke-width="2"/>
+  <path d="M420,50 C435,50 435,62 420,62 C405,62 405,74 420,74 C435,74 435,86 420,86 C405,86 405,98 420,98" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="420" y1="98" x2="420" y2="120" stroke="#333" stroke-width="2"/>
+  <text x="435" y="77" font-size="12" font-weight="bold">L</text>
+</svg>
+</div>
+
+
+![图1.1-1](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzUwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDM1MCAyMDAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX2JyaWRnZSIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iNiIgcmVmWD0iNyIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj4KICAgICAgPHBvbHlnb24gcG9pbnRzPSIwLDAgOCwzIDAsNiIgZmlsbD0iIzMzMyIvPgogICAgPC9tYXJrZXI+CiAgPC9kZWZzPgogIDwhLS0gMjRW55S15Y6L5rqQIC0tPgogIDxsaW5lIHgxPSI0MCIgeTE9IjMwIiB4Mj0iNDAiIHkyPSI1OSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8Y2lyY2xlIGN4PSI0MCIgY3k9Ijc1IiByPSIxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIzMCIgeT0iNzIiIGZvbnQtc2l6ZT0iMTAiPis8L3RleHQ+CiAgPHRleHQgeD0iMzAiIHk9Ijg1IiBmb250LXNpemU9IjEwIj7iiJI8L3RleHQ+CiAgPHRleHQgeD0iMTAiIHk9Ijc4IiBmb250LXNpemU9IjExIj4yNFY8L3RleHQ+CiAgPGxpbmUgeDE9IjQwIiB5MT0iOTEiIHgyPSI0MCIgeTI9IjE3MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDkuIrmlrnlr7znur8gLS0+CiAgPGxpbmUgeDE9IjQwIiB5MT0iMzAiIHgyPSIyMDAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSA0zqnnlLXpmLvvvIjkuIrlt6bvvIkgLS0+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjMwIiB4Mj0iMTAwIiB5Mj0iNDUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHJlY3QgeD0iODciIHk9IjQ1IiB3aWR0aD0iMjYiIGhlaWdodD0iMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iOTEiIHk9IjY1IiBmb250LXNpemU9IjEwIj40zqk8L3RleHQ+CiAgPGxpbmUgeDE9IjEwMCIgeTE9Ijc1IiB4Mj0iMTAwIiB5Mj0iMTAwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIDEyzqnnlLXpmLvvvIjkuK3pl7Tnq5bnm7TvvIkgLS0+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjEwMCIgeDI9IjEwMCIgeTI9IjExNSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSI4NyIgeT0iMTE1IiB3aWR0aD0iMjYiIGhlaWdodD0iMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iODciIHk9IjEzNSIgZm9udC1zaXplPSIxMCI+MTLOqTwvdGV4dD4KICA8bGluZSB4MT0iMTAwIiB5MT0iMTQ1IiB4Mj0iMTAwIiB5Mj0iMTcwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIDPOqeeUtemYu++8iOWPs+S4iu+8iSAtLT4KICA8bGluZSB4MT0iMjAwIiB5MT0iMzAiIHgyPSIyMDAiIHkyPSI0NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIxODciIHk9IjQ1IiB3aWR0aD0iMjYiIGhlaWdodD0iMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTkxIiB5PSI2NSIgZm9udC1zaXplPSIxMCI+M86pPC90ZXh0PgogIDxsaW5lIHgxPSIyMDAiIHkxPSI3NSIgeDI9IjIwMCIgeTI9IjEwMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSA0zqnnlLXpmLvvvIjlj7PkuIvvvIkgLS0+CiAgPGxpbmUgeDE9IjIwMCIgeTE9IjEwMCIgeDI9IjIwMCIgeTI9IjExNSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIxODciIHk9IjExNSIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjE5MSIgeT0iMTM1IiBmb250LXNpemU9IjEwIj40zqk8L3RleHQ+CiAgPGxpbmUgeDE9IjIwMCIgeTE9IjE0NSIgeDI9IjIwMCIgeTI9IjE3MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDkuK3pl7TmsLTlubPov57mjqUgLS0+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjEwMCIgeDI9IjIwMCIgeTI9IjEwMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDkuIvmlrnlr7znur8gLS0+CiAgPGxpbmUgeDE9IjQwIiB5MT0iMTcwIiB4Mj0iMjAwIiB5Mj0iMTcwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIOeUtea1gUnmoIfms6ggLS0+CiAgPGxpbmUgeDE9IjYwIiB5MT0iMjUiIHgyPSI4MCIgeTI9IjI1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl9icmlkZ2UpIi8+CiAgPHRleHQgeD0iNjUiIHk9IjIwIiBmb250LXNpemU9IjEwIiBmb250LXN0eWxlPSJpdGFsaWMiPkk8L3RleHQ+Cjwvc3ZnPg==)
+
+![图1.1-2](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTIwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDUyMCAyODAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyb3cxIiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI2IiByZWZYPSI3IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCA4LDMgMCw2IiBmaWxsPSIjMzMzIi8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CiAgPCEtLSDnlLXot6/nmoTln7rmnKzmnoTmiJDnpLrmhI/lm74gLS0+CiAgPCEtLSDkuIrmlrnoioLngrkgLS0+CiAgPGNpcmNsZSBjeD0iMjYwIiBjeT0iMzAiIHI9IjMiIGZpbGw9IiMzMzMiLz4KICA8dGV4dCB4PSIyNjUiIHk9IjI1IiBmb250LXNpemU9IjExIiBmaWxsPSIjNjY2Ij7ikaA8L3RleHQ+CgogIDwhLS0g5bem5pSv6Lev77ya55S15Y6L5rqQIC0tPgogIDxsaW5lIHgxPSIyNjAiIHkxPSIzMCIgeDI9IjEwMCIgeTI9IjMwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIxMDAiIHkxPSIzMCIgeDI9IjEwMCIgeTI9IjgyIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMTgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iOTAiIHk9Ijk2IiBmb250LXNpemU9IjExIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjkwIiB5PSIxMTAiIGZvbnQtc2l6ZT0iMTEiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSI2MCIgeT0iMTA1IiBmb250LXNpemU9IjExIiBmaWxsPSIjNjY2Ij7nlLXljovmupA8L3RleHQ+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjExOCIgeDI9IjEwMCIgeTI9IjE1NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDkuK3pl7TmlK/ot68x77ya55S16Zi7IC0tPgogIDxsaW5lIHgxPSIyNjAiIHkxPSIzMCIgeDI9IjI2MCIgeTI9IjYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjI0NSIgeT0iNjAiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIyNTAiIHk9IjkwIiBmb250LXNpemU9IjExIj5SPC90ZXh0PgogIDx0ZXh0IHg9IjIyNSIgeT0iODUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPueUtemYuzwvdGV4dD4KICA8bGluZSB4MT0iMjYwIiB5MT0iMTEwIiB4Mj0iMjYwIiB5Mj0iMTU1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIOS4remXtOaUr+i3rzLvvJrnlLXlrrkgLS0+CiAgPGxpbmUgeDE9IjM0MCIgeTE9IjMwIiB4Mj0iMzQwIiB5Mj0iMTAwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzMjUiIHkxPSIxMDAiIHgyPSIzNTUiIHkyPSIxMDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8bGluZSB4MT0iMzI1IiB5MT0iMTEwIiB4Mj0iMzU1IiB5Mj0iMTEwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMi41Ii8+CiAgPGxpbmUgeDE9IjM0MCIgeTE9IjExMCIgeDI9IjM0MCIgeTI9IjE1NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIzNjAiIHk9IjEwOCIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzY2NiI+55S15a65PC90ZXh0PgoKICA8IS0tIOWPs+aUr+i3r++8muWPl+aOp+eUtea1gea6kO+8iOiPseW9ou+8iSAtLT4KICA8bGluZSB4MT0iMjYwIiB5MT0iMzAiIHgyPSI0NDAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iNDQwIiB5MT0iMzAiIHgyPSI0NDAiIHkyPSI3MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjQ0MCw3MCA0NjAsMTAwIDQ0MCwxMzAgNDIwLDEwMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iNDQwIiB5MT0iODAiIHgyPSI0NDAiIHkyPSIxMjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiIG1hcmtlci1lbmQ9InVybCgjYXJyb3cxKSIvPgogIDx0ZXh0IHg9IjQ2NSIgeT0iMTA1IiBmb250LXNpemU9IjExIiBmaWxsPSIjNjY2Ij7lj5fmjqc8L3RleHQ+CiAgPHRleHQgeD0iNDY1IiB5PSIxMTgiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM2NjYiPueUtea1gea6kDwvdGV4dD4KICA8bGluZSB4MT0iNDQwIiB5MT0iMTMwIiB4Mj0iNDQwIiB5Mj0iMTU1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIOS4i+aWueWFrOWFseWvvOe6vyAtLT4KICA8bGluZSB4MT0iMTAwIiB5MT0iMTU1IiB4Mj0iNDQwIiB5Mj0iMTU1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxjaXJjbGUgY3g9IjI2MCIgY3k9IjE1NSIgcj0iMyIgZmlsbD0iIzMzMyIvPgogIDx0ZXh0IHg9IjI2NSIgeT0iMTcwIiBmb250LXNpemU9IjExIiBmaWxsPSIjNjY2Ij7ikaE8L3RleHQ+CgogIDwhLS0g5bem5LiL77ya54us56uL55S15Y6L5rqQIC0tPgogIDxsaW5lIHgxPSIxMDAiIHkxPSIxNTUiIHgyPSIxMDAiIHkyPSIxOTciIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGNpcmNsZSBjeD0iMTAwIiBjeT0iMjE1IiByPSIxOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI5MCIgeT0iMjExIiBmb250LXNpemU9IjExIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjkwIiB5PSIyMjUiIGZvbnQtc2l6ZT0iMTEiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSIzNSIgeT0iMjIwIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY2Ij7ni6znq4vnlLXljovmupA8L3RleHQ+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjIzMyIgeDI9IjEwMCIgeTI9IjI2MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMTAwIiB5MT0iMjYwIiB4Mj0iMjYwIiB5Mj0iMjYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIOWPs+S4i++8mueLrOeri+eUtea1gea6kCAtLT4KICA8bGluZSB4MT0iNDQwIiB5MT0iMTU1IiB4Mj0iNDQwIiB5Mj0iMTk3IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxjaXJjbGUgY3g9IjQ0MCIgY3k9IjIxNSIgcj0iMTgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjQ0MCIgeTE9IjIwMCIgeDI9IjQ0MCIgeTI9IjIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIgbWFya2VyLWVuZD0idXJsKCNhcnJvdzEpIi8+CiAgPHRleHQgeD0iNDY1IiB5PSIyMjAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPueLrOerizwvdGV4dD4KICA8dGV4dCB4PSI0NjUiIHk9IjIzMyIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzY2NiI+55S15rWB5rqQPC90ZXh0PgogIDxsaW5lIHgxPSI0NDAiIHkxPSIyMzMiIHgyPSI0NDAiIHkyPSIyNjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjI2MCIgeTE9IjI2MCIgeDI9IjQ0MCIgeTI9IjI2MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDmoIfms6ggLS0+CiAgPHRleHQgeD0iMTUwIiB5PSIxNSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+55S16Lev55qE5Z+65pys5p6E5oiQPC90ZXh0Pgo8L3N2Zz4=)
+
+![图1.1-3](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTIwIiBoZWlnaHQ9IjE0MCIgdmlld0JveD0iMCAwIDUyMCAxNDAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX2VsZW0iIG1hcmtlcldpZHRoPSI4IiBtYXJrZXJIZWlnaHQ9IjYiIHJlZlg9IjciIHJlZlk9IjMiIG9yaWVudD0iYXV0byI+CiAgICAgIDxwb2x5Z29uIHBvaW50cz0iMCwwIDgsMyAwLDYiIGZpbGw9IiMzMzMiLz4KICAgIDwvbWFya2VyPgogIDwvZGVmcz4KICA8IS0tIOeLrOeri+eUteWOi+a6kCAtLT4KICA8dGV4dCB4PSIxMCIgeT0iMTUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM2NjYiPueLrOeri+eUteWOi+a6kDwvdGV4dD4KICA8bGluZSB4MT0iNDAiIHkxPSIzMCIgeDI9IjQwIiB5Mj0iNTUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGNpcmNsZSBjeD0iNDAiIGN5PSI4MCIgcj0iMTYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMzMiIHk9Ijc3IiBmb250LXNpemU9IjExIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjMzIiB5PSI5MCIgZm9udC1zaXplPSIxMSI+4oiSPC90ZXh0PgogIDxsaW5lIHgxPSI0MCIgeTE9Ijk2IiB4Mj0iNDAiIHkyPSIxMjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0g55S16Zi7IC0tPgogIDx0ZXh0IHg9IjE0MCIgeT0iMTUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM2NjYiPueUtemYuzwvdGV4dD4KICA8bGluZSB4MT0iMTcwIiB5MT0iMzAiIHgyPSIxNzAiIHkyPSI1NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIxNTUiIHk9IjU1IiB3aWR0aD0iMzAiIGhlaWdodD0iNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTYzIiB5PSI4NSIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiPlI8L3RleHQ+CiAgPGxpbmUgeDE9IjE3MCIgeTE9IjEwNSIgeDI9IjE3MCIgeTI9IjEyMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDnlLXlrrkgLS0+CiAgPHRleHQgeD0iMjcwIiB5PSIxNSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzY2NiI+55S15a65PC90ZXh0PgogIDxsaW5lIHgxPSIzMDAiIHkxPSIzMCIgeDI9IjMwMCIgeTI9IjY1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIyODMiIHkxPSI2NSIgeDI9IjMxNyIgeTI9IjY1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMi41Ii8+CiAgPGxpbmUgeDE9IjI4MyIgeTE9IjgwIiB4Mj0iMzE3IiB5Mj0iODAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8bGluZSB4MT0iMzAwIiB5MT0iODAiIHgyPSIzMDAiIHkyPSIxMjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMzIyIiB5PSI3NyIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiPkM8L3RleHQ+CgogIDwhLS0g55S15oSfIC0tPgogIDx0ZXh0IHg9IjM5MCIgeT0iMTUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM2NjYiPueUteaEnzwvdGV4dD4KICA8bGluZSB4MT0iNDIwIiB5MT0iMzAiIHgyPSI0MjAiIHkyPSI1MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cGF0aCBkPSJNNDIwLDUwIEM0MzUsNTAgNDM1LDYyIDQyMCw2MiBDNDA1LDYyIDQwNSw3NCA0MjAsNzQgQzQzNSw3NCA0MzUsODYgNDIwLDg2IEM0MDUsODYgNDA1LDk4IDQyMCw5OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iNDIwIiB5MT0iOTgiIHgyPSI0MjAiIHkyPSIxMjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iNDM1IiB5PSI3NyIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiPkw8L3RleHQ+Cjwvc3ZnPg==)
+
+
+
+
+
+
+
+## 二、电流和电压的参考方向
+
+### 电流的参考方向
+**定义：** 单位时间内通过导体横截面的电荷量，即 $i = rac{dq}{dt}$。电流的方向规定为正电荷移动的方向。
+
+**电流方向的表示方式：**
+- **箭头表示：** 在导线上画箭头，箭头方向表示假设的电流参考方向
+- **角标表示：** 用 $i_{ab}$ 表示电流参考方向从 a 流向 b
+- **极性表示：** 用电压的参考极性 "+"、"-" 表示
+- **电位表示：** 用 $u_{ab} = arphi_a - arphi_b$ 表示电位差
+
+### 电压的参考方向
+**定义：** 电场力将单位正电荷从 a 点移动到 b 点所做的功，即 $u = rac{dw}{dq}$。
+
+**电压与电位差的关系：** $u_{ab} = arphi_a - arphi_b$，即两点间的电压等于这两点电位之差。
+
+**海拔类比：** 电位差类似于海拔高度差。电位的参考点（零电位点）类似于海拔的参考面（海平面）。选择不同的参考点，各点的电位值不同，但两点之间的电位差（电压）保持不变。
+
+### 关联与非关联参考方向
+**关联参考方向：** 对于某一电路元件，若 $u$、$i$ 的参考方向相同（电流从电压正极流入），则称参考方向为关联参考方向。
+
+**非关联参考方向：** 若 $u$、$i$ 的参考方向相反，则称参考方向为非关联参考方向。
+
+**重要说明：**
+1. 参考方向是假设方向，不会影响实际情况；若假设方向与实际方向相同，则计算结果必为正值；若相反，则结果为负值，正负号表达的是方向的信息
+2. 符号必须与参考方向结合起来看才有意义。若不指定参考方向，单纯说电流是-2A没有意义
+3. $i_{ab}=5A$ 与 $i_{ba}=-5A$ 完全等价，没有区别
+
+**电路图示：**
+
+
+<div class="circuit-diagram">
+<svg width="520" height="100" viewBox="0 0 520 100">
+  <defs>
+    <marker id="arr_ref" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 例1: I=2A -->
+  <text x="10" y="15" font-size="10" fill="#666">I = 2A</text>
+  <line x1="40" y1="25" x2="40" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="25" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="40" y1="75" x2="40" y2="95" stroke="#333" stroke-width="2"/>
+  <line x1="50" y1="35" x2="50" y2="65" stroke="#333" stroke-width="1.5" marker-end="url(#arr_ref)"/>
+  <text x="55" y="30" font-size="10">a</text>
+  <text x="55" y="85" font-size="10">b</text>
+
+  <!-- 例2: I=3A -->
+  <text x="120" y="15" font-size="10" fill="#666">I = 3A</text>
+  <line x1="150" y1="25" x2="150" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="135" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="75" x2="150" y2="95" stroke="#333" stroke-width="2"/>
+  <line x1="160" y1="35" x2="160" y2="65" stroke="#333" stroke-width="1.5" marker-end="url(#arr_ref)"/>
+  <text x="165" y="30" font-size="10">a</text>
+  <text x="165" y="85" font-size="10">b</text>
+
+  <!-- 例3: i_ab=2A -->
+  <text x="230" y="15" font-size="10" fill="#666">i<tspan baseline-shift="sub" font-size="10">ab</tspan> = 2A</text>
+  <line x1="260" y1="25" x2="260" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="245" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="260" y1="75" x2="260" y2="95" stroke="#333" stroke-width="2"/>
+  <line x1="270" y1="35" x2="270" y2="65" stroke="#333" stroke-width="1.5" marker-end="url(#arr_ref)"/>
+
+  <!-- 例4: i=-5A -->
+  <text x="340" y="15" font-size="10" fill="#666">i = −5A</text>
+  <line x1="370" y1="25" x2="370" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="355" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="370" y1="75" x2="370" y2="95" stroke="#333" stroke-width="2"/>
+  <line x1="380" y1="35" x2="380" y2="65" stroke="#333" stroke-width="1.5" marker-end="url(#arr_ref)"/>
+
+  <!-- 例5: i=5A -->
+  <text x="440" y="15" font-size="10" fill="#666">i = 5A</text>
+  <line x1="470" y1="25" x2="470" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="455" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="470" y1="75" x2="470" y2="95" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="35" x2="480" y2="65" stroke="#333" stroke-width="1.5" marker-end="url(#arr_ref)"/>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="520" height="100" viewBox="0 0 520 100">
+  <!-- 例1: 5V -->
+  <text x="10" y="15" font-size="10" fill="#666">5V</text>
+  <line x1="40" y1="25" x2="40" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="25" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="40" y1="75" x2="40" y2="95" stroke="#333" stroke-width="2"/>
+  <text x="15" y="42" font-size="11">+</text>
+  <text x="15" y="82" font-size="11">−</text>
+
+  <!-- 例2: u_ab=5V -->
+  <text x="110" y="15" font-size="10" fill="#666">u<tspan baseline-shift="sub" font-size="10">ab</tspan> = 5V</text>
+  <line x1="140" y1="25" x2="140" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="125" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="140" y1="75" x2="140" y2="95" stroke="#333" stroke-width="2"/>
+  <text x="115" y="42" font-size="11">+</text>
+  <text x="115" y="82" font-size="11">−</text>
+
+  <!-- 例3: u_ab=7V -->
+  <text x="210" y="15" font-size="10" fill="#666">u<tspan baseline-shift="sub" font-size="10">ab</tspan> = 7V</text>
+  <line x1="240" y1="25" x2="240" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="225" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="240" y1="75" x2="240" y2="95" stroke="#333" stroke-width="2"/>
+  <text x="215" y="42" font-size="11">+</text>
+  <text x="215" y="82" font-size="11">−</text>
+
+  <!-- 例4: u=-5V -->
+  <text x="310" y="15" font-size="10" fill="#666">u = −5V</text>
+  <line x1="340" y1="25" x2="340" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="325" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="75" x2="340" y2="95" stroke="#333" stroke-width="2"/>
+  <text x="315" y="42" font-size="11">+</text>
+  <text x="315" y="82" font-size="11">−</text>
+
+  <!-- 例5: u=5V -->
+  <text x="410" y="15" font-size="10" fill="#666">u = 5V</text>
+  <line x1="440" y1="25" x2="440" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="425" y="45" width="30" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="440" y1="75" x2="440" y2="95" stroke="#333" stroke-width="2"/>
+  <text x="415" y="42" font-size="11">+</text>
+  <text x="415" y="82" font-size="11">−</text>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="400" height="160" viewBox="0 0 400 160">
+  <defs>
+    <marker id="arr_ex" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 电路图：50V电源 + 1Ω电阻 + 20Ω电阻 + 30V电源 -->
+  <!-- 左侧50V电压源 -->
+  <line x1="50" y1="30" x2="50" y2="50" stroke="#333" stroke-width="2"/>
+  <circle cx="50" cy="75" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="40" y="72" font-size="10">+</text>
+  <text x="40" y="85" font-size="10">−</text>
+  <text x="15" y="78" font-size="11">50V</text>
+  <line x1="50" y1="91" x2="50" y2="130" stroke="#333" stroke-width="2"/>
+
+  <!-- 上方导线 -->
+  <line x1="50" y1="30" x2="150" y2="30" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="30" x2="150" y2="50" stroke="#333" stroke-width="2"/>
+
+  <!-- 1Ω电阻 -->
+  <rect x="135" y="50" width="30" height="40" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="142" y="75" font-size="11">1Ω</text>
+
+  <line x1="150" y1="90" x2="150" y2="130" stroke="#333" stroke-width="2"/>
+
+  <!-- 右侧30V电压源 -->
+  <line x1="250" y1="30" x2="250" y2="59" stroke="#333" stroke-width="2"/>
+  <circle cx="250" cy="75" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="240" y="72" font-size="10">+</text>
+  <text x="240" y="85" font-size="10">−</text>
+  <text x="270" y="78" font-size="11">30V</text>
+  <line x1="250" y1="91" x2="250" y2="130" stroke="#333" stroke-width="2"/>
+
+  <!-- 上方连接 -->
+  <line x1="150" y1="30" x2="250" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- 20Ω电阻（下方） -->
+  <line x1="150" y1="130" x2="250" y2="130" stroke="#333" stroke-width="2"/>
+  <rect x="175" y="120" width="50" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="188" y="135" font-size="11">20Ω</text>
+
+  <!-- 电流箭头 -->
+  <line x1="100" y1="25" x2="130" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arr_ex)"/>
+  <text x="105" y="20" font-size="10" font-style="italic">I</text>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="400" height="180" viewBox="0 0 400 180">
+  <!-- 电路：-10V电源, 2kΩ, 6kΩ, 4kΩ, 10V电源, 开关S, A点 -->
+  <!-- 左侧-10V -->
+  <text x="50" y="15" font-size="11">−10V</text>
+  <line x1="60" y1="20" x2="60" y2="40" stroke="#333" stroke-width="2"/>
+  <rect x="47" y="40" width="26" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="50" y="62" font-size="10">2kΩ</text>
+  <line x1="60" y1="75" x2="60" y2="100" stroke="#333" stroke-width="2"/>
+
+  <!-- 开关S -->
+  <line x1="60" y1="100" x2="80" y2="100" stroke="#333" stroke-width="2"/>
+  <line x1="80" y1="100" x2="95" y2="88" stroke="#333" stroke-width="2"/>
+  <circle cx="98" cy="100" r="3" fill="none" stroke="#333" stroke-width="1.5"/>
+  <text x="80" y="82" font-size="10" fill="#666">S</text>
+
+  <!-- 6kΩ电阻 -->
+  <line x1="100" y1="100" x2="130" y2="100" stroke="#333" stroke-width="2"/>
+  <rect x="130" y="88" width="50" height="24" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="143" y="105" font-size="10">6kΩ</text>
+  <line x1="180" y1="100" x2="220" y2="100" stroke="#333" stroke-width="2"/>
+
+  <!-- A点 -->
+  <circle cx="220" cy="100" r="3" fill="#333"/>
+  <text x="225" y="95" font-size="11" font-weight="bold">A</text>
+
+  <!-- 右侧10V -->
+  <line x1="220" y1="100" x2="280" y2="100" stroke="#333" stroke-width="2"/>
+  <line x1="280" y1="100" x2="280" y2="60" stroke="#333" stroke-width="2"/>
+  <rect x="267" y="60" width="26" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="270" y="82" font-size="10">4kΩ</text>
+  <line x1="280" y1="60" x2="280" y2="40" stroke="#333" stroke-width="2"/>
+  <circle cx="280" cy="25" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="272" y="22" font-size="12">+</text>
+  <text x="272" y="33" font-size="12">−</text>
+  <text x="296" y="28" font-size="11">10V</text>
+
+  <!-- 上方导线 -->
+  <line x1="60" y1="20" x2="280" y2="20" stroke="#333" stroke-width="2"/>
+  <line x1="280" y1="13" x2="280" y2="20" stroke="#333" stroke-width="2"/>
+
+  <!-- 下方接地 -->
+  <line x1="60" y1="100" x2="60" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="40" y1="130" x2="80" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="47" y1="135" x2="73" y2="135" stroke="#333" stroke-width="1.5"/>
+  <line x1="52" y1="140" x2="68" y2="140" stroke="#333" stroke-width="1"/>
+</svg>
+</div>
+
+
+## 三、电功率和能量
+
+**电功率的定义：** 电场力做功的速率，即 $p = rac{dw}{dt} = ui$。
+
+**功率计算公式：**
+- **关联参考方向：** $p = ui$（$p>0$ 表示吸收功率，$p<0$ 表示发出功率）
+- **非关联参考方向：** $p = -ui$（$p>0$ 表示发出功率，$p<0$ 表示吸收功率）
+
+**功率平衡验算：** 在求解电路以后，核对电路中所有元件的功率平衡，即一部分元件发出的总功率应等于其他元件吸收的总功率。
+
+**能量计算：**
+$$w = \int_{t_0}^{t} p \, dt$$
+
+
+
+![图1.3-1](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDM1MCAxNTAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX3B3ciIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iNiIgcmVmWD0iNyIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj4KICAgICAgPHBvbHlnb24gcG9pbnRzPSIwLDAgOCwzIDAsNiIgZmlsbD0iIzMzMyIvPgogICAgPC9tYXJrZXI+CiAgPC9kZWZzPgogIDwhLS0gTkHnvZHnu5wgLS0+CiAgPHJlY3QgeD0iMjAiIHk9IjMwIiB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiNmM2YwZmYiIHN0cm9rZT0iIzZiMjFhOCIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9IjQ1IiB5PSI3NSIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM2YjIxYTgiPk48dHNwYW4gYmFzZWxpbmUtc2hpZnQ9InN1YiIgZm9udC1zaXplPSIxMSI+QTwvdHNwYW4+PC90ZXh0PgogIDwhLS0gTkLnvZHnu5wgLS0+CiAgPHJlY3QgeD0iMjAwIiB5PSIzMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjNmMGZmIiBzdHJva2U9IiM2YjIxYTgiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSIyMjUiIHk9Ijc1IiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzZiMjFhOCI+Tjx0c3BhbiBiYXNlbGluZS1zaGlmdD0ic3ViIiBmb250LXNpemU9IjExIj5CPC90c3Bhbj48L3RleHQ+CiAgPCEtLSDov57mjqXnur8gLS0+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjUwIiB4Mj0iMjAwIiB5Mj0iNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjEwMCIgeDI9IjIwMCIgeTI9IjEwMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8IS0tIOeUteWOi+agh+azqCAtLT4KICA8dGV4dCB4PSIxNDAiIHk9IjQ1IiBmb250LXNpemU9IjExIiBmaWxsPSIjMzMzIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjE0MCIgeT0iMTE1IiBmb250LXNpemU9IjExIiBmaWxsPSIjMzMzIj7iiJI8L3RleHQ+CiAgPHRleHQgeD0iMTQ1IiB5PSI4MCIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzMzMyIgZm9udC1zdHlsZT0iaXRhbGljIj5VPC90ZXh0PgogIDwhLS0g55S15rWB5qCH5rOoIC0tPgogIDxsaW5lIHgxPSIxMzAiIHkxPSI0MyIgeDI9IjE2MCIgeTI9IjQzIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl9wd3IpIi8+CiAgPHRleHQgeD0iMTM1IiB5PSIzOCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzMzMyIgZm9udC1zdHlsZT0iaXRhbGljIj5JPC90ZXh0Pgo8L3N2Zz4=)
+
+![图1.3-2](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDQwMCAxNTAiPgogIDwhLS0g5YWt5Liq5YWD5Lu2QS1GIC0tPgogIDxyZWN0IHg9IjIwIiB5PSI0MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZGJlYWZlIiBzdHJva2U9IiMzYjgyZjYiIHN0cm9rZS13aWR0aD0iMiIgcng9IjMiLz4KICA8dGV4dCB4PSIzMyIgeT0iNjUiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIj5BPC90ZXh0PgogIDx0ZXh0IHg9IjE1IiB5PSI5NSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiI+ODBWPC90ZXh0PgoKICA8cmVjdCB4PSI4MCIgeT0iNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2RiZWFmZSIgc3Ryb2tlPSIjM2I4MmY2IiBzdHJva2Utd2lkdGg9IjIiIHJ4PSIzIi8+CiAgPHRleHQgeD0iOTMiIHk9IjY1IiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCI+QjwvdGV4dD4KCiAgPHJlY3QgeD0iMTQwIiB5PSIxMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZmNlN2YzIiBzdHJva2U9IiNlYzQ4OTkiIHN0cm9rZS13aWR0aD0iMiIgcng9IjMiLz4KICA8dGV4dCB4PSIxNTMiIHk9IjM1IiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCI+QzwvdGV4dD4KICA8dGV4dCB4PSIxMzUiIHk9IjY1IiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2Ij7iiJIyMFYrPC90ZXh0PgoKICA8cmVjdCB4PSIyMjAiIHk9IjQwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNkYmVhZmUiIHN0cm9rZT0iIzNiODJmNiIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iMyIvPgogIDx0ZXh0IHg9IjIzMyIgeT0iNjUiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIj5EPC90ZXh0PgogIDx0ZXh0IHg9IjIxMCIgeT0iOTUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPjEzMFY8L3RleHQ+CgogIDxyZWN0IHg9IjMwMCIgeT0iNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2RiZWFmZSIgc3Ryb2tlPSIjM2I4MmY2IiBzdHJva2Utd2lkdGg9IjIiIHJ4PSIzIi8+CiAgPHRleHQgeD0iMzEzIiB5PSI2NSIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiPkU8L3RleHQ+CgogIDxyZWN0IHg9IjIyMCIgeT0iMTEwIiB3aWR0aD0iNDAiIGhlaWdodD0iMzAiIGZpbGw9IiNmY2U3ZjMiIHN0cm9rZT0iI2VjNDg5OSIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iMyIvPgogIDx0ZXh0IHg9IjIzMyIgeT0iMTMwIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCI+RjwvdGV4dD4KICA8dGV4dCB4PSIyMTAiIHk9IjE1NSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiI+MzBWPC90ZXh0PgoKICA8IS0tIOi/nuaOpee6vyAtLT4KICA8bGluZSB4MT0iNjAiIHkxPSI2MCIgeDI9IjgwIiB5Mj0iNjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iNjAiIHgyPSIxNDAiIHkyPSI2MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIvPgogIDxsaW5lIHgxPSIxODAiIHkxPSI2MCIgeDI9IjIyMCIgeTI9IjYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPGxpbmUgeDE9IjI2MCIgeTE9IjYwIiB4Mj0iMzAwIiB5Mj0iNjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICA8bGluZSB4MT0iMjQwIiB5MT0iODAiIHgyPSIyNDAiIHkyPSIxMTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KCiAgPCEtLSDnlLXmtYHmoIfms6ggLS0+CiAgPHRleHQgeD0iNjAiIHk9IjM1IiBmb250LXNpemU9IjEyIiBmaWxsPSIjMzMzIj4xLjRBPC90ZXh0PgogIDx0ZXh0IHg9IjE1NSIgeT0iNSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzMzMyI+MC44QTwvdGV4dD4KICA8dGV4dCB4PSIyNjUiIHk9IjU1IiBmb250LXNpemU9IjEyIiBmaWxsPSIjMzMzIj4wLjVBPC90ZXh0PgogIDx0ZXh0IHg9IjMxMCIgeT0iMTA1IiBmb250LXNpemU9IjEyIiBmaWxsPSIjMzMzIj4wLjNBPC90ZXh0Pgo8L3N2Zz4=)
+
+![图1.3-3](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzUwIiBoZWlnaHQ9IjEzMCIgdmlld0JveD0iMCAwIDM1MCAxMzAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX3IiIG1hcmtlcldpZHRoPSI4IiBtYXJrZXJIZWlnaHQ9IjYiIHJlZlg9IjciIHJlZlk9IjMiIG9yaWVudD0iYXV0byI+CiAgICAgIDxwb2x5Z29uIHBvaW50cz0iMCwwIDgsMyAwLDYiIGZpbGw9IiMzMzMiLz4KICAgIDwvbWFya2VyPgogIDwvZGVmcz4KICA8IS0tIOeUtei3r++8mjHOqeeUtemYuywg55S15rWB5rqQMUEsIOeUteWOi1UsIOeUtemYu1IgLS0+CiAgPCEtLSDlt6bkvqcyQeeUtea1gSAtLT4KICA8dGV4dCB4PSIxMCIgeT0iMjAiIGZvbnQtc2l6ZT0iMTAiPjJBPC90ZXh0PgogIDxsaW5lIHgxPSIzMCIgeTE9IjI1IiB4Mj0iNTAiIHkyPSIyNSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyX3IpIi8+CgogIDwhLS0gMc6p55S16Zi7IC0tPgogIDxyZWN0IHg9IjU1IiB5PSIxNSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjIwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjY1IiB5PSIzMCIgZm9udC1zaXplPSIxMCI+Mc6pPC90ZXh0PgogIDxsaW5lIHgxPSI5NSIgeTE9IjI1IiB4Mj0iMTMwIiB5Mj0iMjUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0g55S15rWB5rqQMUEgLS0+CiAgPGNpcmNsZSBjeD0iMTUwIiBjeT0iMjUiIHI9IjE0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIxNTAiIHkxPSIxNSIgeDI9IjE1MCIgeTI9IjM1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl9yKSIvPgogIDx0ZXh0IHg9IjEzOCIgeT0iNDgiIGZvbnQtc2l6ZT0iMTAiPjFBPC90ZXh0PgogIDx0ZXh0IHg9IjE2NSIgeT0iMTUiIGZvbnQtc2l6ZT0iMTAiPuKIkiBVICs8L3RleHQ+CgogIDxsaW5lIHgxPSIxNjQiIHkxPSIyNSIgeDI9IjIwMCIgeTI9IjI1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIOeUtemYu1IgLS0+CiAgPHJlY3QgeD0iMjA1IiB5PSIxNSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjIwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjIxNSIgeT0iMzAiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtd2VpZ2h0PSJib2xkIj5SPC90ZXh0PgogIDxsaW5lIHgxPSIyNDUiIHkxPSIyNSIgeDI9IjI4MCIgeTI9IjI1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIElS5qCH5rOoIC0tPgogIDx0ZXh0IHg9IjIxNSIgeT0iNTUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPkk8dHNwYW4gYmFzZWxpbmUtc2hpZnQ9InN1YiIgZm9udC1zaXplPSIxMCI+UjwvdHNwYW4+PC90ZXh0PgoKICA8IS0tIOS4i+aWuei/nuaOpSAtLT4KICA8bGluZSB4MT0iMzAiIHkxPSIyNSIgeDI9IjMwIiB5Mj0iOTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjMwIiB5MT0iOTAiIHgyPSIyODAiIHkyPSI5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMjgwIiB5MT0iMjUiIHgyPSIyODAiIHkyPSI5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSAyQSAtLT4KICA8dGV4dCB4PSIxMzAiIHk9IjEwNSIgZm9udC1zaXplPSIxMCI+MkE8L3RleHQ+Cjwvc3ZnPg==)
+
+![图1.3-4](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDQwMCAxNjAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX2huIiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI2IiByZWZYPSI3IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCA4LDMgMCw2IiBmaWxsPSIjMzMzIi8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CiAgPCEtLSA1VueUteWOi+a6kCAtLT4KICA8bGluZSB4MT0iNDAiIHkxPSIzMCIgeDI9IjQwIiB5Mj0iNTkiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGNpcmNsZSBjeD0iNDAiIGN5PSI3NSIgcj0iMTYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMzAiIHk9IjcyIiBmb250LXNpemU9IjEwIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjMwIiB5PSI4NSIgZm9udC1zaXplPSIxMCI+4oiSPC90ZXh0PgogIDx0ZXh0IHg9IjEwIiB5PSI3OCIgZm9udC1zaXplPSIxMSI+NVY8L3RleHQ+CiAgPGxpbmUgeDE9IjQwIiB5MT0iOTEiIHgyPSI0MCIgeTI9IjE0MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDkuIrmlrnlr7znur8gLS0+CiAgPGxpbmUgeDE9IjQwIiB5MT0iMzAiIHgyPSIyMDAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSAyzqnnlLXpmLvvvIjlt6bvvIkgLS0+CiAgPGxpbmUgeDE9IjIwMCIgeTE9IjMwIiB4Mj0iMjAwIiB5Mj0iNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHJlY3QgeD0iMTg3IiB5PSI1MCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjM1IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjE5MSIgeT0iNzIiIGZvbnQtc2l6ZT0iMTAiPjLOqTwvdGV4dD4KICA8bGluZSB4MT0iMjAwIiB5MT0iODUiIHgyPSIyMDAiIHkyPSIxNDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gMs6p55S16Zi777yI5Y+z77yJIC0tPgogIDxsaW5lIHgxPSIyODAiIHkxPSIzMCIgeDI9IjI4MCIgeTI9IjUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjI2NyIgeT0iNTAiIHdpZHRoPSIyNiIgaGVpZ2h0PSIzNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIyNzEiIHk9IjcyIiBmb250LXNpemU9IjEwIj4yzqk8L3RleHQ+CiAgPGxpbmUgeDE9IjI4MCIgeTE9Ijg1IiB4Mj0iMjgwIiB5Mj0iMTQwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIOS4iuaWuei/nuaOpSAtLT4KICA8bGluZSB4MT0iMjAwIiB5MT0iMzAiIHgyPSIyODAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSAxzqnnlLXpmLvvvIjkuIvmlrnvvIkgLS0+CiAgPGxpbmUgeDE9IjIwMCIgeTE9IjE0MCIgeDI9IjI4MCIgeTI9IjE0MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIyMjciIHk9IjEzMCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjIwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjIzMSIgeT0iMTQ1IiBmb250LXNpemU9IjEwIj4xzqk8L3RleHQ+CgogIDwhLS0gM0HnlLXmtYHmupAgLS0+CiAgPGNpcmNsZSBjeD0iMzQwIiBjeT0iNzUiIHI9IjE0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzNDAiIHkxPSI2NSIgeDI9IjM0MCIgeTI9Ijg1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl9obikiLz4KICA8dGV4dCB4PSIzNjAiIHk9Ijc4IiBmb250LXNpemU9IjExIj4zQTwvdGV4dD4KCiAgPCEtLSDov57mjqXliLAzQSAtLT4KICA8bGluZSB4MT0iMjgwIiB5MT0iMzAiIHgyPSIzNDAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMzQwIiB5MT0iMzAiIHgyPSIzNDAiIHkyPSI2MSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMzQwIiB5MT0iODkiIHgyPSIzNDAiIHkyPSIxNDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjQwIiB5MT0iMTQwIiB4Mj0iMzQwIiB5Mj0iMTQwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4=)
+
+
+
+
+## 四、电路元件
+
+### 电阻元件
+- **欧姆定律：** $u = Ri$（关联参考方向）或 $u = -Ri$（非关联参考方向）
+- **电导：** $G = rac{1}{R}$，单位：西门子（S）
+- **线性时不变电阻：** $R$ 为常数
+- **非线性电阻：** $R$ 随 $u$ 或 $i$ 变化
+
+**电阻元件的特性：**
+1. 正电阻消耗功率（吸收能量），负电阻发出功率（提供能量）
+2. 电阻元件是无源元件，不能储存能量
+3. 电阻元件的电压和电流同时存在、同时消失
+4. 当题干以电阻的功率作为条件时，可能存在多解
+
+### 电压源与电流源
+**理想电压源：** 端口电压完全由其自身决定，与流过的电流及任何其他因素无关。其V/A特性为一条平行于电流轴的直线。
+
+**理想电流源：** 输出电流完全由其自身决定，与承受的电压及任何其他因素无关。其V/A特性为一条平行于电压轴的直线。
+
+**实际电压源：** 电压会随通过电流的增大而减小（因为有内阻存在）。
+
+**实际电流源：** 电流会随端口电压的增大而减小。
+
+**基本认识：**
+- 电压源短路 → 流过无穷大电流 → 破坏KCL → 不允许！
+- 电压源断路 → 无影响 → 可以断路
+- 电流源短路 → 无影响 → 可以短路
+- 电流源断路 → 两端电压无穷大 → 破坏KVL → 不允许！
+
+**相同/不同源的并联与串联：**
+- 相同的电压源并联 → 无穷多解（无意义）
+- 不同的电压源并联 → 无解（违反KVL）→ 不允许！
+- 相同的电流源串联 → 无穷多解（无意义）
+- 不同的电流源串联 → 无解（违反KCL）→ 不允许！
+
+### 受控源
+受控电源的电压或电流受电路中其他支路电压或电流的控制，不是独立的电源。
+
+**四种受控源类型：**
+- **VCVS（电压控制电压源）：** $u_2 = \mu u_1$，其中 $\mu$ 为电压增益
+- **VCCS（电压控制电流源）：** $i_2 = g u_1$，其中 $g$ 为转移电导
+- **CCVS（电流控制电压源）：** $u_2 = r i_1$，其中 $r$ 为转移电阻
+- **CCCS（电流控制电流源）：** $i_2 = eta i_1$，其中 $eta$ 为电流增益
+
+
+
+![图1.4-1.7-1](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDUyMCAxODAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyMiIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iNiIgcmVmWD0iNyIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj4KICAgICAgPHBvbHlnb24gcG9pbnRzPSIwLDAgOCwzIDAsNiIgZmlsbD0iIzMzMyIvPgogICAgPC9tYXJrZXI+CiAgPC9kZWZzPgogIDwhLS0g5bem5L6n77ya55S16Zi755S16Lev5Zu+IC0tPgogIDx0ZXh0IHg9IjMwIiB5PSIxNSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiI+55S16Zi75YWD5Lu2PC90ZXh0PgogIDwhLS0g5a+857q/IC0tPgogIDxsaW5lIHgxPSIyMCIgeTE9IjcwIiB4Mj0iNzAiIHkyPSI3MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxNSIgeT0iNjUiIGZvbnQtc2l6ZT0iMTIiPis8L3RleHQ+CiAgPCEtLSDnlLXpmLvnrKblj7fvvIjplK/pvb/lvaLvvIkgLS0+CiAgPHBvbHlsaW5lIHBvaW50cz0iNzAsNzAgNzgsNTUgODYsODUgOTQsNTUgMTAyLDg1IDExMCw1NSAxMTgsODUgMTI2LDcwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9Ijg4IiB5PSI1MCIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiPlI8L3RleHQ+CiAgPCEtLSDlr7znur8gLS0+CiAgPGxpbmUgeDE9IjEyNiIgeTE9IjcwIiB4Mj0iMTgwIiB5Mj0iNzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTg1IiB5PSI2NSIgZm9udC1zaXplPSIxMiI+4oiSPC90ZXh0PgogIDwhLS0g55S15rWB566t5aS0IC0tPgogIDxsaW5lIHgxPSI0MCIgeTE9Ijg1IiB4Mj0iNjUiIHkyPSI4NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIgbWFya2VyLWVuZD0idXJsKCNhcnIyKSIvPgogIDx0ZXh0IHg9IjQ1IiB5PSIxMDAiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtc3R5bGU9Iml0YWxpYyI+aTwvdGV4dD4KICA8IS0tIOWFrOW8jyAtLT4KICA8dGV4dCB4PSI1NSIgeT0iMTMwIiBmb250LXNpemU9IjEzIiBmaWxsPSIjMzMzIj51ID0gUmnvvIjlhbPogZTlj4LogIPmlrnlkJHvvIk8L3RleHQ+CgogIDwhLS0g5Y+z5L6n77yadS1p5LyP5a6J54m55oCn5puy57q/IC0tPgogIDx0ZXh0IHg9IjI4MCIgeT0iMTUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPuS8j+WuieeJueaAp+absue6v++8iFYvQeeJueaAp++8iTwvdGV4dD4KICA8IS0tIOWdkOagh+i9tCAtLT4KICA8bGluZSB4MT0iMzEwIiB5MT0iMzAiIHgyPSIzMTAiIHkyPSIxNjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICA8bGluZSB4MT0iMzEwIiB5MT0iOTUiIHgyPSI0OTAiIHkyPSI5NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIvPgogIDwhLS0g566t5aS0IC0tPgogIDxwb2x5Z29uIHBvaW50cz0iMzEwLDI4IDMwNiwzOCAzMTQsMzgiIGZpbGw9IiMzMzMiLz4KICA8cG9seWdvbiBwb2ludHM9IjQ5Miw5NSA0ODIsOTEgNDgyLDk5IiBmaWxsPSIjMzMzIi8+CiAgPCEtLSDovbTmoIfnrb4gLS0+CiAgPHRleHQgeD0iMjk4IiB5PSIyNSIgZm9udC1zaXplPSIxMiIgZm9udC1zdHlsZT0iaXRhbGljIj51PC90ZXh0PgogIDx0ZXh0IHg9IjQ5NSIgeT0iMTAwIiBmb250LXNpemU9IjEyIiBmb250LXN0eWxlPSJpdGFsaWMiPmk8L3RleHQ+CiAgPCEtLSB1PVJp55u057q/77yI6L+H5Y6f54K577yM5pac546H5Li65q2j77yJIC0tPgogIDxsaW5lIHgxPSIzMTAiIHkxPSI5NSIgeDI9IjQ3MCIgeTI9IjQwIiBzdHJva2U9IiNlNzRjM2MiIHN0cm9rZS13aWR0aD0iMi41Ii8+CiAgPCEtLSDmoIfms6ggLS0+CiAgPHRleHQgeD0iNDMwIiB5PSI1NSIgZm9udC1zaXplPSIxMiIgZmlsbD0iI2U3NGMzYyIgZm9udC13ZWlnaHQ9ImJvbGQiPnUgPSBSaTwvdGV4dD4KICA8IS0tIFVz5qCH5rOoIC0tPgogIDxsaW5lIHgxPSIzMTAiIHkxPSI5NSIgeDI9IjMxMCIgeTI9IjU1IiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLWRhc2hhcnJheT0iNCwzIi8+CiAgPHRleHQgeD0iMjgwIiB5PSI1NSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzk5OSI+VTx0c3BhbiBiYXNlbGluZS1zaGlmdD0ic3ViIiBmb250LXNpemU9IjExIj5zPC90c3Bhbj48L3RleHQ+Cjwvc3ZnPg==)
+
+![图1.4-1.7-2](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTIwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDUyMCAxMDAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyXzE2IiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI2IiByZWZYPSI3IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCA4LDMgMCw2IiBmaWxsPSIjMzMzIi8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CiAgPCEtLSAoYSkgNc6p55S16Zi7IC0tPgogIDx0ZXh0IHg9IjEwIiB5PSIxNSIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzY2NiI+KGEpPC90ZXh0PgogIDxsaW5lIHgxPSIzMCIgeTE9IjI1IiB4Mj0iNTAiIHkyPSIyNSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSI1MCIgeT0iMTUiIHdpZHRoPSI0MCIgaGVpZ2h0PSIyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI2MCIgeT0iMzAiIGZvbnQtc2l6ZT0iMTAiPjXOqTwvdGV4dD4KICA8bGluZSB4MT0iOTAiIHkxPSIyNSIgeDI9IjExMCIgeTI9IjI1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjI1IiB5PSIyMiIgZm9udC1zaXplPSIxMCI+KzwvdGV4dD4KICA8dGV4dCB4PSIxMTIiIHk9IjIyIiBmb250LXNpemU9IjEwIj7iiJI8L3RleHQ+CiAgPGxpbmUgeDE9IjQwIiB5MT0iNDAiIHgyPSI2MCIgeTI9IjQwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl8xNikiLz4KICA8dGV4dCB4PSI0MiIgeT0iNTUiIGZvbnQtc2l6ZT0iMTAiPjJBPC90ZXh0PgoKICA8IS0tIChiKSAxNVbnlLXljovmupAgLS0+CiAgPHRleHQgeD0iMTUwIiB5PSIxNSIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzY2NiI+KGIpPC90ZXh0PgogIDxsaW5lIHgxPSIxNzAiIHkxPSIyNSIgeDI9IjE5MCIgeTI9IjI1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxjaXJjbGUgY3g9IjIxMCIgY3k9IjI1IiByPSIxNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIyMDAiIHk9IjIyIiBmb250LXNpemU9IjEyIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjIwMCIgeT0iMzIiIGZvbnQtc2l6ZT0iMTIiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSIxOTYiIHk9IjUwIiBmb250LXNpemU9IjEwIj4xNVY8L3RleHQ+CiAgPGxpbmUgeDE9IjIyNCIgeTE9IjI1IiB4Mj0iMjQ0IiB5Mj0iMjUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gKGMpIDJB55S15rWB5rqQIC0tPgogIDx0ZXh0IHg9IjI4MCIgeT0iMTUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPihjKTwvdGV4dD4KICA8bGluZSB4MT0iMzAwIiB5MT0iMjUiIHgyPSIzMjAiIHkyPSIyNSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8Y2lyY2xlIGN4PSIzNDAiIGN5PSIyNSIgcj0iMTQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjM0MCIgeTE9IjE1IiB4Mj0iMzQwIiB5Mj0iMzUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiIG1hcmtlci1lbmQ9InVybCgjYXJyXzE2KSIvPgogIDx0ZXh0IHg9IjM1OCIgeT0iMjgiIGZvbnQtc2l6ZT0iMTAiPjJBPC90ZXh0PgogIDxsaW5lIHgxPSIzNTQiIHkxPSIyNSIgeDI9IjM3NCIgeTI9IjI1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjI5NSIgeT0iMjIiIGZvbnQtc2l6ZT0iMTAiPis8L3RleHQ+CiAgPHRleHQgeD0iMzc2IiB5PSIyMiIgZm9udC1zaXplPSIxMCI+4oiSPC90ZXh0Pgo8L3N2Zz4=)
+
+![图1.4-1.7-3](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzUwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDM1MCAxNjAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX3JhdGlvIiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI2IiByZWZYPSI3IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCA4LDMgMCw2IiBmaWxsPSIjMzMzIi8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CiAgPCEtLSAxNUHnlLXmtYHmupAgLS0+CiAgPGNpcmNsZSBjeD0iNDAiIGN5PSI1MCIgcj0iMTQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjQwIiB5MT0iNDAiIHgyPSI0MCIgeTI9IjYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl9yYXRpbykiLz4KICA8dGV4dCB4PSI1OCIgeT0iNTQiIGZvbnQtc2l6ZT0iMTEiPjE1QTwvdGV4dD4KICA8bGluZSB4MT0iNDAiIHkxPSIzMCIgeDI9IjQwIiB5Mj0iMzYiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjQwIiB5MT0iNjQiIHgyPSI0MCIgeTI9IjEzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDkuIrmlrnlr7znur8gLS0+CiAgPGxpbmUgeDE9IjQwIiB5MT0iMzAiIHgyPSIyMDAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSBSMT0xzqkgLS0+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjMwIiB4Mj0iMTIwIiB5Mj0iNDUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHJlY3QgeD0iMTA3IiB5PSI0NSIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjExMCIgeT0iNjUiIGZvbnQtc2l6ZT0iMTAiPjHOqTwvdGV4dD4KICA8dGV4dCB4PSI5NSIgeT0iNjUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPlLigoE8L3RleHQ+CiAgPGxpbmUgeDE9IjEyMCIgeTE9Ijc1IiB4Mj0iMTIwIiB5Mj0iMTMwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIFIyPTPOqSAtLT4KICA8bGluZSB4MT0iMjAwIiB5MT0iMzAiIHgyPSIyMDAiIHkyPSI0NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIxODciIHk9IjQ1IiB3aWR0aD0iMjYiIGhlaWdodD0iMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTkwIiB5PSI2NSIgZm9udC1zaXplPSIxMCI+M86pPC90ZXh0PgogIDx0ZXh0IHg9IjE3NSIgeT0iNjUiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPlLigoI8L3RleHQ+CiAgPGxpbmUgeDE9IjIwMCIgeTE9Ijc1IiB4Mj0iMjAwIiB5Mj0iMTMwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIFVz55S15Y6L5rqQIC0tPgogIDxsaW5lIHgxPSIyMDAiIHkxPSIxMzAiIHgyPSIzMDAiIHkyPSIxMzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGNpcmNsZSBjeD0iMzAwIiBjeT0iODAiIHI9IjE2IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjI5MCIgeT0iNzciIGZvbnQtc2l6ZT0iMTAiPis8L3RleHQ+CiAgPHRleHQgeD0iMjkwIiB5PSI5MCIgZm9udC1zaXplPSIxMCI+4oiSPC90ZXh0PgogIDx0ZXh0IHg9IjI2NSIgeT0iODMiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSJib2xkIj5VPHRzcGFuIGJhc2VsaW5lLXNoaWZ0PSJzdWIiIGZvbnQtc2l6ZT0iMTEiPlM8L3RzcGFuPjwvdGV4dD4KICA8bGluZSB4MT0iMzAwIiB5MT0iMzAiIHgyPSIzMDAiIHkyPSI2NCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMzAwIiB5MT0iOTYiIHgyPSIzMDAiIHkyPSIxMzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjIwMCIgeTE9IjMwIiB4Mj0iMzAwIiB5Mj0iMzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gUjM9Ms6pIC0tPgogIDxsaW5lIHgxPSI0MCIgeTE9IjEzMCIgeDI9IjIwMCIgeTI9IjEzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIxMDciIHk9IjEyMCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjIwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjExMCIgeT0iMTM1IiBmb250LXNpemU9IjEwIj4yzqk8L3RleHQ+CiAgPHRleHQgeD0iOTUiIHk9IjEzNSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiI+UuKCgzwvdGV4dD4KPC9zdmc+)
+
+![图1.4-1.7-4](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDQwMCAxODAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX3N5IiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI2IiByZWZYPSI3IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCA4LDMgMCw2IiBmaWxsPSIjMzMzIi8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CiAgPCEtLSBVc+eUteWOi+a6kCAtLT4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjYwIiByPSIxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI0MCIgeT0iNTciIGZvbnQtc2l6ZT0iMTAiPis8L3RleHQ+CiAgPHRleHQgeD0iNDAiIHk9IjcwIiBmb250LXNpemU9IjEwIj7iiJI8L3RleHQ+CiAgPHRleHQgeD0iMjAiIHk9IjYzIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCI+VTx0c3BhbiBiYXNlbGluZS1zaGlmdD0ic3ViIiBmb250LXNpemU9IjExIj5TPC90c3Bhbj48L3RleHQ+CiAgPGxpbmUgeDE9IjUwIiB5MT0iNDQiIHgyPSI1MCIgeTI9IjMwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSI1MCIgeTE9Ijc2IiB4Mj0iNTAiIHkyPSIxNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0g5LiK5pa55a+857q/IC0tPgogIDxsaW5lIHgxPSI1MCIgeTE9IjMwIiB4Mj0iMjAwIiB5Mj0iMzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gNM6p55S16Zi777yI5LiK77yJIC0tPgogIDxsaW5lIHgxPSIxMjAiIHkxPSIzMCIgeDI9IjEyMCIgeTI9IjQ1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjEwNyIgeT0iNDUiIHdpZHRoPSIyNiIgaGVpZ2h0PSIzMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxMTAiIHk9IjY1IiBmb250LXNpemU9IjEwIj40zqk8L3RleHQ+CiAgPGxpbmUgeDE9IjEyMCIgeTE9Ijc1IiB4Mj0iMTIwIiB5Mj0iOTUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gMTJW55S15Y6L5rqQIC0tPgogIDxjaXJjbGUgY3g9IjEyMCIgY3k9IjEyMCIgcj0iMTQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTEwIiB5PSIxMTciIGZvbnQtc2l6ZT0iMTIiPis8L3RleHQ+CiAgPHRleHQgeD0iMTEwIiB5PSIxMjgiIGZvbnQtc2l6ZT0iMTIiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSI5NiIgeT0iMTQ1IiBmb250LXNpemU9IjEwIj4xMlY8L3RleHQ+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjEwNiIgeDI9IjEyMCIgeTI9Ijk1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSIxMzQiIHgyPSIxMjAiIHkyPSIxNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gNM6p55S16Zi777yI5Y+z5LiK77yJIC0tPgogIDxsaW5lIHgxPSIyMDAiIHkxPSIzMCIgeDI9IjIwMCIgeTI9IjQ1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjE4NyIgeT0iNDUiIHdpZHRoPSIyNiIgaGVpZ2h0PSIzMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxOTAiIHk9IjY1IiBmb250LXNpemU9IjEwIj40zqk8L3RleHQ+CiAgPGxpbmUgeDE9IjIwMCIgeTE9Ijc1IiB4Mj0iMjAwIiB5Mj0iMTUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIDHOqeeUtemYu++8iOS4re+8iSAtLT4KICA8bGluZSB4MT0iMTIwIiB5MT0iOTUiIHgyPSIyMDAiIHkyPSI5NSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIxNDciIHk9Ijg1IiB3aWR0aD0iMjYiIGhlaWdodD0iMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTUyIiB5PSIxMDAiIGZvbnQtc2l6ZT0iMTAiPjHOqTwvdGV4dD4KCiAgPCEtLSA0zqnnlLXpmLvvvIjlj7PkuIvvvIkgLS0+CiAgPGxpbmUgeDE9IjIwMCIgeTE9IjE1MCIgeDI9IjMwMCIgeTI9IjE1MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIyMzciIHk9IjE0MCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjIwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjI0MCIgeT0iMTU1IiBmb250LXNpemU9IjEwIj40zqk8L3RleHQ+CiAgPGxpbmUgeDE9IjMwMCIgeTE9IjMwIiB4Mj0iMzAwIiB5Mj0iMTUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSI1MCIgeTE9IjE1MCIgeDI9IjIwMCIgeTI9IjE1MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSDnq6/lj6NhLWIgLS0+CiAgPHRleHQgeD0iMzA1IiB5PSIyNSIgZm9udC1zaXplPSIxMSIgZm9udC13ZWlnaHQ9ImJvbGQiPmE8L3RleHQ+CiAgPHRleHQgeD0iMzA1IiB5PSIxNjAiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSJib2xkIj5iPC90ZXh0PgoKICA8IS0tIOeUtea1gUkgLS0+CiAgPGxpbmUgeDE9IjMxMCIgeTE9IjgwIiB4Mj0iMzQwIiB5Mj0iODAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiIG1hcmtlci1lbmQ9InVybCgjYXJyX3N5KSIvPgogIDx0ZXh0IHg9IjMxNSIgeT0iNzUiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtc3R5bGU9Iml0YWxpYyI+STwvdGV4dD4KPC9zdmc+)
+
+![图1.4-1.7-5](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTIwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDUyMCAyMDAiPgogIDwhLS0g55CG5oOz55S15Y6L5rqQVi9B54m55oCnIC0tPgogIDx0ZXh0IHg9IjMwIiB5PSIxNSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiIgZm9udC13ZWlnaHQ9ImJvbGQiPueQhuaDs+eUteWOi+a6kCBWL0Eg54m55oCnPC90ZXh0PgogIDwhLS0g5Z2Q5qCH6L20IC0tPgogIDxsaW5lIHgxPSI2MCIgeTE9IjMwIiB4Mj0iNjAiIHkyPSIxNzAiIHN0cm9rZT0iIzk5OSIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgPGxpbmUgeDE9IjYwIiB5MT0iMTAwIiB4Mj0iMjAwIiB5Mj0iMTAwIiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxwb2x5Z29uIHBvaW50cz0iNjAsMjggNTYsMzggNjQsMzgiIGZpbGw9IiM5OTkiLz4KICA8cG9seWdvbiBwb2ludHM9IjIwMiwxMDAgMTkyLDk2IDE5MiwxMDQiIGZpbGw9IiM5OTkiLz4KICA8dGV4dCB4PSI0OCIgeT0iMjgiIGZvbnQtc2l6ZT0iMTEiPnU8L3RleHQ+CiAgPHRleHQgeD0iMjA1IiB5PSIxMDUiIGZvbnQtc2l6ZT0iMTEiPmk8L3RleHQ+CiAgPCEtLSBVc+agh+azqCAtLT4KICA8dGV4dCB4PSIzMCIgeT0iNjUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiNlNzRjM2MiPlU8dHNwYW4gYmFzZWxpbmUtc2hpZnQ9InN1YiIgZm9udC1zaXplPSIxMSI+czwvdHNwYW4+PC90ZXh0PgogIDxsaW5lIHgxPSI2MCIgeTE9IjYwIiB4Mj0iNjAiIHkyPSIxMDAiIHN0cm9rZT0iIzk5OSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtZGFzaGFycmF5PSIzLDMiLz4KICA8IS0tIOWeguebtOe6v++8iOeQhuaDs+eUteWOi+a6kOeJueaAp++8iSAtLT4KICA8bGluZSB4MT0iMTIwIiB5MT0iMzAiIHgyPSIxMjAiIHkyPSIxNzAiIHN0cm9rZT0iI2U3NGMzYyIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8dGV4dCB4PSIxMjUiIHk9IjQ1IiBmb250LXNpemU9IjExIiBmaWxsPSIjZTc0YzNjIj51PVU8dHNwYW4gYmFzZWxpbmUtc2hpZnQ9InN1YiIgZm9udC1zaXplPSIxMSI+czwvdHNwYW4+PC90ZXh0PgogIDwhLS0g5a6e6ZmF55S15Y6L5rqQ77yI5pyJ5YaF6Zi777yM5pac57q/77yJIC0tPgogIDxsaW5lIHgxPSI4MCIgeTE9IjU1IiB4Mj0iMTgwIiB5Mj0iMTMwIiBzdHJva2U9IiNlNjdlMjIiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtZGFzaGFycmF5PSI1LDMiLz4KICA8dGV4dCB4PSIxNDAiIHk9IjE0MCIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2U2N2UyMiI+5a6e6ZmF77yI5ZCr5YaF6Zi777yJPC90ZXh0PgoKICA8IS0tIOeQhuaDs+eUtea1gea6kFYvQeeJueaApyAtLT4KICA8dGV4dCB4PSIyNzAiIHk9IjE1IiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2IiBmb250LXdlaWdodD0iYm9sZCI+55CG5oOz55S15rWB5rqQIFYvQSDnibnmgKc8L3RleHQ+CiAgPCEtLSDlnZDmoIfovbQgLS0+CiAgPGxpbmUgeDE9IjMwMCIgeTE9IjMwIiB4Mj0iMzAwIiB5Mj0iMTcwIiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxsaW5lIHgxPSIzMDAiIHkxPSIxMDAiIHgyPSI0NjAiIHkyPSIxMDAiIHN0cm9rZT0iIzk5OSIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgPHBvbHlnb24gcG9pbnRzPSIzMDAsMjggMjk2LDM4IDMwNCwzOCIgZmlsbD0iIzk5OSIvPgogIDxwb2x5Z29uIHBvaW50cz0iNDYyLDEwMCA0NTIsOTYgNDUyLDEwNCIgZmlsbD0iIzk5OSIvPgogIDx0ZXh0IHg9IjI4OCIgeT0iMjgiIGZvbnQtc2l6ZT0iMTEiPmk8L3RleHQ+CiAgPHRleHQgeD0iNDY1IiB5PSIxMDUiIGZvbnQtc2l6ZT0iMTEiPnU8L3RleHQ+CiAgPCEtLSBJc+agh+azqCAtLT4KICA8dGV4dCB4PSI0MTAiIHk9IjgwIiBmb250LXNpemU9IjExIiBmaWxsPSIjMzQ5OGRiIj5JPHRzcGFuIGJhc2VsaW5lLXNoaWZ0PSJzdWIiIGZvbnQtc2l6ZT0iMTEiPnM8L3RzcGFuPjwvdGV4dD4KICA8bGluZSB4MT0iMzAwIiB5MT0iNzAiIHgyPSIzMDAiIHkyPSIxMDAiIHN0cm9rZT0iIzk5OSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtZGFzaGFycmF5PSIzLDMiLz4KICA8IS0tIOawtOW5s+e6v++8iOeQhuaDs+eUtea1gea6kOeJueaAp++8iSAtLT4KICA8bGluZSB4MT0iMzAwIiB5MT0iNzAiIHgyPSI0NjAiIHkyPSI3MCIgc3Ryb2tlPSIjMzQ5OGRiIiBzdHJva2Utd2lkdGg9IjIuNSIvPgogIDx0ZXh0IHg9IjM4MCIgeT0iNjMiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiMzNDk4ZGIiPmk9STx0c3BhbiBiYXNlbGluZS1zaGlmdD0ic3ViIiBmb250LXNpemU9IjExIj5zPC90c3Bhbj48L3RleHQ+CiAgPCEtLSDlrp7pmYXnlLXmtYHmupDvvIjmnInlhoXpmLvvvIzmlpznur/vvIkgLS0+CiAgPGxpbmUgeDE9IjMwMCIgeTE9IjU1IiB4Mj0iNDQwIiB5Mj0iMTQwIiBzdHJva2U9IiMyZWNjNzEiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtZGFzaGFycmF5PSI1LDMiLz4KICA8dGV4dCB4PSIzNzAiIHk9IjE1MCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzJlY2M3MSI+5a6e6ZmF77yI5ZCr5YaF6Zi777yJPC90ZXh0Pgo8L3N2Zz4=)
+
+![图1.4-1.7-6](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTIwIiBoZWlnaHQ9IjI2MCIgdmlld0JveD0iMCAwIDUyMCAyNjAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyMyIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iNiIgcmVmWD0iNyIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj4KICAgICAgPHBvbHlnb24gcG9pbnRzPSIwLDAgOCwzIDAsNiIgZmlsbD0iIzMzMyIvPgogICAgPC9tYXJrZXI+CiAgPC9kZWZzPgoKICA8IS0tIFZDVlMg55S15Y6L5o6n5Yi255S15Y6L5rqQIC0tPgogIDx0ZXh0IHg9IjEwIiB5PSIxOCIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM2YjIxYTgiPlZDVlM8L3RleHQ+CiAgPHRleHQgeD0iMTAiIHk9IjMyIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY2Ij7nlLXljovmjqfliLbnlLXljovmupA8L3RleHQ+CiAgPCEtLSDovpPlhaXnq6/lj6MgLS0+CiAgPGxpbmUgeDE9IjIwIiB5MT0iNjAiIHgyPSI1MCIgeTI9IjYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjE1IiB5PSI1NSIgZm9udC1zaXplPSIxMSI+KzwvdGV4dD4KICA8dGV4dCB4PSI1NSIgeT0iNTUiIGZvbnQtc2l6ZT0iMTEiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSIyNSIgeT0iODAiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtc3R5bGU9Iml0YWxpYyI+deKCgTwvdGV4dD4KICA8bGluZSB4MT0iMjAiIHkxPSI5MCIgeDI9IjUwIiB5Mj0iOTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPCEtLSDlj5fmjqfnlLXljovmupDvvIjoj7HlvaIrLy3vvIkgLS0+CiAgPGxpbmUgeDE9IjUwIiB5MT0iNjAiIHgyPSI4MCIgeTI9IjYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSI1MCIgeTE9IjkwIiB4Mj0iODAiIHkyPSI5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjExMCw1NSAxNDAsNzUgMTEwLDk1IDgwLDc1IiBmaWxsPSJub25lIiBzdHJva2U9IiNlNzRjM2MiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9Ijk4IiB5PSI3MiIgZm9udC1zaXplPSIxMCI+KzwvdGV4dD4KICA8dGV4dCB4PSI5OCIgeT0iODgiIGZvbnQtc2l6ZT0iMTAiPuKIkjwvdGV4dD4KICA8bGluZSB4MT0iMTQwIiB5MT0iNjAiIHgyPSIxNzAiIHkyPSI2MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMTQwIiB5MT0iOTAiIHgyPSIxNzAiIHkyPSI5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxNTUiIHk9IjU1IiBmb250LXNpemU9IjExIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjE1NSIgeT0iMTAwIiBmb250LXNpemU9IjExIj7iiJI8L3RleHQ+CiAgPHRleHQgeD0iODUiIHk9IjExNSIgZm9udC1zaXplPSIxMSIgZmlsbD0iI2U3NGMzYyI+zrx14oKBPC90ZXh0PgoKICA8IS0tIFZDQ1Mg55S15Y6L5o6n5Yi255S15rWB5rqQIC0tPgogIDx0ZXh0IHg9IjI3MCIgeT0iMTgiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjNmIyMWE4Ij5WQ0NTPC90ZXh0PgogIDx0ZXh0IHg9IjI3MCIgeT0iMzIiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPueUteWOi+aOp+WItueUtea1gea6kDwvdGV4dD4KICA8IS0tIOi+k+WFpeerr+WPoyAtLT4KICA8bGluZSB4MT0iMjgwIiB5MT0iNjAiIHgyPSIzMTAiIHkyPSI2MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIyNzUiIHk9IjU1IiBmb250LXNpemU9IjExIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjMxNSIgeT0iNTUiIGZvbnQtc2l6ZT0iMTEiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSIyODUiIHk9IjgwIiBmb250LXNpemU9IjExIiBmb250LXN0eWxlPSJpdGFsaWMiPnXigoE8L3RleHQ+CiAgPGxpbmUgeDE9IjI4MCIgeTE9IjkwIiB4Mj0iMzEwIiB5Mj0iOTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPCEtLSDlj5fmjqfnlLXmtYHmupDvvIjoj7HlvaIr566t5aS077yJIC0tPgogIDxsaW5lIHgxPSIzMTAiIHkxPSI2MCIgeDI9IjM0MCIgeTI9IjYwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzMTAiIHkxPSI5MCIgeDI9IjM0MCIgeTI9IjkwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxwb2x5Z29uIHBvaW50cz0iMzcwLDU1IDQwMCw3NSAzNzAsOTUgMzQwLDc1IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzNzAiIHkxPSI2MiIgeDI9IjM3MCIgeTI9Ijg4IiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2FycjMpIi8+CiAgPGxpbmUgeDE9IjQwMCIgeTE9IjYwIiB4Mj0iNDMwIiB5Mj0iNjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjQwMCIgeTE9IjkwIiB4Mj0iNDMwIiB5Mj0iOTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMzQ4IiB5PSIxMTUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiMzNDk4ZGIiPmd14oKBPC90ZXh0PgoKICA8IS0tIENDVlMg55S15rWB5o6n5Yi255S15Y6L5rqQIC0tPgogIDx0ZXh0IHg9IjEwIiB5PSIxNTAiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjNmIyMWE4Ij5DQ1ZTPC90ZXh0PgogIDx0ZXh0IHg9IjEwIiB5PSIxNjQiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPueUtea1geaOp+WItueUteWOi+a6kDwvdGV4dD4KICA8IS0tIOi+k+WFpeerr+WPo++8iOeUtea1ge+8iSAtLT4KICA8bGluZSB4MT0iMjAiIHkxPSIxOTAiIHgyPSI2MCIgeTI9IjE5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyMykiLz4KICA8dGV4dCB4PSIyNSIgeT0iMTg1IiBmb250LXNpemU9IjExIiBmb250LXN0eWxlPSJpdGFsaWMiPmnigoE8L3RleHQ+CiAgPCEtLSDlj5fmjqfnlLXljovmupDvvIjoj7HlvaIrLy3vvIkgLS0+CiAgPGxpbmUgeDE9IjYwIiB5MT0iMTkwIiB4Mj0iODAiIHkyPSIxOTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHBvbHlnb24gcG9pbnRzPSIxMTAsMTc1IDE0MCwxOTUgMTEwLDIxNSA4MCwxOTUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2U3NGMzYyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iOTgiIHk9IjE5MiIgZm9udC1zaXplPSIxMCI+KzwvdGV4dD4KICA8dGV4dCB4PSI5OCIgeT0iMjEwIiBmb250LXNpemU9IjEwIj7iiJI8L3RleHQ+CiAgPGxpbmUgeDE9IjE0MCIgeTE9IjE5MCIgeDI9IjE3MCIgeTI9IjE5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxNTUiIHk9IjE4NSIgZm9udC1zaXplPSIxMSI+KzwvdGV4dD4KICA8dGV4dCB4PSIxNTUiIHk9IjIwNSIgZm9udC1zaXplPSIxMSI+4oiSPC90ZXh0PgogIDx0ZXh0IHg9Ijg1IiB5PSIyMzUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiNlNzRjM2MiPnJp4oKBPC90ZXh0PgoKICA8IS0tIENDQ1Mg55S15rWB5o6n5Yi255S15rWB5rqQIC0tPgogIDx0ZXh0IHg9IjI3MCIgeT0iMTUwIiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzZiMjFhOCI+Q0NDUzwvdGV4dD4KICA8dGV4dCB4PSIyNzAiIHk9IjE2NCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzY2NiI+55S15rWB5o6n5Yi255S15rWB5rqQPC90ZXh0PgogIDwhLS0g6L6T5YWl56uv5Y+j77yI55S15rWB77yJIC0tPgogIDxsaW5lIHgxPSIyODAiIHkxPSIxOTAiIHgyPSIzMjAiIHkyPSIxOTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2FycjMpIi8+CiAgPHRleHQgeD0iMjg1IiB5PSIxODUiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtc3R5bGU9Iml0YWxpYyI+aeKCgTwvdGV4dD4KICA8IS0tIOWPl+aOp+eUtea1gea6kO+8iOiPseW9oivnrq3lpLTvvIkgLS0+CiAgPGxpbmUgeDE9IjMyMCIgeTE9IjE5MCIgeDI9IjM0MCIgeTI9IjE5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjM3MCwxNzUgNDAwLDE5NSAzNzAsMjE1IDM0MCwxOTUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzM0OThkYiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjM3MCIgeTE9IjE4MiIgeDI9IjM3MCIgeTI9IjIwOCIgc3Ryb2tlPSIjMzQ5OGRiIiBzdHJva2Utd2lkdGg9IjEuNSIgbWFya2VyLWVuZD0idXJsKCNhcnIzKSIvPgogIDxsaW5lIHgxPSI0MDAiIHkxPSIxOTAiIHgyPSI0MzAiIHkyPSIxOTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMzQ4IiB5PSIyMzUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiMzNDk4ZGIiPs6yaeKCgTwvdGV4dD4KPC9zdmc+)
+
+![图1.4-1.7-7](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzUwIiBoZWlnaHQ9IjEzMCIgdmlld0JveD0iMCAwIDM1MCAxMzAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX3ZjY3MiIG1hcmtlcldpZHRoPSI4IiBtYXJrZXJIZWlnaHQ9IjYiIHJlZlg9IjciIHJlZlk9IjMiIG9yaWVudD0iYXV0byI+CiAgICAgIDxwb2x5Z29uIHBvaW50cz0iMCwwIDgsMyAwLDYiIGZpbGw9IiMzMzMiLz4KICAgIDwvbWFya2VyPgogIDwvZGVmcz4KICA8IS0tIGlz55S15rWB5rqQIC0tPgogIDxjaXJjbGUgY3g9IjMwIiBjeT0iNjAiIHI9IjE0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzMCIgeTE9IjUwIiB4Mj0iMzAiIHkyPSI3MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIgbWFya2VyLWVuZD0idXJsKCNhcnJfdmNjcykiLz4KICA8dGV4dCB4PSIxMCIgeT0iNDAiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtc3R5bGU9Iml0YWxpYyI+aTx0c3BhbiBiYXNlbGluZS1zaGlmdD0ic3ViIiBmb250LXNpemU9IjEwIj5zPC90c3Bhbj48L3RleHQ+CiAgPGxpbmUgeDE9IjMwIiB5MT0iNDYiIHgyPSIzMCIgeTI9IjIwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzMCIgeTE9Ijc0IiB4Mj0iMzAiIHkyPSIxMTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gNc6p55S16Zi7IC0tPgogIDxsaW5lIHgxPSIzMCIgeTE9IjIwIiB4Mj0iMTAwIiB5Mj0iMjAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjIwIiB4Mj0iMTAwIiB5Mj0iMzUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHJlY3QgeD0iODciIHk9IjM1IiB3aWR0aD0iMjYiIGhlaWdodD0iMzUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iOTEiIHk9IjU3IiBmb250LXNpemU9IjEwIj41zqk8L3RleHQ+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjcwIiB4Mj0iMTAwIiB5Mj0iMTEwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIHUx5qCH5rOoIC0tPgogIDx0ZXh0IHg9IjExMCIgeT0iNDAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMzMzMiPis8L3RleHQ+CiAgPHRleHQgeD0iMTEwIiB5PSI3NSIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzMzMyI+4oiSPC90ZXh0PgogIDx0ZXh0IHg9IjExNSIgeT0iNjAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMzMzMiIGZvbnQtc3R5bGU9Iml0YWxpYyI+deKCgTwvdGV4dD4KCiAgPCEtLSBWQ0NT77yI6I+x5b2i77yJIC0tPgogIDxsaW5lIHgxPSIxMDAiIHkxPSIyMCIgeDI9IjE4MCIgeTI9IjIwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIxODAiIHkxPSIyMCIgeDI9IjE4MCIgeTI9IjQwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxwb2x5Z29uIHBvaW50cz0iMTgwLDQwIDIwMCw2NSAxODAsOTAgMTYwLDY1IiBmaWxsPSJub25lIiBzdHJva2U9IiNlNzRjM2MiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIxODAiIHkxPSI1MCIgeDI9IjE4MCIgeTI9IjgwIiBzdHJva2U9IiNlNzRjM2MiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl92Y2NzKSIvPgogIDx0ZXh0IHg9IjIwNSIgeT0iNTUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNlNzRjM2MiIGZvbnQtc3R5bGU9Iml0YWxpYyI+ZzwvdGV4dD4KICA8dGV4dCB4PSIyMDUiIHk9IjY4IiBmb250LXNpemU9IjEwIiBmaWxsPSIjZTc0YzNjIiBmb250LXN0eWxlPSJpdGFsaWMiPnXigoE8L3RleHQ+CiAgPGxpbmUgeDE9IjE4MCIgeTE9IjkwIiB4Mj0iMTgwIiB5Mj0iMTEwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIDLOqeeUtemYuyAtLT4KICA8bGluZSB4MT0iMTgwIiB5MT0iMjAiIHgyPSIyNjAiIHkyPSIyMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMjYwIiB5MT0iMjAiIHgyPSIyNjAiIHkyPSIzNSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cmVjdCB4PSIyNDciIHk9IjM1IiB3aWR0aD0iMjYiIGhlaWdodD0iMzUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMjUxIiB5PSI1NyIgZm9udC1zaXplPSIxMCI+Ms6pPC90ZXh0PgogIDxsaW5lIHgxPSIyNjAiIHkxPSI3MCIgeDI9IjI2MCIgeTI9IjExMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSB15qCH5rOoIC0tPgogIDx0ZXh0IHg9IjI3MCIgeT0iNDAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMzMzMiPis8L3RleHQ+CiAgPHRleHQgeD0iMjcwIiB5PSI3NSIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzMzMyI+4oiSPC90ZXh0PgogIDx0ZXh0IHg9IjI3NSIgeT0iNjAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMzMzMiIGZvbnQtc3R5bGU9Iml0YWxpYyI+dTwvdGV4dD4KCiAgPCEtLSDkuIvmlrnlr7znur8gLS0+CiAgPGxpbmUgeDE9IjMwIiB5MT0iMTEwIiB4Mj0iMjYwIiB5Mj0iMTEwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4=)
+
+![图1.4-1.7-8](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDQwMCAxNjAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX2RlcCIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iNiIgcmVmWD0iNyIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj4KICAgICAgPHBvbHlnb24gcG9pbnRzPSIwLDAgOCwzIDAsNiIgZmlsbD0iIzMzMyIvPgogICAgPC9tYXJrZXI+CiAgPC9kZWZzPgogIDwhLS0gNlbnlLXljovmupAgLS0+CiAgPGxpbmUgeDE9IjQwIiB5MT0iMzAiIHgyPSI0MCIgeTI9IjU5IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxjaXJjbGUgY3g9IjQwIiBjeT0iNzUiIHI9IjE2IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjMwIiB5PSI3MiIgZm9udC1zaXplPSIxMCI+KzwvdGV4dD4KICA8dGV4dCB4PSIzMCIgeT0iODUiIGZvbnQtc2l6ZT0iMTAiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSIxMCIgeT0iNzgiIGZvbnQtc2l6ZT0iMTEiPjZWPC90ZXh0PgogIDxsaW5lIHgxPSI0MCIgeTE9IjkxIiB4Mj0iNDAiIHkyPSIxNDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0g5LiK5pa55a+857q/IC0tPgogIDxsaW5lIHgxPSI0MCIgeTE9IjMwIiB4Mj0iMjAwIiB5Mj0iMzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gMs6p55S16Zi7IC0tPgogIDxsaW5lIHgxPSIxMjAiIHkxPSIzMCIgeDI9IjEyMCIgeTI9IjQ1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjEwNyIgeT0iNDUiIHdpZHRoPSIyNiIgaGVpZ2h0PSIzNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxMTEiIHk9IjY3IiBmb250LXNpemU9IjEwIj4yzqk8L3RleHQ+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjgwIiB4Mj0iMTIwIiB5Mj0iMTQwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIDNW55S15Y6L5rqQIC0tPgogIDxsaW5lIHgxPSIyMDAiIHkxPSIzMCIgeDI9IjIwMCIgeTI9IjU5IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxjaXJjbGUgY3g9IjIwMCIgY3k9Ijc1IiByPSIxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxOTAiIHk9IjcyIiBmb250LXNpemU9IjEwIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjE5MCIgeT0iODUiIGZvbnQtc2l6ZT0iMTAiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSIyMjAiIHk9Ijc4IiBmb250LXNpemU9IjExIj4zVjwvdGV4dD4KICA8bGluZSB4MT0iMjAwIiB5MT0iOTEiIHgyPSIyMDAiIHkyPSIxNDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gMlUx5Y+X5o6n5rqQ77yI6I+x5b2i77yJIC0tPgogIDxsaW5lIHgxPSIyMDAiIHkxPSIxNDAiIHgyPSIzMDAiIHkyPSIxNDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjMwMCIgeTE9IjE0MCIgeDI9IjMwMCIgeTI9IjUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxwb2x5Z29uIHBvaW50cz0iMzAwLDUwIDMyMCw3NSAzMDAsMTAwIDI4MCw3NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZTc0YzNjIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIzMjUiIHk9IjcwIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZTc0YzNjIj4yVeKCgTwvdGV4dD4KICA8bGluZSB4MT0iMzAwIiB5MT0iMzAiIHgyPSIzMDAiIHkyPSI1MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMjAwIiB5MT0iMzAiIHgyPSIzMDAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSAzSeWPl+aOp+a6kO+8iOiPseW9ou+8iSAtLT4KICA8bGluZSB4MT0iMzAwIiB5MT0iMTAwIiB4Mj0iMzAwIiB5Mj0iMTEwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxwb2x5Z29uIHBvaW50cz0iMzAwLDExMCAzMjAsMTM1IDMwMCwxNjAgMjgwLDEzNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzQ5OGRiIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMzAwIiB5MT0iMTIwIiB4Mj0iMzAwIiB5Mj0iMTUwIiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iMS41IiBtYXJrZXItZW5kPSJ1cmwoI2Fycl9kZXApIi8+CiAgPHRleHQgeD0iMzI1IiB5PSIxMzAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMzNDk4ZGIiPjNJPC90ZXh0PgoKICA8IS0tIOS4i+aWueWvvOe6vyAtLT4KICA8bGluZSB4MT0iNDAiIHkxPSIxNDAiIHgyPSIyMDAiIHkyPSIxNDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjwvc3ZnPg==)
+
+![图1.4-1.7-9](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDQ1MCAxODAiPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyX3UiIG1hcmtlcldpZHRoPSI4IiBtYXJrZXJIZWlnaHQ9IjYiIHJlZlg9IjciIHJlZlk9IjMiIG9yaWVudD0iYXV0byI+CiAgICAgIDxwb2x5Z29uIHBvaW50cz0iMCwwIDgsMyAwLDYiIGZpbGw9IiMzMzMiLz4KICAgIDwvbWFya2VyPgogIDwvZGVmcz4KICA8IS0tIDFB55S15rWB5rqQIC0tPgogIDxjaXJjbGUgY3g9IjMwIiBjeT0iODAiIHI9IjE0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzMCIgeTE9IjcwIiB4Mj0iMzAiIHkyPSI5MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIgbWFya2VyLWVuZD0idXJsKCNhcnJfdSkiLz4KICA8dGV4dCB4PSIxMCIgeT0iNjAiIGZvbnQtc2l6ZT0iMTAiPjFBPC90ZXh0PgogIDxsaW5lIHgxPSIzMCIgeTE9IjY2IiB4Mj0iMzAiIHkyPSIzMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMzAiIHkxPSI5NCIgeDI9IjMwIiB5Mj0iMTUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIOS4iuaWueWvvOe6vyAtLT4KICA8bGluZSB4MT0iMzAiIHkxPSIzMCIgeDI9IjMwMCIgeTI9IjMwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIDEwzqnnlLXpmLsgLS0+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjMwIiB4Mj0iMTAwIiB5Mj0iNDUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHJlY3QgeD0iODciIHk9IjQ1IiB3aWR0aD0iMjYiIGhlaWdodD0iMzUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iOTEiIHk9IjY3IiBmb250LXNpemU9IjEwIj4xMM6pPC90ZXh0PgogIDxsaW5lIHgxPSIxMDAiIHkxPSI4MCIgeDI9IjEwMCIgeTI9IjE1MCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KCiAgPCEtLSAyMFbnlLXljovmupAgLS0+CiAgPGxpbmUgeDE9IjIwMCIgeTE9IjMwIiB4Mj0iMjAwIiB5Mj0iNTkiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGNpcmNsZSBjeD0iMjAwIiBjeT0iNzUiIHI9IjE2IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjE5MCIgeT0iNzIiIGZvbnQtc2l6ZT0iMTAiPis8L3RleHQ+CiAgPHRleHQgeD0iMTkwIiB5PSI4NSIgZm9udC1zaXplPSIxMCI+4oiSPC90ZXh0PgogIDx0ZXh0IHg9IjIyMCIgeT0iNzgiIGZvbnQtc2l6ZT0iMTEiPjIwVjwvdGV4dD4KICA8bGluZSB4MT0iMjAwIiB5MT0iOTEiIHgyPSIyMDAiIHkyPSIxNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gNc6p55S16Zi7IC0tPgogIDxsaW5lIHgxPSIzMDAiIHkxPSIzMCIgeDI9IjMwMCIgeTI9IjQ1IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjI4NyIgeT0iNDUiIHdpZHRoPSIyNiIgaGVpZ2h0PSIzNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIyOTEiIHk9IjY3IiBmb250LXNpemU9IjEwIj41zqk8L3RleHQ+CiAgPGxpbmUgeDE9IjMwMCIgeTE9IjgwIiB4Mj0iMzAwIiB5Mj0iMTUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgoKICA8IS0tIDbOqeeUtemYu++8iOS4i+aWue+8iSAtLT4KICA8bGluZSB4MT0iMTAwIiB5MT0iMTUwIiB4Mj0iMjAwIiB5Mj0iMTUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjEzNyIgeT0iMTQwIiB3aWR0aD0iMjYiIGhlaWdodD0iMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTQxIiB5PSIxNTUiIGZvbnQtc2l6ZT0iMTAiPjbOqTwvdGV4dD4KCiAgPCEtLSAxNc6p55S16Zi777yI5Y+z5LiL77yJIC0tPgogIDxsaW5lIHgxPSIyMDAiIHkxPSIxNTAiIHgyPSIzMDAiIHkyPSIxNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHJlY3QgeD0iMjI3IiB5PSIxNDAiIHdpZHRoPSIyNiIgaGVpZ2h0PSIyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIyMzEiIHk9IjE1NSIgZm9udC1zaXplPSIxMCI+MTXOqTwvdGV4dD4KCiAgPCEtLSAxMHUx5Y+X5o6n5rqQ77yI6I+x5b2i77yJIC0tPgogIDxsaW5lIHgxPSIzMDAiIHkxPSIxNTAiIHgyPSIzODAiIHkyPSIxNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjM4MCIgeTE9IjE1MCIgeDI9IjM4MCIgeTI9IjUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxwb2x5Z29uIHBvaW50cz0iMzgwLDUwIDQwMCw3NSAzODAsMTAwIDM2MCw3NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZTc0YzNjIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI0MDUiIHk9IjY1IiBmb250LXNpemU9IjEwIiBmaWxsPSIjZTc0YzNjIj4xMHXigoE8L3RleHQ+CiAgPGxpbmUgeDE9IjM4MCIgeTE9IjMwIiB4Mj0iMzgwIiB5Mj0iNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjMwMCIgeTE9IjMwIiB4Mj0iMzgwIiB5Mj0iMzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gM0HnlLXmtYHmupAgLS0+CiAgPGxpbmUgeDE9IjM4MCIgeTE9IjEwMCIgeDI9IjM4MCIgeTI9IjExMCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8Y2lyY2xlIGN4PSIzODAiIGN5PSIxMzAiIHI9IjEyIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxsaW5lIHgxPSIzODAiIHkxPSIxMjIiIHgyPSIzODAiIHkyPSIxMzgiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiIG1hcmtlci1lbmQ9InVybCgjYXJyX3UpIi8+CiAgPHRleHQgeD0iMzk2IiB5PSIxMzQiIGZvbnQtc2l6ZT0iMTAiPjNBPC90ZXh0PgogIDxsaW5lIHgxPSIzODAiIHkxPSIxNDIiIHgyPSIzODAiIHkyPSIxNTAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+CgogIDwhLS0gdeagh+azqCAtLT4KICA8dGV4dCB4PSIzMTAiIHk9IjQwIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMzMzIj4rPC90ZXh0PgogIDx0ZXh0IHg9IjMxMCIgeT0iOTAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMzMzMiPuKIkjwvdGV4dD4KICA8dGV4dCB4PSIzMTUiIHk9IjY4IiBmb250LXNpemU9IjEwIiBmaWxsPSIjMzMzIiBmb250LXN0eWxlPSJpdGFsaWMiPnU8L3RleHQ+Cjwvc3ZnPg==)
+
+
+
+
+## 五、基尔霍夫定律
+
+**电路的基本概念：**
+- **支路：** 连接两个节点之间的元件或元件组合
+- **节点：** 三条或三条以上支路的连接点
+- **回路：** 电路中由支路构成的闭合路径
+- **网孔：** 内部不包含其他支路的回路
+- **端口：** 由一对端子构成，流入一个端子的电流等于流出另一个端子的电流
+
+**两类约束：**
+- **拓扑约束：** 由电路的连接方式（几何结构）决定的约束，即KCL和KVL
+- **元件约束：** 由元件的特性（VCR）决定的约束
+
+### 基尔霍夫电流定律（KCL）
+**内容：** 任一时刻，对电路中的任一节点，所有流出该节点的电流之和等于零。
+
+$$\sum_{k=1}^{n} i_k = 0$$
+
+**KCL的三种表达形式：**
+1. 流出节点的电流代数和为零：$\sum i_k = 0$（流出为正）
+2. 流入节点的电流等于流出节点的电流：$\sum i_{in} = \sum i_{out}$
+3. 流入节点的电流代数和为零：$\sum i_k = 0$（流入为正）
+
+**推广：** KCL适用于任意闭合曲面（广义节点）。
+
+### 基尔霍夫电压定律（KVL）
+**内容：** 任一时刻，沿电路中的任一回路绕行一周，所有支路电压的代数和等于零。
+
+$$\sum_{k=1}^{n} u_k = 0$$
+
+**KVL的三种表达形式：**
+1. 沿回路绕行方向，电压降的代数和等于电压升的代数和
+2. 沿回路绕行方向，各支路电压的代数和为零
+3. 任意两点间的电压与路径无关
+
+**推广：** KVL适用于开口电路。
+
+**电路图示：**
+
+
+<div class="circuit-diagram">
+<svg width="520" height="220" viewBox="0 0 520 220">
+  <defs>
+    <marker id="arr4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 左侧：戴维宁支路 -->
+  <text x="30" y="15" font-size="12" fill="#6b21a8" font-weight="bold">戴维宁支路</text>
+  <!-- 电压源Us -->
+  <line x1="60" y1="30" x2="60" y2="45" stroke="#333" stroke-width="2"/>
+  <circle cx="60" cy="70" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="50" y="67" font-size="12">+</text>
+  <text x="50" y="80" font-size="12">−</text>
+  <text x="30" y="73" font-size="12" font-weight="bold">U<tspan baseline-shift="sub" font-size="11">s</tspan></text>
+  <line x1="60" y1="86" x2="60" y2="105" stroke="#333" stroke-width="2"/>
+  <!-- 电阻R -->
+  <rect x="47" y="105" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="55" y="125" font-size="12" font-weight="bold">R</text>
+  <line x1="60" y1="135" x2="60" y2="155" stroke="#333" stroke-width="2"/>
+  <!-- 端口引线 -->
+  <line x1="60" y1="155" x2="100" y2="155" stroke="#333" stroke-width="2"/>
+  <line x1="60" y1="30" x2="100" y2="30" stroke="#333" stroke-width="2"/>
+  <!-- u参考方向 -->
+  <text x="105" y="30" font-size="12">+</text>
+  <text x="105" y="160" font-size="12">−</text>
+  <text x="115" y="100" font-size="12" fill="#333" font-style="italic">u</text>
+  <!-- i参考方向 -->
+  <line x1="80" y1="90" x2="80" y2="120" stroke="#333" stroke-width="2" marker-end="url(#arr4)"/>
+  <text x="85" y="105" font-size="12" font-style="italic">i</text>
+  <!-- VCR公式 -->
+  <text x="20" y="190" font-size="12" fill="#333">VCR: u = U<tspan baseline-shift="sub" font-size="11">s</tspan> + Ri</text>
+
+  <!-- 右侧：诺顿支路 -->
+  <text x="280" y="15" font-size="12" fill="#6b21a8" font-weight="bold">诺顿支路</text>
+  <!-- 电流源Is -->
+  <circle cx="330" cy="70" r="14" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="330" y1="60" x2="330" y2="80" stroke="#333" stroke-width="2" marker-end="url(#arr4)"/>
+  <text x="350" y="74" font-size="12" font-weight="bold">I<tspan baseline-shift="sub" font-size="11">s</tspan></text>
+  <line x1="330" y1="30" x2="330" y2="56" stroke="#333" stroke-width="2"/>
+  <line x1="330" y1="84" x2="330" y2="105" stroke="#333" stroke-width="2"/>
+  <!-- 电阻R -->
+  <rect x="377" y="65" width="30" height="50" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="385" y="95" font-size="12" font-weight="bold">R</text>
+  <line x1="390" y1="55" x2="390" y2="65" stroke="#333" stroke-width="2"/>
+  <line x1="390" y1="115" x2="390" y2="155" stroke="#333" stroke-width="2"/>
+  <line x1="330" y1="55" x2="390" y2="55" stroke="#333" stroke-width="2"/>
+  <line x1="330" y1="105" x2="390" y2="105" stroke="#333" stroke-width="2"/>
+  <!-- 端口引线 -->
+  <line x1="330" y1="30" x2="430" y2="30" stroke="#333" stroke-width="2"/>
+  <line x1="390" y1="155" x2="430" y2="155" stroke="#333" stroke-width="2"/>
+  <line x1="330" y1="155" x2="330" y2="105" stroke="#333" stroke-width="2"/>
+  <!-- u参考方向 -->
+  <text x="435" y="30" font-size="12">+</text>
+  <text x="435" y="160" font-size="12">−</text>
+  <text x="445" y="100" font-size="12" fill="#333" font-style="italic">u</text>
+  <!-- i参考方向 -->
+  <line x1="300" y1="95" x2="320" y2="95" stroke="#333" stroke-width="2"/>
+  <!-- VCR公式 -->
+  <text x="295" y="190" font-size="12" fill="#333">VCR: u = R·i − R·I<tspan baseline-shift="sub" font-size="11">s</tspan></text>
+
+  <!-- 等效关系 -->
+  <text x="130" y="210" font-size="12" fill="#6b21a8" font-weight="bold">等效变换：</text>
+  <text x="130" y="200" font-size="12" fill="#333">U<tspan baseline-shift="sub" font-size="11">s</tspan> = I<tspan baseline-shift="sub" font-size="11">s</tspan> · R ，R 保持不变</text>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="800" height="380" viewBox="0 0 800 380">
+  <defs>
+    <marker id="arr_nort" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- ①: u+ idown Isup -->
+  <text x="65" y="20" font-size="12" fill="#666">①</text>
+  <line x1="60" y1="25" x2="100" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="55" y="20" font-size="12">+</text>
+  <line x1="100" y1="25" x2="100" y2="60" stroke="#333" stroke-width="2"/>
+  <rect x="86" y="60" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="96" y="82" font-size="12">R</text>
+  <line x1="100" y1="95" x2="100" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="25" x2="150" y2="25" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="25" x2="150" y2="60" stroke="#333" stroke-width="2"/>
+  <circle cx="150" cy="75" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="90" x2="150" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="170" y="79" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="150" y1="90" x2="150" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="115" x2="150" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="115" x2="170" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="115" x2="100" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="115" x2="150" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="125" x2="150" y2="125" stroke="#333" stroke-width="2"/>
+  <text x="55" y="137" font-size="12">−</text>
+  <line x1="100" y1="60" x2="100" y2="80" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="105" y="58" font-size="11">I</text>
+  <!-- ②: u+ iup Isup -->
+  <text x="255" y="20" font-size="12" fill="#666">②</text>
+  <line x1="250" y1="25" x2="290" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="245" y="20" font-size="12">+</text>
+  <line x1="290" y1="25" x2="290" y2="60" stroke="#333" stroke-width="2"/>
+  <rect x="276" y="60" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="286" y="82" font-size="12">R</text>
+  <line x1="290" y1="95" x2="290" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="25" x2="340" y2="25" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="25" x2="340" y2="60" stroke="#333" stroke-width="2"/>
+  <circle cx="340" cy="75" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="90" x2="340" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="360" y="79" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="340" y1="90" x2="340" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="115" x2="340" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="115" x2="360" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="115" x2="290" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="115" x2="340" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="125" x2="340" y2="125" stroke="#333" stroke-width="2"/>
+  <text x="245" y="137" font-size="12">−</text>
+  <line x1="290" y1="80" x2="290" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="295" y="58" font-size="11">I</text>
+  <!-- ③: u- idown Isup -->
+  <text x="445" y="20" font-size="12" fill="#666">③</text>
+  <line x1="440" y1="25" x2="480" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="435" y="20" font-size="12">−</text>
+  <line x1="480" y1="25" x2="480" y2="60" stroke="#333" stroke-width="2"/>
+  <rect x="466" y="60" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="476" y="82" font-size="12">R</text>
+  <line x1="480" y1="95" x2="480" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="25" x2="530" y2="25" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="25" x2="530" y2="60" stroke="#333" stroke-width="2"/>
+  <circle cx="530" cy="75" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="90" x2="530" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="550" y="79" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="530" y1="90" x2="530" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="115" x2="530" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="115" x2="550" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="115" x2="480" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="115" x2="530" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="125" x2="530" y2="125" stroke="#333" stroke-width="2"/>
+  <text x="435" y="137" font-size="12">+</text>
+  <line x1="480" y1="60" x2="480" y2="80" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="485" y="58" font-size="11">I</text>
+  <!-- ④: u- iup Isup -->
+  <text x="635" y="20" font-size="12" fill="#666">④</text>
+  <line x1="630" y1="25" x2="670" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="625" y="20" font-size="12">−</text>
+  <line x1="670" y1="25" x2="670" y2="60" stroke="#333" stroke-width="2"/>
+  <rect x="656" y="60" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="666" y="82" font-size="12">R</text>
+  <line x1="670" y1="95" x2="670" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="25" x2="720" y2="25" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="25" x2="720" y2="60" stroke="#333" stroke-width="2"/>
+  <circle cx="720" cy="75" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="90" x2="720" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="740" y="79" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="720" y1="90" x2="720" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="115" x2="720" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="115" x2="740" y2="115" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="115" x2="670" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="115" x2="720" y2="125" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="125" x2="720" y2="125" stroke="#333" stroke-width="2"/>
+  <text x="625" y="137" font-size="12">+</text>
+  <line x1="670" y1="80" x2="670" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="675" y="58" font-size="11">I</text>
+  <!-- ⑤: u+ idown Isdown -->
+  <text x="65" y="200" font-size="12" fill="#666">⑤</text>
+  <line x1="60" y1="205" x2="100" y2="205" stroke="#333" stroke-width="2"/>
+  <text x="55" y="200" font-size="12">+</text>
+  <line x1="100" y1="205" x2="100" y2="240" stroke="#333" stroke-width="2"/>
+  <rect x="86" y="240" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="96" y="262" font-size="12">R</text>
+  <line x1="100" y1="275" x2="100" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="205" x2="150" y2="205" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="205" x2="150" y2="240" stroke="#333" stroke-width="2"/>
+  <circle cx="150" cy="255" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="240" x2="150" y2="270" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="170" y="259" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="150" y1="270" x2="150" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="295" x2="150" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="295" x2="170" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="295" x2="100" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="295" x2="150" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="100" y1="305" x2="150" y2="305" stroke="#333" stroke-width="2"/>
+  <text x="55" y="317" font-size="12">−</text>
+  <line x1="100" y1="240" x2="100" y2="260" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="105" y="238" font-size="11">I</text>
+  <!-- ⑥: u+ iup Isdown -->
+  <text x="255" y="200" font-size="12" fill="#666">⑥</text>
+  <line x1="250" y1="205" x2="290" y2="205" stroke="#333" stroke-width="2"/>
+  <text x="245" y="200" font-size="12">+</text>
+  <line x1="290" y1="205" x2="290" y2="240" stroke="#333" stroke-width="2"/>
+  <rect x="276" y="240" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="286" y="262" font-size="12">R</text>
+  <line x1="290" y1="275" x2="290" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="205" x2="340" y2="205" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="205" x2="340" y2="240" stroke="#333" stroke-width="2"/>
+  <circle cx="340" cy="255" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="240" x2="340" y2="270" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="360" y="259" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="340" y1="270" x2="340" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="295" x2="340" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="295" x2="360" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="295" x2="290" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="340" y1="295" x2="340" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="305" x2="340" y2="305" stroke="#333" stroke-width="2"/>
+  <text x="245" y="317" font-size="12">−</text>
+  <line x1="290" y1="260" x2="290" y2="240" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="295" y="238" font-size="11">I</text>
+  <!-- ⑦: u- idown Isdown -->
+  <text x="445" y="200" font-size="12" fill="#666">⑦</text>
+  <line x1="440" y1="205" x2="480" y2="205" stroke="#333" stroke-width="2"/>
+  <text x="435" y="200" font-size="12">−</text>
+  <line x1="480" y1="205" x2="480" y2="240" stroke="#333" stroke-width="2"/>
+  <rect x="466" y="240" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="476" y="262" font-size="12">R</text>
+  <line x1="480" y1="275" x2="480" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="205" x2="530" y2="205" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="205" x2="530" y2="240" stroke="#333" stroke-width="2"/>
+  <circle cx="530" cy="255" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="240" x2="530" y2="270" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="550" y="259" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="530" y1="270" x2="530" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="295" x2="530" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="295" x2="550" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="295" x2="480" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="530" y1="295" x2="530" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="480" y1="305" x2="530" y2="305" stroke="#333" stroke-width="2"/>
+  <text x="435" y="317" font-size="12">+</text>
+  <line x1="480" y1="240" x2="480" y2="260" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="485" y="238" font-size="11">I</text>
+  <!-- ⑧: u- iup Isdown -->
+  <text x="635" y="200" font-size="12" fill="#666">⑧</text>
+  <line x1="630" y1="205" x2="670" y2="205" stroke="#333" stroke-width="2"/>
+  <text x="625" y="200" font-size="12">−</text>
+  <line x1="670" y1="205" x2="670" y2="240" stroke="#333" stroke-width="2"/>
+  <rect x="656" y="240" width="28" height="35" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="666" y="262" font-size="12">R</text>
+  <line x1="670" y1="275" x2="670" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="205" x2="720" y2="205" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="205" x2="720" y2="240" stroke="#333" stroke-width="2"/>
+  <circle cx="720" cy="255" r="15" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="240" x2="720" y2="270" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="740" y="259" font-size="11">I<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+  <line x1="720" y1="270" x2="720" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="295" x2="720" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="295" x2="740" y2="295" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="295" x2="670" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="720" y1="295" x2="720" y2="305" stroke="#333" stroke-width="2"/>
+  <line x1="670" y1="305" x2="720" y2="305" stroke="#333" stroke-width="2"/>
+  <text x="625" y="317" font-size="12">+</text>
+  <line x1="670" y1="260" x2="670" y2="240" stroke="#333" stroke-width="2" marker-end="url(#arr_nort)"/>
+  <text x="675" y="238" font-size="11">I</text>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="520" height="150" viewBox="0 0 520 150">
+  <defs>
+    <marker id="arr_18" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- (a) 关联参考方向 -->
+  <text x="10" y="15" font-size="10" fill="#666">(a)</text>
+  <line x1="30" y1="25" x2="50" y2="25" stroke="#333" stroke-width="2"/>
+  <rect x="50" y="15" width="40" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="60" y="30" font-size="10">2Ω</text>
+  <line x1="90" y1="25" x2="110" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="25" y="22" font-size="10">+</text>
+  <text x="112" y="22" font-size="10">−</text>
+  <line x1="40" y1="40" x2="60" y2="40" stroke="#333" stroke-width="1.5" marker-end="url(#arr_18)"/>
+  <text x="42" y="55" font-size="10">2A</text>
+  <circle cx="50" cy="85" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="42" y="82" font-size="12">+</text>
+  <text x="42" y="92" font-size="12">−</text>
+  <text x="30" y="110" font-size="10">12V</text>
+  <line x1="50" y1="70" x2="50" y2="65" stroke="#333" stroke-width="2"/>
+  <line x1="50" y1="97" x2="50" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="30" y1="25" x2="30" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="30" y1="130" x2="110" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="110" y1="25" x2="110" y2="130" stroke="#333" stroke-width="2"/>
+
+  <!-- (b) 非关联参考方向 -->
+  <text x="150" y="15" font-size="10" fill="#666">(b)</text>
+  <line x1="170" y1="25" x2="190" y2="25" stroke="#333" stroke-width="2"/>
+  <rect x="190" y="15" width="40" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="200" y="30" font-size="10">2Ω</text>
+  <line x1="230" y1="25" x2="250" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="165" y="22" font-size="10">+</text>
+  <text x="252" y="22" font-size="10">−</text>
+  <line x1="180" y1="40" x2="200" y2="40" stroke="#333" stroke-width="1.5" marker-end="url(#arr_18)"/>
+  <text x="182" y="55" font-size="10">2A</text>
+  <circle cx="190" cy="85" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="182" y="82" font-size="12">−</text>
+  <text x="182" y="92" font-size="12">+</text>
+  <text x="170" y="110" font-size="10">12V</text>
+  <line x1="190" y1="70" x2="190" y2="65" stroke="#333" stroke-width="2"/>
+  <line x1="190" y1="97" x2="190" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="170" y1="25" x2="170" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="170" y1="130" x2="250" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="250" y1="25" x2="250" y2="130" stroke="#333" stroke-width="2"/>
+
+  <!-- (c) 另一种关联 -->
+  <text x="290" y="15" font-size="10" fill="#666">(c)</text>
+  <line x1="310" y1="25" x2="330" y2="25" stroke="#333" stroke-width="2"/>
+  <rect x="330" y="15" width="40" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="340" y="30" font-size="10">2Ω</text>
+  <line x1="370" y1="25" x2="390" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="305" y="22" font-size="10">−</text>
+  <text x="392" y="22" font-size="10">+</text>
+  <line x1="320" y1="40" x2="340" y2="40" stroke="#333" stroke-width="1.5" marker-end="url(#arr_18)"/>
+  <text x="322" y="55" font-size="10">2A</text>
+  <circle cx="330" cy="85" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="322" y="82" font-size="12">+</text>
+  <text x="322" y="92" font-size="12">−</text>
+  <text x="302" y="110" font-size="10">12V</text>
+  <line x1="330" y1="70" x2="330" y2="65" stroke="#333" stroke-width="2"/>
+  <line x1="330" y1="97" x2="330" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="310" y1="25" x2="310" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="310" y1="130" x2="390" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="390" y1="25" x2="390" y2="130" stroke="#333" stroke-width="2"/>
+
+  <!-- (d) 另一种非关联 -->
+  <text x="430" y="15" font-size="10" fill="#666">(d)</text>
+  <line x1="450" y1="25" x2="470" y2="25" stroke="#333" stroke-width="2"/>
+  <rect x="470" y="15" width="40" height="20" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="480" y="30" font-size="10">2Ω</text>
+  <line x1="510" y1="25" x2="520" y2="25" stroke="#333" stroke-width="2"/>
+  <text x="445" y="22" font-size="10">−</text>
+  <text x="450" y="40" font-size="10">+</text>
+  <line x1="460" y1="40" x2="480" y2="40" stroke="#333" stroke-width="1.5" marker-end="url(#arr_18)"/>
+  <text x="462" y="55" font-size="10">2A</text>
+  <circle cx="470" cy="85" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="462" y="82" font-size="12">−</text>
+  <text x="462" y="92" font-size="12">+</text>
+  <text x="442" y="110" font-size="10">12V</text>
+  <line x1="470" y1="70" x2="470" y2="65" stroke="#333" stroke-width="2"/>
+  <line x1="470" y1="97" x2="470" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="450" y1="25" x2="450" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="450" y1="130" x2="520" y2="130" stroke="#333" stroke-width="2"/>
+  <line x1="520" y1="25" x2="520" y2="130" stroke="#333" stroke-width="2"/>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="400" height="180" viewBox="0 0 400 180">
+  <defs>
+    <marker id="arr_kvl" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+  <!-- 6V电压源 -->
+  <line x1="40" y1="30" x2="40" y2="59" stroke="#333" stroke-width="2"/>
+  <circle cx="40" cy="75" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="30" y="72" font-size="10">+</text>
+  <text x="30" y="85" font-size="10">−</text>
+  <text x="10" y="78" font-size="11">6V</text>
+  <line x1="40" y1="91" x2="40" y2="150" stroke="#333" stroke-width="2"/>
+
+  <!-- 上方导线 -->
+  <line x1="40" y1="30" x2="300" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- 3Ω电阻 -->
+  <line x1="100" y1="30" x2="100" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="87" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="91" y="65" font-size="10">3Ω</text>
+  <line x1="100" y1="75" x2="100" y2="150" stroke="#333" stroke-width="2"/>
+
+  <!-- 2Ω电阻 -->
+  <line x1="180" y1="30" x2="180" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="167" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="171" y="65" font-size="10">2Ω</text>
+  <line x1="180" y1="75" x2="180" y2="150" stroke="#333" stroke-width="2"/>
+
+  <!-- 8A电流源 -->
+  <circle cx="250" cy="50" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="250" y1="42" x2="250" y2="58" stroke="#333" stroke-width="1.5" marker-end="url(#arr_kvl)"/>
+  <text x="266" y="54" font-size="10">8A</text>
+  <line x1="250" y1="30" x2="250" y2="38" stroke="#333" stroke-width="2"/>
+  <line x1="250" y1="62" x2="250" y2="80" stroke="#333" stroke-width="2"/>
+
+  <!-- 6A电流源 -->
+  <circle cx="250" cy="110" r="12" fill="none" stroke="#333" stroke-width="2"/>
+  <line x1="250" y1="102" x2="250" y2="118" stroke="#333" stroke-width="1.5" marker-end="url(#arr_kvl)"/>
+  <text x="266" y="114" font-size="10">6A</text>
+  <line x1="250" y1="80" x2="250" y2="98" stroke="#333" stroke-width="2"/>
+  <line x1="250" y1="122" x2="250" y2="150" stroke="#333" stroke-width="2"/>
+
+  <!-- 4Ω电阻 -->
+  <line x1="300" y1="30" x2="300" y2="45" stroke="#333" stroke-width="2"/>
+  <rect x="287" y="45" width="26" height="30" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="291" y="65" font-size="10">4Ω</text>
+  <line x1="300" y1="75" x2="300" y2="150" stroke="#333" stroke-width="2"/>
+
+  <!-- 3I受控源（菱形） -->
+  <line x1="300" y1="150" x2="370" y2="150" stroke="#333" stroke-width="2"/>
+  <line x1="370" y1="150" x2="370" y2="50" stroke="#333" stroke-width="2"/>
+  <polygon points="370,50 390,75 370,100 350,75" fill="none" stroke="#e74c3c" stroke-width="2"/>
+  <text x="395" y="70" font-size="10" fill="#e74c3c">3I</text>
+  <line x1="370" y1="30" x2="370" y2="50" stroke="#333" stroke-width="2"/>
+  <line x1="300" y1="30" x2="370" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- 下方导线 -->
+  <line x1="40" y1="150" x2="300" y2="150" stroke="#333" stroke-width="2"/>
+
+  <!-- 电流I标注 -->
+  <line x1="340" y1="80" x2="340" y2="120" stroke="#333" stroke-width="1.5" marker-end="url(#arr_kvl)"/>
+  <text x="345" y="105" font-size="10" font-style="italic">I</text>
+</svg>
+</div>
+
+
+<div class="circuit-diagram">
+<svg width="440" height="220" viewBox="0 0 440 220">
+  <defs>
+    <marker id="arr_bridge2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#333"/>
+    </marker>
+  </defs>
+
+  <!-- 节点坐标 -->
+  <!-- A=(80,30) B=(300,30) C=(300,170) D=(80,170) -->
+
+  <!-- 24V电压源 (左侧 A-D) -->
+  <line x1="40" y1="30" x2="40" y2="94" stroke="#333" stroke-width="2"/>
+  <circle cx="40" cy="110" r="16" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="26" y="107" font-size="10">+</text>
+  <text x="26" y="120" font-size="10">−</text>
+  <text x="4" y="114" font-size="11" font-weight="bold">24V</text>
+  <line x1="40" y1="126" x2="40" y2="170" stroke="#333" stroke-width="2"/>
+  <!-- 连接到A和D -->
+  <line x1="40" y1="30" x2="80" y2="30" stroke="#333" stroke-width="2"/>
+  <line x1="40" y1="170" x2="80" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 电流I标注（从电压源正极流出） -->
+  <line x1="55" y1="25" x2="75" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arr_bridge2)"/>
+  <text x="62" y="18" font-size="11" font-style="italic" font-weight="bold">I</text>
+
+  <!-- 4Ω电阻（A-B，上方） -->
+  <line x1="80" y1="30" x2="170" y2="30" stroke="#333" stroke-width="2"/>
+  <rect x="170" y="18" width="60" height="24" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="186" y="35" font-size="11">4Ω</text>
+  <line x1="230" y1="30" x2="300" y2="30" stroke="#333" stroke-width="2"/>
+
+  <!-- 12Ω电阻（A-D，左侧竖直） -->
+  <line x1="80" y1="30" x2="80" y2="80" stroke="#333" stroke-width="2"/>
+  <rect x="68" y="80" width="24" height="60" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="71" y="115" font-size="11">12Ω</text>
+  <line x1="80" y1="140" x2="80" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 3Ω电阻（B-C，右侧竖直） -->
+  <line x1="300" y1="30" x2="300" y2="80" stroke="#333" stroke-width="2"/>
+  <rect x="288" y="80" width="24" height="60" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="293" y="115" font-size="11">3Ω</text>
+  <line x1="300" y1="140" x2="300" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 6Ω电阻（D-C，下方） -->
+  <line x1="80" y1="170" x2="170" y2="170" stroke="#333" stroke-width="2"/>
+  <rect x="170" y="158" width="60" height="24" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="186" y="175" font-size="11">6Ω</text>
+  <line x1="230" y1="170" x2="300" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 对角线1：A→C（左上到右下，无物理连接） -->
+  <line x1="80" y1="30" x2="300" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 对角线2：B→D（右上到左下，无物理连接） -->
+  <line x1="300" y1="30" x2="80" y2="170" stroke="#333" stroke-width="2"/>
+
+  <!-- 中心无连接标记 -->
+  <circle cx="190" cy="100" r="6" fill="white" stroke="#333" stroke-width="1.5"/>
+  <text x="193" y="104" font-size="12">×</text>
+
+  <!-- 节点标注 -->
+  <circle cx="80" cy="30" r="3" fill="#333"/>
+  <text x="65" y="22" font-size="10" font-weight="bold">A</text>
+  <circle cx="300" cy="30" r="3" fill="#333"/>
+  <text x="305" y="22" font-size="10" font-weight="bold">B</text>
+  <circle cx="300" cy="170" r="3" fill="#333"/>
+  <text x="305" y="185" font-size="10" font-weight="bold">C</text>
+  <circle cx="80" cy="170" r="3" fill="#333"/>
+  <text x="65" y="185" font-size="10" font-weight="bold">D</text>
+</svg>
+</div>
+
+
+
+
+
+
+
+
+
+
