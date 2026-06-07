@@ -19,6 +19,9 @@ interface AppState {
   logout: () => void;
   setUserInfo: (_info: UserInfo) => void;
 
+  currentSubject: string;
+  setCurrentSubject: (_subject: string) => void;
+
   toast: ToastState | null;
   setToast: (_toast: ToastState | null) => void;
 
@@ -45,6 +48,9 @@ export const useAppStore = create<AppState>()(
         }),
       setUserInfo: (info) => set({ userInfo: info }),
 
+      currentSubject: "C语言",
+      setCurrentSubject: (subject) => set({ currentSubject: subject }),
+
       toast: null,
       setToast: (toast) => set({ toast }),
 
@@ -58,6 +64,7 @@ export const useAppStore = create<AppState>()(
         token: state.token,
         studentId: state.studentId,
         userInfo: state.userInfo,
+        currentSubject: state.currentSubject,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<AppState>;

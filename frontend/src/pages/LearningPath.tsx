@@ -119,6 +119,7 @@ const LearningPathPage: React.FC = () => {
   const [changedNodeIds, setChangedNodeIds] = useState<Set<number>>(new Set());
   const prevNodesRef = useRef<PathNode[]>([]);
   const studentId = useAppStore((s) => s.studentId);
+  const currentSubject = useAppStore((s) => s.currentSubject);
   const navigate = useNavigate();
   const timelineRef = useRef<HTMLDivElement>(null);
   const strokePathRef = useRef<SVGPathElement>(null);
@@ -128,6 +129,15 @@ const LearningPathPage: React.FC = () => {
   useEffect(() => {
     visibleCountRef.current = visibleCount;
   }, [visibleCount]);
+
+  // 根据课程切换默认学习目标
+  useEffect(() => {
+    if (currentSubject === "电路分析") {
+      setTargetTopic("掌握电路分析基础理论与分析方法");
+    } else {
+      setTargetTopic("掌握 C语言程序设计与数据结构基础");
+    }
+  }, [currentSubject]);
 
   const lineD = useMemo(() => {
     const h = Math.max(timelineHeight, 1);
@@ -146,7 +156,7 @@ const LearningPathPage: React.FC = () => {
         setTargetTopic(p.targetTopic ?? "掌握 C语言程序设计与数据结构基础");
       } catch {}
     }
-  }, [studentId]);
+  }, [studentId, currentSubject]);
 
   // 加载画像建议
   useEffect(() => {
@@ -175,14 +185,14 @@ const LearningPathPage: React.FC = () => {
       } catch {}
     };
     loadProfile();
-  }, [studentId]);
+  }, [studentId, currentSubject]);
 
   useEffect(() => {
     let ignore = false;
     setLoading(true);
     const load = async () => {
       try {
-        const res = await pathApi.current(studentId);
+        const res = await pathApi.current(studentId, currentSubject);
         if (ignore) return;
         if (res.data) {
           const nodes: PathNode[] = res.data.nodes || [];
@@ -207,7 +217,7 @@ const LearningPathPage: React.FC = () => {
     return () => {
       ignore = true;
     };
-  }, [studentId]);
+  }, [studentId, currentSubject]);
 
   // 时间轴 SVG 高度随内容自适应
   useLayoutEffect(() => {
@@ -324,10 +334,7 @@ const LearningPathPage: React.FC = () => {
       message.success("反思已提交");
 
       // 异步：将笔记经 Agent 分析后存入知识库
-      const nodeKpId =
-        kpMap[selectedNode.kp_id] ||
-        selectedNode.kp_id ||
-        `kp_${selectedNode.id}`;
+      const nodeKpId = selectedNode.kp_id || `kp_${selectedNode.id}`;
       kbApi
         .analyzeAndSave({
           content: reflectionText,
@@ -350,12 +357,13 @@ const LearningPathPage: React.FC = () => {
     nodeOpenTimeRef.current = Date.now();
   };
 
-  // 节点 -> kp_id 映射（保留 kp_id；缺失时退化为 kp_c01..14）
+  // 节点 -> kp_id 映射（保留 kp_id；缺失时根据课程退化）
   const nodeKpId = (node: PathNode): string => {
     if (node.kp_id) return String(node.kp_id);
     const idNum = Number(node.id);
-    if (Number.isFinite(idNum) && idNum >= 1 && idNum <= 16) {
-      return `kp_c${String(idNum).padStart(2, "0")}`;
+    const prefix = currentSubject === "电路分析" ? "kp_e" : "kp_c";
+    if (Number.isFinite(idNum) && idNum >= 1 && idNum <= 20) {
+      return `${prefix}${String(idNum).padStart(2, "0")}`;
     }
     return String(node.id);
   };
@@ -397,6 +405,7 @@ const LearningPathPage: React.FC = () => {
         daily_duration: dailyDuration,
         difficulty: difficulty,
         preference: learningPreference,
+        subject: currentSubject,
       });
       const responseData = res.data as unknown as Record<string, unknown>;
       const pathPayload = (
@@ -494,7 +503,6 @@ const LearningPathPage: React.FC = () => {
             kp_id: nodeKpId(node),
             title: node.title,
             content: `# ${node.title}\n\n学习路径节点完成。`,
-            subject: node.stage || undefined,
             action: "learn",
           })
           .catch(() => {});
@@ -548,7 +556,6 @@ const LearningPathPage: React.FC = () => {
             kp_id: nodeKpId(n),
             title: n.title,
             content: `# ${n.title}\n\n学习路径节点完成。`,
-            subject: n.stage || undefined,
             action: "learn" as const,
           })),
         )

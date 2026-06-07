@@ -36,6 +36,7 @@ class PathGenerationRequest(BaseModel):
     preference: Optional[str] = None
     daily_duration: Optional[int] = Field(None, ge=1, le=480)
     difficulty: Optional[int] = Field(None, ge=1, le=10)
+    subject: Optional[str] = None
 
 
 class PathAdjustmentRequest(BaseModel):
@@ -97,7 +98,10 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 
     # 如果 agent 失败或超时，使用 DAG 算法生成路径
     if not raw_path or not raw_path.get("stages"):
-        kps = db.query(KnowledgePointModel).all()
+        kp_query = db.query(KnowledgePointModel)
+        if request.subject:
+            kp_query = kp_query.filter(KnowledgePointModel.subject == request.subject)
+        kps = kp_query.all()
         if kps:
             planner = DAGPathPlanner()
             planner.build_graph([
@@ -201,11 +205,19 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 
 
 @router.get("/{student_id}/current")
-async def get_current_path(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def get_current_path(
+    student_id: str,
+    subject: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
     """获取当前学习路径 —— 基于数据库知识点动态构建"""
     if student_id != _current:
         raise HTTPException(status_code=403, detail="Cannot view other student's path")
-    kps = db.query(KnowledgePointModel).order_by(KnowledgePointModel.created_at.asc()).all()
+    query = db.query(KnowledgePointModel)
+    if subject:
+        query = query.filter(KnowledgePointModel.subject == subject)
+    kps = query.order_by(KnowledgePointModel.created_at.asc()).all()
     # 使用聚合查询计算每个KP的最大进度，避免加载全部记录
     since = datetime.now(timezone.utc) - timedelta(days=365)
     progress_rows = (

@@ -72,14 +72,7 @@ const ResourceCenter: React.FC = () => {
   const [courseMenu, setCourseMenu] = useState<CourseMenuItem[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "ai",
-      content:
-        "你好！我正在和你一起学习《C语言基础》。C语言是计算机专业的入门语言，掌握它对于理解计算机底层原理至关重要。有什么不懂的地方随时问我。",
-      agent: "辅导助手",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notes, setNotes] = useState("");
   const [docContent, setDocContent] = useState("");
   const [codeContent, setCodeContent] = useState("");
@@ -126,10 +119,18 @@ const ResourceCenter: React.FC = () => {
   const [pptModalOpen, setPptModalOpen] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const studentId = useAppStore((s) => s.studentId);
+  const storeCurrentSubject = useAppStore((s) => s.currentSubject);
   const location = useLocation();
   const navigate = useNavigate();
   const [weakReviewTopics, setWeakReviewTopics] = useState<string[]>([]);
   const [showReviewBanner, setShowReviewBanner] = useState(true);
+
+  const welcomeMessages: Record<string, string> = {
+    C语言:
+      "你好！我正在和你一起学习《C语言基础》。C语言是计算机专业的入门语言，掌握它对于理解计算机底层原理至关重要。有什么不懂的地方随时问我。",
+    电路分析:
+      "你好！我正在和你一起学习《电路分析》。电路分析是电气工程的基础课程，掌握电路定律和分析方法对理解电子系统至关重要。有什么不懂的地方随时问我。",
+  };
 
   const currentTopic = useMemo(
     () =>
@@ -153,7 +154,7 @@ const ResourceCenter: React.FC = () => {
     const loadMenu = async () => {
       setMenuLoading(true);
       try {
-        const res = await knowledgeApi.list();
+        const res = await knowledgeApi.list(storeCurrentSubject);
         if (ignore) return;
         const kps: Record<string, unknown>[] = res.data.data || [];
         // 按 subject 分组
@@ -211,7 +212,19 @@ const ResourceCenter: React.FC = () => {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [storeCurrentSubject]);
+
+  // 切换课程时更新欢迎语
+  useEffect(() => {
+    setMessages([
+      {
+        role: "ai",
+        content:
+          welcomeMessages[storeCurrentSubject] || welcomeMessages["C语言"],
+        agent: "辅导助手",
+      },
+    ]);
+  }, [storeCurrentSubject]);
 
   // 加载已完成知识点列表，初始化目录打勾状态
   useEffect(() => {

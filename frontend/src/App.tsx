@@ -10,7 +10,9 @@ import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import { useAppStore } from "./store";
 import { authApi, profileApi } from "./services/api";
-import OnboardingQuestionnaire from "./components/OnboardingQuestionnaire";
+import OnboardingQuestionnaire, {
+  isOnboardingCompleted,
+} from "./components/OnboardingQuestionnaire";
 import "./App.css";
 
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
@@ -224,6 +226,8 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(!isLoggedIn); // 未登录时无需等待
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingSubject, setOnboardingSubject] = useState("C语言");
+  const currentSubject = useAppStore((s) => s.currentSubject);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -237,15 +241,11 @@ const App: React.FC = () => {
             role: u.role,
           });
 
-          // 检查是否需要引导问卷（仅学生）
+          // 检查是否需要引导问卷（仅学生，仅C语言）
           if (u.role === "student" || u.role === "user") {
-            try {
-              const profileRes = await profileApi.get(u.student_id);
-              if (!profileRes.data?.data?.onboarding_completed) {
-                setShowOnboarding(true);
-              }
-            } catch {
-              // 静默失败
+            if (!isOnboardingCompleted("C语言")) {
+              setOnboardingSubject("C语言");
+              setShowOnboarding(true);
             }
           }
         })
@@ -288,6 +288,7 @@ const App: React.FC = () => {
       </Routes>
       <OnboardingQuestionnaire
         open={showOnboarding}
+        subject={onboardingSubject}
         onComplete={() => {
           setShowOnboarding(false);
           navigate("/learning-path");
