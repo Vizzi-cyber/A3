@@ -20,13 +20,6 @@ class ProjectDecomposerAgent(BaseAgent):
             "modules": ["main函数", "输出语句"],
             "knowledge_points": ["printf函数", "main函数", "基本语法"],
         },
-        "temperature_converter": {
-            "name": "温度转换器",
-            "difficulty": 1,
-            "description": "实现摄氏度与华氏度互相转换",
-            "modules": ["输入处理", "转换公式", "结果输出", "循环菜单"],
-            "knowledge_points": ["scanf函数", "printf函数", "条件语句", "循环语句", "算术运算"],
-        },
         "calculator": {
             "name": "简易计算器",
             "difficulty": 2,
@@ -34,26 +27,12 @@ class ProjectDecomposerAgent(BaseAgent):
             "modules": ["输入处理", "运算逻辑", "结果输出", "错误处理"],
             "knowledge_points": ["scanf函数", "条件语句", "算术运算", "数据类型"],
         },
-        "guess_number": {
-            "name": "猜数字游戏",
-            "difficulty": 2,
-            "description": "随机生成数字，玩家猜测直到猜中",
-            "modules": ["随机数生成", "输入比较", "次数统计", "难度选择"],
-            "knowledge_points": ["rand函数", "循环语句", "条件判断", "输入验证"],
-        },
         "student_management": {
             "name": "学生成绩管理系统",
             "difficulty": 3,
             "description": "管理学生成绩的增删改查系统",
             "modules": ["数据结构定义", "文件存储", "增删改查功能", "排序统计", "界面菜单"],
             "knowledge_points": ["结构体", "文件操作", "数组", "循环", "函数"],
-        },
-        "address_book": {
-            "name": "通讯录管理系统",
-            "difficulty": 3,
-            "description": "联系人信息的增删改查与排序",
-            "modules": ["联系人结构体", "链表存储", "增删改查", "按姓名排序", "文件读写"],
-            "knowledge_points": ["结构体", "链表", "字符串处理", "文件操作", "排序算法"],
         },
         "snake_game": {
             "name": "贪吃蛇游戏",
@@ -68,13 +47,6 @@ class ProjectDecomposerAgent(BaseAgent):
             "description": "图书借阅管理系统",
             "modules": ["图书数据结构", "用户管理", "借阅记录", "查询功能", "文件持久化"],
             "knowledge_points": ["结构体", "链表", "文件操作", "动态内存分配"],
-        },
-        "file_compressor": {
-            "name": "简易文件压缩工具",
-            "difficulty": 5,
-            "description": "基于哈夫曼编码实现文件压缩与解压",
-            "modules": ["频率统计", "哈夫曼树构建", "编码表生成", "压缩写入", "解压读取"],
-            "knowledge_points": ["哈夫曼树", "位运算", "文件二进制读写", "递归", "动态内存分配"],
         },
         "chat_room": {
             "name": "简易聊天室",
@@ -287,44 +259,6 @@ class ProjectDecomposerAgent(BaseAgent):
         ]
 
         data = await self.llm.generate_json(messages, temperature=0.4)
-
-        # 确保 decomposition 结构完整
-        if not isinstance(data, dict):
-            data = {}
-
-        # 自动计算 total_estimated_hours（如果 LLM 未返回）
-        modules = data.get("modules", [])
-        if modules and not data.get("total_estimated_hours"):
-            total_hours = sum(
-                task.get("estimated_hours", 0)
-                for module in modules
-                for task in module.get("tasks", [])
-            )
-            data["total_estimated_hours"] = total_hours or 10
-
-        # 自动计算 milestones（如果 LLM 未返回）
-        if modules and not data.get("milestones"):
-            milestones = []
-            all_tasks = []
-            for module in modules:
-                for task in module.get("tasks", []):
-                    all_tasks.append(task)
-            # 按任务数量分成 3 个阶段
-            chunk_size = max(1, len(all_tasks) // 3)
-            for i in range(0, min(len(all_tasks), 3)):
-                start = i * chunk_size
-                end = start + chunk_size if i < 2 else len(all_tasks)
-                milestones.append({
-                    "name": f"里程碑 {i + 1}",
-                    "tasks": [t.get("id", f"task_{i}") for t in all_tasks[start:end]],
-                    "deadline_day": (i + 1) * 3,
-                })
-            data["milestones"] = milestones
-
-        # 确保 project_name 存在
-        if not data.get("project_name"):
-            data["project_name"] = project_name
-
         return {
             "status": "success",
             "task": "decompose",

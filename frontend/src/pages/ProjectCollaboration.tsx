@@ -903,15 +903,14 @@ const ProjectCollaboration: React.FC = () => {
 
       {/* Step 1: 选择项目 */}
       {currentStep === 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[calc(100vh-280px)]">
-          {/* 左侧：选择内置项目 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 h-full flex flex-col">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-5">
             <div className="flex items-center gap-2 mb-4">
               <RocketOutlined className="text-gray-400" />
               <span className="font-medium text-gray-700">选择内置项目</span>
               <Tag className="ml-auto">{projects.length} 个可用</Tag>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 content-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {projects.map((p) => {
                 const isSelected = selectedProject === p.id;
                 return (
@@ -952,69 +951,66 @@ const ProjectCollaboration: React.FC = () => {
             </div>
           </div>
 
-          {/* 右侧：自定义项目 + 团队配置 + 按钮 */}
-          <div className="flex flex-col gap-4 h-full">
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <ProjectOutlined className="text-gray-400" />
-                <span className="font-medium text-gray-700">自定义项目</span>
-              </div>
-              <Input
-                value={customProjectName}
-                onChange={(e) => setCustomProjectName(e.target.value)}
-                placeholder="输入自定义项目名称，如：学生成绩管理系统"
-                size="large"
-                className="rounded-lg"
-              />
+          <div className="bg-white rounded-lg border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <ProjectOutlined className="text-gray-400" />
+              <span className="font-medium text-gray-700">或自定义项目</span>
             </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-5 flex-1">
-              <div className="flex items-center gap-2 mb-4">
-                <TeamOutlined className="text-gray-400" />
-                <span className="font-medium text-gray-700">团队配置</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-500 mb-2">团队人数</div>
-                  <Select
-                    value={teamSize}
-                    onChange={setTeamSize}
-                    style={{ width: "100%" }}
-                    size="large"
-                    options={[2, 3, 4, 5].map((n) => ({
-                      value: n,
-                      label: `${n} 人团队`,
-                    }))}
-                  />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-2">团队水平</div>
-                  <Select
-                    value={teamLevel}
-                    onChange={setTeamLevel}
-                    style={{ width: "100%" }}
-                    size="large"
-                    options={[
-                      { value: "beginner", label: "初学者" },
-                      { value: "intermediate", label: "中级" },
-                      { value: "advanced", label: "高级" },
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Button
-              type="primary"
+            <Input
+              value={customProjectName}
+              onChange={(e) => setCustomProjectName(e.target.value)}
+              placeholder="输入自定义项目名称，如：学生成绩管理系统"
               size="large"
-              block
-              onClick={handleDecompose}
-              loading={loading}
-              className="h-10"
-            >
-              开始拆解项目
-            </Button>
+              className="rounded-lg"
+            />
           </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <TeamOutlined className="text-gray-400" />
+              <span className="font-medium text-gray-700">团队配置</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-gray-500 mb-2">团队人数</div>
+                <Select
+                  value={teamSize}
+                  onChange={setTeamSize}
+                  style={{ width: "100%" }}
+                  size="large"
+                  options={[2, 3, 4, 5].map((n) => ({
+                    value: n,
+                    label: `${n} 人团队`,
+                  }))}
+                />
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 mb-2">团队水平</div>
+                <Select
+                  value={teamLevel}
+                  onChange={setTeamLevel}
+                  style={{ width: "100%" }}
+                  size="large"
+                  options={[
+                    { value: "beginner", label: "初学者" },
+                    { value: "intermediate", label: "中级" },
+                    { value: "advanced", label: "高级" },
+                  ]}
+                />
+              </div>
+            </div>
+          </div>
+
+          <Button
+            type="primary"
+            size="large"
+            block
+            onClick={handleDecompose}
+            loading={loading}
+            className="h-10"
+          >
+            开始拆解项目
+          </Button>
         </div>
       )}
 
@@ -1052,7 +1048,7 @@ const ProjectCollaboration: React.FC = () => {
               </div>
               <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-center">
                 <div className="text-xl font-semibold text-gray-900">
-                  {decomposition.total_estimated_hours ?? getTotalTasks() * 5}h
+                  {decomposition.total_estimated_hours}h
                 </div>
                 <div className="text-xs text-gray-400">预计工时</div>
               </div>

@@ -324,11 +324,14 @@ const LearningPathPage: React.FC = () => {
       message.success("反思已提交");
 
       // 异步：将笔记经 Agent 分析后存入知识库
-      const nodeKp = selectedNode.kp_id || `kp_${selectedNode.id}`;
+      const nodeKpId =
+        kpMap[selectedNode.kp_id] ||
+        selectedNode.kp_id ||
+        `kp_${selectedNode.id}`;
       kbApi
         .analyzeAndSave({
           content: reflectionText,
-          kp_id: nodeKp,
+          kp_id: nodeKpId,
           title: selectedNode.title,
         })
         .catch(() => {});
@@ -491,7 +494,7 @@ const LearningPathPage: React.FC = () => {
             kp_id: nodeKpId(node),
             title: node.title,
             content: `# ${node.title}\n\n学习路径节点完成。`,
-            subject: undefined,
+            subject: node.stage || undefined,
             action: "learn",
           })
           .catch(() => {});
@@ -545,7 +548,7 @@ const LearningPathPage: React.FC = () => {
             kp_id: nodeKpId(n),
             title: n.title,
             content: `# ${n.title}\n\n学习路径节点完成。`,
-            subject: undefined,
+            subject: n.stage || undefined,
             action: "learn" as const,
           })),
         )
