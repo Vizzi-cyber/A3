@@ -903,7 +903,8 @@ const ProjectCollaboration: React.FC = () => {
 
       {/* Step 1: 选择项目 */}
       {currentStep === 0 && (
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* 左侧：选择内置项目 */}
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <div className="flex items-center gap-2 mb-4">
               <RocketOutlined className="text-gray-400" />
@@ -951,66 +952,69 @@ const ProjectCollaboration: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <ProjectOutlined className="text-gray-400" />
-              <span className="font-medium text-gray-700">或自定义项目</span>
+          {/* 右侧：自定义项目 + 团队配置 + 按钮 */}
+          <div className="flex flex-col gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <ProjectOutlined className="text-gray-400" />
+                <span className="font-medium text-gray-700">或自定义项目</span>
+              </div>
+              <Input
+                value={customProjectName}
+                onChange={(e) => setCustomProjectName(e.target.value)}
+                placeholder="输入自定义项目名称，如：学生成绩管理系统"
+                size="large"
+                className="rounded-lg"
+              />
             </div>
-            <Input
-              value={customProjectName}
-              onChange={(e) => setCustomProjectName(e.target.value)}
-              placeholder="输入自定义项目名称，如：学生成绩管理系统"
+
+            <div className="bg-white rounded-lg border border-gray-200 p-5 flex-1">
+              <div className="flex items-center gap-2 mb-4">
+                <TeamOutlined className="text-gray-400" />
+                <span className="font-medium text-gray-700">团队配置</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">团队人数</div>
+                  <Select
+                    value={teamSize}
+                    onChange={setTeamSize}
+                    style={{ width: "100%" }}
+                    size="large"
+                    options={[2, 3, 4, 5].map((n) => ({
+                      value: n,
+                      label: `${n} 人团队`,
+                    }))}
+                  />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">团队水平</div>
+                  <Select
+                    value={teamLevel}
+                    onChange={setTeamLevel}
+                    style={{ width: "100%" }}
+                    size="large"
+                    options={[
+                      { value: "beginner", label: "初学者" },
+                      { value: "intermediate", label: "中级" },
+                      { value: "advanced", label: "高级" },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Button
+              type="primary"
               size="large"
-              className="rounded-lg"
-            />
+              block
+              onClick={handleDecompose}
+              loading={loading}
+              className="h-10"
+            >
+              开始拆解项目
+            </Button>
           </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <TeamOutlined className="text-gray-400" />
-              <span className="font-medium text-gray-700">团队配置</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-gray-500 mb-2">团队人数</div>
-                <Select
-                  value={teamSize}
-                  onChange={setTeamSize}
-                  style={{ width: "100%" }}
-                  size="large"
-                  options={[2, 3, 4, 5].map((n) => ({
-                    value: n,
-                    label: `${n} 人团队`,
-                  }))}
-                />
-              </div>
-              <div>
-                <div className="text-sm text-gray-500 mb-2">团队水平</div>
-                <Select
-                  value={teamLevel}
-                  onChange={setTeamLevel}
-                  style={{ width: "100%" }}
-                  size="large"
-                  options={[
-                    { value: "beginner", label: "初学者" },
-                    { value: "intermediate", label: "中级" },
-                    { value: "advanced", label: "高级" },
-                  ]}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Button
-            type="primary"
-            size="large"
-            block
-            onClick={handleDecompose}
-            loading={loading}
-            className="h-10"
-          >
-            开始拆解项目
-          </Button>
         </div>
       )}
 
