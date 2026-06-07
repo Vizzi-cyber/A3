@@ -81,6 +81,7 @@ def _profile_to_dict(profile: StudentProfileModel) -> Dict[str, Any]:
         "interest_areas": profile.interest_areas or [],
         "learning_tempo": profile.learning_tempo or {},
         "practical_preferences": profile.practical_preferences or {},
+        "onboarding_completed": profile.onboarding_completed if profile.onboarding_completed is not None else False,
         "created_at": profile.created_at.isoformat() if profile.created_at else datetime.now(timezone.utc).isoformat(),
         "updated_at": profile.updated_at.isoformat() if profile.updated_at else datetime.now(timezone.utc).isoformat(),
     }
