@@ -56,6 +56,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { MarkdownViewer } from "../components/MarkdownViewer";
 import CodeEditor from "../components/CodeEditor";
 import AlgorithmVisualizer from "../components/AlgorithmVisualizer";
+import MindmapViewer from "../components/MindmapViewer";
 import "../styles/markdown-content.css";
 
 interface CourseMenuItem {
@@ -1228,24 +1229,9 @@ const ResourceCenter: React.FC = () => {
                     </span>
                   ),
                   children: (
-                    <Card className="rounded-xl bg-slate-50 border-slate-100">
-                      <Typography.Title
-                        level={5}
-                        className="text-center text-slate-800 font-bold"
-                      >
-                        {mindmap.root || currentTopic}
-                      </Typography.Title>
-                      <div className="flex flex-wrap gap-2 justify-center mt-6">
-                        {(mindmap.children || []).map((c, i) => (
-                          <Tag
-                            key={i}
-                            className="rounded-full px-3 py-1 text-sm border-0 bg-white text-slate-600 shadow-sm"
-                          >
-                            {c.name}
-                          </Tag>
-                        ))}
-                      </div>
-                    </Card>
+                    <div className="rounded-xl bg-slate-50 border border-slate-100 p-2">
+                      <MindmapViewer data={mindmap} width={600} height={420} />
+                    </div>
                   ),
                 },
                 {
