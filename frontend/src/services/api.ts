@@ -174,8 +174,11 @@ export const pathApi = {
       "/learning-path/generate",
       data,
     ),
-  current: (studentId: string) =>
-    api.get<CurrentPathResponse>(`/learning-path/${studentId}/current`),
+  current: (studentId: string, subject?: string) =>
+    api.get<CurrentPathResponse>(
+      `/learning-path/${studentId}/current`,
+      subject ? { params: { subject } } : undefined,
+    ),
   adjust: (studentId: string, data: PathAdjustmentRequest) =>
     api.post<{ status: string; message: string; data: LearningPath["path"] }>(
       `/learning-path/${studentId}/adjust`,
@@ -807,7 +810,7 @@ export const knowledgeApi = {
 
 // ---------- 每日练习 ----------
 export const dailyQuizApi = {
-  getDaily: (count?: number) =>
+  getDaily: (count?: number, subject?: string) =>
     api.get<{
       status: string;
       data: {
@@ -828,7 +831,17 @@ export const dailyQuizApi = {
         }>;
         weak_areas: string[];
       };
-    }>("/daily-quiz/daily", count ? { params: { count } } : undefined),
+    }>(
+      "/daily-quiz/daily",
+      count || subject
+        ? {
+            params: {
+              ...(count ? { count } : {}),
+              ...(subject ? { subject } : {}),
+            },
+          }
+        : undefined,
+    ),
   getStats: () =>
     api.get<{
       status: string;

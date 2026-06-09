@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal, Button, Radio, Slider, Typography, Space, Card } from "antd";
 import {
   TrophyOutlined,
@@ -8,18 +8,22 @@ import {
   BookOutlined,
   PlayCircleOutlined,
   CheckCircleOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 import { onboardingApi } from "../services/api";
 import type { OnboardingAnswers } from "../types";
+import { useAppStore } from "../store";
 
 const { Title, Text } = Typography;
 
 interface OnboardingQuestionnaireProps {
   open: boolean;
+  subject: string;
   onComplete: () => void;
 }
 
-const steps = [
+// C语言问卷步骤
+const cSteps = [
   { title: "基础水平", description: "了解你的C语言基础" },
   { title: "难度偏好", description: "选择适合你的难度" },
   { title: "学习时长", description: "规划每日学习时间" },
@@ -27,19 +31,58 @@ const steps = [
   { title: "学习风格", description: "选择学习方式" },
 ];
 
+// 电路分析问卷步骤
+const circuitSteps = [
+  { title: "基础水平", description: "了解你的电路分析基础" },
+  { title: "难度偏好", description: "选择适合你的难度" },
+  { title: "学习时长", description: "规划每日学习时间" },
+  { title: "学习目标", description: "明确你的目标" },
+  { title: "学习风格", description: "选择学习方式" },
+];
+
+// 检查课程问卷是否已完成
+export const isOnboardingCompleted = (subject: string): boolean => {
+  const completed = localStorage.getItem(`onboarding_completed_${subject}`);
+  return completed === "true";
+};
+
+// 标记课程问卷已完成
+const markOnboardingCompleted = (subject: string): void => {
+  localStorage.setItem(`onboarding_completed_${subject}`, "true");
+};
+
 const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
   open,
+  subject,
   onComplete,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const studentId = useAppStore((s) => s.studentId);
+
+  const steps = subject === "电路分析" ? circuitSteps : cSteps;
+
   const [answers, setAnswers] = useState<OnboardingAnswers>({
-    c_knowledge_level: 1,
+    c_knowledge_level: subject === "C语言" ? 1 : undefined,
+    circuit_knowledge_level: subject === "电路分析" ? 1 : undefined,
     difficulty_preference: 5,
     daily_duration: 60,
     learning_goal: "skill_build",
     learning_style: "balanced",
   });
+
+  // 重置步骤当课程变化时
+  useEffect(() => {
+    setCurrentStep(0);
+    setAnswers({
+      c_knowledge_level: subject === "C语言" ? 1 : undefined,
+      circuit_knowledge_level: subject === "电路分析" ? 1 : undefined,
+      difficulty_preference: 5,
+      daily_duration: 60,
+      learning_goal: "skill_build",
+      learning_style: "balanced",
+    });
+  }, [subject]);
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -57,6 +100,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
     setLoading(true);
     try {
       await onboardingApi.submit(answers);
+      markOnboardingCompleted(subject);
       onComplete();
     } catch (e) {
       console.error("提交失败:", e);
@@ -65,96 +109,162 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
     }
   };
 
+  const renderKnowledgeLevelQuestion = () => {
+    if (subject === "电路分析") {
+      return (
+        <div className="space-y-4">
+          <Title level={5} className="!mb-4">
+            你的电路分析基础如何？
+          </Title>
+          <Radio.Group
+            value={answers.circuit_knowledge_level}
+            onChange={(e) =>
+              setAnswers({
+                ...answers,
+                circuit_knowledge_level: e.target.value,
+              })
+            }
+            className="w-full"
+          >
+            <Space direction="vertical" className="w-full">
+              <Radio.Button value={1} className="w-full text-left h-auto !py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🌱</span>
+                  <div>
+                    <div className="font-medium">完全零基础</div>
+                    <div className="text-xs text-slate-400">
+                      从未接触过电路分析
+                    </div>
+                  </div>
+                </div>
+              </Radio.Button>
+              <Radio.Button value={2} className="w-full text-left h-auto !py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">📖</span>
+                  <div>
+                    <div className="font-medium">了解基本概念</div>
+                    <div className="text-xs text-slate-400">
+                      知道电压、电流、电阻等概念
+                    </div>
+                  </div>
+                </div>
+              </Radio.Button>
+              <Radio.Button value={3} className="w-full text-left h-auto !py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">💻</span>
+                  <div>
+                    <div className="font-medium">学过基础定律</div>
+                    <div className="text-xs text-slate-400">
+                      了解KCL、KVL、欧姆定律
+                    </div>
+                  </div>
+                </div>
+              </Radio.Button>
+              <Radio.Button value={4} className="w-full text-left h-auto !py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🚀</span>
+                  <div>
+                    <div className="font-medium">有一定基础</div>
+                    <div className="text-xs text-slate-400">
+                      做过简单电路分析题目
+                    </div>
+                  </div>
+                </div>
+              </Radio.Button>
+              <Radio.Button value={5} className="w-full text-left h-auto !py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">⭐</span>
+                  <div>
+                    <div className="font-medium">比较熟悉</div>
+                    <div className="text-xs text-slate-400">
+                      掌握多种电路分析方法
+                    </div>
+                  </div>
+                </div>
+              </Radio.Button>
+            </Space>
+          </Radio.Group>
+        </div>
+      );
+    }
+
+    // C语言问卷
+    return (
+      <div className="space-y-4">
+        <Title level={5} className="!mb-4">
+          你的C语言基础如何？
+        </Title>
+        <Radio.Group
+          value={answers.c_knowledge_level}
+          onChange={(e) =>
+            setAnswers({ ...answers, c_knowledge_level: e.target.value })
+          }
+          className="w-full"
+        >
+          <Space direction="vertical" className="w-full">
+            <Radio.Button value={1} className="w-full text-left h-auto !py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🌱</span>
+                <div>
+                  <div className="font-medium">完全零基础</div>
+                  <div className="text-xs text-slate-400">从未接触过编程</div>
+                </div>
+              </div>
+            </Radio.Button>
+            <Radio.Button value={2} className="w-full text-left h-auto !py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">📖</span>
+                <div>
+                  <div className="font-medium">了解基本概念</div>
+                  <div className="text-xs text-slate-400">
+                    知道变量、循环等概念
+                  </div>
+                </div>
+              </div>
+            </Radio.Button>
+            <Radio.Button value={3} className="w-full text-left h-auto !py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">💻</span>
+                <div>
+                  <div className="font-medium">写过简单程序</div>
+                  <div className="text-xs text-slate-400">
+                    能独立完成Hello World
+                  </div>
+                </div>
+              </div>
+            </Radio.Button>
+            <Radio.Button value={4} className="w-full text-left h-auto !py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🚀</span>
+                <div>
+                  <div className="font-medium">有一定基础</div>
+                  <div className="text-xs text-slate-400">
+                    学过部分语法，做过小练习
+                  </div>
+                </div>
+              </div>
+            </Radio.Button>
+            <Radio.Button value={5} className="w-full text-left h-auto !py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">⭐</span>
+                <div>
+                  <div className="font-medium">比较熟悉</div>
+                  <div className="text-xs text-slate-400">
+                    想深入学习数据结构
+                  </div>
+                </div>
+              </div>
+            </Radio.Button>
+          </Space>
+        </Radio.Group>
+      </div>
+    );
+  };
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
-        return (
-          <div className="space-y-4">
-            <Title level={5} className="!mb-4">
-              你的C语言基础如何？
-            </Title>
-            <Radio.Group
-              value={answers.c_knowledge_level}
-              onChange={(e) =>
-                setAnswers({ ...answers, c_knowledge_level: e.target.value })
-              }
-              className="w-full"
-            >
-              <Space direction="vertical" className="w-full">
-                <Radio.Button
-                  value={1}
-                  className="w-full text-left h-auto !py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">🌱</span>
-                    <div>
-                      <div className="font-medium">完全零基础</div>
-                      <div className="text-xs text-slate-400">
-                        从未接触过编程
-                      </div>
-                    </div>
-                  </div>
-                </Radio.Button>
-                <Radio.Button
-                  value={2}
-                  className="w-full text-left h-auto !py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">📖</span>
-                    <div>
-                      <div className="font-medium">了解基本概念</div>
-                      <div className="text-xs text-slate-400">
-                        知道变量、循环等概念
-                      </div>
-                    </div>
-                  </div>
-                </Radio.Button>
-                <Radio.Button
-                  value={3}
-                  className="w-full text-left h-auto !py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">💻</span>
-                    <div>
-                      <div className="font-medium">写过简单程序</div>
-                      <div className="text-xs text-slate-400">
-                        能独立完成Hello World
-                      </div>
-                    </div>
-                  </div>
-                </Radio.Button>
-                <Radio.Button
-                  value={4}
-                  className="w-full text-left h-auto !py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">🚀</span>
-                    <div>
-                      <div className="font-medium">有一定基础</div>
-                      <div className="text-xs text-slate-400">
-                        学过部分语法，做过小练习
-                      </div>
-                    </div>
-                  </div>
-                </Radio.Button>
-                <Radio.Button
-                  value={5}
-                  className="w-full text-left h-auto !py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">⭐</span>
-                    <div>
-                      <div className="font-medium">比较熟悉</div>
-                      <div className="text-xs text-slate-400">
-                        想深入学习数据结构
-                      </div>
-                    </div>
-                  </div>
-                </Radio.Button>
-              </Space>
-            </Radio.Group>
-          </div>
-        );
+        return renderKnowledgeLevelQuestion();
 
       case 1:
         return (
@@ -320,11 +430,17 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                   className="w-full text-left h-auto !py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <CodeOutlined className="text-blue-500 text-lg" />
+                    {subject === "电路分析" ? (
+                      <ExperimentOutlined className="text-blue-500 text-lg" />
+                    ) : (
+                      <CodeOutlined className="text-blue-500 text-lg" />
+                    )}
                     <div>
                       <div className="font-medium">技能提升</div>
                       <div className="text-xs text-slate-400">
-                        系统学习C语言和数据结构
+                        {subject === "电路分析"
+                          ? "系统学习电路分析理论和方法"
+                          : "系统学习C语言和数据结构"}
                       </div>
                     </div>
                   </div>
@@ -338,7 +454,9 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     <div>
                       <div className="font-medium">项目实战</div>
                       <div className="text-xs text-slate-400">
-                        为实际项目开发做准备
+                        {subject === "电路分析"
+                          ? "为电路设计和分析项目做准备"
+                          : "为实际项目开发做准备"}
                       </div>
                     </div>
                   </div>
@@ -352,7 +470,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     <div>
                       <div className="font-medium">探索兴趣</div>
                       <div className="text-xs text-slate-400">
-                        培养编程兴趣，拓宽视野
+                        培养兴趣，拓宽视野
                       </div>
                     </div>
                   </div>
@@ -396,7 +514,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     <CodeOutlined className="text-2xl text-green-500" />
                     <div>
                       <div className="font-medium">实战优先</div>
-                      <div className="text-xs text-slate-400">更多代码练习</div>
+                      <div className="text-xs text-slate-400">更多练习题</div>
                     </div>
                   </div>
                 </Radio.Button>

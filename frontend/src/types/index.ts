@@ -115,6 +115,7 @@ export interface PathGenerationRequest {
   preference?: string;
   daily_duration?: number;
   difficulty?: number;
+  subject?: string;
 }
 
 export interface PathAdjustmentRequest {
@@ -399,7 +400,8 @@ export interface ResourceItem {
 
 // ---------- 引导问卷 ----------
 export interface OnboardingAnswers {
-  c_knowledge_level: number;
+  c_knowledge_level?: number;
+  circuit_knowledge_level?: number;
   difficulty_preference: number;
   daily_duration: number;
   learning_goal: string;

@@ -1,6 +1,10 @@
 import React, { useState, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
+import "katex/dist/katex.min.css";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { CopyOutlined, CheckOutlined } from "@ant-design/icons";
@@ -84,23 +88,26 @@ const CodeBlock: React.FC<{ language: string; children: string }> = ({
 };
 
 /** 静态 components 映射 —— 模块级单例，避免每次渲染重新创建对象 */
- 
+
 const markdownComponents: Record<string, any> = {
   code({
-    inline,
+    node,
     className: cls,
     children,
     ...props
   }: {
-    inline?: boolean;
+    node?: any;
     className?: string;
     children?: React.ReactNode;
     [key: string]: unknown;
   }) {
     const match = /language-(\w+)/.exec(cls || "");
     const codeText = extractText(children);
-    if (!inline && match) {
+    if (match) {
       return <CodeBlock language={match[1]}>{codeText}</CodeBlock>;
+    }
+    if (node?.parent?.tagName === "pre") {
+      return <CodeBlock language="text">{codeText}</CodeBlock>;
     }
     return (
       <code className="inline-code" {...props}>
@@ -152,10 +159,20 @@ const markdownComponents: Record<string, any> = {
   hr() {
     return <hr className="md-hr" />;
   },
+  svg({
+    children,
+    ...props
+  }: {
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) {
+    return <svg {...props}>{children}</svg>;
+  },
 };
 
 /** 模块级常量，避免每次渲染创建新数组 */
-const remarkPlugins = [remarkGfm as any];
+const remarkPlugins = [remarkGfm as any, remarkMath as any];
+const rehypePlugins = [rehypeRaw as any, rehypeKatex as any];
 
 export const MarkdownViewer: React.FC<MarkdownViewerProps> = React.memo(
   ({ content, className = "" }) => {
@@ -169,6 +186,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = React.memo(
       <div className={`markdown-body ${className}`}>
         <ReactMarkdown
           remarkPlugins={remarkPlugins}
+          rehypePlugins={rehypePlugins}
           components={markdownComponents}
         >
           {content}

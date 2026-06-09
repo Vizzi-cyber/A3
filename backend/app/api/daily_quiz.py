@@ -130,6 +130,7 @@ def _select_questions(
 @router.get("/daily")
 async def get_daily_quiz(
     count: int = 5,
+    subject: Optional[str] = None,
     db: Session = Depends(get_db),
     student_id: str = Depends(get_current_student_id),
 ):
@@ -156,7 +157,10 @@ async def get_daily_quiz(
     weak_kp_ids = _get_weak_kp_ids(profile, mastery_map)
 
     # 从知识库中收集所有题目
-    kps = db.query(KnowledgePointModel).all()
+    kp_query = db.query(KnowledgePointModel)
+    if subject:
+        kp_query = kp_query.filter(KnowledgePointModel.subject == subject)
+    kps = kp_query.all()
     all_questions = []
     for kp in kps:
         if not kp.questions:

@@ -140,6 +140,7 @@ const Dashboard: React.FC = () => {
   const [calendarDate, setCalendarDate] = useState(dayjs());
 
   const studentId = useAppStore((s) => s.studentId);
+  const currentSubject = useAppStore((s) => s.currentSubject);
 
   // Data fetching
   useEffect(() => {
@@ -157,14 +158,14 @@ const Dashboard: React.FC = () => {
         const [summaryRes, pointsRes, kgRes, pathRes] = await Promise.all([
           dashboardApi.getSummary(studentId).catch(() => null),
           gamificationApi.getPoints(studentId).catch(() => null),
-          knowledgeApi.list().catch(() => null),
-          pathApi.current(studentId).catch(() => null),
+          knowledgeApi.list(currentSubject).catch(() => null),
+          pathApi.current(studentId, currentSubject).catch(() => null),
         ]);
 
         // 非关键数据延迟加载，不阻塞首屏
         const now = new Date();
         const [dailyQuizRes, activeDatesRes] = await Promise.all([
-          dailyQuizApi.getDaily(5).catch(() => null),
+          dailyQuizApi.getDaily(5, currentSubject).catch(() => null),
           dashboardApi
             .getActiveDates(studentId, now.getFullYear(), now.getMonth() + 1)
             .catch(() => null),
@@ -229,7 +230,7 @@ const Dashboard: React.FC = () => {
     };
     fetchData();
     return () => clearTimeout(timeoutId);
-  }, [studentId]);
+  }, [studentId, currentSubject]);
 
   // Fetch active dates when calendar month changes
   useEffect(() => {

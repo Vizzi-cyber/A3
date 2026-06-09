@@ -25,6 +25,7 @@ import {
   RocketOutlined,
   TrophyOutlined,
   CloseOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import { knowledgeApi, dashboardApi } from "../services/api";
@@ -57,6 +58,8 @@ const AppHeader: React.FC = () => {
   const userInfo = useAppStore((s) => s.userInfo);
   const logout = useAppStore((s) => s.logout);
   const studentId = useAppStore((s) => s.studentId);
+  const currentSubject = useAppStore((s) => s.currentSubject);
+  const setCurrentSubject = useAppStore((s) => s.setCurrentSubject);
 
   // 搜索
   const [searchValue, setSearchValue] = useState("");
@@ -199,6 +202,30 @@ const AppHeader: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4 md:gap-6">
+          {/* 课程切换按钮 */}
+          <div className="flex items-center bg-slate-100 rounded-full p-1">
+            <button
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                currentSubject === "C语言"
+                  ? "bg-primary text-white shadow-md"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+              onClick={() => setCurrentSubject("C语言")}
+            >
+              C语言
+            </button>
+            <button
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                currentSubject === "电路分析"
+                  ? "bg-primary text-white shadow-md"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+              onClick={() => setCurrentSubject("电路分析")}
+            >
+              电路分析
+            </button>
+          </div>
+
           <div className="hidden md:block relative" ref={searchRef}>
             <SearchOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
             <Input
