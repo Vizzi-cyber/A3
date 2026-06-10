@@ -56,7 +56,10 @@ export interface StudentProfile {
   weak_areas: string[];
   error_patterns: ErrorPattern[];
   learning_goals: LearningGoal[];
-  interest_areas: string[];
+  interest_areas: (
+    | string
+    | { area?: string; level?: number; [key: string]: unknown }
+  )[];
   learning_tempo: LearningTempo;
   practical_preferences: PracticalPreferences;
   onboarding_completed?: boolean;
@@ -400,8 +403,7 @@ export interface ResourceItem {
 
 // ---------- 引导问卷 ----------
 export interface OnboardingAnswers {
-  c_knowledge_level?: number;
-  circuit_knowledge_level?: number;
+  c_knowledge_level: number;
   difficulty_preference: number;
   daily_duration: number;
   learning_goal: string;

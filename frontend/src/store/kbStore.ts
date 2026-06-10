@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { message } from "antd";
 import { kbApi } from "../services/knowledgeBaseApi";
 import type {
   KBFolder,
@@ -62,7 +63,9 @@ export const useKBStore = create<KBState>((set, get) => ({
       if (res.data?.status === "success") {
         set({ folders: res.data.data });
       }
-    } catch {}
+    } catch {
+      message.error("加载文件夹失败");
+    }
   },
 
   loadNotes: async (folderId?: string | null) => {
@@ -72,7 +75,9 @@ export const useKBStore = create<KBState>((set, get) => ({
       if (res.data?.status === "success") {
         set({ notes: res.data.data });
       }
-    } catch {}
+    } catch {
+      message.error("加载笔记列表失败");
+    }
     set({ loading: false });
   },
 
@@ -89,7 +94,9 @@ export const useKBStore = create<KBState>((set, get) => ({
         });
         get().loadBacklinks(noteId);
       }
-    } catch {}
+    } catch {
+      message.error("加载笔记内容失败");
+    }
   },
 
   createNote: async (title: string, folderId?: string | null) => {
@@ -116,7 +123,9 @@ export const useKBStore = create<KBState>((set, get) => ({
         await get().selectNote(note.note_id);
         return note.note_id;
       }
-    } catch {}
+    } catch {
+      message.error("创建笔记失败");
+    }
     return null;
   },
 
@@ -138,7 +147,9 @@ export const useKBStore = create<KBState>((set, get) => ({
         ),
         isDirty: false,
       }));
-    } catch {}
+    } catch {
+      message.error("保存笔记失败");
+    }
   },
 
   deleteNote: async (noteId: string) => {
@@ -150,7 +161,9 @@ export const useKBStore = create<KBState>((set, get) => ({
         activeNote: s.activeNoteId === noteId ? null : s.activeNote,
         currentContent: s.activeNoteId === noteId ? "" : s.currentContent,
       }));
-    } catch {}
+    } catch {
+      message.error("删除笔记失败");
+    }
   },
 
   setContent: (content: string) => {
@@ -188,7 +201,9 @@ export const useKBStore = create<KBState>((set, get) => ({
       if (res.data?.status === "success") {
         set({ searchResults: res.data.data });
       }
-    } catch {}
+    } catch {
+      message.error("搜索笔记失败");
+    }
   },
 
   loadBacklinks: async (noteId: string) => {
@@ -197,7 +212,9 @@ export const useKBStore = create<KBState>((set, get) => ({
       if (res.data?.status === "success") {
         set({ backlinks: res.data.data });
       }
-    } catch {}
+    } catch {
+      message.error("加载反向链接失败");
+    }
   },
 
   createFolder: async (name: string, parentId?: string | null) => {
@@ -209,7 +226,9 @@ export const useKBStore = create<KBState>((set, get) => ({
       if (res.data?.status === "success") {
         set((s) => ({ folders: [...s.folders, res.data.data] }));
       }
-    } catch {}
+    } catch {
+      message.error("创建文件夹失败");
+    }
   },
 
   deleteFolder: async (folderId: string) => {
@@ -219,7 +238,9 @@ export const useKBStore = create<KBState>((set, get) => ({
         folders: s.folders.filter((f) => f.folder_id !== folderId),
       }));
       get().loadNotes(null);
-    } catch {}
+    } catch {
+      message.error("删除文件夹失败");
+    }
   },
 
   renameFolder: async (folderId: string, name: string) => {
@@ -230,6 +251,8 @@ export const useKBStore = create<KBState>((set, get) => ({
           f.folder_id === folderId ? { ...f, name } : f,
         ),
       }));
-    } catch {}
+    } catch {
+      message.error("重命名文件夹失败");
+    }
   },
 }));

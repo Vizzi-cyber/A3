@@ -312,7 +312,10 @@ export interface DashboardSummaryResponse {
     knowledge_base: Record<string, unknown>;
     cognitive_style: Record<string, unknown>;
     weak_areas: string[];
-    interest_areas: string[];
+    interest_areas: (
+      | string
+      | { area?: string; level?: number; [key: string]: unknown }
+    )[];
   };
   trend: Array<{ date: string; value: number }>;
   algorithm_analysis?: {
@@ -366,7 +369,8 @@ export const dashboardApi = {
     }>(`/dashboard/${studentId}/timeline`),
   getActiveDates: (studentId: string, year: number, month: number) =>
     api.get<{ status: string; data: string[] }>(
-      `/dashboard/${studentId}/active-dates?year=${year}&month=${month}`,
+      `/dashboard/${studentId}/active-dates`,
+      { params: { year, month } },
     ),
 };
 
@@ -667,6 +671,21 @@ export const learningDataApi = {
     kp_id: string;
     rating: string;
   }) => api.post<{ status: string }>("/learning-data/feedback", data),
+  submitQuiz: (data: {
+    student_id: string;
+    kp_id: string;
+    total_questions: number;
+    correct_count: number;
+    score: number;
+    weak_tags?: string[];
+    time_spent?: number;
+    answers?: Record<string, unknown>;
+  }) =>
+    api.post<{
+      status: string;
+      quiz_id?: string;
+      points_awarded?: number;
+    }>("/learning-data/quiz", data),
 };
 
 // ---------- 反思与日志 ----------
@@ -935,6 +954,68 @@ export const collaborationApi = {
       member_progress: unknown[];
       sync_time: string;
     }>("/collaboration-supervisor/sync-progress", data),
+};
+
+// ---------- 项目拆解 ----------
+export interface ProjectInfo {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: number;
+  type?: string;
+  [key: string]: unknown;
+}
+
+export const projectDecomposerApi = {
+  getProjects: () =>
+    api.get<{ status: string; projects: ProjectInfo[] }>(
+      "/project-decomposer/projects",
+    ),
+  decompose: (data: {
+    project_id?: string;
+    project_name?: string;
+    team_size?: number;
+    team_level?: string;
+  }) =>
+    api.post<{
+      status: string;
+      decomposition: Record<string, unknown>;
+      detail?: string;
+    }>("/project-decomposer/decompose", data),
+  estimate: (data: {
+    project_type: string;
+    team_size: number;
+    [key: string]: unknown;
+  }) =>
+    api.post<{
+      status: string;
+      estimation: Record<string, unknown>;
+    }>("/project-decomposer/estimate", data),
+};
+
+// ---------- 角色匹配 ----------
+export interface StudentInfo {
+  student_id: string;
+  name?: string;
+  skills?: string[];
+  [key: string]: unknown;
+}
+
+export const roleMatcherApi = {
+  getRoles: () =>
+    api.get<{ status: string; roles: Record<string, unknown>[] }>(
+      "/role-matcher/roles",
+    ),
+  match: (data: {
+    students: StudentInfo[];
+    project_tasks: Record<string, unknown>;
+    [key: string]: unknown;
+  }) =>
+    api.post<{
+      status: string;
+      assignments: Record<string, unknown>[];
+      detail?: string;
+    }>("/role-matcher/match", data),
 };
 
 // ---------- 匹配推荐 ----------

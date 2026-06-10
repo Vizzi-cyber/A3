@@ -243,7 +243,7 @@ const ResourceDetail: React.FC = () => {
 
   // 提交练习
   const handleSubmitQuiz = async () => {
-    if (!questions.length) return;
+    if (!questions.length || !kpId) return;
     setQuizSubmitting(true);
     let correct = 0;
     const submitted: Record<string, boolean> = {};
@@ -253,10 +253,24 @@ const ResourceDetail: React.FC = () => {
       if (isCorrect) correct++;
       submitted[q.q_id] = isCorrect;
     });
+    const score = Math.round((correct / questions.length) * 100);
     setQuizSubmitted(submitted);
-    setQuizScore(Math.round((correct / questions.length) * 100));
+    setQuizScore(score);
     setQuizSubmitting(false);
     message.success(`答对 ${correct}/${questions.length} 题`);
+
+    // 将 quiz 成绩提交到后端
+    try {
+      await learningDataApi.submitQuiz({
+        student_id: studentId,
+        kp_id: kpId,
+        total_questions: questions.length,
+        correct_count: correct,
+        score,
+      });
+    } catch {
+      // quiz 成绩提交失败不影响用户体验
+    }
   };
 
   // AI 辅导对话

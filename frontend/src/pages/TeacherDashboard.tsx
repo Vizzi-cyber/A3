@@ -62,6 +62,7 @@ const TeacherDashboard: React.FC = () => {
   const [weakPoints, setWeakPoints] = useState<any>(null);
   const [ranking, setRanking] = useState<any[]>([]);
   const [rankingSort, setRankingSort] = useState("points");
+  const [loadErrors, setLoadErrors] = useState<Record<string, boolean>>({});
 
   // 学生管理
   const [students, setStudents] = useState<any[]>([]);
@@ -82,10 +83,15 @@ const TeacherDashboard: React.FC = () => {
         teacherApi.getWeakPoints().catch(() => null),
         teacherApi.getRanking("points").catch(() => null),
       ]);
+      const errors: Record<string, boolean> = {};
       if (overviewRes?.data?.status === "success")
         setOverview(overviewRes.data.overview);
+      else errors.overview = true;
       if (weakRes?.data?.status === "success") setWeakPoints(weakRes.data);
+      else errors.weakPoints = true;
       if (rankRes?.data?.status === "success") setRanking(rankRes.data.ranking);
+      else errors.ranking = true;
+      if (Object.keys(errors).length > 0) setLoadErrors(errors);
     } catch (e) {
       message.error("加载数据失败");
     } finally {
@@ -177,6 +183,14 @@ const TeacherDashboard: React.FC = () => {
   const renderOverview = () => (
     <div className="space-y-4">
       {/* 概览卡片 */}
+      {loadErrors.overview && (
+        <div className="p-3 rounded-lg bg-red-50 border border-red-100 flex items-center justify-between">
+          <span className="text-sm text-red-500">概览数据加载失败</span>
+          <Button size="small" type="link" onClick={loadOverviewData}>
+            重试
+          </Button>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card size="small" className="text-center">
           <div className="text-2xl font-semibold text-blue-600">
@@ -274,61 +288,75 @@ const TeacherDashboard: React.FC = () => {
           />
         }
       >
-        <Table
-          dataSource={ranking}
-          rowKey="student_id"
-          size="small"
-          pagination={{ pageSize: 10 }}
-          columns={[
-            {
-              title: "排名",
-              key: "rank",
-              width: 60,
-              render: (_: any, __: any, idx: number) => (
-                <span
-                  className={idx < 3 ? "font-semibold text-orange-500" : ""}
-                >
-                  {idx + 1}
-                </span>
-              ),
-            },
-            { title: "学号", dataIndex: "student_id", key: "sid", width: 100 },
-            { title: "姓名", dataIndex: "username", key: "name" },
-            {
-              title: "积分",
-              dataIndex: "total_points",
-              key: "points",
-              width: 80,
-              sorter: (a: any, b: any) => a.total_points - b.total_points,
-            },
-            {
-              title: "学时",
-              dataIndex: "total_hours",
-              key: "hours",
-              width: 80,
-              render: (h: number) => `${h}h`,
-            },
-            {
-              title: "平均分",
-              dataIndex: "avg_score",
-              key: "score",
-              width: 80,
-              render: (s: number) => (
-                <span
-                  className={
-                    s >= 80
-                      ? "text-green-600"
-                      : s >= 60
-                        ? "text-orange-500"
-                        : "text-red-500"
-                  }
-                >
-                  {s}
-                </span>
-              ),
-            },
-          ]}
-        />
+        {loadErrors.ranking ? (
+          <div className="py-8 text-center">
+            <div className="text-sm text-red-400 mb-2">排行榜数据加载失败</div>
+            <Button size="small" type="link" onClick={loadOverviewData}>
+              重试
+            </Button>
+          </div>
+        ) : (
+          <Table
+            dataSource={ranking}
+            rowKey="student_id"
+            size="small"
+            pagination={{ pageSize: 10 }}
+            columns={[
+              {
+                title: "排名",
+                key: "rank",
+                width: 60,
+                render: (_: any, __: any, idx: number) => (
+                  <span
+                    className={idx < 3 ? "font-semibold text-orange-500" : ""}
+                  >
+                    {idx + 1}
+                  </span>
+                ),
+              },
+              {
+                title: "学号",
+                dataIndex: "student_id",
+                key: "sid",
+                width: 100,
+              },
+              { title: "姓名", dataIndex: "username", key: "name" },
+              {
+                title: "积分",
+                dataIndex: "total_points",
+                key: "points",
+                width: 80,
+                sorter: (a: any, b: any) => a.total_points - b.total_points,
+              },
+              {
+                title: "学时",
+                dataIndex: "total_hours",
+                key: "hours",
+                width: 80,
+                render: (h: number) => `${h}h`,
+              },
+              {
+                title: "平均分",
+                dataIndex: "avg_score",
+                key: "score",
+                width: 80,
+                render: (s: number) => (
+                  <span
+                    className={
+                      s >= 80
+                        ? "text-green-600"
+                        : s >= 60
+                          ? "text-orange-500"
+                          : "text-red-500"
+                    }
+                  >
+                    {s}
+                  </span>
+                ),
+              },
+            ]}
+          />
+        )}
       </Card>
     </div>
   );
@@ -514,7 +542,16 @@ const TeacherDashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title="薄弱知识点统计" size="small">
-          {weakPoints?.weak_tags?.length > 0 ? (
+          {loadErrors.weakPoints ? (
+            <div className="py-8 text-center">
+              <div className="text-sm text-red-400 mb-2">
+                薄弱知识点数据加载失败
+              </div>
+              <Button size="small" type="link" onClick={loadOverviewData}>
+                重试
+              </Button>
+            </div>
+          ) : weakPoints?.weak_tags?.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie

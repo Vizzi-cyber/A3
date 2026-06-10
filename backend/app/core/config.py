@@ -101,6 +101,16 @@ class Settings(BaseSettings):
     LANGCHAIN_API_KEY: Optional[str] = None
     LANGCHAIN_PROJECT: str = "ai-learning-system"
 
+    # 反思循环配置
+    REFLECTION_ENABLED: bool = False  # 全局开关，默认关闭（Agent 需显式启用）
+    REFLECTION_MAX_ITERATIONS: int = 3
+    REFLECTION_QUALITY_THRESHOLD: float = 0.8
+    REFLECTION_TIMEOUT_PER_ITERATION: float = 60.0
+
+    # 缓存配置
+    CACHE_MAX_SIZE: int = 512
+    CACHE_TTL_SECONDS: int = 600  # 10 分钟
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
