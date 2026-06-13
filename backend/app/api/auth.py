@@ -10,9 +10,9 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
+import bcrypt
 
 from ..core.config import settings
 from ..core.logger import setup_logger
@@ -22,7 +22,17 @@ from ..models.user import UserModel
 logger = setup_logger()
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def _verify_password(plain: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
@@ -131,7 +141,7 @@ async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
     existing = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="student_id already exists")
-    hashed = await asyncio.to_thread(pwd_context.hash, request.password)
+    hashed = _hash_password(request.password)
     user = UserModel(
         student_id=request.student_id,
         username=request.username,
@@ -166,7 +176,7 @@ async def register_teacher(request: UserRegisterRequest, db: Session = Depends(g
     existing = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="student_id already exists")
-    hashed = await asyncio.to_thread(pwd_context.hash, request.password)
+    hashed = _hash_password(request.password)
     user = UserModel(
         student_id=request.student_id,
         username=request.username,
@@ -187,7 +197,7 @@ async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    valid = await asyncio.to_thread(pwd_context.verify, request.password, user.hashed_password)
+    valid = _verify_password(request.password, user.hashed_password)
     if not valid:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = _create_access_token({"sub": user.student_id})

@@ -51,7 +51,7 @@ const Tutor: React.FC = () => {
   >("done");
   const [ragActive, setRagActive] = useState(true);
   const [modelProvider, setModelProvider] = useState<
-    "bigmodel" | "deepseek" | "openai" | "spark" | "default"
+    "bigmodel" | "deepseek" | "openai" | "spark" | "mimo" | "default"
   >("default");
   const [wsConnected, setWsConnected] = useState(false);
   const [learningState, setLearningState] = useState<{
@@ -281,8 +281,20 @@ const Tutor: React.FC = () => {
                 className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs cursor-pointer"
                 onClick={() => {
                   const providers: Array<
-                    "bigmodel" | "deepseek" | "openai" | "spark" | "default"
-                  > = ["default", "bigmodel", "deepseek", "openai", "spark"];
+                    | "bigmodel"
+                    | "deepseek"
+                    | "openai"
+                    | "spark"
+                    | "mimo"
+                    | "default"
+                  > = [
+                    "default",
+                    "bigmodel",
+                    "deepseek",
+                    "openai",
+                    "spark",
+                    "mimo",
+                  ];
                   const idx = providers.indexOf(modelProvider);
                   setModelProvider(providers[(idx + 1) % providers.length]);
                 }}
@@ -296,7 +308,9 @@ const Tutor: React.FC = () => {
                       ? "OpenAI"
                       : modelProvider === "spark"
                         ? "讯飞星火"
-                        : "默认模型"}
+                        : modelProvider === "mimo"
+                          ? "小米MiMo"
+                          : "默认模型"}
               </Tag>
             </Tooltip>
             <Tooltip

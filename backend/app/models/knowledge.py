@@ -14,6 +14,7 @@ class KnowledgePointModel(Base):
     kp_id = Column(String(64), primary_key=True, index=True)
     name = Column(String(256), nullable=False)
     subject = Column(String(64), nullable=False, index=True)
+    course = Column(String(64), nullable=True, index=True)  # 课程级别：C语言、电路分析
     difficulty = Column(Float, default=0.5)  # 0.0 ~ 1.0
     prerequisites = Column(JSON, default=list)  # 前置知识点ID列表
     description = Column(Text, nullable=True)

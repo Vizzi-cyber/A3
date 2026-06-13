@@ -52,10 +52,15 @@ async def list_kps(
     db: Session = Depends(get_db),
     _current: str = Depends(get_current_student_id),
 ):
-    """列出知识点（分页）"""
+    """列出知识点（分页）—— subject 支持课程级别（C语言、电路分析）或章节级别"""
     query = db.query(KnowledgePointModel)
     if subject:
-        query = query.filter(KnowledgePointModel.subject == subject)
+        # 课程级别筛选：C语言、电路分析等
+        COURSE_NAMES = {"C语言", "电路分析"}
+        if subject in COURSE_NAMES:
+            query = query.filter(KnowledgePointModel.course == subject)
+        else:
+            query = query.filter(KnowledgePointModel.subject == subject)
     total = query.count()
     kps = query.order_by(KnowledgePointModel.created_at.asc()).offset(offset).limit(limit).all()
     return {
@@ -68,6 +73,7 @@ async def list_kps(
                 "kp_id": k.kp_id,
                 "name": k.name,
                 "subject": k.subject,
+                "course": k.course,
                 "difficulty": k.difficulty,
                 "prerequisites": k.prerequisites,
                 "tags": k.tags,

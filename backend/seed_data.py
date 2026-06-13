@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -22,7 +22,11 @@ from app.models.trend import TrendDataModel
 from app.models.gamification import PointsModel, AchievementModel, TaskModel, LeaderboardModel
 from app.models.log_reflection import LearningLogModel, ReflectionModel
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
 engine = create_engine("sqlite:///./ai_learning_v2.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -51,23 +55,23 @@ db.commit()
 # ---------- 用户表 ----------
 users = [
     UserModel(student_id=STUDENT_ID, username="张三", email="zhangsan@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
     UserModel(student_id=STUDENT2, username="李四", email="lisi@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
     UserModel(student_id=STUDENT3, username="王五", email="wangwu@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
     UserModel(student_id=TEST_USER, username="测试用户", email="test@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
     UserModel(student_id=TEACHER, username="赵老师", email="teacher@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="teacher"),
+              hashed_password=_hash_password("123456"), is_active=True, role="teacher"),
     UserModel(student_id=TOP_STUDENT, username="陈学霸", email="chenxueba@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
     UserModel(student_id=BEGINNER, username="刘小白", email="liuxiaobai@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
     UserModel(student_id=COMPETITOR, username="孙竞赛", email="sunjingsai@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
     UserModel(student_id=STEADY, username="周稳步", email="zhouwenbu@example.com",
-              hashed_password=pwd_context.hash("123456"), is_active=True, role="student"),
+              hashed_password=_hash_password("123456"), is_active=True, role="student"),
 ]
 db.add_all(users)
 db.commit()
@@ -2136,103 +2140,562 @@ KP_C16_QS = [
 KP_C16_MM = {"root": "位运算", "children": [{"name": "按位与"}, {"name": "按位或"}, {"name": "按位异或"}, {"name": "取反与移位"}, {"name": "掩码操作"}]}
 
 
-# ---------- 知识点（DAG）----------
+# ---------- 知识点（DAG）—— C语言课程 ----------
 kps = [
     KnowledgePointModel(
-        kp_id="kp_c01", name="C语言概述与开发环境", subject="基础入门", difficulty=0.2,
+        kp_id="kp_c01", name="C语言概述与开发环境", subject="基础入门", course="C语言", difficulty=0.2,
         prerequisites=[], description="C语言的历史、特点、开发环境搭建与第一个程序",
         tags=["入门", "环境搭建"],
         document=KP_C01_DOC, code_example=KP_C01_CODE, questions=KP_C01_QS, mindmap=KP_C01_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c02", name="数据类型与变量", subject="基础入门", difficulty=0.25,
+        kp_id="kp_c02", name="数据类型与变量", subject="基础入门", course="C语言", difficulty=0.25,
         prerequisites=[], description="基本数据类型、变量声明、命名规则、常量、类型转换",
         tags=["基础", "变量"],
         document=KP_C02_DOC, code_example=KP_C02_CODE, questions=KP_C02_QS, mindmap=KP_C02_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c03", name="运算符与表达式", subject="基础语法", difficulty=0.3,
+        kp_id="kp_c03", name="运算符与表达式", subject="基础语法", course="C语言", difficulty=0.3,
         prerequisites=["kp_c02"], description="算术、关系、逻辑、赋值运算符及优先级",
         tags=["运算符", "表达式"],
         document=KP_C03_DOC, code_example=KP_C03_CODE, questions=KP_C03_QS, mindmap=KP_C03_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c04", name="输入输出与顺序结构", subject="基础语法", difficulty=0.3,
+        kp_id="kp_c04", name="输入输出与顺序结构", subject="基础语法", course="C语言", difficulty=0.3,
         prerequisites=["kp_c02"], description="printf、scanf格式控制与顺序结构程序设计",
         tags=["IO", "顺序结构"],
         document=KP_C04_DOC, code_example=KP_C04_CODE, questions=KP_C04_QS, mindmap=KP_C04_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c05", name="选择结构", subject="控制结构", difficulty=0.35,
+        kp_id="kp_c05", name="选择结构", subject="控制结构", course="C语言", difficulty=0.35,
         prerequisites=["kp_c03", "kp_c04"], description="if、if-else、switch语句与多分支程序设计",
         tags=["if", "switch", "分支"],
         document=KP_C05_DOC, code_example=KP_C05_CODE, questions=KP_C05_QS, mindmap=KP_C05_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c06", name="循环结构", subject="控制结构", difficulty=0.4,
+        kp_id="kp_c06", name="循环结构", subject="控制结构", course="C语言", difficulty=0.4,
         prerequisites=["kp_c03", "kp_c04"], description="for、while、do-while循环与嵌套循环",
         tags=["for", "while", "循环"],
         document=KP_C06_DOC, code_example=KP_C06_CODE, questions=KP_C06_QS, mindmap=KP_C06_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c07", name="数组", subject="数组与字符串", difficulty=0.45,
+        kp_id="kp_c07", name="数组", subject="数组与字符串", course="C语言", difficulty=0.45,
         prerequisites=["kp_c06"], description="一维数组、二维数组、数组遍历与常见算法",
         tags=["数组", "排序"],
         document=KP_C07_DOC, code_example=KP_C07_CODE, questions=KP_C07_QS, mindmap=KP_C07_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c08", name="字符串", subject="数组与字符串", difficulty=0.45,
+        kp_id="kp_c08", name="字符串", subject="数组与字符串", course="C语言", difficulty=0.45,
         prerequisites=["kp_c07"], description="字符数组、字符串函数、字符串处理",
         tags=["字符串", "string.h"],
         document=KP_C08_DOC, code_example=KP_C08_CODE, questions=KP_C08_QS, mindmap=KP_C08_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c09", name="函数与递归", subject="函数", difficulty=0.5,
+        kp_id="kp_c09", name="函数与递归", subject="函数", course="C语言", difficulty=0.5,
         prerequisites=["kp_c06"], description="函数定义、参数传递、递归算法、变量作用域",
         tags=["函数", "递归"],
         document=KP_C09_DOC, code_example=KP_C09_CODE, questions=KP_C09_QS, mindmap=KP_C09_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c10", name="指针基础", subject="指针", difficulty=0.55,
+        kp_id="kp_c10", name="指针基础", subject="指针", course="C语言", difficulty=0.55,
         prerequisites=["kp_c02", "kp_c09"], description="指针概念、取地址与解引用、指针运算",
         tags=["指针", "地址"],
         document=KP_C10_DOC, code_example=KP_C10_CODE, questions=KP_C10_QS, mindmap=KP_C10_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c11", name="指针与数组", subject="指针", difficulty=0.6,
+        kp_id="kp_c11", name="指针与数组", subject="指针", course="C语言", difficulty=0.6,
         prerequisites=["kp_c10", "kp_c07"], description="数组名与指针关系、指针数组、多级指针",
         tags=["指针数组", "多级指针"],
         document=KP_C11_DOC, code_example=KP_C11_CODE, questions=KP_C11_QS, mindmap=KP_C11_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c12", name="结构体与联合体", subject="结构体与文件", difficulty=0.5,
+        kp_id="kp_c12", name="结构体与联合体", subject="结构体与文件", course="C语言", difficulty=0.5,
         prerequisites=["kp_c02", "kp_c07"], description="struct定义、typedef、结构体数组与嵌套、union",
         tags=["结构体", "联合体"],
         document=KP_C12_DOC, code_example=KP_C12_CODE, questions=KP_C12_QS, mindmap=KP_C12_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c13", name="文件操作", subject="结构体与文件", difficulty=0.55,
+        kp_id="kp_c13", name="文件操作", subject="结构体与文件", course="C语言", difficulty=0.55,
         prerequisites=["kp_c12"], description="文件打开关闭、文本与二进制读写、文件定位",
         tags=["文件", "fread", "fwrite"],
         document=KP_C13_DOC, code_example=KP_C13_CODE, questions=KP_C13_QS, mindmap=KP_C13_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c14", name="动态内存管理", subject="高级主题", difficulty=0.6,
+        kp_id="kp_c14", name="动态内存管理", subject="高级主题", course="C语言", difficulty=0.6,
         prerequisites=["kp_c10"], description="malloc、calloc、realloc、free与内存泄漏防范",
         tags=["动态内存", "malloc"],
         document=KP_C14_DOC, code_example=KP_C14_CODE, questions=KP_C14_QS, mindmap=KP_C14_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c15", name="预处理指令", subject="高级主题", difficulty=0.4,
+        kp_id="kp_c15", name="预处理指令", subject="高级主题", course="C语言", difficulty=0.4,
         prerequisites=["kp_c01"], description="宏定义、条件编译、文件包含与预处理原理",
         tags=["预处理", "宏定义"],
         document=KP_C15_DOC, code_example=KP_C15_CODE, questions=KP_C15_QS, mindmap=KP_C15_MM,
     ),
     KnowledgePointModel(
-        kp_id="kp_c16", name="位运算", subject="高级主题", difficulty=0.55,
+        kp_id="kp_c16", name="位运算", subject="高级主题", course="C语言", difficulty=0.55,
         prerequisites=["kp_c03", "kp_c06"], description="位运算符、位掩码、位域与底层数据操作",
         tags=["位运算", "位掩码"],
         document=KP_C16_DOC, code_example=KP_C16_CODE, questions=KP_C16_QS, mindmap=KP_C16_MM,
+    ),
+    # ---------- 电路分析课程 ----------
+    KnowledgePointModel(
+        kp_id="kp_e01", name="电路基本概念", subject="基础理论", course="电路分析", difficulty=0.2,
+        prerequisites=[], description="电流、电压、功率、电阻的基本概念与欧姆定律",
+        tags=["电流", "电压", "欧姆定律"],
+        document="""# 电路基本概念
+
+## 1.1 电流与电压
+
+**电流（I）** 是电荷的定向移动，单位为安培（A）。
+- 直流电流：大小和方向都不随时间变化
+- 交流电流：大小和方向随时间周期性变化
+
+**电压（V）** 是两点之间的电位差，单位为伏特（V）。
+- 电压的方向：从高电位指向低电位
+- 参考方向：假设的电压正方向
+
+## 1.2 电阻与欧姆定律
+
+**电阻（R）** 是导体对电流的阻碍作用，单位为欧姆（Ω）。
+
+**欧姆定律**：$$V = I \\times R$$
+
+其中：
+- V 为电压（V）
+- I 为电流（A）
+- R 为电阻（Ω）
+
+## 1.3 功率与能量
+
+**电功率**：$$P = V \\times I = I^2 \\times R = \\frac{V^2}{R}$$
+
+单位为瓦特（W）。
+
+**电能量**：$$W = P \\times t$$
+
+单位为焦耳（J）或千瓦时（kWh）。
+
+## 1.4 电路模型
+
+实际电路可以用理想电路元件来建模：
+- **电阻**：消耗电能
+- **电感**：储存磁场能量
+- **电容**：储存电场能量
+- **电源**：提供电能（电压源、电流源）
+
+## 1.5 基尔霍夫定律
+
+### KCL（基尔霍夫电流定律）
+流入任一节点的电流之和等于流出该节点的电流之和：
+$$\\sum I_{in} = \\sum I_{out}$$
+
+### KVL（基尔霍夫电压定律）
+沿任一闭合回路，电压升之和等于电压降之和：
+$$\\sum V_{rise} = \\sum V_{drop}$$
+
+> **学习建议**：理解电流、电压、电阻的基本概念是学习电路分析的基础，务必掌握欧姆定律和功率计算。""",
+        code_example="""# 电路基本计算示例
+
+# 欧姆定律计算
+R = 100  # 电阻 (Ω)
+V = 5    # 电压 (V)
+I = V / R  # 电流 (A)
+print(f'电流: {I}A')
+
+# 功率计算
+P = V * I  # 功率 (W)
+print(f'功率: {P}W')
+
+# 已知功率和电阻求电压
+P_known = 25  # W
+R_known = 25  # Ω
+V_calc = (P_known * R_known) ** 0.5
+print(f'电压: {V_calc}V')
+
+# 已知功率和电压求电流
+I_calc = P_known / V_calc
+print(f'电流: {I_calc}A')
+
+# KCL验证
+# 节点A有三条支路，流入2A和3A，流出应该是5A
+I1, I2 = 2, 3  # 流入电流
+I3 = I1 + I2   # 流出电流
+print(f'KCL验证: 流入{I1}+{I2}={I1+I2}A, 流出{I3}A -> {I1+I2 == I3}')
+
+# KVL验证
+# 闭合回路：电源12V，电阻压降5V和7V
+V_source = 12
+V_drop1, V_drop2 = 5, 7
+kvl_ok = V_source == V_drop1 + V_drop2
+print(f'KVL验证: 电源{V_source}V = 压降{V_drop1}+{V_drop2}={V_drop1+V_drop2}V -> {kvl_ok}')""",
+        questions=[
+            {"q_id": "q_e01_1", "type": "single_choice", "content": "欧姆定律的表达式是？", "options": [{"id": "A", "text": "V = I + R"}, {"id": "B", "text": "V = I × R"}, {"id": "C", "text": "V = I / R"}, {"id": "D", "text": "V = I - R"}], "correct_answer": "B", "explanation": "欧姆定律：V = I × R，电压等于电流乘以电阻。"},
+            {"q_id": "q_e01_2", "type": "single_choice", "content": "一个10Ω电阻两端加5V电压，流过的电流是？", "options": [{"id": "A", "text": "0.5A"}, {"id": "B", "text": "2A"}, {"id": "C", "text": "50A"}, {"id": "D", "text": "5A"}], "correct_answer": "A", "explanation": "根据欧姆定律 I = V/R = 5/10 = 0.5A。"},
+            {"q_id": "q_e01_3", "type": "single_choice", "content": "KCL定律描述的是？", "options": [{"id": "A", "text": "回路电压关系"}, {"id": "B", "text": "节点电流关系"}, {"id": "C", "text": "功率守恒"}, {"id": "D", "text": "电阻串联"}], "correct_answer": "B", "explanation": "KCL（基尔霍夫电流定律）描述的是节点处电流的守恒关系。"},
+        ],
+        mindmap={"root": "电路基本概念", "children": [{"name": "电流"}, {"name": "电压"}, {"name": "电阻"}, {"name": "功率"}, {"name": "欧姆定律"}, {"name": "KCL"}, {"name": "KVL"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_e02", name="电阻串联与并联", subject="基础理论", course="电路分析", difficulty=0.22,
+        prerequisites=["kp_e01"], description="串联电阻、并联电阻的等效计算与分压分流公式",
+        tags=["串联", "并联", "等效电阻", "分压", "分流"],
+        document="""# 电阻串联与并联
+
+## 2.1 电阻串联
+
+多个电阻首尾相连，电流相同。
+
+**等效电阻**：$$R_{eq} = R_1 + R_2 + ... + R_n$$
+
+**分压公式**：$$V_k = V_{total} \\times \\frac{R_k}{R_{eq}}$$
+
+## 2.2 电阻并联
+
+多个电阻并列连接，电压相同。
+
+**等效电阻**：$$\\frac{1}{R_{eq}} = \\frac{1}{R_1} + \\frac{1}{R_2} + ... + \\frac{1}{R_n}$$
+
+两个电阻并联简化：$$R_{eq} = \\frac{R_1 \\times R_2}{R_1 + R_2}$$
+
+**分流公式**：$$I_k = I_{total} \\times \\frac{R_{total}}{R_k}$$
+
+## 2.3 混联电路
+
+既有串联又有并联的电路，需要逐步化简：
+1. 先计算并联部分的等效电阻
+2. 再计算串联部分的总电阻
+
+## 2.4 实际应用
+
+- **分压器**：从高电压获得低电压
+- **电流表扩程**：并联分流电阻
+- **电压表扩程**：串联分压电阻
+
+> **学习建议**：熟练掌握串并联等效计算和分压分流公式是分析复杂电路的关键。""",
+        code_example="""# 电阻串并联计算示例
+
+# 串联电阻计算
+R1, R2, R3 = 10, 20, 30  # Ω
+R_series = R1 + R2 + R3
+print(f'串联等效电阻: {R_series}Ω')
+
+# 并联电阻计算（两个电阻）
+R_a, R_b = 100, 200  # Ω
+R_parallel = (R_a * R_b) / (R_a + R_b)
+print(f'两电阻并联: {R_parallel:.2f}Ω')
+
+# 并联电阻计算（多个电阻）
+R_vals = [10, 20, 30]
+R_multi = 1 / sum(1/r for r in R_vals)
+print(f'三电阻并联: {R_multi:.2f}Ω')
+
+# 分压计算
+V_source = 12  # V
+R_top, R_bottom = 100, 200  # Ω
+V_out = V_source * R_bottom / (R_top + R_bottom)
+print(f'分压输出: {V_out}V')
+
+# 分流计算
+I_total = 3  # A
+R1, R2 = 20, 30  # Ω
+I1 = I_total * R2 / (R1 + R2)
+I2 = I_total * R1 / (R1 + R2)
+print(f'分流: I1={I1}A, I2={I2}A, 合计={I1+I2}A')
+
+# 混联电路计算
+# R1串联(R2并联R3)
+R1 = 10
+R2, R3 = 20, 20
+R_parallel_23 = (R2 * R3) / (R2 + R3)
+R_total = R1 + R_parallel_23
+print(f'混联等效: {R_total}Ω')""",
+        questions=[
+            {"q_id": "q_e02_1", "type": "single_choice", "content": "两个10Ω电阻并联后的等效电阻是？", "options": [{"id": "A", "text": "20Ω"}, {"id": "B", "text": "10Ω"}, {"id": "C", "text": "5Ω"}, {"id": "D", "text": "15Ω"}], "correct_answer": "C", "explanation": "两个相同电阻并联，等效电阻为原电阻的一半：10/2 = 5Ω。"},
+            {"q_id": "q_e02_2", "type": "single_choice", "content": "12V电源串联100Ω和200Ω电阻，200Ω电阻上的电压是？", "options": [{"id": "A", "text": "4V"}, {"id": "B", "text": "6V"}, {"id": "C", "text": "8V"}, {"id": "D", "text": "12V"}], "correct_answer": "C", "explanation": "分压公式：V = 12 × 200/(100+200) = 12 × 2/3 = 8V。"},
+        ],
+        mindmap={"root": "电阻串并联", "children": [{"name": "串联"}, {"name": "并联"}, {"name": "等效电阻"}, {"name": "分压公式"}, {"name": "分流公式"}, {"name": "混联电路"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_e03", name="支路电流法与网孔电流法", subject="电路分析方法", course="电路分析", difficulty=0.3,
+        prerequisites=["kp_e02"], description="基于KCL和KVL的系统化电路分析方法",
+        tags=["支路电流法", "网孔电流法", "节点电压法"],
+        document="""# 支路电流法与网孔电流法
+
+## 3.1 支路电流法
+
+以各支路电流为未知量，直接应用KCL和KVL列方程。
+
+**步骤**：
+1. 标注各支路电流参考方向
+2. 对每个节点应用KCL，列电流方程
+3. 对每个网孔应用KVL，列电压方程
+4. 联立求解
+
+## 3.2 网孔电流法
+
+以假想的网孔电流为未知量，仅需列KVL方程。
+
+**步骤**：
+1. 选择网孔，假设网孔电流方向
+2. 对每个网孔列KVL方程
+3. 互电阻项：相邻网孔电流方向相同时取正
+4. 联立求解
+
+**网孔方程**：$$R_{11}I_1 - R_{12}I_2 = V_{S1}$$
+$$-R_{21}I_1 + R_{22}I_2 = V_{S2}$$
+
+## 3.3 节点电压法
+
+以节点电压为未知量，仅需列KCL方程。
+
+**步骤**：
+1. 选择参考节点（接地）
+2. 对每个独立节点列KCL方程
+3. 用电导表示：$$G_{11}V_1 - G_{12}V_2 = I_{S1}$$
+4. 联立求解
+
+## 3.4 方法比较
+
+| 方法 | 方程数 | 适用场景 |
+|------|--------|----------|
+| 支路电流法 | 支路数 | 简单电路 |
+| 网孔电流法 | 网孔数 | 平面电路 |
+| 节点电压法 | 节点数-1 | 非平面电路 |
+
+> **学习建议**：网孔电流法和节点电压法是最常用的方法，选择方程数少的方法更高效。""",
+        code_example="""# 网孔电流法示例
+# 双网孔电路：
+# 网孔1: Vs1=10V, R11=100Ω, R12=50Ω(公共)
+# 网孔2: Vs2=5V, R22=80Ω, R12=50Ω(公共)
+
+import numpy as np
+
+# 系数矩阵
+R = np.array([[150, -50],   # R11+R12, -R12
+              [-50, 130]])  # -R12, R22+R12
+
+# 右侧向量
+V = np.array([10, 5])
+
+# 求解网孔电流
+I = np.linalg.solve(R, V)
+print(f'网孔电流: I1={I[0]*1000:.2f}mA, I2={I[1]*1000:.2f}mA')
+
+# 计算各支路电流
+I_R1 = I[0]  # R1上的电流
+I_R2 = I[1]  # R2上的电流
+I_R12 = I[0] - I[1]  # 公共电阻上的电流
+print(f'支路电流: R1={I_R1*1000:.2f}mA, R2={I_R2*1000:.2f}mA, 公共={I_R12*1000:.2f}mA')
+
+# 节点电压法示例
+# 两个节点: V1和参考节点(地)
+# G11*V1 = Is
+G11 = 1/100 + 1/200  # 电导之和
+Is = 0.1  # 流入电流源
+V1 = Is / G11
+print(f'节点电压: V1={V1:.2f}V')""",
+        questions=[
+            {"q_id": "q_e03_1", "type": "single_choice", "content": "网孔电流法需要列什么方程？", "options": [{"id": "A", "text": "KCL方程"}, {"id": "B", "text": "KVL方程"}, {"id": "C", "text": "功率方程"}, {"id": "D", "text": "欧姆定律"}], "correct_answer": "B", "explanation": "网孔电流法是对每个网孔应用KVL列写电压方程。"},
+        ],
+        mindmap={"root": "电路分析方法", "children": [{"name": "支路电流法"}, {"name": "网孔电流法"}, {"name": "节点电压法"}, {"name": "叠加定理"}, {"name": "等效变换"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_e04", name="叠加定理与等效变换", subject="电路分析方法", course="电路分析", difficulty=0.3,
+        prerequisites=["kp_e03"], description="线性电路的叠加原理与电源等效变换",
+        tags=["叠加定理", "等效变换", "电压源", "电流源"],
+        document="""# 叠加定理与等效变换
+
+## 4.1 叠加定理
+
+**定理内容**：在线性电路中，任一支路的电流（或电压）等于各个独立电源单独作用时在该支路产生的电流（或电压）的代数和。
+
+**使用步骤**：
+1. 保留一个电源，其余电压源短路、电流源开路
+2. 计算该电源单独作用时的响应
+3. 对所有电源重复上述步骤
+4. 将各响应代数相加
+
+**注意事项**：
+- 仅适用于线性电路
+- 功率不能叠加（功率与电流/电压是平方关系）
+- 叠加时注意参考方向
+
+## 4.2 电源等效变换
+
+### 电压源与电流源互换
+
+**电压源 → 电流源**：$$I_S = \\frac{V_S}{R_S}$$
+内阻不变，电流源与内阻并联
+
+**电流源 → 电压源**：$$V_S = I_S \\times R_S$$
+内阻不变，电压源与内阻串联
+
+### 实际电源模型
+
+**理想电压源**：内阻为零，输出电压恒定
+**理想电流源**：内阻无穷大，输出电流恒定
+
+**实际电源**：$$V = V_S - I \\times R_S$$
+
+## 4.3 最大功率传输定理
+
+当负载电阻等于电源内阻时，负载获得最大功率：
+$$R_L = R_S$$
+$$P_{max} = \\frac{V_S^2}{4R_S}$$
+
+> **学习建议**：叠加定理是分析多电源电路的利器，电源等效变换可以简化电路结构。""",
+        code_example="""# 叠加定理示例
+# 双电源电路
+V1, V2 = 10, 5  # V
+R1, R2, R3 = 100, 200, 150  # Ω
+
+# V1单独作用（V2短路）
+# R2和R3并联后与R1串联
+R23_parallel = (R2 * R3) / (R2 + R3)
+I_total_1 = V1 / (R1 + R23_parallel)
+I_R3_1 = I_total_1 * R2 / (R2 + R3)
+
+# V2单独作用（V1短路）
+# R1和R3并联后与R2串联
+R13_parallel = (R1 * R3) / (R1 + R3)
+I_total_2 = V2 / (R2 + R13_parallel)
+I_R3_2 = I_total_2 * R1 / (R1 + R3)
+
+# 叠加（注意方向）
+I_R3 = I_R3_1 + I_R3_2
+print(f'叠加定理: I_R3 = {I_R3*1000:.2f}mA')
+
+# 电源等效变换
+# 10V电压源串联100Ω → 电流源并联100Ω
+V_S = 10  # V
+R_S = 100  # Ω
+I_S = V_S / R_S
+print(f'等效电流源: Is={I_S*1000:.2f}mA, Rs={R_S}Ω')
+
+# 最大功率传输
+V_source = 12  # V
+R_internal = 50  # Ω
+R_load = R_internal  # 匹配条件
+P_max = V_source**2 / (4 * R_internal)
+print(f'最大功率: Pmax={P_max}W (当RL={R_load}Ω)')""",
+        questions=[
+            {"q_id": "q_e04_1", "type": "single_choice", "content": "叠加定理适用于哪种电路？", "options": [{"id": "A", "text": "非线性电路"}, {"id": "B", "text": "线性电路"}, {"id": "C", "text": "交流电路"}, {"id": "D", "text": "所有电路"}], "correct_answer": "B", "explanation": "叠加定理仅适用于线性电路，因为非线性元件不满足叠加性。"},
+            {"q_id": "q_e04_2", "type": "single_choice", "content": "最大功率传输的条件是？", "options": [{"id": "A", "text": "负载电阻最大"}, {"id": "B", "text": "负载电阻最小"}, {"id": "C", "text": "负载电阻等于内阻"}, {"id": "D", "text": "负载电阻为零"}], "correct_answer": "C", "explanation": "当负载电阻等于电源内阻时，负载获得最大功率。"},
+        ],
+        mindmap={"root": "叠加定理与等效变换", "children": [{"name": "叠加定理"}, {"name": "电源等效变换"}, {"name": "电压源→电流源"}, {"name": "电流源→电压源"}, {"name": "最大功率传输"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_e05", name="戴维南定理与诺顿定理", subject="电路分析方法", course="电路分析", difficulty=0.35,
+        prerequisites=["kp_e03", "kp_e04"], description="将复杂二端网络等效为简单电源模型",
+        tags=["戴维南", "诺顿", "等效电路", "开路电压", "等效电阻"],
+        document="""# 戴维南定理与诺顿定理
+
+## 5.1 戴维南定理
+
+**定理内容**：任何一个线性含源二端网络，对外电路而言，可以用一个电压源和一个电阻的串联组合来等效替代。
+
+**等效参数**：
+- **开路电压** $V_{th}$：端口开路时的电压
+- **等效电阻** $R_{th}$：将独立源置零后端口的等效电阻
+
+## 5.2 求解戴维南等效电路
+
+### 方法一：开路电压/短路电流法
+1. 求开路电压 $V_{th}$（端口开路时的电压）
+2. 求短路电流 $I_{sc}$（端口短路时的电流）
+3. $R_{th} = V_{th} / I_{sc}$
+
+### 方法二：外加电源法
+1. 将所有独立源置零（电压源短路，电流源开路）
+2. 在端口外加测试电压 $V_T$
+3. 计算流入电流 $I_T$
+4. $R_{th} = V_T / I_T$
+
+## 5.3 诺顿定理
+
+**定理内容**：任何一个线性含源二端网络，对外电路而言，可以用一个电流源和一个电阻的并联组合来等效替代。
+
+**等效参数**：
+- **短路电流** $I_N = V_{th}/R_{th}$
+- **等效电阻** $R_N = R_{th}$
+
+## 5.4 戴维南-诺顿互换
+
+$$V_{th} = I_N \\times R_{th}$$
+$$I_N = V_{th} / R_{th}$$
+
+## 5.5 应用场景
+
+- 分析负载变化时的电路响应
+- 求解最大功率传输问题
+- 简化复杂电路分析
+
+**例题**：求下图的戴维南等效电路
+
+```
+    R1=100Ω     R2=200Ω
+Vs1 ──┤├──A──┤├──B
+10V              │
+                 RL=50Ω
+                 │
+GND ─────────────┘
+```
+
+解：
+1. 开路电压：$V_{th} = V_{AB} = V_{s1} \\times \\frac{R_2}{R_1+R_2} = 10 \\times \\frac{200}{300} = 6.67V$
+2. 等效电阻：$R_{th} = R_1 // R_2 = \\frac{100 \\times 200}{100+200} = 66.67Ω$
+3. 负载电流：$I_L = \\frac{V_{th}}{R_{th}+R_L} = \\frac{6.67}{66.67+50} = 57.1mA$
+
+> **学习建议**：戴维南定理是电路分析中最重要的定理之一，务必掌握两种求解方法。""",
+        code_example="""# 戴维南等效计算示例
+
+def thevenin_equivalent(Vs1, R1, R2, RL=None):
+    \"\"\"计算含源二端网络的戴维南等效\"\"\"
+    # 开路电压（去掉负载RL）
+    Vth = Vs1 * R2 / (R1 + R2)
+    # 等效电阻（电源短路）
+    Rth = (R1 * R2) / (R1 + R2)
+    # 负载电流
+    if RL:
+        IL = Vth / (Rth + RL)
+    else:
+        IL = None
+    return Vth, Rth, IL
+
+# 例题计算
+Vs1 = 10  # V
+R1, R2 = 100, 200  # Ω
+RL = 50  # Ω
+
+Vth, Rth, IL = thevenin_equivalent(Vs1, R1, R2, RL)
+print(f'戴维南等效:')
+print(f'  开路电压 Vth = {Vth:.2f}V')
+print(f'  等效电阻 Rth = {Rth:.2f}Ω')
+print(f'  负载电流 IL = {IL*1000:.2f}mA')
+
+# 诺顿等效
+IN = Vth / Rth
+print(f'\\n诺顿等效:')
+print(f'  短路电流 IN = {IN*1000:.2f}mA')
+print(f'  等效电阻 RN = {Rth:.2f}Ω')
+
+# 验证：用诺顿等效计算负载电流
+IL_norton = IN * Rth / (Rth + RL)
+print(f'  负载电流 IL = {IL_norton*1000:.2f}mA (与戴维南结果一致)')
+
+# 最大功率传输
+P_max = Vth**2 / (4 * Rth)
+R_load_optimal = Rth
+print(f'\\n最大功率传输:')
+print(f'  最优负载 RL = {R_load_optimal:.2f}Ω')
+print(f'  最大功率 Pmax = {P_max*1000:.2f}mW')""",
+        questions=[
+            {"q_id": "q_e05_1", "type": "single_choice", "content": "戴维南等效中的Vth是什么？", "options": [{"id": "A", "text": "短路电流"}, {"id": "B", "text": "开路电压"}, {"id": "C", "text": "等效电阻"}, {"id": "D", "text": "负载电压"}], "correct_answer": "B", "explanation": "Vth是戴维南等效电压，即端口开路时的电压。"},
+            {"q_id": "q_e05_2", "type": "single_choice", "content": "戴维南等效电阻Rth的求法是？", "options": [{"id": "A", "text": "端口开路电阻"}, {"id": "B", "text": "端口短路电阻"}, {"id": "C", "text": "独立源置零后的端口电阻"}, {"id": "D", "text": "负载电阻"}], "correct_answer": "C", "explanation": "等效电阻是将所有独立源置零（电压源短路、电流源开路）后，从端口看进去的等效电阻。"},
+            {"q_id": "q_e05_3", "type": "single_choice", "content": "诺顿定理的等效电流源等于？", "options": [{"id": "A", "text": "开路电压"}, {"id": "B", "text": "短路电流"}, {"id": "C", "text": "等效电阻"}, {"id": "D", "text": "负载电流"}], "correct_answer": "B", "explanation": "诺顿等效电流源等于端口短路时的电流。"},
+        ],
+        mindmap={"root": "戴维南与诺顿定理", "children": [{"name": "戴维南定理"}, {"name": "诺顿定理"}, {"name": "开路电压"}, {"name": "等效电阻"}, {"name": "短路电流"}, {"name": "互换关系"}, {"name": "最大功率传输"}]},
     ),
 ]
 db.add_all(kps)
@@ -2243,9 +2706,33 @@ db.commit()
 actions = ["watch", "read", "practice", "review"]
 ALL_USERS = [STUDENT_ID, STUDENT2, STUDENT3, TEST_USER, TEACHER, TOP_STUDENT, BEGINNER, COMPETITOR, STEADY]
 records = []
-for i in range(72):
+now = datetime.now()
+
+# 为 student_001 创建最近 7 天的学习记录（确保有连续打卡数据）
+for day_offset in range(7):
+    day = now - timedelta(days=day_offset)
+    # 每天 2-3 条记录
+    for j in range(2 + (day_offset % 2)):
+        kp = kps[(day_offset * 3 + j) % len(kps)].kp_id
+        records.append(LearningRecordModel(
+            record_id=f"lr_day{day_offset}_{j:03d}",
+            student_id=STUDENT_ID,
+            kp_id=kp,
+            action=actions[j % len(actions)],
+            duration=1800 + j * 600,  # 30-50 分钟
+            progress=min(1.0, 0.5 + j * 0.25),
+            score=70 + (j % 4) * 7,
+            meta={"device": "pc"},
+            created_at=day.replace(hour=10 + j * 2, minute=30),
+        ))
+
+# 其他用户的记录
+for i in range(60):
     sid = ALL_USERS[i % len(ALL_USERS)]
+    if sid == STUDENT_ID:
+        continue  # 跳过 student_001，已经单独处理
     kp = kps[i % len(kps)].kp_id
+    day_offset = i % 14
     records.append(LearningRecordModel(
         record_id=f"lr_{i:03d}",
         student_id=sid,
@@ -2255,6 +2742,7 @@ for i in range(72):
         progress=min(1.0, (i + 1) * 0.06),
         score=60 + (i % 5) * 8,
         meta={"device": "pc"},
+        created_at=now - timedelta(days=day_offset, hours=i % 12),
     ))
 db.add_all(records)
 db.commit()
@@ -2266,6 +2754,7 @@ for i in range(45):
     kp = kps[i % len(kps)].kp_id
     correct = 3 + (i % 3)
     total = 5
+    day_offset = i % 14
     quizzes.append(QuizResultModel(
         quiz_id=f"qz_{i:03d}",
         student_id=sid,
@@ -2276,6 +2765,7 @@ for i in range(45):
         weak_tags=["概念混淆"] if i % 4 == 0 else [],
         time_spent=300 + i * 60,
         answers=[{"q_id": f"q_{j}", "correct": j < correct} for j in range(total)],
+        created_at=now - timedelta(days=day_offset, hours=14 + i % 8),
     ))
 db.add_all(quizzes)
 db.commit()

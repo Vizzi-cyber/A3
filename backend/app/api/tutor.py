@@ -205,7 +205,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
 
                 # 获取 LLM 实例（支持动态切换）
                 try:
-                    llm = LLMFactory.get_llm(provider) if provider else _tutor_agent.llm
+                    llm = LLMFactory.get_llm(provider) if provider else LLMFactory.get_default_llm()
                 except Exception as e:
                     await manager.send_message(session_id, {
                         "type": "chunk",
@@ -265,11 +265,16 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 # 真实流式输出
                 full_answer = ""
                 client_disconnected = False
+                logger.info(f"Starting stream with llm={llm.__class__.__name__}, model={getattr(llm, 'model', 'unknown')}")
+                logger.info(f"Messages count: {len(messages)}")
                 try:
+                    chunk_count = 0
                     async for chunk in llm.astream(messages, temperature=0.6, max_tokens=1024):
+                        chunk_count += 1
                         if not chunk:
                             continue
                         full_answer += chunk
+                        logger.debug(f"Chunk {chunk_count}: {chunk[:30]}")
                         try:
                             await manager.send_message(session_id, {
                                 "type": "chunk",
@@ -280,6 +285,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                             client_disconnected = True
                             break
                 except Exception as e:
+                    logger.error(f"Stream error: {e}")
                     if not full_answer:
                         full_answer = f"流式输出异常：{str(e)}"
                         if not client_disconnected:
@@ -289,6 +295,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                             })
 
+                logger.info(f"Stream complete. total_chunks={chunk_count}, full_answer_len={len(full_answer)}")
                 # Step 3: critic —— 输出安全审核
                 await manager.send_message(session_id, {
                     "type": "agent_step",

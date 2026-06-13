@@ -1038,7 +1038,7 @@ const PersonalSpace: React.FC = () => {
     () => [
       {
         title: "累计学习时长",
-        value: Math.round((Number(statsRecord.weekly_hours) || 0) * 10) / 10,
+        value: Math.round((Number(statsRecord.total_hours) || 0) * 10) / 10,
         suffix: "h",
         color: "#4f46e5",
         icon: <ClockCircleOutlined />,
