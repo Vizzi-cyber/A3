@@ -2,8 +2,9 @@
 智能体基类定义
 所有智能体继承此类，实现统一的接口规范
 """
+import json
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Callable
+from typing import Any, Callable, Dict, List, Optional
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -119,6 +120,38 @@ class BaseAgent(ABC):
         """
         pass
 
+    async def cached_process(
+        self,
+        context: Dict[str, Any],
+        cache_key_fn: Optional[Callable[[Dict[str, Any]], str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        带缓存的 process 调用。
+        cache_key_fn: 自定义缓存 key 计算函数，默认用 context 的 JSON hash。
+        只缓存 status=="success" 的结果。
+        """
+        from ..core.cache import prompt_cache
+
+        if cache_key_fn:
+            cache_key = cache_key_fn(context)
+        else:
+            cache_key = prompt_cache.hash_prompt(
+                {"context": context},
+                extra_salt=self.agent_id,
+            )
+
+        cached = await prompt_cache.get(cache_key)
+        if cached is not None:
+            self.logger.info(f"Cache hit, key={cache_key[:8]}")
+            return cached
+
+        result = await self.process(context)
+
+        if isinstance(result, dict) and result.get("status") == "success":
+            await prompt_cache.set(cache_key, result)
+
+        return result
+
     @abstractmethod
     def get_system_prompt(self) -> str:
         """
@@ -155,11 +188,12 @@ class BaseAgent(ABC):
         context: Dict[str, Any],
         max_iterations: int = 3,
         quality_threshold: float = 0.8,
-        timeout_per_iteration: float = 30.0,
+        timeout_per_iteration: float = 60.0,
+        enable_llm_evaluation: bool = True,
     ) -> Dict[str, Any]:
         """
-        带反思的执行流程
-        执行-评估-修正的循环
+        带反思的执行流程：执行-评估-修正循环。
+        enable_llm_evaluation=True 时使用 LLM 评估质量，否则用规则评估。
         """
         import asyncio
         best_result = None
@@ -169,7 +203,6 @@ class BaseAgent(ABC):
         for iteration in range(max_iterations):
             self.logger.info(f"Reflection iteration {iteration + 1}/{max_iterations}")
 
-            # 执行（带超时保护）
             try:
                 result = await asyncio.wait_for(self.process(context), timeout=timeout_per_iteration)
             except asyncio.TimeoutError:
@@ -179,8 +212,11 @@ class BaseAgent(ABC):
                 self.logger.warning(f"Process error at iteration {iteration + 1}: {e}")
                 result = {"status": "error", "message": str(e)}
 
-            # 自我评估
-            score = await self._self_evaluate(result)
+            if enable_llm_evaluation and hasattr(self, "llm") and self.llm:
+                score = await self._self_evaluate(result)
+            else:
+                score = self._rule_based_evaluate(result)
+
             result["_evaluation_score"] = score
             result["_iteration"] = iteration + 1
 
@@ -188,26 +224,20 @@ class BaseAgent(ABC):
                 best_score = score
                 best_result = result
 
-            # 如果达到质量阈值，提前退出
             if score >= quality_threshold:
                 self.logger.info(f"Quality threshold reached: {score}")
                 break
 
-            # 准备下一轮迭代的修正
             context["_previous_result"] = result
-            context["_feedback"] = await self._generate_feedback(result)
+            context["_feedback"] = await self._generate_feedback(result, enable_llm_evaluation)
 
         if best_result is None:
             best_result = {"status": "error", "message": "No iterations executed"}
         best_result["_total_iterations"] = iteration + 1
         return best_result
 
-    async def _self_evaluate(self, result: Dict[str, Any]) -> float:
-        """
-        自我评估生成结果的质量
-        子类可重写此方法
-        """
-        # 默认实现：检查必要字段是否存在
+    def _rule_based_evaluate(self, result: Dict[str, Any]) -> float:
+        """基于规则的质量评估（作为 fallback）"""
         score = 0.0
         if "content" in result or "output" in result:
             score += 0.5
@@ -217,15 +247,44 @@ class BaseAgent(ABC):
             score += 0.2
         return score
 
-    async def _generate_feedback(self, result: Dict[str, Any]) -> str:
-        """
-        根据评估结果生成改进反馈
-        子类可重写此方法
-        """
-        score = result.get("_evaluation_score", 0)
-        if score < 0.5:
-            return "需要大幅改进，请重新思考核心逻辑"
-        elif score < 0.8:
-            return "基本可用，但需要补充细节和完善"
-        else:
-            return "质量良好，可进行微调优化"
+    async def _self_evaluate(self, result: Dict[str, Any]) -> float:
+        """用 LLM 评估结果质量。子类可覆盖为专用评估逻辑。"""
+        if not hasattr(self, "llm") or not self.llm:
+            return self._rule_based_evaluate(result)
+
+        result_text = json.dumps(result, ensure_ascii=False, default=str)[:2000]
+        messages = [
+            {"role": "system", "content": (
+                "你是一个教育内容质量评估专家。请评估以下智能体输出的质量，"
+                "从准确性、完整性、可用性三个维度打分（0-1之间）。\n"
+                '返回 JSON：{"score": 0.0-1.0, "reason": "简要说明"}'
+            )},
+            {"role": "user", "content": f"智能体输出：\n{result_text}"},
+        ]
+        try:
+            data = await self.llm.generate_json(messages, temperature=0.1, max_tokens=200)
+            return float(data.get("score", 0.5))
+        except Exception as e:
+            self.logger.warning(f"LLM evaluation failed, falling back to rule-based: {e}")
+            return self._rule_based_evaluate(result)
+
+    async def _generate_feedback(self, result: Dict[str, Any], use_llm: bool = True) -> str:
+        """生成改进反馈。use_llm=True 时用 LLM 生成，否则用规则。"""
+        if not use_llm or not hasattr(self, "llm") or not self.llm:
+            score = result.get("_evaluation_score", 0)
+            if score < 0.5:
+                return "需要大幅改进，请重新思考核心逻辑"
+            elif score < 0.8:
+                return "基本可用，但需要补充细节和完善"
+            else:
+                return "质量良好，可进行微调优化"
+
+        result_text = json.dumps(result, ensure_ascii=False, default=str)[:2000]
+        messages = [
+            {"role": "system", "content": "你是教育内容质量审核专家。根据评估结果给出简洁的改进建议，不超过两句话。"},
+            {"role": "user", "content": f"评估结果：\n{result_text}"},
+        ]
+        try:
+            return await self.llm.ainvoke(messages, temperature=0.3, max_tokens=200)
+        except Exception:
+            return "请重新检查输出质量"

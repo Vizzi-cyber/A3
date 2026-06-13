@@ -2118,7 +2118,13 @@ const PersonalSpace: React.FC = () => {
                       <p>
                         <strong className="text-slate-800">兴趣方向：</strong>{" "}
                         {profile?.interest_areas?.length
-                          ? profile.interest_areas.join("、")
+                          ? profile.interest_areas
+                              .map((a) =>
+                                typeof a === "string"
+                                  ? a
+                                  : a.area || JSON.stringify(a),
+                              )
+                              .join("、")
                           : "C语言程序设计与系统开发"}
                         。
                       </p>

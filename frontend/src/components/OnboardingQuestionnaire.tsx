@@ -63,8 +63,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
   const steps = subject === "电路分析" ? circuitSteps : cSteps;
 
   const [answers, setAnswers] = useState<OnboardingAnswers>({
-    c_knowledge_level: subject === "C语言" ? 1 : undefined,
-    circuit_knowledge_level: subject === "电路分析" ? 1 : undefined,
+    c_knowledge_level: 1,
     difficulty_preference: 5,
     daily_duration: 60,
     learning_goal: "skill_build",
@@ -75,8 +74,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
   useEffect(() => {
     setCurrentStep(0);
     setAnswers({
-      c_knowledge_level: subject === "C语言" ? 1 : undefined,
-      circuit_knowledge_level: subject === "电路分析" ? 1 : undefined,
+      c_knowledge_level: 1,
       difficulty_preference: 5,
       daily_duration: 60,
       learning_goal: "skill_build",
@@ -117,11 +115,11 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
             你的电路分析基础如何？
           </Title>
           <Radio.Group
-            value={answers.circuit_knowledge_level}
+            value={answers.c_knowledge_level}
             onChange={(e) =>
               setAnswers({
                 ...answers,
-                circuit_knowledge_level: e.target.value,
+                c_knowledge_level: e.target.value,
               })
             }
             className="w-full"

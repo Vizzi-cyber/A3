@@ -143,11 +143,23 @@ const ErrorDiagnosis: React.FC = () => {
       return;
     }
 
+    // 根据错误分析结果动态确定错误类型
+    let errorType = "思维误区";
+    if (errorAnalysis) {
+      if (errorAnalysis.syntax_errors?.length > 0) {
+        errorType = "语法错误";
+      } else if (errorAnalysis.logic_errors?.length > 0) {
+        errorType = "逻辑错误";
+      } else if (errorAnalysis.misconceptions?.length > 0) {
+        errorType = "思维误区";
+      }
+    }
+
     setLoading(true);
     try {
       const { data } = await api.post("/misconception-tracer/full-analysis", {
         code,
-        error_type: "思维误区",
+        error_type: errorType,
         error_description: errorAnalysis?.overall_assessment || "",
       });
 

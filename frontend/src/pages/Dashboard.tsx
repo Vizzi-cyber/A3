@@ -138,6 +138,7 @@ const Dashboard: React.FC = () => {
 
   const [activeDates, setActiveDates] = useState<Set<string>>(new Set());
   const [calendarDate, setCalendarDate] = useState(dayjs());
+  const [loadErrors, setLoadErrors] = useState<Record<string, boolean>>({});
 
   const studentId = useAppStore((s) => s.studentId);
   const currentSubject = useAppStore((s) => s.currentSubject);
@@ -171,11 +172,15 @@ const Dashboard: React.FC = () => {
             .catch(() => null),
         ]);
 
+        const errors: Record<string, boolean> = {};
+
         if (summaryRes?.data) {
           const d = summaryRes.data;
           setStats(d.stats || stats);
           setTasks(d.tasks || []);
           setRecommendations(d.recommendations || []);
+        } else {
+          errors.summary = true;
         }
 
         if (pathRes?.data?.nodes?.length) {
@@ -189,6 +194,8 @@ const Dashboard: React.FC = () => {
               }),
             ),
           );
+        } else if (!pathRes) {
+          errors.path = true;
         }
 
         if (pointsRes?.data?.data) {
@@ -201,6 +208,8 @@ const Dashboard: React.FC = () => {
             need: lv.xp_per_level,
             percent: lv.progress_pct,
           });
+        } else if (!pointsRes) {
+          errors.points = true;
         }
 
         if (kgRes?.data?.data?.length) {
@@ -211,14 +220,22 @@ const Dashboard: React.FC = () => {
               prerequisites: k.prerequisites || [],
             })),
           );
+        } else if (!kgRes) {
+          errors.kg = true;
         }
 
         if (dailyQuizRes?.data?.data) {
           setDailyQuiz(dailyQuizRes.data.data);
+        } else if (!dailyQuizRes) {
+          errors.quiz = true;
         }
 
         if (activeDatesRes?.data?.data) {
           setActiveDates(new Set(activeDatesRes.data.data));
+        }
+
+        if (Object.keys(errors).length > 0) {
+          setLoadErrors(errors);
         }
       } catch {
         message.error("部分数据加载失败");
@@ -415,6 +432,18 @@ const Dashboard: React.FC = () => {
 
         {/* 右侧课程卡片 */}
         <div className="flex gap-4 overflow-x-auto pb-2 relative z-10">
+          {loadErrors.path && (
+            <div className="min-w-[170px] flex-shrink-0 rounded-2xl p-5 bg-red-50 border border-red-100 flex flex-col items-center justify-center text-center">
+              <div className="text-sm text-red-400 mb-2">路径加载失败</div>
+              <Button
+                size="small"
+                type="link"
+                onClick={() => window.location.reload()}
+              >
+                重试
+              </Button>
+            </div>
+          )}
           {courseCards.map((course) => {
             const isCompleted = course.status === "completed";
             const isInProgress = course.status === "in-progress";
@@ -689,7 +718,27 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="bg-white rounded-2xl border border-slate-100 p-5">
               <Spin spinning={quizLoading}>
-                {dailyQuiz && dailyQuiz.questions.length > 0 ? (
+                {loadErrors.quiz ? (
+                  <div className="py-8 text-center">
+                    <div className="text-sm text-red-400 mb-2">
+                      练习题加载失败
+                    </div>
+                    <Button
+                      size="small"
+                      type="link"
+                      onClick={() => {
+                        setLoadErrors((e) => {
+                          const n = { ...e };
+                          delete n.quiz;
+                          return n;
+                        });
+                        window.location.reload();
+                      }}
+                    >
+                      重试
+                    </Button>
+                  </div>
+                ) : dailyQuiz && dailyQuiz.questions.length > 0 ? (
                   <div>
                     {/* 题目进度条 */}
                     <div className="flex items-center gap-3 mb-5">

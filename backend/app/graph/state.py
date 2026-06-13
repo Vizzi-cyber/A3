@@ -1,11 +1,21 @@
 """
 LangGraph 共享状态定义
 """
+from dataclasses import dataclass, field
 from typing import Annotated, Any, Dict, List, Optional, Sequence
 from typing_extensions import TypedDict
 
 from langchain_core.messages import BaseMessage
 import operator
+
+
+@dataclass
+class AgentStep:
+    """Agent 执行步骤定义"""
+    agent_name: str
+    display_name: str = ""
+    depends_on: List[str] = field(default_factory=list)
+    parallel_group: Optional[str] = None  # 同一组的步骤可并行执行
 
 
 class AgentState(TypedDict):
@@ -23,7 +33,8 @@ class AgentState(TypedDict):
     profile: Dict[str, Any]
 
     # 调度字段
-    next_agent: str  # supervisor 决定下一个执行谁：profiler / resource_generator / path_planner / tutor / finish
+    next_agent: str  # supervisor 决定下一个执行谁：profiler / resource_generator / path_planner / tutor / finish / __parallel__
+    _parallel_agents: Optional[List[str]]  # 并行调度时，需要并行执行的 agent 名称列表
 
     # 各节点产出
     results: Annotated[Dict[str, Any], operator.or_]

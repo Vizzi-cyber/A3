@@ -2,6 +2,7 @@
 辅导助手智能体
 采用苏格拉底式问答，引导学生自主思考，不直接给答案
 """
+import asyncio
 from typing import Any, Dict, List, Optional, Union
 
 from .base import BaseAgent
@@ -24,6 +25,7 @@ class TutorAgent(BaseAgent):
         self.session_histories: Dict[str, List[Dict[str, Any]]] = {}
         self._session_last_access: Dict[str, float] = {}  # 记录会话最后访问时间
         self._student_summaries: Dict[str, str] = {}  # 跨session记忆，keyed by student_id
+        self._lock = asyncio.Lock()  # 并发保护：同一实例的 session 操作互斥
 
     def _detect_learning_state(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -110,6 +112,11 @@ class TutorAgent(BaseAgent):
             "llm_provider": "bigmodel" | "deepseek" | "openai" | "spark" | None
         }
         """
+        async with self._lock:
+            return await self._process_inner(context)
+
+    async def _process_inner(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """process 的内部实现（已持有锁）"""
         self.status = "running"
         task = context.get("task", "answer_question")
         question = context.get("question", "")

@@ -41,7 +41,13 @@ import {
   SyncOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
-import { api, collaborationApi, evaluationApi } from "../services/api";
+import {
+  api,
+  collaborationApi,
+  evaluationApi,
+  projectDecomposerApi,
+  roleMatcherApi,
+} from "../services/api";
 
 const { Panel } = Collapse;
 const { TextArea } = Input;
@@ -165,7 +171,7 @@ const ProjectCollaboration: React.FC = () => {
 
   const loadProjects = async () => {
     try {
-      const { data } = await api.get("/project-decomposer/projects");
+      const { data } = await projectDecomposerApi.getProjects();
       if (data.status === "success") {
         setProjects(data.projects);
       }
@@ -182,7 +188,7 @@ const ProjectCollaboration: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data } = await api.post("/project-decomposer/decompose", {
+      const { data } = await projectDecomposerApi.decompose({
         project_id: selectedProject || undefined,
         project_name: customProjectName || undefined,
         team_size: teamSize,
@@ -190,7 +196,7 @@ const ProjectCollaboration: React.FC = () => {
       });
 
       if (data.status === "success") {
-        const decomp = data.decomposition;
+        const decomp = data.decomposition as unknown as Decomposition;
         if (decomp && !decomp.modules) decomp.modules = [];
         if (decomp && !decomp.milestones) decomp.milestones = [];
         setDecomposition(decomp);
@@ -214,9 +220,10 @@ const ProjectCollaboration: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data } = await api.post("/role-matcher/match", {
-        students: teamMembers,
-        project_tasks: decomposition,
+      const { data } = await roleMatcherApi.match({
+        students:
+          teamMembers as unknown as import("../services/api").StudentInfo[],
+        project_tasks: (decomposition || {}) as Record<string, unknown>,
       });
 
       if (data.status === "success") {
