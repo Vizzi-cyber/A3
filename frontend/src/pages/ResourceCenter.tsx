@@ -183,7 +183,8 @@ const ResourceCenter: React.FC = () => {
         });
         setCourseMenu(menu);
 
-        // 优先使用路由传入的 kpId（从学习路径或搜索跳转过来）
+        // 课程切换时始终重置到新课程的第一个知识点
+        // 仅从其他页面明确跳转时（有 kpId 路由参数）才定位到指定知识点
         const navKpId =
           ((location.state as Record<string, unknown> | null)?.kpId as
             | string
@@ -192,15 +193,19 @@ const ResourceCenter: React.FC = () => {
           undefined;
         if (navKpId) {
           localStorage.removeItem("selected_kp_id");
+          if (location.state) {
+            window.history.replaceState({}, "");
+          }
           const found = menu
             .flatMap((m) => m.children || [])
             .find((c) => c.key === navKpId);
           if (found) {
             setActiveKey(navKpId);
-          } else if (menu.length > 0 && menu[0].children.length > 0) {
-            setActiveKey(menu[0].children[0].key);
+            return;
           }
-        } else if (menu.length > 0 && menu[0].children.length > 0) {
+        }
+        // 默认选择新课程第一个知识点
+        if (menu.length > 0 && menu[0].children.length > 0) {
           setActiveKey(menu[0].children[0].key);
         }
       } catch (_e) {
