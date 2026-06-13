@@ -400,64 +400,6 @@ const Profile: React.FC = () => {
         </Col>
       </Row>
 
-      <PageCard
-        title={
-          <span className="font-semibold text-slate-800">画像历史变化</span>
-        }
-        extra={
-          <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
-            近7天
-          </Tag>
-        }
-      >
-        <div className="h-56">
-          {historyData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-              暂无趋势数据，完成几道练习后再来看
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={historyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "#64748b" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  tick={{ fill: "#64748b" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "none",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                  }}
-                  cursor={{ stroke: "#e2e8f0", strokeWidth: 2 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#4f46e5"
-                  strokeWidth={3}
-                  dot={{ fill: "#4f46e5", strokeWidth: 2, r: 4 }}
-                  activeDot={{
-                    r: 6,
-                    fill: "#fff",
-                    stroke: "#4f46e5",
-                    strokeWidth: 2,
-                  }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </PageCard>
-
       {/* 遗忘曲线维度 */}
       <PageCard
         title={
@@ -592,6 +534,64 @@ const Profile: React.FC = () => {
             </div>
           </Col>
         </Row>
+      </PageCard>
+
+      <PageCard
+        title={
+          <span className="font-semibold text-slate-800">画像历史变化</span>
+        }
+        extra={
+          <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
+            近7天
+          </Tag>
+        }
+      >
+        <div className="h-56">
+          {historyData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+              暂无趋势数据，完成几道练习后再来看
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={historyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "#64748b" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fill: "#64748b" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "none",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                  }}
+                  cursor={{ stroke: "#e2e8f0", strokeWidth: 2 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#4f46e5"
+                  strokeWidth={3}
+                  dot={{ fill: "#4f46e5", strokeWidth: 2, r: 4 }}
+                  activeDot={{
+                    r: 6,
+                    fill: "#fff",
+                    stroke: "#4f46e5",
+                    strokeWidth: 2,
+                  }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </PageCard>
     </div>
   );

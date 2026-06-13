@@ -158,29 +158,34 @@ const ResourceCenter: React.FC = () => {
         const res = await knowledgeApi.list(storeCurrentSubject);
         if (ignore) return;
         const kps: Record<string, unknown>[] = res.data.data || [];
-        // 按 subject 分组
-        const groups: Record<string, Record<string, unknown>[]> = {};
-        kps.forEach((kp) => {
-          const subject = String(kp.subject || "其他");
-          if (!groups[subject]) groups[subject] = [];
-          groups[subject].push(kp);
-        });
-        // 构建 courseMenu
-        let chapterIndex = 1;
+        // 按固定数量分组（每6个知识点一章）
+        const CHAPTER_SIZE = 6;
         const menu: CourseMenuItem[] = [];
-        Object.entries(groups).forEach(([subject, items]) => {
+        for (let i = 0; i < kps.length; i += CHAPTER_SIZE) {
+          const chapterIdx = Math.floor(i / CHAPTER_SIZE) + 1;
+          const chunk = kps.slice(i, i + CHAPTER_SIZE);
+          const chapterName =
+            storeCurrentSubject === "电路分析"
+              ? [
+                  "基础理论与电路模型",
+                  "电路分析方法",
+                  "动态电路分析",
+                  "交流电路分析",
+                ][chapterIdx - 1] || `第${chapterIdx}章`
+              : ["入门与基础", "控制结构与函数", "指针与内存", "高级主题"][
+                  chapterIdx - 1
+                ] || `第${chapterIdx}章`;
           menu.push({
-            key: `chapter_${subject}`,
+            key: `chapter_${chapterIdx}`,
             icon: <BookOutlined />,
-            label: `第${chapterIndex}章：${subject}`,
-            children: items.map((kp, idx) => ({
-              key: String(kp.kp_id || `kp_${idx}`),
-              label: `${chapterIndex}.${idx + 1} ${String(kp.name || "未命名")}`,
+            label: `第${chapterIdx}章：${chapterName}`,
+            children: chunk.map((kp, idx) => ({
+              key: String(kp.kp_id || `kp_${i + idx}`),
+              label: `${chapterIdx}.${idx + 1} ${String(kp.name || "未命名")}`,
               completed: false,
             })),
           });
-          chapterIndex++;
-        });
+        }
         setCourseMenu(menu);
 
         // 课程切换时始终重置到新课程的第一个知识点

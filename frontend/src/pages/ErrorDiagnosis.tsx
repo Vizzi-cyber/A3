@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Typography,
   Input,
@@ -10,6 +10,10 @@ import {
   message,
   Collapse,
   Tooltip,
+  List,
+  Empty,
+  Popconfirm,
+  Badge,
 } from "antd";
 import {
   BugOutlined,
@@ -23,6 +27,10 @@ import {
   InfoCircleOutlined,
   ExclamationCircleOutlined,
   NodeIndexOutlined,
+  HistoryOutlined,
+  DeleteOutlined,
+  ClockCircleOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import {
   RadarChart,
@@ -34,7 +42,7 @@ import {
   Legend,
 } from "recharts";
 import { useAppStore } from "../store";
-import { api } from "../services/api";
+import { api, profileApi, learningDataApi } from "../services/api";
 
 const { TextArea } = Input;
 const { Panel } = Collapse;
@@ -90,6 +98,19 @@ interface CorrectionStrategy {
   estimated_correction_time: string;
 }
 
+interface DiagnosisRecord {
+  id: string;
+  timestamp: number;
+  code: string;
+  language: string;
+  errorAnalysis: ErrorAnalysis | null;
+  misconceptionTrace: MisconceptionTrace | null;
+  correctionStrategy: CorrectionStrategy | null;
+  errorTypes: string[];
+}
+
+const HISTORY_KEY = "error_diagnosis_history";
+
 const ErrorDiagnosis: React.FC = () => {
   const studentId = useAppStore((s) => s.studentId);
   const [code, setCode] = useState("");
@@ -98,6 +119,8 @@ const ErrorDiagnosis: React.FC = () => {
   const [errorOutput, setErrorOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"catch" | "trace">("catch");
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<DiagnosisRecord[]>([]);
 
   const [errorAnalysis, setErrorAnalysis] = useState<ErrorAnalysis | null>(
     null,
@@ -106,6 +129,57 @@ const ErrorDiagnosis: React.FC = () => {
     useState<MisconceptionTrace | null>(null);
   const [correctionStrategy, setCorrectionStrategy] =
     useState<CorrectionStrategy | null>(null);
+
+  // 加载诊断历史
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as DiagnosisRecord[];
+        setHistory(parsed);
+      }
+    } catch {}
+  }, []);
+
+  // 保存诊断历史
+  const saveToHistory = useCallback(
+    (record: DiagnosisRecord) => {
+      const updated = [record, ...history].slice(0, 50); // 最多保留50条
+      setHistory(updated);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    },
+    [history],
+  );
+
+  // 删除单条记录
+  const deleteRecord = useCallback(
+    (id: string) => {
+      const updated = history.filter((r) => r.id !== id);
+      setHistory(updated);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      message.success("已删除");
+    },
+    [history],
+  );
+
+  // 清空所有记录
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+    localStorage.removeItem(HISTORY_KEY);
+    message.success("已清空所有记录");
+  }, []);
+
+  // 从历史记录中恢复
+  const restoreRecord = useCallback((record: DiagnosisRecord) => {
+    setCode(record.code);
+    setLanguage(record.language);
+    setErrorAnalysis(record.errorAnalysis);
+    setMisconceptionTrace(record.misconceptionTrace);
+    setCorrectionStrategy(record.correctionStrategy);
+    setActiveTab(record.errorAnalysis ? "catch" : "trace");
+    setShowHistory(false);
+    message.success("已恢复诊断记录");
+  }, []);
 
   const handleCatchError = async () => {
     if (!code.trim()) {
@@ -127,6 +201,48 @@ const ErrorDiagnosis: React.FC = () => {
         setErrorAnalysis(data.analysis);
         setActiveTab("catch");
         message.success("错误分析完成");
+
+        // 收集错误类型
+        const errorTypes: string[] = [];
+        if (data.analysis.syntax_errors?.length) errorTypes.push("语法错误");
+        if (data.analysis.logic_errors?.length) errorTypes.push("逻辑错误");
+        if (data.analysis.misconceptions?.length) errorTypes.push("思维误区");
+
+        // 保存到诊断历史
+        const record: DiagnosisRecord = {
+          id: `diag_${Date.now()}`,
+          timestamp: Date.now(),
+          code,
+          language,
+          errorAnalysis: data.analysis,
+          misconceptionTrace: null,
+          correctionStrategy: null,
+          errorTypes,
+        };
+        saveToHistory(record);
+
+        // 异步更新学生画像
+        const conversationContext = `学生在错误诊断中提交了${language}代码，发现以下问题：${errorTypes.join("、")}。总体评估：${data.analysis.overall_assessment}`;
+        profileApi
+          .analyzeConversation(studentId, conversationContext)
+          .catch(() => {});
+
+        // 异步上报学习数据（记录错误诊断行为）
+        learningDataApi
+          .record({
+            student_id: studentId,
+            kp_id: "error_diagnosis",
+            action: "error_analysis",
+            duration: 0,
+            progress: 0.1,
+            meta: {
+              error_types: errorTypes,
+              syntax_count: data.analysis.syntax_errors?.length || 0,
+              logic_count: data.analysis.logic_errors?.length || 0,
+              misconception_count: data.analysis.misconceptions?.length || 0,
+            },
+          })
+          .catch(() => {});
       } else {
         message.error(data.detail || "分析失败");
       }
@@ -168,6 +284,39 @@ const ErrorDiagnosis: React.FC = () => {
         setCorrectionStrategy(data.correction);
         setActiveTab("trace");
         message.success("思维溯源完成");
+
+        // 更新最后一条历史记录的溯源信息
+        if (history.length > 0) {
+          const updated = [...history];
+          updated[0] = {
+            ...updated[0],
+            misconceptionTrace: data.trace,
+            correctionStrategy: data.correction,
+          };
+          setHistory(updated);
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+        }
+
+        // 异步更新学生画像（思维溯源信息）
+        const traceContext = `思维溯源分析：错误类型=${data.trace.error_model.type}，根本原因=${data.trace.root_cause}，严重程度=${data.trace.severity}`;
+        profileApi.analyzeConversation(studentId, traceContext).catch(() => {});
+
+        // 上报思维溯源学习数据
+        learningDataApi
+          .record({
+            student_id: studentId,
+            kp_id: "error_diagnosis",
+            action: "misconception_trace",
+            duration: 0,
+            progress: 0.2,
+            meta: {
+              error_model_type: data.trace.error_model.type,
+              root_cause: data.trace.root_cause,
+              severity: data.trace.severity,
+              correction_time: data.correction?.estimated_correction_time,
+            },
+          })
+          .catch(() => {});
       } else {
         message.error(data.detail || "分析失败");
       }
@@ -843,6 +992,135 @@ const ErrorDiagnosis: React.FC = () => {
             </Spin>
           </div>
         </div>
+      </div>
+
+      {/* 诊断记录面板 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <HistoryOutlined className="text-gray-400" />
+            <span className="font-medium text-gray-700">诊断记录</span>
+            <Badge
+              count={history.length}
+              style={{ backgroundColor: "#4f46e5" }}
+            />
+          </div>
+          <Space>
+            <Button
+              size="small"
+              icon={<HistoryOutlined />}
+              onClick={() => setShowHistory(!showHistory)}
+              className="text-gray-500"
+            >
+              {showHistory ? "收起" : "展开"}
+            </Button>
+            {history.length > 0 && (
+              <Popconfirm
+                title="确定清空所有诊断记录？"
+                onConfirm={clearHistory}
+                okText="确认"
+                cancelText="取消"
+              >
+                <Button size="small" danger icon={<DeleteOutlined />}>
+                  清空
+                </Button>
+              </Popconfirm>
+            )}
+          </Space>
+        </div>
+
+        {showHistory && (
+          <div className="max-h-96 overflow-y-auto">
+            {history.length === 0 ? (
+              <Empty
+                description="暂无诊断记录"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            ) : (
+              <List
+                dataSource={history}
+                renderItem={(record) => (
+                  <List.Item
+                    className="hover:bg-gray-50 rounded-lg px-3 cursor-pointer transition-colors"
+                    onClick={() => restoreRecord(record)}
+                    actions={[
+                      <Popconfirm
+                        key="delete"
+                        title="确定删除此记录？"
+                        onConfirm={(e) => {
+                          e?.stopPropagation();
+                          deleteRecord(record.id);
+                        }}
+                        onCancel={(e) => e?.stopPropagation()}
+                        okText="确认"
+                        cancelText="取消"
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </Popconfirm>,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                          <BugOutlined className="text-red-500" />
+                        </div>
+                      }
+                      title={
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-700 font-medium truncate max-w-48">
+                            {record.code.split("\n")[0] || "未命名代码"}
+                          </span>
+                          {record.errorTypes.map((type) => (
+                            <Tag key={type} color="red" className="text-xs">
+                              {type}
+                            </Tag>
+                          ))}
+                        </div>
+                      }
+                      description={
+                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <ClockCircleOutlined />
+                            {new Date(record.timestamp).toLocaleString(
+                              "zh-CN",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FileTextOutlined />
+                            {record.language}
+                          </span>
+                          {record.correctionStrategy && (
+                            <Tag color="green" className="text-xs">
+                              已溯源
+                            </Tag>
+                          )}
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            )}
+          </div>
+        )}
+
+        {!showHistory && history.length > 0 && (
+          <div className="text-xs text-gray-400">
+            共 {history.length} 条记录，点击「展开」查看详情，点击记录可恢复
+          </div>
+        )}
       </div>
     </div>
   );

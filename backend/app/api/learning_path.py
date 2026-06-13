@@ -4,7 +4,7 @@
 集成 DAG 路径规划算法
 """
 import asyncio
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 
@@ -155,6 +155,35 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                     "stages": stages,
                 }
 
+    # 默认路径根据课程动态生成
+    subject = request.subject or "C语言"
+    if not raw_path or not raw_path.get("stages"):
+        # 查询该课程的知识点，按顺序生成默认路径
+        fallback_kps = db.query(KnowledgePointModel).filter(KnowledgePointModel.subject == subject).order_by(KnowledgePointModel.created_at.asc()).all()
+        if fallback_kps:
+            # 按4个阶段分配知识点
+            chunk_size = max(1, len(fallback_kps) // 4)
+            stage_names = ["基础入门与概念理解", "核心技能与知识深化", "实践应用与项目实战", "高级主题与综合提升"]
+            fallback_stages = []
+            for i in range(4):
+                start_idx = i * chunk_size
+                end_idx = start_idx + chunk_size if i < 3 else len(fallback_kps)
+                chunk_kps = fallback_kps[start_idx:end_idx]
+                if chunk_kps:
+                    fallback_stages.append({
+                        "stage_no": i + 1,
+                        "title": stage_names[i] if i < len(stage_names) else f"阶段 {i + 1}",
+                        "topics": [k.name for k in chunk_kps],
+                        "hours": 5,
+                        "criteria": "完成本阶段所有知识点的学习。",
+                        "resources": ["图文讲义", "练习题", "思维导图"],
+                    })
+            raw_path = {
+                "target": request.target_topic,
+                "estimated_total_hours": sum(s.get("hours", 5) for s in fallback_stages),
+                "stages": fallback_stages,
+            }
+
     path_data = raw_path if raw_path and raw_path.get("stages") else {
         "target": request.target_topic,
         "estimated_total_hours": 20,
@@ -162,7 +191,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             {
                 "stage_no": 1,
                 "title": "基础入门与概念理解",
-                "topics": ["C语言概述与开发环境搭建", "数据类型与变量"],
+                "topics": [f"{subject}基础概念", "入门知识"],
                 "hours": 5,
                 "criteria": "能够清晰阐述基本概念，并成功搭建学习环境。",
                 "resources": ["官方入门指南", "结构化在线课程"],
@@ -170,7 +199,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             {
                 "stage_no": 2,
                 "title": "核心技能与知识深化",
-                "topics": ["控制结构", "数组与字符串", "函数与递归"],
+                "topics": [f"{subject}核心知识", "重点内容"],
                 "hours": 5,
                 "criteria": "能够独立运用核心功能解决中等难度的练习题。",
                 "resources": ["进阶教程或书籍", "官方技术文档"],
@@ -178,7 +207,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             {
                 "stage_no": 3,
                 "title": "实践应用与项目实战",
-                "topics": ["指针与内存管理", "结构体与联合体"],
+                "topics": [f"{subject}实践", "综合应用"],
                 "hours": 5,
                 "criteria": "能够独立完成一个功能完整的小型项目。",
                 "resources": ["项目案例库", "开源代码仓库"],
@@ -186,7 +215,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             {
                 "stage_no": 4,
                 "title": "高级主题与综合提升",
-                "topics": ["文件操作", "预处理指令", "动态内存管理"],
+                "topics": [f"{subject}高级主题", "综合提升"],
                 "hours": 5,
                 "criteria": "能够理解并应用高级特性，对项目进行性能优化。",
                 "resources": ["高级技术书籍或论文", "技术博客与会议演讲"],
@@ -207,7 +236,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 @router.get("/{student_id}/current")
 async def get_current_path(
     student_id: str,
-    subject: Optional[str] = None,
+    subject: Optional[str] = Query(None, description="课程名称，如 C语言 或 电路分析"),
     db: Session = Depends(get_db),
     _current: str = Depends(require_auth),
 ):

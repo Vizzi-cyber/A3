@@ -144,16 +144,18 @@ const LearningPathPage: React.FC = () => {
     return `M 8 0 L 8 ${h}`;
   }, [timelineHeight]);
 
-  // 加载本地保存的偏好和路径数据
+  // 加载本地保存的偏好和路径数据（按课程分别存储）
   useEffect(() => {
-    const saved = localStorage.getItem(`path_prefs_${studentId}`);
+    const saved = localStorage.getItem(
+      `path_prefs_${studentId}_${currentSubject}`,
+    );
     if (saved) {
       try {
         const p = JSON.parse(saved);
         setDailyDuration(p.dailyDuration ?? 90);
         setDifficulty(p.difficulty ?? 3);
         setLearningPreference(p.learningPreference ?? "balanced");
-        setTargetTopic(p.targetTopic ?? "掌握 C语言程序设计与数据结构基础");
+        setTargetTopic(p.targetTopic);
       } catch {}
     }
   }, [studentId, currentSubject]);
@@ -189,6 +191,12 @@ const LearningPathPage: React.FC = () => {
 
   useEffect(() => {
     let ignore = false;
+    // 切换课程时先清空旧数据，避免显示上一门课的内容
+    setPathNodes([]);
+    setPathStages([]);
+    setPathData(null);
+    setVisibleCount(0);
+    visibleCountRef.current = 0;
     setLoading(true);
     const load = async () => {
       try {
@@ -438,7 +446,10 @@ const LearningPathPage: React.FC = () => {
       learningPreference,
       targetTopic,
     };
-    localStorage.setItem(`path_prefs_${studentId}`, JSON.stringify(prefs));
+    localStorage.setItem(
+      `path_prefs_${studentId}_${currentSubject}`,
+      JSON.stringify(prefs),
+    );
     message.success("偏好设置已保存");
   };
 
