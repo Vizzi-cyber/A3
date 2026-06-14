@@ -1250,4 +1250,26 @@ export const adjustmentLogApi = {
     }),
 };
 
+// ---------- 电路分析 ----------
+export const circuitApi = {
+  analyze: (data: {
+    netlist: Array<{
+      name: string;
+      type: string;
+      node1: number;
+      node2: number;
+      value: number;
+    }>;
+    node_voltages?: Record<string, number>;
+    branch_currents?: Record<string, number>;
+    student_question?: string;
+    student_level?: string;
+  }) =>
+    api.post<{
+      status: string;
+      analysis?: string;
+      circuit_description?: string;
+    }>("/circuit-analysis/analyze", data),
+};
+
 export default api;
