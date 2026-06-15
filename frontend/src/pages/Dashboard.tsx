@@ -142,6 +142,8 @@ const Dashboard: React.FC = () => {
 
   const studentId = useAppStore((s) => s.studentId);
   const currentSubject = useAppStore((s) => s.currentSubject);
+  const userInfo = useAppStore((s) => s.userInfo);
+  const displayName = userInfo?.username || "学习者";
 
   // Data fetching
   useEffect(() => {
@@ -416,7 +418,9 @@ const Dashboard: React.FC = () => {
         <div className="flex-1 flex flex-col justify-center min-w-[240px]">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 w-fit mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-gray-300">欢迎回来，学习者</span>
+            <span className="text-xs text-gray-300">
+              欢迎回来，{displayName}
+            </span>
           </div>
           <div className="text-2xl lg:text-[2rem] font-bold mb-6 leading-tight">
             你本周已完成{" "}
@@ -586,112 +590,6 @@ const Dashboard: React.FC = () => {
                   </div>
                 );
               })}
-            </div>
-          </div>
-
-          {/* 我的任务 */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <Typography.Title
-                level={5}
-                className="!m-0 text-slate-800 font-semibold"
-              >
-                我的任务
-              </Typography.Title>
-              <Button
-                type="link"
-                className="text-primary font-medium"
-                onClick={() => navigate("/learning-path")}
-              >
-                查看全部
-              </Button>
-            </div>
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
-              <Spin spinning={summaryLoading}>
-                <List
-                  itemLayout="horizontal"
-                  dataSource={assignmentList}
-                  locale={{
-                    emptyText: (
-                      <div className="py-10 text-center">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 text-2xl mx-auto mb-3">
-                          <RocketOutlined />
-                        </div>
-                        <div className="text-sm text-slate-500 mb-1">
-                          暂无任务
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          去学习中心开启新的学习旅程吧
-                        </div>
-                      </div>
-                    ),
-                  }}
-                  renderItem={(item: DashboardTask) => {
-                    const meta =
-                      RESOURCE_META[item.type || "doc"] || RESOURCE_META.doc;
-                    const progressPct = Math.round(item.progress * 100);
-                    return (
-                      <List.Item
-                        actions={[
-                          <Button
-                            type="text"
-                            icon={<MoreOutlined />}
-                            className="text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                          />,
-                        ]}
-                        className="hover:bg-slate-50/80 rounded-xl transition-all px-3 border-b border-slate-50 last:border-0"
-                      >
-                        <List.Item.Meta
-                          avatar={
-                            <div
-                              className="w-11 h-11 rounded-xl flex items-center justify-center text-lg shadow-sm"
-                              style={{
-                                background: meta.bg,
-                                color: meta.color,
-                              }}
-                            >
-                              {meta.icon}
-                            </div>
-                          }
-                          title={
-                            <div className="flex items-center gap-2">
-                              <Typography.Text className="font-medium text-slate-800">
-                                {item.title}
-                              </Typography.Text>
-                              {progressPct === 100 && (
-                                <Tag className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0 leading-normal">
-                                  已完成
-                                </Tag>
-                              )}
-                            </div>
-                          }
-                          description={
-                            <div className="flex items-center gap-4 mt-1.5">
-                              <span className="text-xs text-slate-400">
-                                {item.type || "任务"}
-                              </span>
-                              {item.progress > 0 && (
-                                <div className="flex items-center gap-2">
-                                  <Progress
-                                    percent={progressPct}
-                                    size="small"
-                                    className="w-20"
-                                    strokeColor={meta.color}
-                                    trailColor="#f1f5f9"
-                                  />
-                                  <span className="text-xs text-slate-400 w-8">
-                                    {progressPct}%
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          }
-                        />
-                      </List.Item>
-                    );
-                  }}
-                />
-              </Spin>
             </div>
           </div>
 
@@ -1056,6 +954,95 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* 我的任务 */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <Typography.Title
+                level={5}
+                className="!m-0 text-slate-800 font-semibold"
+              >
+                我的任务
+              </Typography.Title>
+              <Button
+                type="link"
+                className="text-primary font-medium"
+                onClick={() => navigate("/learning-path")}
+              >
+                查看全部
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <Spin spinning={summaryLoading}>
+                {assignmentList.length === 0 ? (
+                  <div className="py-10 text-center bg-white rounded-2xl border border-slate-100">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 text-2xl mx-auto mb-3">
+                      <RocketOutlined />
+                    </div>
+                    <div className="text-sm text-slate-500 mb-1">暂无任务</div>
+                    <div className="text-xs text-slate-400">
+                      去学习中心开启新的学习旅程吧
+                    </div>
+                  </div>
+                ) : (
+                  assignmentList.map((item, idx) => {
+                    const meta =
+                      RESOURCE_META[item.type || "doc"] || RESOURCE_META.doc;
+                    const progressPct = Math.round(item.progress * 100);
+                    return (
+                      <div
+                        key={item.task_id || idx}
+                        className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md transition-all cursor-pointer"
+                        onClick={() => navigate("/learning-path")}
+                      >
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-xl"
+                          style={{
+                            background: meta.bg,
+                            color: meta.color,
+                          }}
+                        >
+                          {meta.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium text-sm text-slate-800 truncate">
+                              {item.title}
+                            </div>
+                            {progressPct === 100 && (
+                              <Tag className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0 leading-normal">
+                                已完成
+                              </Tag>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-slate-400">
+                              {item.type || "任务"}
+                            </span>
+                            {item.progress > 0 && (
+                              <>
+                                <Progress
+                                  percent={progressPct}
+                                  size="small"
+                                  className="w-16"
+                                  strokeColor={meta.color}
+                                  trailColor="#f1f5f9"
+                                />
+                                <span className="text-xs text-slate-400">
+                                  {progressPct}%
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <ArrowRightOutlined className="text-slate-300 text-sm" />
+                      </div>
+                    );
+                  })
+                )}
+              </Spin>
             </div>
           </div>
         </Col>
