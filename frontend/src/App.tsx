@@ -30,6 +30,34 @@ const ProjectCollaboration = React.lazy(
 );
 const TeacherDashboard = React.lazy(() => import("./pages/TeacherDashboard"));
 const KnowledgeBase = React.lazy(() => import("./pages/KnowledgeBase"));
+const TeacherPersonalSpace = React.lazy(
+  () => import("./pages/TeacherPersonalSpace"),
+);
+
+// 教师端页面
+const TeacherHome = React.lazy(() => import("./pages/teacher/TeacherHome"));
+const AssignmentManagement = React.lazy(
+  () => import("./pages/teacher/AssignmentManagement"),
+);
+const StudentManagement = React.lazy(
+  () => import("./pages/teacher/StudentManagement"),
+);
+const TeachingResources = React.lazy(
+  () => import("./pages/teacher/TeachingResources"),
+);
+const LearningAnalytics = React.lazy(
+  () => import("./pages/teacher/LearningAnalytics"),
+);
+const ClassAnalytics = React.lazy(
+  () => import("./pages/teacher/ClassAnalytics"),
+);
+const ClassComparison = React.lazy(
+  () => import("./pages/teacher/ClassComparison"),
+);
+const ReportExport = React.lazy(() => import("./pages/teacher/ReportExport"));
+const SystemSettings = React.lazy(
+  () => import("./pages/teacher/SystemSettings"),
+);
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -193,6 +221,86 @@ const PrivateLayout: React.FC = () => {
                   element={
                     <PageWrapper>
                       <TeacherDashboard />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/home"
+                  element={
+                    <PageWrapper>
+                      <TeacherHome />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/assignments"
+                  element={
+                    <PageWrapper>
+                      <AssignmentManagement />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/students"
+                  element={
+                    <PageWrapper>
+                      <StudentManagement />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/resources"
+                  element={
+                    <PageWrapper>
+                      <TeachingResources />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/analytics"
+                  element={
+                    <PageWrapper>
+                      <LearningAnalytics />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/class-analytics"
+                  element={
+                    <PageWrapper>
+                      <ClassAnalytics />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/class-comparison"
+                  element={
+                    <PageWrapper>
+                      <ClassComparison />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/reports"
+                  element={
+                    <PageWrapper>
+                      <ReportExport />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/settings"
+                  element={
+                    <PageWrapper>
+                      <SystemSettings />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/personal"
+                  element={
+                    <PageWrapper>
+                      <TeacherPersonalSpace />
                     </PageWrapper>
                   }
                 />
