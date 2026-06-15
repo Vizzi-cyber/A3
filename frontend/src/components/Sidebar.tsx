@@ -17,6 +17,13 @@ import {
   ThunderboltOutlined,
   ExperimentOutlined,
   BookOutlined,
+  HomeOutlined,
+  FileTextOutlined,
+  TeamOutlined,
+  BarChartOutlined,
+  LineChartOutlined,
+  FileExcelOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import { dashboardApi } from "../services/api";
@@ -41,8 +48,28 @@ const studentMenuItems = [
 ];
 
 const teacherMenuItems = [
-  { key: "/teacher", icon: <ExperimentOutlined />, label: "教师工作台" },
-  { key: "/personal", icon: <UserOutlined />, label: "个人空间" },
+  { key: "/teacher", icon: <DashboardOutlined />, label: "首页" },
+  {
+    key: "/teacher/assignments",
+    icon: <FileTextOutlined />,
+    label: "作业管理",
+  },
+  { key: "/teacher/students", icon: <TeamOutlined />, label: "学生管理" },
+  { key: "/teacher/resources", icon: <BookOutlined />, label: "备课资源" },
+  { key: "/teacher/analytics", icon: <BarChartOutlined />, label: "学情分析" },
+  {
+    key: "/teacher/class-analytics",
+    icon: <LineChartOutlined />,
+    label: "班级学情",
+  },
+  {
+    key: "/teacher/class-comparison",
+    icon: <ExperimentOutlined />,
+    label: "班级对比",
+  },
+  { key: "/teacher/reports", icon: <FileExcelOutlined />, label: "报告导出" },
+  { key: "/teacher/settings", icon: <SettingOutlined />, label: "系统设置" },
+  { key: "/teacher/personal", icon: <UserOutlined />, label: "个人空间" },
 ];
 
 const Sidebar: React.FC = () => {
