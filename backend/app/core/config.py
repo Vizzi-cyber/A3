@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     BIGMODEL_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4/"
     BIGMODEL_MODEL: str = "glm-4.6v"
 
+    # 小米 MiMo 配置（支持 OpenAI 兼容接口）
+    MIMO_API_KEY: Optional[str] = None
+    MIMO_BASE_URL: str = "https://api.xiaomimimo.com/v1"
+    MIMO_MODEL: str = "mimo-v2.5-pro"
+
     # 火山引擎视觉智能（文生图）配置
     VOLC_ACCESS_KEY: Optional[str] = None
     VOLC_SECRET_KEY: Optional[str] = None

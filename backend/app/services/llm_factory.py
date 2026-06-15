@@ -189,8 +189,12 @@ class OpenAICompatibleLLM(BaseLLM):
             try:
                 response = await self.client.chat.completions.create(**kwargs)
                 async for chunk in response:
-                    delta = chunk.choices[0].delta
-                    content = delta.content
+                    if not chunk or not chunk.choices:
+                        continue
+                    choice = chunk.choices[0]
+                    if not choice or not choice.delta:
+                        continue
+                    content = choice.delta.content
                     if content:
                         yield content
                 duration_ms = (time.time() - start) * 1000
@@ -218,16 +222,17 @@ class OpenAICompatibleLLM(BaseLLM):
 
 
 class LLMFactory:
-    """大模型工厂 — 统一支持 spark / deepseek / openai / bigmodel"""
+    """大模型工厂 — 统一支持 spark / deepseek / openai / bigmodel / mimo"""
 
     _cache: Dict[str, BaseLLM] = {}
 
-    # provider -> (settings_api_key, settings_base_url, settings_model, env_var_name)
+    # provider -> (settings_api_key, settings_base_url, settings_model)
     _PROVIDER_MAP: Dict[str, tuple] = {
         "bigmodel":  ("BIGMODEL_API_KEY",  "BIGMODEL_BASE_URL",  "BIGMODEL_MODEL"),
         "deepseek":  ("DEEPSEEK_API_KEY",  "DEEPSEEK_BASE_URL",  "DEEPSEEK_MODEL"),
         "openai":    ("OPENAI_API_KEY",    "OPENAI_BASE_URL",    "OPENAI_MODEL"),
         "spark":     ("SPARK_API_KEY",     "SPARK_HTTP_BASE_URL", "SPARK_MODEL"),
+        "mimo":      ("MIMO_API_KEY",      "MIMO_BASE_URL",      "MIMO_MODEL"),
     }
 
     @classmethod

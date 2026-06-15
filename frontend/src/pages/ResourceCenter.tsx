@@ -158,29 +158,25 @@ const ResourceCenter: React.FC = () => {
         const res = await knowledgeApi.list(storeCurrentSubject);
         if (ignore) return;
         const kps: Record<string, unknown>[] = res.data.data || [];
-        // 按固定数量分组（每6个知识点一章）
-        const CHAPTER_SIZE = 6;
+        // 按 subject 字段分组（每个 subject 为一章）
+        const subjectMap = new Map<string, Record<string, unknown>[]>();
+        for (const kp of kps) {
+          const subj = String(kp.subject || "未分类");
+          if (!subjectMap.has(subj)) {
+            subjectMap.set(subj, []);
+          }
+          subjectMap.get(subj)!.push(kp);
+        }
         const menu: CourseMenuItem[] = [];
-        for (let i = 0; i < kps.length; i += CHAPTER_SIZE) {
-          const chapterIdx = Math.floor(i / CHAPTER_SIZE) + 1;
-          const chunk = kps.slice(i, i + CHAPTER_SIZE);
-          const chapterName =
-            storeCurrentSubject === "电路分析"
-              ? [
-                  "基础理论与电路模型",
-                  "电路分析方法",
-                  "动态电路分析",
-                  "交流电路分析",
-                ][chapterIdx - 1] || `第${chapterIdx}章`
-              : ["入门与基础", "控制结构与函数", "指针与内存", "高级主题"][
-                  chapterIdx - 1
-                ] || `第${chapterIdx}章`;
+        let chapterIdx = 0;
+        for (const [subjectName, subjectKps] of subjectMap) {
+          chapterIdx++;
           menu.push({
             key: `chapter_${chapterIdx}`,
             icon: <BookOutlined />,
-            label: `第${chapterIdx}章：${chapterName}`,
-            children: chunk.map((kp, idx) => ({
-              key: String(kp.kp_id || `kp_${i + idx}`),
+            label: `第${chapterIdx}章：${subjectName}`,
+            children: subjectKps.map((kp, idx) => ({
+              key: String(kp.kp_id || `kp_${chapterIdx}_${idx}`),
               label: `${chapterIdx}.${idx + 1} ${String(kp.name || "未命名")}`,
               completed: false,
             })),

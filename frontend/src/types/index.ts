@@ -240,7 +240,7 @@ export interface TutorRequest {
   question: string | VisionContentItem[];
   context?: Record<string, unknown>;
   session_id?: string;
-  provider?: "bigmodel" | "deepseek" | "openai" | "spark";
+  provider?: "bigmodel" | "deepseek" | "openai" | "spark" | "mimo";
   rag_active?: boolean;
   task?:
     | "answer_question"

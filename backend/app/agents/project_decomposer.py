@@ -286,7 +286,15 @@ class ProjectDecomposerAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        # 使用更大的 max_tokens 确保完整 JSON 输出
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+
+        # 如果解析失败，尝试直接解析 raw_text
+        if isinstance(data, dict) and data.get("status") == "error" and data.get("raw_text"):
+            from ..services.llm_factory import BaseLLM
+            parsed = BaseLLM._try_parse_json(data["raw_text"])
+            if parsed:
+                data = parsed
 
         # 确保 decomposition 结构完整
         if not isinstance(data, dict):

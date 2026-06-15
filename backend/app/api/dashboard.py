@@ -53,6 +53,14 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
     )
     weekly_duration_h = round((week_duration_sec or 0) / 3600, 1)
 
+    # ---------- 累计学习时长 ----------
+    total_duration_sec = (
+        db.query(func.coalesce(func.sum(LearningRecordModel.duration), 0))
+        .filter(LearningRecordModel.student_id == student_id)
+        .scalar()
+    )
+    total_duration_h = round((total_duration_sec or 0) / 3600, 1)
+
     # ---------- 连续打卡（简化：最近有学习记录的天数）—— 只查询日期字段 ----------
     year_ago = today_start - timedelta(days=365)
     recent_days = [
@@ -227,6 +235,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
         "status": "success",
         "student_id": student_id,
         "stats": {
+            "total_hours": total_duration_h,
             "weekly_hours": weekly_duration_h,
             "streak_days": streak,
             "achievements": ach_count,
