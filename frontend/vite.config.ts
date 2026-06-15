@@ -14,6 +14,7 @@ export default defineConfig({
       },
     },
   },
+  publicDir: "public",
   build: {
     outDir: "dist",
     sourcemap: process.env.NODE_ENV === "development",

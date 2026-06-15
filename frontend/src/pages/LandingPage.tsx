@@ -11,8 +11,6 @@ import {
   LineChartOutlined,
   FileTextOutlined,
   ArrowRightOutlined,
-  PlayCircleOutlined,
-  StarFilled,
   MenuOutlined,
   CloseOutlined,
   CheckCircleOutlined,
@@ -79,13 +77,6 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: 50000, suffix: "+", label: "注册用户" },
-  { value: 98, suffix: "%", label: "学习满意度" },
-  { value: 120, suffix: "万+", label: "生成资源" },
-  { value: 16, suffix: "", label: "知识领域" },
-];
-
 const steps = [
   {
     num: "01",
@@ -106,33 +97,6 @@ const steps = [
     num: "04",
     title: "智能辅导",
     desc: "学习过程中遇到疑难，AI 导师随时在线，苏格拉底式引导，帮助你真正理解而非记住答案。",
-  },
-];
-
-const testimonials = [
-  {
-    name: "李明远",
-    role: "计算机专业大三学生",
-    avatar: "L",
-    content:
-      "以前学 C 语言指针总是云里雾里，这个系统的 AI 导师一步步引导我理解内存模型，现在指针和结构体完全没问题了。",
-    rating: 5,
-  },
-  {
-    name: "张雨萱",
-    role: "考研二战生",
-    avatar: "Z",
-    content:
-      "知识树功能太治愈了！看着自己的知识树从幼苗长成大树，特别有成就感。每天的学习任务也很合理，不会觉得累。",
-    rating: 5,
-  },
-  {
-    name: "王浩然",
-    role: "在线教育从业者",
-    avatar: "W",
-    content:
-      "作为从业者，我对这个系统的多智能体协作印象深刻。画像更新、路径调整、资源生成的闭环设计非常专业。",
-    rating: 5,
   },
 ];
 
@@ -192,30 +156,6 @@ const faqItems = [
   },
 ];
 
-function AnimatedCounter({ value, suffix }: { value: number; suffix: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obj = { val: 0 };
-    gsap.to(obj, {
-      val: value,
-      duration: 2,
-      ease: "power2.out",
-      scrollTrigger: { trigger: el, start: "top 85%" },
-      onUpdate: () => {
-        el.textContent = Math.floor(obj.val).toLocaleString();
-      },
-    });
-  }, [value]);
-  return (
-    <span className="tabular-nums">
-      <span ref={ref}>0</span>
-      {suffix}
-    </span>
-  );
-}
-
 /* ===== Browser Mockup Component ===== */
 const BrowserMockup: React.FC<{
   children: React.ReactNode;
@@ -252,9 +192,7 @@ const LandingPage: React.FC = () => {
   const heroRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
   const showcaseRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<HTMLDivElement>(null);
   const workflowRef = useRef<HTMLDivElement>(null);
-  const testimonialsRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const faqRef = useRef<HTMLDivElement>(null);
 
@@ -335,39 +273,7 @@ const LandingPage: React.FC = () => {
           stagger: 0.15,
           ease: "power2.out",
           scrollTrigger: {
-            trigger: statsRef.current,
-            start: "top 85%",
-            toggleActions: "play none none none",
-          },
-        },
-      );
-      gsap.fromTo(
-        ".step-card",
-        { x: -20, autoAlpha: 0 },
-        {
-          x: 0,
-          autoAlpha: 1,
-          duration: 0.8,
-          stagger: 0.2,
-          ease: "power2.out",
-          scrollTrigger: {
             trigger: workflowRef.current,
-            start: "top 85%",
-            toggleActions: "play none none none",
-          },
-        },
-      );
-      gsap.fromTo(
-        ".testimonial-card",
-        { y: 40, autoAlpha: 0 },
-        {
-          y: 0,
-          autoAlpha: 1,
-          duration: 0.8,
-          stagger: 0.15,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: testimonialsRef.current,
             start: "top 85%",
             toggleActions: "play none none none",
           },
@@ -538,16 +444,6 @@ const LandingPage: React.FC = () => {
                   <span className="flex items-center gap-2">
                     开始学习
                     <ArrowRightOutlined />
-                  </span>
-                </Button>
-                <Button
-                  size="large"
-                  onClick={() => scrollTo("#showcase")}
-                  className="rounded-full px-7 h-11 border-slate-200 text-slate-600 hover:border-primary hover:text-primary"
-                >
-                  <span className="flex items-center gap-2">
-                    <PlayCircleOutlined />
-                    查看演示
                   </span>
                 </Button>
               </div>
@@ -1176,43 +1072,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ===== Stats ===== */}
-      <section
-        id="stats"
-        ref={statsRef}
-        className="py-20 px-6 relative bg-white noise-overlay"
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 via-transparent to-sky-50/50 pointer-events-none" />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-            {stats.map((s, i) => (
-              <div key={i} className="stat-item text-center">
-                <div className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
-                  <AnimatedCounter value={s.value} suffix={s.suffix} />
-                </div>
-                <div className="mt-2 text-sm text-slate-500 font-medium">
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Wave divider to Workflow */}
-        <div className="wave-divider wave-divider-bottom">
-          <svg
-            data-name="Layer 1"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 1200 120"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
-              fill="#f8fafc"
-            ></path>
-          </svg>
-        </div>
-      </section>
-
       {/* ===== Workflow ===== */}
       <section
         id="workflow"
@@ -1259,99 +1118,6 @@ const LandingPage: React.FC = () => {
             <path
               d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z"
               fill="#ffffff"
-            ></path>
-          </svg>
-        </div>
-      </section>
-
-      {/* ===== Testimonials ===== */}
-      <section
-        id="testimonials"
-        ref={testimonialsRef}
-        className="py-24 px-6 relative bg-white noise-overlay"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-50/30 to-transparent pointer-events-none" />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-block px-3 py-1 rounded-full bg-amber-50 border border-amber-100 text-warning text-xs font-medium mb-4">
-              用户评价
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900">
-              他们正在改变学习方式
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className="testimonial-card tilt-card-wrap p-6 rounded-2xl bg-white border border-slate-100 shadow-card hover:shadow-card-hover transition-all"
-                onMouseMove={(e) => {
-                  const card = e.currentTarget.querySelector(
-                    ".tilt-card",
-                  ) as HTMLElement;
-                  if (!card) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const cx = rect.width / 2;
-                  const cy = rect.height / 2;
-                  const rotateX = ((y - cy) / cy) * -6;
-                  const rotateY = ((x - cx) / cx) * 6;
-                  card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-                }}
-                onMouseLeave={(e) => {
-                  const card = e.currentTarget.querySelector(
-                    ".tilt-card",
-                  ) as HTMLElement;
-                  if (card)
-                    card.style.transform =
-                      "perspective(1000px) rotateX(0deg) rotateY(0deg)";
-                }}
-              >
-                <div className="tilt-card transition-transform duration-150 ease-out">
-                  <div className="tilt-card-content">
-                    <div className="flex items-center gap-1 mb-4">
-                      {Array.from({ length: t.rating }).map((_, j) => (
-                        <StarFilled
-                          key={j}
-                          className="text-amber-400 text-xs"
-                        />
-                      ))}
-                    </div>
-                    <div className="text-3xl text-indigo-200 leading-none mb-2">
-                      &ldquo;
-                    </div>
-                    <p className="text-sm text-slate-600 leading-relaxed mb-6">
-                      {t.content}
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-bold">
-                        {t.avatar}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-slate-900">
-                          {t.name}
-                        </div>
-                        <div className="text-xs text-slate-500">{t.role}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Wave divider to FAQ */}
-        <div className="wave-divider wave-divider-bottom">
-          <svg
-            data-name="Layer 1"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 1200 120"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
-              fill="#f8fafc"
             ></path>
           </svg>
         </div>
@@ -1417,44 +1183,23 @@ const LandingPage: React.FC = () => {
         className="py-24 px-6 bg-white noise-overlay relative"
       >
         <div className="max-w-4xl mx-auto relative z-10">
-          <div className="cta-content relative p-10 md:p-20 rounded-3xl bg-slate-900 text-center border border-slate-800 shadow-float">
+          <div className="cta-content relative p-10 md:p-20 rounded-3xl bg-gradient-to-br from-sky-50 to-indigo-50 text-center border border-sky-100 shadow-float">
             <div className="relative z-10">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-medium mb-8">
-                <CheckCircleOutlined />
-                免费注册，即刻体验
-              </div>
-              <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight">
+              <h2 className="text-4xl md:text-6xl font-bold text-slate-900 mb-6 tracking-tight">
                 准备好开启你的
                 <br className="hidden sm:block" />
                 AI 学习之旅了吗？
               </h2>
-              <p className="text-slate-400 max-w-lg mx-auto mb-10 text-lg leading-relaxed">
-                立即注册，体验多智能体协同带来的个性化学习革命。完全免费，无需信用卡。
-              </p>
               <Button
                 size="large"
                 onClick={() => navigate("/login")}
-                className="rounded-full bg-white text-slate-900 hover:bg-slate-100 px-10 h-12 font-semibold border-0 hover:-translate-y-0.5 transition-all duration-300"
+                className="rounded-full bg-primary text-white hover:bg-primary/90 px-10 h-12 font-semibold border-0 hover:-translate-y-0.5 transition-all duration-300"
               >
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2 text-white">
                   免费开始使用
                   <ArrowRightOutlined />
                 </span>
               </Button>
-              <div className="mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-slate-500">
-                <span className="flex items-center gap-1.5">
-                  <SafetyCertificateOutlined />
-                  数据安全加密
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircleOutlined />
-                  无需绑定信用卡
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <ThunderboltOutlined />
-                  多模型一键切换
-                </span>
-              </div>
             </div>
           </div>
         </div>
