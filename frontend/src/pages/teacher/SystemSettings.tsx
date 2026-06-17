@@ -166,7 +166,7 @@ const SystemSettings: React.FC = () => {
         <Button
           type="primary"
           icon={<SaveOutlined />}
-          className="bg-primary rounded-xl"
+          className="bg-[#0052ff] rounded-xl"
         >
           保存设置
         </Button>

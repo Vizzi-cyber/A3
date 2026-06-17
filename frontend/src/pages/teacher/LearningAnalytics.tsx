@@ -105,7 +105,7 @@ const LearningAnalytics: React.FC = () => {
                       boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                     }}
                   />
-                  <Bar dataKey="count" fill="#4f46e5" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="count" fill="#0052ff" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

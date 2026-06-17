@@ -79,7 +79,7 @@ const TeachingResources: React.FC = () => {
       title: "PPT课件",
       desc: "AI自动生成教学PPT",
       icon: <FileTextOutlined className="text-2xl" />,
-      color: "#4f46e5",
+      color: "#0052ff",
       action: "ppt",
     },
     {
@@ -100,7 +100,7 @@ const TeachingResources: React.FC = () => {
       title: "思维导图",
       desc: "知识结构图",
       icon: <ApartmentOutlined className="text-2xl" />,
-      color: "#8b5cf6",
+      color: "#0052ff",
       action: "mindmap",
     },
   ];
@@ -170,7 +170,7 @@ const TeachingResources: React.FC = () => {
             icon={<PlusOutlined />}
             onClick={handleGeneratePPT}
             loading={generating}
-            className="bg-primary rounded-xl"
+            className="bg-[#0052ff] rounded-xl"
           >
             生成PPT
           </Button>
@@ -205,14 +205,14 @@ const TeachingResources: React.FC = () => {
               className="flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-white hover:shadow-sm transition-all"
             >
               <div className="flex items-center gap-3">
-                <FileTextOutlined className="text-primary text-lg" />
+                <FileTextOutlined className="text-[#0052ff] text-lg" />
                 <div>
                   <div className="font-medium text-slate-800">{item.name}</div>
                   <div className="text-xs text-slate-400">{item.date}</div>
                 </div>
               </div>
               <Space>
-                <Tag className="rounded-full border-0 bg-primary-50 text-primary">
+                <Tag className="rounded-full border-0 bg-[#0052ff]-50 text-[#0052ff]">
                   {item.type}
                 </Tag>
                 <Button type="link" icon={<DownloadOutlined />}>

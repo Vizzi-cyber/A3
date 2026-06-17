@@ -119,7 +119,7 @@ const ClassAnalytics: React.FC = () => {
       title: "排名",
       key: "rank",
       render: (_: unknown, __: unknown, index: number) => (
-        <span className={index < 3 ? "text-primary font-bold" : ""}>
+        <span className={index < 3 ? "text-[#0052ff] font-bold" : ""}>
           {index + 1}
         </span>
       ),
@@ -185,7 +185,7 @@ const ClassAnalytics: React.FC = () => {
             <Statistic
               title="总学生数"
               value={totalStudents}
-              prefix={<TeamOutlined className="text-primary" />}
+              prefix={<TeamOutlined className="text-[#0052ff]" />}
             />
           </Card>
         </Col>
@@ -240,8 +240,8 @@ const ClassAnalytics: React.FC = () => {
                   <Radar
                     name="班级平均"
                     dataKey="A"
-                    stroke="#4f46e5"
-                    fill="#4f46e5"
+                    stroke="#0052ff"
+                    fill="#0052ff"
                     fillOpacity={0.2}
                     strokeWidth={2}
                   />

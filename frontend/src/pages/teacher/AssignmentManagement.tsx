@@ -113,7 +113,7 @@ const AssignmentManagement: React.FC = () => {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          className="bg-primary rounded-xl"
+          className="bg-[#0052ff] rounded-xl"
         >
           创建作业
         </Button>

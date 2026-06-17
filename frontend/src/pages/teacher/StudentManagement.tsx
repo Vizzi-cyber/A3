@@ -88,7 +88,7 @@ const StudentManagement: React.FC = () => {
           <Avatar
             size="small"
             icon={<UserOutlined />}
-            className="bg-primary/10 text-primary"
+            className="bg-[#0052ff]/10 text-[#0052ff]"
           />
           {name || record.student_id}
         </Space>
@@ -100,7 +100,7 @@ const StudentManagement: React.FC = () => {
       key: "total_points",
       sorter: (a: Student, b: Student) => a.total_points - b.total_points,
       render: (points: number) => (
-        <span className="font-semibold text-primary">{points}</span>
+        <span className="font-semibold text-[#0052ff]">{points}</span>
       ),
     },
     {

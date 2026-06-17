@@ -193,6 +193,7 @@ const Dashboard: React.FC = () => {
                 title: n.title || n.name || `节点${idx + 1}`,
                 status: n.status || "pending",
                 type: n.type || "综合",
+                kp_id: n.kp_id,
               }),
             ),
           );
@@ -461,7 +462,11 @@ const Dashboard: React.FC = () => {
               <div
                 key={course.id}
                 className={`${course.bg} rounded-2xl p-5 min-w-[170px] flex-shrink-0 text-slate-800 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden`}
-                onClick={() => navigate("/learning-path")}
+                onClick={() =>
+                  navigate("/resources", {
+                    state: { kpId: (course as any).kp_id },
+                  })
+                }
               >
                 {/* 顶部装饰条 */}
                 <div

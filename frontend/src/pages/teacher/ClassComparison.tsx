@@ -127,7 +127,7 @@ const ClassComparison: React.FC = () => {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="平均分" fill="#4f46e5" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="平均分" fill="#0052ff" radius={[8, 8, 0, 0]} />
                   <Bar
                     dataKey="学习时长"
                     fill="#10b981"

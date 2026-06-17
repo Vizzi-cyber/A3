@@ -70,7 +70,7 @@ const TeacherHome: React.FC = () => {
       title: "总学生数",
       value: Number((overview as Record<string, unknown>).total_students) || 0,
       icon: <TeamOutlined />,
-      color: "#4f46e5",
+      color: "#0052ff",
     },
     {
       title: "活跃学生",
@@ -148,9 +148,9 @@ const TeacherHome: React.FC = () => {
                     type="monotone"
                     dataKey="points"
                     name="积分"
-                    stroke="#4f46e5"
+                    stroke="#0052ff"
                     strokeWidth={2}
-                    dot={{ fill: "#4f46e5", r: 4 }}
+                    dot={{ fill: "#0052ff", r: 4 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -220,7 +220,7 @@ const TeacherHome: React.FC = () => {
             >
               <List.Item.Meta
                 avatar={
-                  <Avatar className="bg-primary/10 text-primary">
+                  <Avatar className="bg-[#0052ff]/10 text-[#0052ff]">
                     {(student.username || student.student_id)[0]}
                   </Avatar>
                 }

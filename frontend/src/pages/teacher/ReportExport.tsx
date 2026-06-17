@@ -53,7 +53,7 @@ const ReportExport: React.FC = () => {
       title: "学生学习报告",
       desc: "包含学习时长、测验成绩、进度等详细数据",
       icon: <FileTextOutlined className="text-xl" />,
-      color: "#4f46e5",
+      color: "#0052ff",
     },
     {
       title: "班级成绩分析",
@@ -156,7 +156,7 @@ const ReportExport: React.FC = () => {
                   ]}
                 />
               </div>
-              <Button type="primary" className="bg-primary rounded-xl" block>
+              <Button type="primary" className="bg-[#0052ff] rounded-xl" block>
                 <DownloadOutlined /> 生成报告
               </Button>
             </div>
@@ -182,7 +182,7 @@ const ReportExport: React.FC = () => {
                 >
                   <List.Item.Meta
                     avatar={
-                      <FileTextOutlined className="text-primary text-lg" />
+                      <FileTextOutlined className="text-[#0052ff] text-lg" />
                     }
                     title={item.name}
                     description={
