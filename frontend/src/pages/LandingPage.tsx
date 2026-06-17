@@ -32,9 +32,7 @@ gsap.registerPlugin(ScrollTrigger);
 const navLinks = [
   { label: "功能", href: "#features" },
   { label: "产品", href: "#showcase" },
-  { label: "数据", href: "#stats" },
   { label: "流程", href: "#workflow" },
-  { label: "评价", href: "#testimonials" },
   { label: "FAQ", href: "#faq" },
 ];
 
@@ -42,7 +40,7 @@ const features = [
   {
     icon: <ApartmentOutlined className="text-xl" />,
     title: "多智能体协同",
-    desc: "课程设计师、画像师、路径规划师、资源生成师、辅导助手五大智能体协同，为你定制最优方案。",
+    desc: "12个AI智能体协作——课程设计师、画像师、路径规划师、资源生成师、辅导助手等，覆盖学习全场景。",
     color: "bg-indigo-50 text-indigo-600",
   },
   {
@@ -450,7 +448,7 @@ const LandingPage: React.FC = () => {
               <div className="hero-cta mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-400">
                 <div className="flex items-center gap-2">
                   <CheckCircleOutlined className="text-emerald-500" />
-                  五大智能体协同
+                  12个智能体协同
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircleOutlined className="text-emerald-500" />
@@ -635,16 +633,16 @@ const LandingPage: React.FC = () => {
               核心能力
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight">
-              五大智能体，全链路覆盖
+              12个智能体，全链路覆盖
             </h2>
             <p className="mt-4 text-slate-500 max-w-2xl mx-auto text-lg">
-              从画像构建到路径规划，从资源生成到智能辅导，每个环节都有专属 AI
-              智能体为你服务
+              从画像构建到路径规划，从资源生成到智能辅导，从错误诊断到项目协作，每个环节都有专属
+              AI 智能体为你服务
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map((f, i) => {
-              const spanClass = [0, 3, 4, 5].includes(i)
+              const spanClass = [0, 3, 4].includes(i)
                 ? "md:col-span-2 lg:col-span-2"
                 : "md:col-span-1 lg:col-span-1";
               return (
