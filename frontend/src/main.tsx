@@ -15,9 +15,40 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
+// Coinbase Design System 主题配置
+const coinbaseTheme = {
+  token: {
+    colorPrimary: "#0052ff",
+    colorLink: "#0052ff",
+    colorSuccess: "#05b169",
+    colorWarning: "#f4b000",
+    colorError: "#cf202f",
+    borderRadius: 8,
+    fontFamily:
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  },
+  components: {
+    Button: {
+      controlHeight: 40,
+      borderRadius: 8,
+    },
+    Input: {
+      controlHeight: 40,
+      borderRadius: 8,
+    },
+    Select: {
+      controlHeight: 40,
+      borderRadius: 8,
+    },
+    Card: {
+      borderRadius: 12,
+    },
+  },
+};
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider locale={zhCN} theme={coinbaseTheme}>
       <BrowserRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >

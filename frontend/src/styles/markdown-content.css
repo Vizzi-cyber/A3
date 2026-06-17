@@ -15,7 +15,7 @@
   color: #0f172a;
   margin: 2.5rem 0 1.25rem;
   padding-bottom: 0.75rem;
-  border-bottom: 3px solid #6366f1;
+  border-bottom: 3px solid #0052ff;
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
   padding: 1rem 1.25rem;
   border-radius: 12px;
@@ -30,7 +30,7 @@
   left: 1.25rem;
   right: 1.25rem;
   height: 3px;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa);
+  background: linear-gradient(90deg, #0052ff, #003ecc, #578cf3);
   border-radius: 2px;
 }
 
@@ -41,7 +41,7 @@
   margin: 2rem 0 1rem;
   padding: 0.75rem 1rem;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-left: 4px solid #6366f1;
+  border-left: 4px solid #0052ff;
   border-radius: 0 8px 8px 0;
 }
 
@@ -127,7 +127,7 @@
   content: '•';
   position: absolute;
   left: -1.25rem;
-  color: #6366f1;
+  color: #0052ff;
   font-weight: bold;
   font-size: 1.2em;
 }
@@ -142,7 +142,7 @@
 }
 
 .markdown-body .md-ol li::marker {
-  color: #6366f1;
+  color: #0052ff;
   font-weight: 600;
 }
 
@@ -214,7 +214,7 @@
 }
 
 .markdown-body .md-table th {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #0052ff 0%, #003ecc 100%);
   font-weight: 600;
   color: white;
   text-transform: uppercase;
@@ -232,7 +232,7 @@
 
 /* 链接 */
 .markdown-body a {
-  color: #6366f1;
+  color: #0052ff;
   text-decoration: none;
   border-bottom: 2px dashed #a5b4fc;
   transition: all 0.2s;
@@ -240,7 +240,7 @@
 }
 
 .markdown-body a:hover {
-  color: #4f46e5;
+  color: #0052ff;
   border-bottom-style: solid;
   background: #eef2ff;
   padding: 0.1rem 0.25rem;
@@ -293,7 +293,7 @@
   padding: 1rem;
   background: #f8fafc;
   border-radius: 8px;
-  border-left: 4px solid #6366f1;
+  border-left: 4px solid #0052ff;
   overflow-x: auto;
 }
 

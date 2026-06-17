@@ -78,7 +78,7 @@ const RESOURCE_META: Record<
   题目: { icon: <BookOutlined />, color: "#f59e0b", bg: "#fffbeb" },
   tool: { icon: <ApartmentOutlined />, color: "#3b82f6", bg: "#eff6ff" },
   工具: { icon: <ApartmentOutlined />, color: "#3b82f6", bg: "#eff6ff" },
-  tutor: { icon: <MessageOutlined />, color: "#8b5cf6", bg: "#f3f0ff" },
+  tutor: { icon: <MessageOutlined />, color: "#0052ff", bg: "#f3f0ff" },
   推荐: { icon: <RocketOutlined />, color: "#f59e0b", bg: "#fffbeb" },
   文章: { icon: <FileTextOutlined />, color: "#10b981", bg: "#ecfdf5" },
 };
@@ -294,9 +294,9 @@ const Dashboard: React.FC = () => {
           ];
     const styles = [
       {
-        bg: "bg-[#ede9fe]",
-        text: "text-[#5b21b6]",
-        bar: "bg-[#7c3aed]",
+        bg: "bg-[#e8f0fe]",
+        text: "text-[#003ecc]",
+        bar: "bg-[#0052ff]",
         icon: <ApartmentOutlined />,
         num: "01",
       },
@@ -325,7 +325,7 @@ const Dashboard: React.FC = () => {
         value: stats.weekly_hours,
         suffix: "h",
         icon: <ClockCircleOutlined />,
-        color: "#4f46e5",
+        color: "#0052ff",
         path: "/personal",
       },
       {
@@ -365,7 +365,7 @@ const Dashboard: React.FC = () => {
   }, [tasks]);
 
   const upcomingStyles = [
-    { bg: "bg-[#ede9fe]", text: "text-[#5b21b6]" },
+    { bg: "bg-[#e8f0fe]", text: "text-[#003ecc]" },
     { bg: "bg-[#fef3c7]", text: "text-[#92400e]" },
     { bg: "bg-[#fef9c3]", text: "text-[#713f12]" },
   ];
@@ -389,7 +389,7 @@ const Dashboard: React.FC = () => {
               <Progress
                 percent={pointsInfo?.percent ?? 0}
                 showInfo={false}
-                strokeColor="#4f46e5"
+                strokeColor="#0052ff"
                 trailColor="#f1f5f9"
                 size="small"
               />
@@ -406,7 +406,7 @@ const Dashboard: React.FC = () => {
               </span>
             )}
           </div>
-          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
+          <div className="w-10 h-10 rounded-full bg-[#0052ff] flex items-center justify-center text-white font-bold text-sm">
             学
           </div>
         </div>
@@ -427,7 +427,7 @@ const Dashboard: React.FC = () => {
             <span className="text-white font-bold">{completedCount}</span> 节课!
           </div>
           <Button
-            className="w-fit rounded-full bg-white text-[#1e1b4b] border-0 font-semibold hover:bg-indigo-50 hover:shadow-lg hover:shadow-indigo-900/20 transition-all px-6"
+            className="w-fit rounded-full bg-white text-[#1e1b4b] border-0 font-semibold hover:bg-[#e8f0fe] hover:shadow-lg hover:shadow-[#003ecc]/20 transition-all px-6"
             onClick={() => navigate("/learning-path")}
           >
             查看全部 <ArrowRightOutlined />
@@ -580,7 +580,7 @@ const Dashboard: React.FC = () => {
                         </ResponsiveContainer>
                       </div>
                     </div>
-                    <div className="text-2xl font-bold text-slate-800 mb-0.5 group-hover:text-primary transition-colors">
+                    <div className="text-2xl font-bold text-slate-800 mb-0.5 group-hover:text-[#0052ff] transition-colors">
                       {stat.value}
                       <span className="text-sm font-medium text-slate-400 ml-1">
                         {stat.suffix}
@@ -600,12 +600,12 @@ const Dashboard: React.FC = () => {
                 level={5}
                 className="!m-0 text-slate-800 font-semibold"
               >
-                <BookOutlined className="mr-2 text-primary" />
+                <BookOutlined className="mr-2 text-[#0052ff]" />
                 每日练习
               </Typography.Title>
               {dailyQuiz && (
                 <div className="flex items-center gap-2">
-                  <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs">
+                  <Tag className="rounded-full border-0 bg-[#e8f0fe] text-[#0052ff] text-xs">
                     难度: {dailyQuiz.difficulty_level}
                   </Tag>
                   <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
@@ -614,7 +614,7 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
               <Spin spinning={quizLoading}>
                 {loadErrors.quiz ? (
                   <div className="py-8 text-center">
@@ -645,7 +645,7 @@ const Dashboard: React.FC = () => {
                           key={idx}
                           className={`flex-1 h-2 rounded-full transition-all cursor-pointer ${
                             idx === currentQuizIdx
-                              ? "bg-primary"
+                              ? "bg-[#0052ff]"
                               : idx < currentQuizIdx
                                 ? "bg-emerald-400"
                                 : "bg-slate-100"
@@ -666,7 +666,7 @@ const Dashboard: React.FC = () => {
                       return (
                         <div>
                           <div className="flex items-center gap-3 mb-3">
-                            <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                            <span className="w-7 h-7 rounded-lg bg-[#0052ff]/10 text-[#0052ff] flex items-center justify-center text-xs font-bold">
                               {currentQuizIdx + 1}
                             </span>
                             <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
@@ -698,7 +698,7 @@ const Dashboard: React.FC = () => {
                                         ? opt.id === q.correct_answer
                                           ? "bg-emerald-50 border-emerald-300"
                                           : "bg-red-50 border-red-300"
-                                        : "bg-primary/5 border-primary"
+                                        : "bg-[#0052ff]/5 border-[#0052ff]"
                                       : showAnswer &&
                                           opt.id === q.correct_answer
                                         ? "bg-emerald-50 border-emerald-300"
@@ -713,7 +713,7 @@ const Dashboard: React.FC = () => {
                                   <span
                                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
                                       selectedAnswer === opt.id
-                                        ? "bg-primary text-white"
+                                        ? "bg-[#0052ff] text-white"
                                         : "bg-slate-100 text-slate-600"
                                     }`}
                                   >
@@ -747,7 +747,7 @@ const Dashboard: React.FC = () => {
                               <Button
                                 type="primary"
                                 size="small"
-                                className="rounded-lg bg-primary"
+                                className="rounded-lg bg-[#0052ff]"
                                 disabled={!selectedAnswer}
                                 onClick={() => setShowAnswer(true)}
                               >
@@ -758,7 +758,7 @@ const Dashboard: React.FC = () => {
                               <Button
                                 type="primary"
                                 size="small"
-                                className="rounded-lg bg-primary"
+                                className="rounded-lg bg-[#0052ff]"
                                 onClick={() => setShowAnswer(true)}
                               >
                                 查看提示
@@ -809,7 +809,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 ) : (
                   <div className="py-8 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-300 text-xl mx-auto mb-2">
+                    <div className="w-12 h-12 rounded-2xl bg-[#e8f0fe] flex items-center justify-center text-[#a8c4f9] text-xl mx-auto mb-2">
                       <BookOutlined />
                     </div>
                     <div className="text-sm text-slate-500 mb-1">
@@ -907,7 +907,7 @@ const Dashboard: React.FC = () => {
               </Typography.Title>
               <Button
                 type="link"
-                className="text-primary font-medium"
+                className="text-[#0052ff] font-medium"
                 onClick={() => navigate("/learning-path")}
               >
                 查看全部
@@ -968,7 +968,7 @@ const Dashboard: React.FC = () => {
               </Typography.Title>
               <Button
                 type="link"
-                className="text-primary font-medium"
+                className="text-[#0052ff] font-medium"
                 onClick={() => navigate("/learning-path")}
               >
                 查看全部
@@ -1073,7 +1073,7 @@ const Dashboard: React.FC = () => {
                 <defs>
                   <radialGradient id="kg-node-grad">
                     <stop offset="0%" stopColor="#818cf8" />
-                    <stop offset="100%" stopColor="#4f46e5" />
+                    <stop offset="100%" stopColor="#0052ff" />
                   </radialGradient>
                   <marker
                     id="kg-arrow"
