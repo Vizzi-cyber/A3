@@ -134,6 +134,16 @@ export const profileApi = {
       `/profile/${studentId}/analyze-conversation`,
       { conversation },
     ),
+  getRetention: (studentId: string) =>
+    api.get<{
+      status: string;
+      data: Array<{
+        topic: string;
+        retention: number;
+        nextReview: string;
+      }>;
+      message?: string;
+    }>(`/profile/${studentId}/retention`),
 };
 
 // ---------- 资源生成 ----------
@@ -200,6 +210,10 @@ export const tutorApi = {
   ask: (data: TutorRequest) => api.post<TutorResponse>("/tutor/ask", data),
   getHistory: (sessionId: string) =>
     api.get<TutorSessionHistoryResponse>(`/tutor/session/${sessionId}/history`),
+  submitFeedback: (
+    qaId: string,
+    data: { rating: "like" | "dislike"; comment?: string },
+  ) => api.post<{ status: string }>(`/tutor/qa-feedback/${qaId}`, data),
 };
 
 // ---------- 用户权限 ----------
@@ -330,10 +344,31 @@ export interface DashboardSummaryResponse {
         accuracy: number;
         mastery: number;
         improvement_rate: number;
-        next_predicted_score: number;
+        weakness_concentration: number;
       };
-      loss_points: Array<{ kp_id: string; loss: number }>;
-      intervention_strategies: string[];
+      predictions?: {
+        next_score: number;
+        potential_loss_points: Array<{
+          tag: string;
+          frequency: number;
+          risk_score: number;
+          suggestion: string;
+        }>;
+        efficiency_trend: string;
+      };
+      intervention?: {
+        priority: string;
+        strategies: Array<{
+          type: string;
+          action: string;
+        }>;
+      };
+      dashboard?: {
+        score_history: number[];
+        weak_area_distribution: Record<string, number>;
+      };
+      loss_points?: Array<{ kp_id: string; loss: number }>;
+      intervention_strategies?: string[];
     };
   };
 }
@@ -1209,6 +1244,60 @@ export const teacherApi = {
       weak_tags: Array<{ tag: string; count: number }>;
       weak_areas: Array<{ area: string; count: number }>;
     }>("/teacher/weak-points"),
+
+  getExportRecords: () =>
+    api.get<{
+      status: string;
+      exports: Array<{
+        export_id: string;
+        report_type: string;
+        format: string;
+        student_ids?: string[];
+        created_at: string;
+        file_size?: string;
+        status: string;
+      }>;
+      total: number;
+    }>("/teacher/exports"),
+
+  createExport: (data: {
+    report_type: string;
+    format: string;
+    student_ids?: string[];
+  }) =>
+    api.post<{
+      status: string;
+      export_id: string;
+      report_type: string;
+      format: string;
+      created_at: string;
+      message: string;
+    }>("/teacher/exports", null, { params: data }),
+
+  getResources: () =>
+    api.get<{
+      status: string;
+      resources: Array<{
+        resource_id: string;
+        name: string;
+        type: string;
+        created_at: string;
+        status: string;
+        download_url?: string;
+      }>;
+      total: number;
+    }>("/teacher/resources"),
+
+  getSystemInfo: () =>
+    api.get<{
+      status: string;
+      system_info: {
+        version: string;
+        ai_model: string;
+        database_status: string;
+        last_updated: string;
+      };
+    }>("/teacher/system-info"),
 };
 
 // ---------- 教师注册 ----------
@@ -1271,5 +1360,101 @@ export const circuitApi = {
       circuit_description?: string;
     }>("/circuit-analysis/analyze", data),
 };
+
+// ---------- SSE 流式传输 ----------
+export interface StreamCallbacks {
+  onToken?: (token: string) => void;
+  onKnowledgePoints?: (points: string[]) => void;
+  onResources?: (
+    resources: Array<{ type: string; title: string; url?: string }>,
+  ) => void;
+  onAgentStep?: (agent: string, status: string) => void;
+  onAgentResult?: (agent: string, content: string) => void;
+  onResourceContent?: (content: string) => void;
+  onDone?: () => void;
+  onError?: (message: string) => void;
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  const token = useAppStore.getState().token;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ message: `HTTP ${res.status}` }));
+    throw new Error(err.message || "请求失败");
+  }
+  return res.json();
+}
+
+export async function apiStream(
+  path: string,
+  body: unknown,
+  callbacks: StreamCallbacks,
+): Promise<void> {
+  const token = useAppStore.getState().token;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "请求失败" }));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  }
+  if (!res.body) throw new Error("响应体为空");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let doneCalled = false;
+  const markDone = () => {
+    if (!doneCalled) {
+      doneCalled = true;
+      callbacks.onDone?.();
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+    for (const part of parts) {
+      if (!part.startsWith("data: ")) continue;
+      try {
+        const parsed = JSON.parse(part.slice(6));
+        if (parsed.type === "token") callbacks.onToken?.(parsed.content);
+        if (parsed.type === "knowledge_points")
+          callbacks.onKnowledgePoints?.(parsed.data);
+        if (parsed.type === "resources") callbacks.onResources?.(parsed.data);
+        if (parsed.type === "agent_step")
+          callbacks.onAgentStep?.(parsed.agent, parsed.status);
+        if (parsed.type === "agent_result")
+          callbacks.onAgentResult?.(parsed.agent, parsed.content);
+        if (parsed.type === "resource_content")
+          callbacks.onResourceContent?.(parsed.content);
+        if (parsed.type === "done") markDone();
+        if (parsed.type === "error") {
+          callbacks.onError?.(parsed.message || "服务异常");
+          markDone();
+        }
+      } catch {
+        // SSE parse error, skip
+      }
+    }
+  }
+  markDone();
+}
 
 export default api;

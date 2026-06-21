@@ -86,6 +86,10 @@ class ResourceGenerationRequest(BaseModel):
     resource_types: List[str] = ["document", "questions", "mindmap", "code"]
     difficulty: str = "medium"
     cognitive_style: Optional[str] = None
+    title: Optional[str] = None  # 资源标题（课设A3兼容）
+    type: Optional[str] = None  # 单一资源类型（课设A3兼容）
+    subject: Optional[str] = None  # 学科（课设A3兼容）
+    weak_points: Optional[List[str]] = None  # 薄弱知识点
 
 
 class ResourceGenerationResponse(BaseModel):
@@ -151,12 +155,20 @@ async def generate_resource(
     import uuid
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     _cleanup_old_tasks()
+    # 兼容课设A3前端：如果传了 type 字段，转换为 resource_types
+    resource_types = request.resource_types
+    if request.type and request.type not in resource_types:
+        resource_types = [request.type]
     task = ResourceTaskModel(
         task_id=task_id,
         status="pending",
         progress=0.0,
         resources={},
         message="Task queued",
+        title=request.title or request.topic,
+        resource_type=request.type or (resource_types[0] if resource_types else "document"),
+        subject=request.subject or "C语言",
+        difficulty=request.difficulty,
     )
     db.add(task)
     db.commit()
@@ -181,32 +193,56 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
         task.message = "Initializing agents..."
         db.commit()
 
+        # 根据 subject 决定代码语言
+        subject = request.subject or "C语言"
+        code_language = "C" if "C" in subject or "c" in subject.lower() else "Python"
+        if "电路" in subject:
+            code_language = "C"  # 电路分析也用 C 语言示例
+
+        # 构建薄弱点提示
+        weak_hint = ""
+        if request.weak_points and len(request.weak_points) > 0:
+            weak_hint = f"\n学生的薄弱知识点：{'、'.join(request.weak_points)}，请重点针对这些知识点生成内容。"
+
+        # 类型映射：quiz→questions, reading→document
+        type_map = {
+            "quiz": "questions",
+            "reading": "document",
+            "video_script": "document",
+        }
+        resource_types = [type_map.get(rt, rt) for rt in request.resource_types]
+
         results = {}
-        # 根据请求的 resource_types 并行生成多种资源
         tasks_to_run = []
-        for rt in request.resource_types:
+        for rt in resource_types:
             if rt == "document":
                 tasks_to_run.append(_resource_agent.process({
                     "task": "generate_document",
                     "topic": request.topic,
                     "difficulty": request.difficulty,
+                    "subject": subject,
+                    "constraints": {"weak_points_hint": weak_hint},
                 }))
             elif rt == "questions":
                 tasks_to_run.append(_resource_agent.process({
                     "task": "generate_questions",
                     "topic": request.topic,
-                    "constraints": {"count": 3},
+                    "subject": subject,
+                    "constraints": {"count": 3, "weak_points_hint": weak_hint},
                 }))
             elif rt == "mindmap":
                 tasks_to_run.append(_resource_agent.process({
                     "task": "generate_mindmap",
                     "topic": request.topic,
+                    "subject": subject,
+                    "constraints": {"weak_points_hint": weak_hint},
                 }))
             elif rt == "code":
                 tasks_to_run.append(_resource_agent.process({
                     "task": "generate_code_examples",
                     "topic": request.topic,
-                    "constraints": {"language": "Python"},
+                    "subject": subject,
+                    "constraints": {"language": code_language, "weak_points_hint": weak_hint},
                 }))
 
         if tasks_to_run:
@@ -219,7 +255,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
                     if isinstance(res, Exception):
                         continue
                     if res.get("status") == "success":
-                        rt = request.resource_types[idx]
+                        rt = resource_types[idx]
                         results[rt] = res.get("content", res)
             except asyncio.TimeoutError:
                 pass
@@ -253,6 +289,51 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db), _current:
         "resources": task.resources,
         "message": task.message,
     }
+
+
+@router.get("/list")
+async def list_resources(
+    type: Optional[str] = None,
+    subject: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    keyword: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
+    """返回已完成的资源生成任务列表"""
+    query = db.query(ResourceTaskModel).filter(ResourceTaskModel.status == "completed")
+    if type:
+        query = query.filter(ResourceTaskModel.resource_type == type)
+    if subject:
+        query = query.filter(ResourceTaskModel.subject == subject)
+    if difficulty:
+        query = query.filter(ResourceTaskModel.difficulty == difficulty)
+    if keyword:
+        query = query.filter(ResourceTaskModel.title.contains(keyword))
+    tasks = query.order_by(ResourceTaskModel.created_at.desc()).limit(50).all()
+    items = []
+    for t in tasks:
+        # 从 resources JSON 中提取第一个资源的内容作为 content
+        content = ""
+        if t.resources:
+            first_val = next(iter(t.resources.values()), None)
+            if isinstance(first_val, str):
+                content = first_val
+            elif isinstance(first_val, dict):
+                content = str(first_val.get("content", first_val.get("document", first_val.get("code", ""))))
+        items.append({
+            "id": t.task_id,
+            "title": t.title or t.message,
+            "type": t.resource_type or "document",
+            "subject": t.subject or "Python",
+            "difficulty": t.difficulty or "medium",
+            "content": content,
+            "generated_by": "ResourceAgent",
+            "view_count": 0,
+            "favorite_count": 0,
+            "created_at": t.created_at.isoformat() if t.created_at else "",
+        })
+    return {"code": 200, "data": items}
 
 
 @router.post("/document/generate", response_model=DocumentGenerateResponse)

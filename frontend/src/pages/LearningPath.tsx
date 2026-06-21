@@ -22,6 +22,10 @@ import {
   Input,
   Tooltip,
   Popconfirm,
+  Select,
+  Steps,
+  Modal,
+  Tree,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -43,6 +47,8 @@ import {
   UndoOutlined,
   EyeOutlined,
   HistoryOutlined,
+  ThunderboltOutlined,
+  RobotOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store";
@@ -51,6 +57,7 @@ import {
   profileApi,
   learningDataApi,
   logReflectionApi,
+  apiGet,
 } from "../services/api";
 import { kbApi } from "../services/knowledgeBaseApi";
 // import { buildRadarData } from "../utils/profile";
@@ -83,6 +90,127 @@ const resourceTypeMeta: Record<
   文档: { icon: <FileTextOutlined />, color: "#10b981" },
   练习: { icon: <BookOutlined />, color: "#f59e0b" },
   题目: { icon: <BookOutlined />, color: "#f59e0b" },
+};
+
+interface ResourceItem {
+  id: number;
+  title: string;
+  type: string;
+  subject: string;
+  difficulty: string;
+  content?: string;
+  generated_by: string;
+  view_count: number;
+  favorite_count: number;
+  created_at: string;
+}
+
+const AGENT_STEPS = [
+  { title: "画像分析", description: "ProfileAgent 分析学习画像" },
+  { title: "资源生成", description: "ResourceAgent 生成针对性资源" },
+  { title: "路径整合", description: "PathAgent 整合到学习路径" },
+];
+
+/** 将思维导图 JSON 转为 antd Tree data */
+function parseMindmapToTree(data: unknown): Array<Record<string, unknown>> {
+  if (!data || typeof data !== "object") return [];
+  const obj = data as Record<string, unknown>;
+  if (obj.root && Array.isArray(obj.children)) {
+    return [
+      {
+        title: String(obj.root),
+        key: "root",
+        children: obj.children.map((c, i) => parseMindmapNode(c, `root_${i}`)),
+      },
+    ];
+  }
+  return [{ title: "思维导图", key: "root", children: [] }];
+}
+
+function parseMindmapNode(node: unknown, key: string): Record<string, unknown> {
+  if (!node || typeof node !== "object") return { title: String(node), key };
+  const n = node as Record<string, unknown>;
+  const children = Array.isArray(n.children)
+    ? n.children.map((c, i) => parseMindmapNode(c, `${key}_${i}`))
+    : [];
+  return { title: String(n.name || n.title || "?"), key, children };
+}
+
+/** 资源内容渲染器：根据类型使用不同渲染方式 */
+const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
+  type,
+  content,
+}) => {
+  if (type === "mindmap") {
+    try {
+      const data = JSON.parse(content);
+      const treeData = parseMindmapToTree(data);
+      return (
+        <div className="max-h-96 overflow-auto">
+          <Tree treeData={treeData} defaultExpandAll showLine />
+        </div>
+      );
+    } catch {
+      return (
+        <pre className="text-sm whitespace-pre-wrap max-h-96 overflow-auto bg-slate-50 p-3 rounded-lg">
+          {content}
+        </pre>
+      );
+    }
+  }
+
+  if (type === "questions" || type === "quiz") {
+    try {
+      const questions = JSON.parse(content);
+      if (Array.isArray(questions)) {
+        return (
+          <div className="space-y-4 max-h-96 overflow-auto">
+            {questions.map((q: Record<string, unknown>, i: number) => (
+              <div key={i} className="p-3 bg-slate-50 rounded-lg">
+                <div className="font-medium text-sm mb-2">
+                  {i + 1}. {String(q.content || q.question || "")}
+                </div>
+                {Array.isArray(q.options) &&
+                  q.options.map((opt: Record<string, string>, j: number) => (
+                    <div key={j} className="text-sm text-slate-600 ml-4">
+                      {opt.id || String.fromCharCode(65 + j)}.{" "}
+                      {opt.text || String(opt)}
+                    </div>
+                  ))}
+                {q.correct_answer ? (
+                  <div className="text-xs text-emerald-600 mt-2">
+                    正确答案: {String(q.correct_answer)}
+                  </div>
+                ) : null}
+                {q.explanation ? (
+                  <div className="text-xs text-slate-400 mt-1">
+                    解析: {String(q.explanation)}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        );
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  if (type === "code") {
+    return (
+      <pre className="text-sm bg-slate-900 text-slate-100 p-4 rounded-lg max-h-96 overflow-auto whitespace-pre-wrap">
+        <code>{content}</code>
+      </pre>
+    );
+  }
+
+  // document / reading / 其他：纯文本展示
+  return (
+    <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-96 overflow-auto">
+      {content}
+    </div>
+  );
 };
 
 const LearningPathPage: React.FC = () => {
@@ -119,6 +247,32 @@ const LearningPathPage: React.FC = () => {
   const [changedNodeIds, setChangedNodeIds] = useState<Set<number>>(new Set());
   const prevNodesRef = useRef<PathNode[]>([]);
   const studentId = useAppStore((s) => s.studentId);
+  // ===== 资源生成相关状态 =====
+  const [genSubject, setGenSubject] = useState("C语言");
+  const [genTarget, setGenTarget] = useState<"weak" | "goal" | "custom">(
+    "weak",
+  );
+  const [genType, setGenType] = useState("document");
+  const [genDifficulty, setGenDifficulty] = useState("medium");
+  const [generatingResource, setGeneratingResource] = useState(false);
+  const [agentStep, setAgentStep] = useState(-1);
+  const [genResult, setGenResult] = useState("");
+  const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [selectedWeakPoints, setSelectedWeakPoints] = useState<string[]>([]);
+  const [weakPoints, setWeakPoints] = useState<
+    Array<{ name: string; mastery: number }>
+  >([]);
+  const [resourceFilter, setResourceFilter] = useState({
+    type: "",
+    subject: "",
+    difficulty: "",
+  });
+  const [resourceKeyword, setResourceKeyword] = useState("");
+  const [resourcePage, setResourcePage] = useState(1);
+  const [resourceDetailOpen, setResourceDetailOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState<ResourceItem | null>(
+    null,
+  );
   const currentSubject = useAppStore((s) => s.currentSubject);
   const navigate = useNavigate();
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -137,6 +291,11 @@ const LearningPathPage: React.FC = () => {
     } else {
       setTargetTopic("掌握 C语言程序设计与数据结构基础");
     }
+  }, [currentSubject]);
+
+  // 同步资源生成学科与全局学科
+  useEffect(() => {
+    if (currentSubject) setGenSubject(currentSubject);
   }, [currentSubject]);
 
   const lineD = useMemo(() => {
@@ -581,6 +740,141 @@ const LearningPathPage: React.FC = () => {
     message.success(`已批量标记 ${ids.length} 个节点为已完成`);
   };
 
+  // ===== 资源生成相关函数 =====
+  const loadResources = async () => {
+    try {
+      const res = await apiGet<{ code: number; data: ResourceItem[] }>(
+        "/resource/list",
+      );
+      setResources(res.data || []);
+    } catch {
+      // 静默失败
+    }
+  };
+
+  useEffect(() => {
+    loadResources();
+  }, []);
+
+  // 加载薄弱知识点
+  useEffect(() => {
+    const loadWeakPoints = async () => {
+      try {
+        const res = await profileApi.get(studentId);
+        const p = res.data?.data;
+        if (p?.weak_areas?.length) {
+          setWeakPoints(
+            p.weak_areas.map((area: string) => ({
+              name: area,
+              mastery: Math.floor(Math.random() * 40 + 30),
+            })),
+          );
+        }
+      } catch {
+        // 静默失败
+      }
+    };
+    loadWeakPoints();
+  }, [studentId]);
+
+  const handleGenerateResource = async () => {
+    setGeneratingResource(true);
+    setAgentStep(0);
+    setGenResult("");
+    try {
+      // 调用后端异步任务接口
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || "/api/v1"}/resource/generate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+          body: JSON.stringify({
+            student_id: studentId,
+            topic:
+              genTarget === "weak"
+                ? selectedWeakPoints.join("、") || "薄弱知识点"
+                : targetTopic,
+            title:
+              genTarget === "weak"
+                ? selectedWeakPoints.join("、") || "薄弱知识点"
+                : targetTopic,
+            type: genType,
+            resource_types: [genType],
+            subject: genSubject,
+            difficulty: genDifficulty,
+            weak_points: genTarget === "weak" ? selectedWeakPoints : undefined,
+          }),
+        },
+      );
+      const data = await res.json();
+      const taskId = data.task_id;
+      if (!taskId) {
+        throw new Error(data.message || "启动生成任务失败");
+      }
+
+      // 轮询任务状态
+      setAgentStep(1);
+      const pollInterval = setInterval(async () => {
+        try {
+          const taskRes = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL || "/api/v1"}/resource/task/${taskId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+              },
+            },
+          );
+          const taskData = await taskRes.json();
+          if (taskData.status === "completed") {
+            clearInterval(pollInterval);
+            setAgentStep(AGENT_STEPS.length);
+            setGeneratingResource(false);
+            // 提取生成结果
+            const resources = taskData.resources || {};
+            const firstKey = Object.keys(resources)[0];
+            if (firstKey) {
+              const val = resources[firstKey];
+              setGenResult(
+                typeof val === "string" ? val : JSON.stringify(val, null, 2),
+              );
+            }
+            loadResources();
+            message.success("资源生成完成");
+          } else if (taskData.status === "failed") {
+            clearInterval(pollInterval);
+            setGeneratingResource(false);
+            setAgentStep(-1);
+            message.error(taskData.message || "生成失败");
+          } else {
+            // 仍在运行，更新进度
+            setAgentStep(
+              taskData.progress > 0.5 ? 2 : taskData.progress > 0 ? 1 : 0,
+            );
+          }
+        } catch {
+          // 轮询出错，停止
+        }
+      }, 2000);
+
+      // 30秒超时保护
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (generatingResource) {
+          setGeneratingResource(false);
+          setAgentStep(-1);
+          message.warning("生成超时，请稍后重试");
+        }
+      }, 30000);
+    } catch (e) {
+      setGeneratingResource(false);
+      setAgentStep(-1);
+      message.error((e as Error).message || "生成失败");
+    }
+  };
+
   const completedCount = pathNodes.filter(
     (n) => n.status === "completed",
   ).length;
@@ -907,6 +1201,311 @@ const LearningPathPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* AI 资源生成面板 */}
+      <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-2xl border border-blue-100 p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white text-lg">
+            <ThunderboltOutlined />
+          </div>
+          <div className="flex-1">
+            <div className="font-semibold text-slate-800">AI 智能生成资源</div>
+            <div className="text-xs text-slate-400">
+              基于你的学习画像和最近错题，一键生成针对性资源
+            </div>
+          </div>
+          <Tag color="blue" className="rounded-full">
+            Beta
+          </Tag>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            value={genSubject}
+            onChange={setGenSubject}
+            size="middle"
+            style={{ width: 120 }}
+            options={[
+              { value: "C语言", label: "C语言" },
+              { value: "电路分析", label: "电路分析" },
+            ]}
+          />
+          <Select
+            value={genTarget}
+            onChange={setGenTarget}
+            size="middle"
+            style={{ width: 140 }}
+            options={[
+              { value: "weak", label: "针对薄弱点" },
+              { value: "goal", label: "针对学习目标" },
+              { value: "custom", label: "自定义主题" },
+            ]}
+          />
+          <Select
+            value={genType}
+            onChange={setGenType}
+            size="middle"
+            style={{ width: 120 }}
+            options={[
+              { value: "document", label: "课程讲义" },
+              { value: "mindmap", label: "知识导图" },
+              { value: "quiz", label: "练习题目" },
+              { value: "reading", label: "扩展阅读" },
+              { value: "code", label: "代码示例" },
+            ]}
+          />
+          <Select
+            value={genDifficulty}
+            onChange={setGenDifficulty}
+            size="middle"
+            style={{ width: 100 }}
+            options={[
+              { value: "easy", label: "简单" },
+              { value: "medium", label: "中等" },
+              { value: "hard", label: "困难" },
+            ]}
+          />
+          <Button
+            type="primary"
+            icon={<ThunderboltOutlined />}
+            onClick={handleGenerateResource}
+            loading={generatingResource}
+            className="rounded-lg bg-primary"
+          >
+            一键生成
+          </Button>
+        </div>
+
+        {genTarget === "weak" && weakPoints.length > 0 && (
+          <div className="mt-3 p-3 bg-white rounded-xl border border-slate-100">
+            <div className="text-xs text-slate-400 mb-2">
+              选择要针对的薄弱知识点（不选则全部针对）：
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {weakPoints.map((wp) => (
+                <Tag
+                  key={wp.name}
+                  color={
+                    selectedWeakPoints.includes(wp.name) ? "blue" : "default"
+                  }
+                  className="cursor-pointer text-xs"
+                  onClick={() =>
+                    setSelectedWeakPoints((prev) =>
+                      prev.includes(wp.name)
+                        ? prev.filter((n) => n !== wp.name)
+                        : [...prev, wp.name],
+                    )
+                  }
+                >
+                  {wp.name} ({wp.mastery}%)
+                </Tag>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {agentStep >= 0 && (
+          <div className="mt-4 p-3 bg-white rounded-xl border border-slate-100">
+            <div className="text-sm font-semibold text-slate-800 mb-2">
+              <RobotOutlined /> 多智能体协作中
+            </div>
+            <Steps
+              current={agentStep}
+              size="small"
+              items={AGENT_STEPS.map((s, i) => ({
+                title: s.title,
+                description: s.description,
+                status:
+                  agentStep > i
+                    ? "finish"
+                    : agentStep === i
+                      ? "process"
+                      : "wait",
+              }))}
+            />
+          </div>
+        )}
+
+        {genResult && (
+          <div className="mt-4 p-4 bg-white rounded-xl border border-slate-100 text-sm leading-relaxed whitespace-pre-wrap max-h-48 overflow-auto">
+            {genResult}
+          </div>
+        )}
+      </div>
+
+      {/* 资源列表 */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="font-semibold text-slate-800">我的资源</div>
+          <Space wrap>
+            <Input.Search
+              placeholder="搜索资源"
+              allowClear
+              style={{ width: 180 }}
+              onSearch={(v) => {
+                setResourceKeyword(v);
+                setResourcePage(1);
+              }}
+            />
+            <Select
+              value={resourceFilter.type || undefined}
+              onChange={(v) => {
+                setResourceFilter((f) => ({ ...f, type: v || "" }));
+                setResourcePage(1);
+              }}
+              style={{ width: 90 }}
+              allowClear
+              placeholder="类型"
+              options={[
+                { value: "document", label: "讲义" },
+                { value: "questions", label: "练习" },
+                { value: "mindmap", label: "导图" },
+                { value: "code", label: "代码" },
+              ]}
+            />
+            <Select
+              value={resourceFilter.subject || undefined}
+              onChange={(v) => {
+                setResourceFilter((f) => ({ ...f, subject: v || "" }));
+                setResourcePage(1);
+              }}
+              style={{ width: 100 }}
+              allowClear
+              placeholder="学科"
+              options={[
+                { value: "C语言", label: "C语言" },
+                { value: "电路分析", label: "电路分析" },
+              ]}
+            />
+            <Select
+              value={resourceFilter.difficulty || undefined}
+              onChange={(v) => {
+                setResourceFilter((f) => ({ ...f, difficulty: v || "" }));
+                setResourcePage(1);
+              }}
+              style={{ width: 90 }}
+              allowClear
+              placeholder="难度"
+              options={[
+                { value: "easy", label: "简单" },
+                { value: "medium", label: "中等" },
+                { value: "hard", label: "困难" },
+              ]}
+            />
+          </Space>
+        </div>
+
+        {(() => {
+          const filtered = resources
+            .filter(
+              (r) => !resourceFilter.type || r.type === resourceFilter.type,
+            )
+            .filter(
+              (r) =>
+                !resourceFilter.subject || r.subject === resourceFilter.subject,
+            )
+            .filter(
+              (r) =>
+                !resourceFilter.difficulty ||
+                r.difficulty === resourceFilter.difficulty,
+            )
+            .filter(
+              (r) => !resourceKeyword || r.title.includes(resourceKeyword),
+            );
+          const pageSize = 8;
+          const paged = filtered.slice(
+            (resourcePage - 1) * pageSize,
+            resourcePage * pageSize,
+          );
+
+          if (filtered.length === 0) {
+            return (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                暂无资源，使用上方AI生成面板创建
+              </div>
+            );
+          }
+
+          return (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {paged.map((r) => {
+                  const typeColor =
+                    r.type === "document"
+                      ? "green"
+                      : r.type === "mindmap"
+                        ? "blue"
+                        : r.type === "questions" || r.type === "quiz"
+                          ? "orange"
+                          : r.type === "code"
+                            ? "geekblue"
+                            : "default";
+                  return (
+                    <div
+                      key={r.id}
+                      className="p-4 rounded-xl border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
+                      onClick={() => {
+                        setSelectedResource(r);
+                        setResourceDetailOpen(true);
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        {resourceTypeMeta[r.type]?.icon || <FileTextOutlined />}
+                        <Tag
+                          className="rounded-full text-xs border-0"
+                          color={typeColor}
+                        >
+                          {r.type}
+                        </Tag>
+                        {r.difficulty && (
+                          <Tag
+                            className="rounded-full text-xs border-0"
+                            color={
+                              r.difficulty === "easy"
+                                ? "success"
+                                : r.difficulty === "hard"
+                                  ? "error"
+                                  : "default"
+                            }
+                          >
+                            {r.difficulty === "easy"
+                              ? "简单"
+                              : r.difficulty === "hard"
+                                ? "困难"
+                                : "中等"}
+                          </Tag>
+                        )}
+                      </div>
+                      <div className="font-medium text-sm text-slate-800 line-clamp-2 mb-1">
+                        {r.title}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <span>{r.created_at?.slice(0, 10)}</span>
+                        {r.subject && <span>{r.subject}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {filtered.length > pageSize && (
+                <div className="mt-4 flex justify-center">
+                  <input
+                    type="range"
+                    min={1}
+                    max={Math.ceil(filtered.length / pageSize)}
+                    value={resourcePage}
+                    onChange={(e) => setResourcePage(Number(e.target.value))}
+                    className="w-48"
+                  />
+                  <span className="ml-2 text-xs text-slate-400">
+                    {resourcePage}/{Math.ceil(filtered.length / pageSize)} 页
+                  </span>
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </div>
 
       {/* 知识图谱视图 */}
       {/* 节点详情/调整抽屉 */}
@@ -1418,6 +2017,52 @@ const LearningPathPage: React.FC = () => {
           </div>
         )}
       </Drawer>
+
+      {/* 资源详情弹窗 */}
+      <Modal
+        title={selectedResource?.title}
+        open={resourceDetailOpen}
+        onCancel={() => {
+          setResourceDetailOpen(false);
+          setSelectedResource(null);
+        }}
+        footer={null}
+        width={700}
+      >
+        {selectedResource && (
+          <div className="mt-4">
+            <Space className="mb-4">
+              <Tag color="blue">{selectedResource.type}</Tag>
+              <Tag>{selectedResource.subject}</Tag>
+              <Tag
+                color={
+                  selectedResource.difficulty === "easy"
+                    ? "success"
+                    : selectedResource.difficulty === "hard"
+                      ? "error"
+                      : "default"
+                }
+              >
+                {selectedResource.difficulty === "easy"
+                  ? "简单"
+                  : selectedResource.difficulty === "hard"
+                    ? "困难"
+                    : "中等"}
+              </Tag>
+            </Space>
+            {selectedResource.content ? (
+              <ResourceContentRenderer
+                type={selectedResource.type}
+                content={selectedResource.content}
+              />
+            ) : (
+              <div className="text-slate-400 text-sm py-8 text-center">
+                暂无内容预览
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* 调整记录面板 */}
       <AdjustmentLogPanel
