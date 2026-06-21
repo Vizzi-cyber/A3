@@ -262,6 +262,7 @@ const LearningPathPage: React.FC = () => {
   const [agentStep, setAgentStep] = useState(-1);
   const [genResult, setGenResult] = useState("");
   const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
   const [selectedWeakPoints, setSelectedWeakPoints] = useState<string[]>([]);
   const [weakPoints, setWeakPoints] = useState<
     Array<{ name: string; mastery: number }>
@@ -746,6 +747,7 @@ const LearningPathPage: React.FC = () => {
 
   // ===== 资源生成相关函数 =====
   const loadResources = async () => {
+    setResourcesLoading(true);
     try {
       const res = await apiGet<{ code: number; data: ResourceItem[] }>(
         "/resource/list",
@@ -753,6 +755,8 @@ const LearningPathPage: React.FC = () => {
       setResources(res.data || []);
     } catch {
       // 静默失败
+    } finally {
+      setResourcesLoading(false);
     }
   };
 
@@ -822,7 +826,17 @@ const LearningPathPage: React.FC = () => {
 
       // 轮询任务状态
       setAgentStep(1);
+      let pollCount = 0;
+      const MAX_POLL = 45; // 90 seconds max
       const pollInterval = setInterval(async () => {
+        pollCount++;
+        if (pollCount > MAX_POLL) {
+          clearInterval(pollInterval);
+          setGeneratingResource(false);
+          setAgentStep(-1);
+          message.error("生成超时，请稍后重试");
+          return;
+        }
         try {
           const taskRes = await fetch(
             `${import.meta.env.VITE_API_BASE_URL || "/api/v1"}/resource/task/${taskId}`,
@@ -861,18 +875,12 @@ const LearningPathPage: React.FC = () => {
           }
         } catch {
           // 轮询出错，停止
-        }
-      }, 2000);
-
-      // 30秒超时保护
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (generatingResource) {
+          clearInterval(pollInterval);
           setGeneratingResource(false);
           setAgentStep(-1);
-          message.warning("生成超时，请稍后重试");
+          message.error("网络错误，请稍后重试");
         }
-      }, 30000);
+      }, 2000);
     } catch (e) {
       setGeneratingResource(false);
       setAgentStep(-1);
@@ -1341,7 +1349,16 @@ const LearningPathPage: React.FC = () => {
       {/* 资源列表 */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="font-semibold text-slate-800">我的资源</div>
+          <div className="font-semibold text-slate-800 flex items-center gap-2">
+            我的资源
+            <Button
+              type="text"
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={loadResources}
+              loading={resourcesLoading}
+            />
+          </div>
           <Space wrap>
             <Input.Search
               placeholder="搜索资源"
@@ -1400,6 +1417,9 @@ const LearningPathPage: React.FC = () => {
               ]}
             />
           </Space>
+          <div className="text-xs text-slate-400 mt-2">
+            共 {resources.length} 个资源
+          </div>
         </div>
 
         {(() => {
@@ -1424,6 +1444,14 @@ const LearningPathPage: React.FC = () => {
             (resourcePage - 1) * pageSize,
             resourcePage * pageSize,
           );
+
+          if (resourcesLoading) {
+            return (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                加载中...
+              </div>
+            );
+          }
 
           if (filtered.length === 0) {
             return (

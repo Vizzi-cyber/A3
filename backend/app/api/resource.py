@@ -61,7 +61,7 @@ async def _generate_with_agent(
         async with _llm_semaphore:
             result = await asyncio.wait_for(
                 _resource_agent.process(agent_input),
-                timeout=15.0,
+                timeout=45.0,
             )
         if result.get("status") == "success":
             raw = result.get("content", default_content)
@@ -191,6 +191,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
             return
         task.status = "running"
         task.message = "Initializing agents..."
+        task.progress = 0.1
         db.commit()
 
         # 根据 subject 决定代码语言
@@ -203,6 +204,10 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
         weak_hint = ""
         if request.weak_points and len(request.weak_points) > 0:
             weak_hint = f"\n学生的薄弱知识点：{'、'.join(request.weak_points)}，请重点针对这些知识点生成内容。"
+
+        task.message = "Preparing generation..."
+        task.progress = 0.2
+        db.commit()
 
         # 类型映射：quiz→questions, reading→document
         type_map = {
@@ -247,6 +252,9 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
 
         if tasks_to_run:
             try:
+                task.message = f"Generating {len(tasks_to_run)} resource(s)..."
+                task.progress = 0.3
+                db.commit()
                 agent_results = await asyncio.wait_for(
                     asyncio.gather(*tasks_to_run, return_exceptions=True),
                     timeout=60.0,
@@ -257,6 +265,9 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
                     if res.get("status") == "success":
                         rt = resource_types[idx]
                         results[rt] = res.get("content", res)
+                        task.progress = 0.3 + 0.6 * (len(results) / len(resource_types))
+                        task.message = f"Generated {len(results)}/{len(resource_types)} resource(s)..."
+                        db.commit()
             except asyncio.TimeoutError:
                 pass
 
@@ -279,6 +290,8 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
 
 @router.get("/task/{task_id}")
 async def get_task_status(task_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    if not task_id.startswith("task_") or len(task_id) > 30:
+        raise HTTPException(status_code=400, detail="Invalid task_id format")
     task = db.query(ResourceTaskModel).filter(ResourceTaskModel.task_id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -297,6 +310,8 @@ async def list_resources(
     subject: Optional[str] = None,
     difficulty: Optional[str] = None,
     keyword: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     db: Session = Depends(get_db),
     _current: str = Depends(require_auth),
 ):
@@ -310,7 +325,9 @@ async def list_resources(
         query = query.filter(ResourceTaskModel.difficulty == difficulty)
     if keyword:
         query = query.filter(ResourceTaskModel.title.contains(keyword))
-    tasks = query.order_by(ResourceTaskModel.created_at.desc()).limit(50).all()
+    total = query.count()
+    offset = (max(page, 1) - 1) * page_size
+    tasks = query.order_by(ResourceTaskModel.created_at.desc()).offset(offset).limit(page_size).all()
     items = []
     for t in tasks:
         # 从 resources JSON 中提取第一个资源的内容作为 content
@@ -341,7 +358,7 @@ async def list_resources(
             "favorite_count": 0,
             "created_at": t.created_at.isoformat() if t.created_at else "",
         })
-    return {"code": 200, "data": items}
+    return {"code": 200, "data": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/document/generate", response_model=DocumentGenerateResponse)
@@ -758,7 +775,9 @@ def _run_python_code(code: str) -> dict:
         f.write(code)
         tmp_path = f.name
 
-    return _run_subprocess_safe(["python", tmp_path], cleanup_paths=[tmp_path])
+    import sys
+    python_cmd = sys.executable or "python"
+    return _run_subprocess_safe([python_cmd, tmp_path], cleanup_paths=[tmp_path])
 
 
 @router.post("/code/execute", response_model=CodeExecuteResponse)
@@ -766,10 +785,14 @@ async def execute_code(request: CodeExecuteRequest, _current: str = Depends(requ
     """在服务器子进程中执行代码（支持 Python 和 C）"""
     code = request.code
     language = (request.language or "Python").lower()
-    if not code.strip():
-        return {"status": "success", "output": "", "error": "代码为空", "explanation": ""}
+    if not code or not code.strip():
+        return {"status": "success", "output": "", "error": "代码为空", "explanation": "请输入代码后再执行。"}
+    if len(code) > 50_000:
+        return {"status": "success", "output": "", "error": "代码过长（超过 50KB）", "explanation": "请缩短代码后重试。"}
 
-    if language in ("c", "c语言"):
+    if language in ("c", "c语言", "c++", "cpp"):
         return await asyncio.to_thread(_run_c_code, code)
-    else:
+    elif language in ("python", "py"):
         return await asyncio.to_thread(_run_python_code, code)
+    else:
+        return {"status": "success", "output": "", "error": f"不支持的语言: {language}", "explanation": "目前仅支持 Python 和 C 语言。"}
