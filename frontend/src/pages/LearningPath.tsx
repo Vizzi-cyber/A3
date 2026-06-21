@@ -49,6 +49,7 @@ import {
   HistoryOutlined,
   ThunderboltOutlined,
   RobotOutlined,
+  ReadOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store";
@@ -84,7 +85,10 @@ const resourceTypeMeta: Record<
   code: { icon: <CodeOutlined />, color: "#3b82f6" },
   doc: { icon: <FileTextOutlined />, color: "#10b981" },
   quiz: { icon: <BookOutlined />, color: "#f59e0b" },
+  questions: { icon: <BookOutlined />, color: "#f59e0b" },
   document: { icon: <FileTextOutlined />, color: "#10b981" },
+  mindmap: { icon: <ApartmentOutlined />, color: "#8b5cf6" },
+  reading: { icon: <ReadOutlined />, color: "#06b6d4" },
   视频: { icon: <PlayCircleOutlined />, color: "#ef4444" },
   代码: { icon: <CodeOutlined />, color: "#3b82f6" },
   文档: { icon: <FileTextOutlined />, color: "#10b981" },
@@ -783,13 +787,14 @@ const LearningPathPage: React.FC = () => {
     setGenResult("");
     try {
       // 调用后端异步任务接口
+      const token = useAppStore.getState().token || "";
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL || "/api/v1"}/resource/generate`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             student_id: studentId,
@@ -823,7 +828,7 @@ const LearningPathPage: React.FC = () => {
             `${import.meta.env.VITE_API_BASE_URL || "/api/v1"}/resource/task/${taskId}`,
             {
               headers: {
-                Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+                Authorization: `Bearer ${useAppStore.getState().token || ""}`,
               },
             },
           );
@@ -1359,8 +1364,10 @@ const LearningPathPage: React.FC = () => {
               options={[
                 { value: "document", label: "讲义" },
                 { value: "questions", label: "练习" },
+                { value: "quiz", label: "测验" },
                 { value: "mindmap", label: "导图" },
                 { value: "code", label: "代码" },
+                { value: "reading", label: "阅读" },
               ]}
             />
             <Select
@@ -1439,7 +1446,9 @@ const LearningPathPage: React.FC = () => {
                           ? "orange"
                           : r.type === "code"
                             ? "geekblue"
-                            : "default";
+                            : r.type === "reading"
+                              ? "cyan"
+                              : "default";
                   return (
                     <div
                       key={r.id}

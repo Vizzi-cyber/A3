@@ -249,7 +249,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
             try:
                 agent_results = await asyncio.wait_for(
                     asyncio.gather(*tasks_to_run, return_exceptions=True),
-                    timeout=20.0,
+                    timeout=60.0,
                 )
                 for idx, res in enumerate(agent_results):
                     if isinstance(res, Exception):
@@ -319,13 +319,21 @@ async def list_resources(
             first_val = next(iter(t.resources.values()), None)
             if isinstance(first_val, str):
                 content = first_val
+            elif isinstance(first_val, list):
+                import json as _json
+                content = _json.dumps(first_val, ensure_ascii=False)
             elif isinstance(first_val, dict):
-                content = str(first_val.get("content", first_val.get("document", first_val.get("code", ""))))
+                content = first_val.get("content", first_val.get("document", first_val.get("code", "")))
+                if isinstance(content, dict):
+                    import json as _json
+                    content = _json.dumps(content, ensure_ascii=False)
+                else:
+                    content = str(content) if content else ""
         items.append({
             "id": t.task_id,
             "title": t.title or t.message,
             "type": t.resource_type or "document",
-            "subject": t.subject or "Python",
+            "subject": t.subject or "C语言",
             "difficulty": t.difficulty or "medium",
             "content": content,
             "generated_by": "ResourceAgent",
