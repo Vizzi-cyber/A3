@@ -26,6 +26,7 @@ import {
   Steps,
   Modal,
   Tree,
+  Pagination,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -79,25 +80,28 @@ import type {
 
 const resourceTypeMeta: Record<
   string,
-  { icon: React.ReactNode; color: string }
+  { icon: React.ReactNode; color: string; label: string }
 > = {
-  video: { icon: <PlayCircleOutlined />, color: "#ef4444" },
-  code: { icon: <CodeOutlined />, color: "#3b82f6" },
-  doc: { icon: <FileTextOutlined />, color: "#10b981" },
-  quiz: { icon: <BookOutlined />, color: "#f59e0b" },
-  questions: { icon: <BookOutlined />, color: "#f59e0b" },
-  document: { icon: <FileTextOutlined />, color: "#10b981" },
-  mindmap: { icon: <ApartmentOutlined />, color: "#8b5cf6" },
-  reading: { icon: <ReadOutlined />, color: "#06b6d4" },
-  视频: { icon: <PlayCircleOutlined />, color: "#ef4444" },
-  代码: { icon: <CodeOutlined />, color: "#3b82f6" },
-  文档: { icon: <FileTextOutlined />, color: "#10b981" },
-  练习: { icon: <BookOutlined />, color: "#f59e0b" },
-  题目: { icon: <BookOutlined />, color: "#f59e0b" },
+  video: { icon: <PlayCircleOutlined />, color: "#ef4444", label: "视频" },
+  code: { icon: <CodeOutlined />, color: "#3b82f6", label: "代码" },
+  doc: { icon: <FileTextOutlined />, color: "#10b981", label: "讲义" },
+  quiz: { icon: <BookOutlined />, color: "#f59e0b", label: "测验" },
+  questions: { icon: <BookOutlined />, color: "#f59e0b", label: "练习" },
+  document: { icon: <FileTextOutlined />, color: "#10b981", label: "讲义" },
+  mindmap: { icon: <ApartmentOutlined />, color: "#8b5cf6", label: "导图" },
+  reading: { icon: <ReadOutlined />, color: "#06b6d4", label: "阅读" },
+  视频: { icon: <PlayCircleOutlined />, color: "#ef4444", label: "视频" },
+  代码: { icon: <CodeOutlined />, color: "#3b82f6", label: "代码" },
+  文档: { icon: <FileTextOutlined />, color: "#10b981", label: "文档" },
+  练习: { icon: <BookOutlined />, color: "#f59e0b", label: "练习" },
+  题目: { icon: <BookOutlined />, color: "#f59e0b", label: "题目" },
 };
 
+const resourceTypeLabel = (type: string): string =>
+  resourceTypeMeta[type]?.label || type;
+
 interface ResourceItem {
-  id: number;
+  id: string;
   title: string;
   type: string;
   subject: string;
@@ -150,7 +154,7 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
       const data = JSON.parse(content);
       const treeData = parseMindmapToTree(data);
       return (
-        <div className="max-h-96 overflow-auto">
+        <div className="max-h-96 overflow-auto overflow-x-hidden">
           <Tree treeData={treeData} defaultExpandAll showLine />
         </div>
       );
@@ -211,7 +215,7 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
 
   // document / reading / 其他：纯文本展示
   return (
-    <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-96 overflow-auto">
+    <div className="text-sm leading-7 whitespace-pre-wrap max-h-96 overflow-auto text-slate-700">
       {content}
     </div>
   );
@@ -278,6 +282,7 @@ const LearningPathPage: React.FC = () => {
   const [selectedResource, setSelectedResource] = useState<ResourceItem | null>(
     null,
   );
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentSubject = useAppStore((s) => s.currentSubject);
   const navigate = useNavigate();
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -762,6 +767,12 @@ const LearningPathPage: React.FC = () => {
 
   useEffect(() => {
     loadResources();
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
   }, []);
 
   // 加载薄弱知识点
@@ -786,6 +797,11 @@ const LearningPathPage: React.FC = () => {
   }, [studentId]);
 
   const handleGenerateResource = async () => {
+    // 清理可能残留的旧轮询
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     setGeneratingResource(true);
     setAgentStep(0);
     setGenResult("");
@@ -828,10 +844,11 @@ const LearningPathPage: React.FC = () => {
       setAgentStep(1);
       let pollCount = 0;
       const MAX_POLL = 45; // 90 seconds max
-      const pollInterval = setInterval(async () => {
+      const intervalId = setInterval(async () => {
         pollCount++;
         if (pollCount > MAX_POLL) {
-          clearInterval(pollInterval);
+          clearInterval(intervalId);
+          pollIntervalRef.current = null;
           setGeneratingResource(false);
           setAgentStep(-1);
           message.error("生成超时，请稍后重试");
@@ -848,7 +865,8 @@ const LearningPathPage: React.FC = () => {
           );
           const taskData = await taskRes.json();
           if (taskData.status === "completed") {
-            clearInterval(pollInterval);
+            clearInterval(intervalId);
+            pollIntervalRef.current = null;
             setAgentStep(AGENT_STEPS.length);
             setGeneratingResource(false);
             // 提取生成结果
@@ -863,7 +881,8 @@ const LearningPathPage: React.FC = () => {
             loadResources();
             message.success("资源生成完成");
           } else if (taskData.status === "failed") {
-            clearInterval(pollInterval);
+            clearInterval(intervalId);
+            pollIntervalRef.current = null;
             setGeneratingResource(false);
             setAgentStep(-1);
             message.error(taskData.message || "生成失败");
@@ -875,12 +894,14 @@ const LearningPathPage: React.FC = () => {
           }
         } catch {
           // 轮询出错，停止
-          clearInterval(pollInterval);
+          clearInterval(intervalId);
+          pollIntervalRef.current = null;
           setGeneratingResource(false);
           setAgentStep(-1);
           message.error("网络错误，请稍后重试");
         }
       }, 2000);
+      pollIntervalRef.current = intervalId;
     } catch (e) {
       setGeneratingResource(false);
       setAgentStep(-1);
@@ -1292,7 +1313,13 @@ const LearningPathPage: React.FC = () => {
         {genTarget === "weak" && weakPoints.length > 0 && (
           <div className="mt-3 p-3 bg-white rounded-xl border border-slate-100">
             <div className="text-xs text-slate-400 mb-2">
-              选择要针对的薄弱知识点（不选则全部针对）：
+              选择要针对的薄弱知识点（不选则全部针对）
+              {selectedWeakPoints.length > 0 && (
+                <span className="text-primary ml-1">
+                  · 已选 {selectedWeakPoints.length} 个
+                </span>
+              )}
+              ：
             </div>
             <div className="flex flex-wrap gap-1.5">
               {weakPoints.map((wp) => (
@@ -1319,7 +1346,7 @@ const LearningPathPage: React.FC = () => {
 
         {agentStep >= 0 && (
           <div className="mt-4 p-3 bg-white rounded-xl border border-slate-100">
-            <div className="text-sm font-semibold text-slate-800 mb-2">
+            <div className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-1.5">
               <RobotOutlined /> 多智能体协作中
             </div>
             <Steps
@@ -1340,7 +1367,7 @@ const LearningPathPage: React.FC = () => {
         )}
 
         {genResult && (
-          <div className="mt-4 p-4 bg-white rounded-xl border border-slate-100 text-sm leading-relaxed whitespace-pre-wrap max-h-48 overflow-auto">
+          <div className="mt-4 p-4 bg-white rounded-xl border border-slate-100 text-sm leading-relaxed whitespace-pre-wrap max-h-72 overflow-auto">
             {genResult}
           </div>
         )}
@@ -1351,6 +1378,9 @@ const LearningPathPage: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="font-semibold text-slate-800 flex items-center gap-2">
             我的资源
+            <span className="text-xs text-slate-400 font-normal">
+              共 {resources.length} 个
+            </span>
             <Button
               type="text"
               size="small"
@@ -1363,7 +1393,7 @@ const LearningPathPage: React.FC = () => {
             <Input.Search
               placeholder="搜索资源"
               allowClear
-              style={{ width: 180 }}
+              style={{ width: 160 }}
               onSearch={(v) => {
                 setResourceKeyword(v);
                 setResourcePage(1);
@@ -1375,7 +1405,7 @@ const LearningPathPage: React.FC = () => {
                 setResourceFilter((f) => ({ ...f, type: v || "" }));
                 setResourcePage(1);
               }}
-              style={{ width: 90 }}
+              style={{ width: 96 }}
               allowClear
               placeholder="类型"
               options={[
@@ -1393,7 +1423,7 @@ const LearningPathPage: React.FC = () => {
                 setResourceFilter((f) => ({ ...f, subject: v || "" }));
                 setResourcePage(1);
               }}
-              style={{ width: 100 }}
+              style={{ width: 96 }}
               allowClear
               placeholder="学科"
               options={[
@@ -1407,7 +1437,7 @@ const LearningPathPage: React.FC = () => {
                 setResourceFilter((f) => ({ ...f, difficulty: v || "" }));
                 setResourcePage(1);
               }}
-              style={{ width: 90 }}
+              style={{ width: 96 }}
               allowClear
               placeholder="难度"
               options={[
@@ -1417,9 +1447,6 @@ const LearningPathPage: React.FC = () => {
               ]}
             />
           </Space>
-          <div className="text-xs text-slate-400 mt-2">
-            共 {resources.length} 个资源
-          </div>
         </div>
 
         {(() => {
@@ -1456,7 +1483,16 @@ const LearningPathPage: React.FC = () => {
           if (filtered.length === 0) {
             return (
               <div className="text-center py-8 text-slate-400 text-sm">
-                暂无资源，使用上方AI生成面板创建
+                <div className="mb-2">暂无资源，使用上方AI生成面板创建</div>
+                <Button
+                  size="small"
+                  type="link"
+                  onClick={() =>
+                    window.scrollTo({ top: 0, behavior: "smooth" })
+                  }
+                >
+                  <ThunderboltOutlined /> 去生成资源
+                </Button>
               </div>
             );
           }
@@ -1466,7 +1502,7 @@ const LearningPathPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {paged.map((r) => {
                   const typeColor =
-                    r.type === "document"
+                    r.type === "document" || r.type === "reading"
                       ? "green"
                       : r.type === "mindmap"
                         ? "blue"
@@ -1474,16 +1510,23 @@ const LearningPathPage: React.FC = () => {
                           ? "orange"
                           : r.type === "code"
                             ? "geekblue"
-                            : r.type === "reading"
-                              ? "cyan"
-                              : "default";
+                            : "default";
                   return (
                     <div
                       key={r.id}
+                      role="button"
+                      tabIndex={0}
                       className="p-4 rounded-xl border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
                       onClick={() => {
                         setSelectedResource(r);
                         setResourceDetailOpen(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedResource(r);
+                          setResourceDetailOpen(true);
+                        }
                       }}
                     >
                       <div className="flex items-center gap-2 mb-2">
@@ -1492,7 +1535,7 @@ const LearningPathPage: React.FC = () => {
                           className="rounded-full text-xs border-0"
                           color={typeColor}
                         >
-                          {r.type}
+                          {resourceTypeLabel(r.type)}
                         </Tag>
                         {r.difficulty && (
                           <Tag
@@ -1526,17 +1569,15 @@ const LearningPathPage: React.FC = () => {
               </div>
               {filtered.length > pageSize && (
                 <div className="mt-4 flex justify-center">
-                  <input
-                    type="range"
-                    min={1}
-                    max={Math.ceil(filtered.length / pageSize)}
-                    value={resourcePage}
-                    onChange={(e) => setResourcePage(Number(e.target.value))}
-                    className="w-48"
+                  <Pagination
+                    current={resourcePage}
+                    total={filtered.length}
+                    pageSize={pageSize}
+                    onChange={setResourcePage}
+                    showSizeChanger={false}
+                    showQuickJumper
+                    size="small"
                   />
-                  <span className="ml-2 text-xs text-slate-400">
-                    {resourcePage}/{Math.ceil(filtered.length / pageSize)} 页
-                  </span>
                 </div>
               )}
             </>
@@ -2065,12 +2106,18 @@ const LearningPathPage: React.FC = () => {
         }}
         footer={null}
         width={700}
+        style={{ maxWidth: "calc(100vw - 32px)" }}
+        styles={{
+          body: { maxHeight: "calc(100vh - 200px)", overflow: "auto" },
+        }}
       >
         {selectedResource && (
           <div className="mt-4">
             <Space className="mb-4">
-              <Tag color="blue">{selectedResource.type}</Tag>
-              <Tag>{selectedResource.subject}</Tag>
+              <Tag color="blue">{resourceTypeLabel(selectedResource.type)}</Tag>
+              {selectedResource.subject ? (
+                <Tag>{selectedResource.subject}</Tag>
+              ) : null}
               <Tag
                 color={
                   selectedResource.difficulty === "easy"

@@ -318,7 +318,10 @@ async def list_resources(
     """返回已完成的资源生成任务列表"""
     query = db.query(ResourceTaskModel).filter(ResourceTaskModel.status == "completed")
     if type:
-        query = query.filter(ResourceTaskModel.resource_type == type)
+        # 反向映射：前端筛选值可能与 DB 存储值不同
+        reverse_map = {"quiz": "questions", "reading": "document"}
+        db_type = reverse_map.get(type, type)
+        query = query.filter(ResourceTaskModel.resource_type == db_type)
     if subject:
         query = query.filter(ResourceTaskModel.subject == subject)
     if difficulty:
@@ -340,12 +343,17 @@ async def list_resources(
                 import json as _json
                 content = _json.dumps(first_val, ensure_ascii=False)
             elif isinstance(first_val, dict):
-                content = first_val.get("content", first_val.get("document", first_val.get("code", "")))
-                if isinstance(content, dict):
+                # 尝试提取子字段（document/content/code），失败则序列化整个 dict
+                extracted = first_val.get("content") or first_val.get("document") or first_val.get("code")
+                if isinstance(extracted, dict):
                     import json as _json
-                    content = _json.dumps(content, ensure_ascii=False)
+                    content = _json.dumps(extracted, ensure_ascii=False)
+                elif extracted:
+                    content = str(extracted)
                 else:
-                    content = str(content) if content else ""
+                    # mindmap 等结构：整个 dict 就是内容
+                    import json as _json
+                    content = _json.dumps(first_val, ensure_ascii=False)
         items.append({
             "id": t.task_id,
             "title": t.title or t.message,
