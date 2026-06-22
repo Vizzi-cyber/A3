@@ -117,6 +117,7 @@ const ResourceCenter: React.FC = () => {
   const [imagePrompt, setImagePrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
+  const mountedRef = useRef(true);
   const [pptModalOpen, setPptModalOpen] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const studentId = useAppStore((s) => s.studentId);
@@ -149,6 +150,13 @@ const ResourceCenter: React.FC = () => {
     [courseMenu, activeKey],
   );
 
+  // 组件卸载标记
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // 加载课程目录
   useEffect(() => {
     let ignore = false;
@@ -157,7 +165,7 @@ const ResourceCenter: React.FC = () => {
       try {
         const res = await knowledgeApi.list(storeCurrentSubject);
         if (ignore) return;
-        const kps: Record<string, unknown>[] = res.data.data || [];
+        const kps: Record<string, unknown>[] = res.data?.data || [];
         // 按 subject 字段分组（每个 subject 为一章）
         const subjectMap = new Map<string, Record<string, unknown>[]>();
         for (const kp of kps) {
@@ -315,7 +323,7 @@ const ResourceCenter: React.FC = () => {
           language: codeLanguage,
           kp_id: activeKey,
         });
-        if (!ignore && codeRes.data.code) setCodeContent(codeRes.data.code);
+        if (!ignore && codeRes.data?.code) setCodeContent(codeRes.data.code);
       } catch {
         // ignore
       }
@@ -339,7 +347,7 @@ const ResourceCenter: React.FC = () => {
           kp_id: activeKey,
         });
         if (ignore) return;
-        if (docRes.data.document) setDocContent(docRes.data.document);
+        if (docRes.data?.document) setDocContent(docRes.data.document);
 
         // 并行加载剩余资源
         const [codeRes, qRes, mapRes] = await Promise.all([
@@ -362,8 +370,8 @@ const ResourceCenter: React.FC = () => {
           }),
         ]);
         if (ignore) return;
-        if (codeRes.data.code) setCodeContent(codeRes.data.code);
-        const qs = Array.isArray(qRes.data.questions)
+        if (codeRes.data?.code) setCodeContent(codeRes.data.code);
+        const qs = Array.isArray(qRes.data?.questions)
           ? qRes.data.questions
           : [];
         if (qs.length) setQuestions(qs);
@@ -371,7 +379,7 @@ const ResourceCenter: React.FC = () => {
         setQuizAnswers({});
         setQuizSubmitted({});
         setQuizScore(null);
-        if (mapRes.data.mindmap) {
+        if (mapRes.data?.mindmap) {
           setMindmap({
             root: mapRes.data.mindmap.root || currentTopic,
             children: (mapRes.data.mindmap.children || []) as {
@@ -522,7 +530,7 @@ const ResourceCenter: React.FC = () => {
         prompt:
           "请识别这张图片中的所有文字内容，保持原有的段落和格式。如果是数学公式，请用 LaTeX 表示。如果是错题，请标注题号和答案区域。",
       });
-      setOcrResult(res.data.text);
+      setOcrResult(res.data?.text || "");
       message.success("识别成功");
     } catch (e: unknown) {
       message.error(extractApiError(e, "识别失败"));
@@ -582,25 +590,27 @@ const ResourceCenter: React.FC = () => {
     try {
       const res = await imageApi.generate({ prompt: imagePrompt });
       // 同步直接返回图片
-      if (res.data.image_urls && res.data.image_urls.length > 0) {
+      if (res.data?.image_urls && res.data.image_urls.length > 0) {
         setGeneratedImage(res.data.image_urls[0]);
         message.success("图片生成成功");
         return;
       }
       // 异步任务：轮询查询结果
-      const taskId = res.data.task_id;
-      if (res.data.status === "submitted" && taskId) {
+      const taskId = res.data?.task_id;
+      if (res.data?.status === "submitted" && taskId) {
         message.info("图片生成中，请稍候…");
         const poll = async (attempt: number): Promise<void> => {
-          if (attempt <= 0) {
-            message.error("图片生成超时，请稍后手动刷新");
+          if (attempt <= 0 || !mountedRef.current) {
+            if (mountedRef.current)
+              message.error("图片生成超时，请稍后手动刷新");
             throw new Error("timeout");
           }
           await new Promise((resolve) => setTimeout(resolve, 2000));
+          if (!mountedRef.current) throw new Error("unmounted");
           const pollRes = await imageApi.getResult(taskId);
           if (
-            pollRes.data.status === "done" &&
-            pollRes.data.image_urls &&
+            pollRes.data?.status === "done" &&
+            pollRes.data?.image_urls &&
             pollRes.data.image_urls.length > 0
           ) {
             setGeneratedImage(pollRes.data.image_urls[0]);
@@ -608,11 +618,11 @@ const ResourceCenter: React.FC = () => {
             return;
           }
           if (
-            pollRes.data.status === "failed" ||
-            pollRes.data.status === "error"
+            pollRes.data?.status === "failed" ||
+            pollRes.data?.status === "error"
           ) {
             message.error(
-              "图片生成失败：" + (pollRes.data.message || "未知错误"),
+              "图片生成失败：" + (pollRes.data?.message || "未知错误"),
             );
             throw new Error("failed");
           }

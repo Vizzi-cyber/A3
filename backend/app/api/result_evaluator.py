@@ -80,7 +80,7 @@ async def evaluate_code(
         return result
     except Exception as e:
         logger.error(f"Code evaluation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/evaluate-collaboration")
@@ -99,7 +99,7 @@ async def evaluate_collaboration(
         return result
     except Exception as e:
         logger.error(f"Collaboration evaluation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/evaluate-deliverable")
@@ -119,7 +119,7 @@ async def evaluate_deliverable(
         return result
     except Exception as e:
         logger.error(f"Deliverable evaluation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/evaluate-learning")
@@ -139,7 +139,7 @@ async def evaluate_learning(
         return result
     except Exception as e:
         logger.error(f"Learning evaluation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/full-report")
@@ -163,4 +163,4 @@ async def generate_full_report(
         return result
     except Exception as e:
         logger.error(f"Full report generation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")

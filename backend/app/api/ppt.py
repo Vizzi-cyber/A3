@@ -74,7 +74,7 @@ async def _generate_task(task_id: str, topic: str, subject: str):
         logger.error(f"PPT生成失败: {e}")
         _ppt_tasks[task_id]["status"] = "failed"
         _ppt_tasks[task_id]["progress"] = 0
-        _ppt_tasks[task_id]["message"] = f"生成失败: {str(e)}"
+        _ppt_tasks[task_id]["message"] = "PPT生成失败，请稍后重试"
 
 
 @router.post("/generate")

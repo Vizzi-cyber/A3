@@ -12,7 +12,6 @@ import {
   Progress,
   Spin,
   Descriptions,
-  List,
   Select,
 } from "antd";
 import {
@@ -159,8 +158,8 @@ const TeacherDashboard: React.FC = () => {
 
   const filteredStudents = students.filter(
     (s) =>
-      s.student_id.includes(studentSearch) ||
-      s.username.includes(studentSearch),
+      s.student_id?.includes(studentSearch) ||
+      (s.username && s.username.includes(studentSearch)),
   );
 
   // 成绩分布数据

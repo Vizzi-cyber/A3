@@ -143,9 +143,13 @@ export interface CurrentPathResponse {
 export interface ResourceGenerationRequest {
   student_id: string;
   topic: string;
+  title?: string;
+  type?: string;
+  subject?: string;
   resource_types?: string[];
   difficulty?: string;
   cognitive_style?: string;
+  weak_points?: string[];
 }
 
 export interface ResourceGenerationResponse {
@@ -248,6 +252,7 @@ export interface TutorRequest {
     | "encourage"
     | "explain_code"
     | "explain_error";
+  mode?: "socratic" | "normal";
 }
 
 export interface TutorResponse {

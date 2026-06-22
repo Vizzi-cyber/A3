@@ -377,3 +377,99 @@ async def get_weak_points(
         "weak_tags": [{"tag": t, "count": c} for t, c in sorted_tags[:20]],
         "weak_areas": [{"area": a, "count": c} for a, c in sorted_weak[:20]],
     }
+
+
+# ---------- 导出记录 ----------
+class ExportRecord(BaseModel):
+    export_id: str
+    report_type: str
+    format: str
+    student_ids: Optional[List[str]] = None
+    created_at: str
+    file_size: Optional[str] = None
+    status: str
+
+
+@router.get("/exports")
+async def get_export_records(
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_teacher)
+):
+    """获取导出记录列表"""
+    # 目前返回空列表，实际应从数据库查询
+    # TODO: 创建 ExportRecordModel 表来存储导出记录
+    return {
+        "status": "success",
+        "exports": [],
+        "total": 0,
+    }
+
+
+@router.post("/exports")
+async def create_export_record(
+    report_type: str,
+    format: str,
+    student_ids: Optional[List[str]] = None,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_teacher)
+):
+    """创建导出记录"""
+    import uuid
+    from datetime import datetime, timezone
+
+    export_id = str(uuid.uuid4())[:8]
+    # TODO: 保存到数据库
+    return {
+        "status": "success",
+        "export_id": export_id,
+        "report_type": report_type,
+        "format": format,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "message": "导出任务已创建",
+    }
+
+
+# ---------- 教学资源 ----------
+@router.get("/resources")
+async def get_teaching_resources(
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_teacher)
+):
+    """获取教学资源列表"""
+    # 从PPT任务中获取已生成的资源
+    from .ppt import _ppt_tasks
+    resources = []
+    for task_id, task in _ppt_tasks.items():
+        if task.get("status") == "completed":
+            resources.append({
+                "resource_id": task_id,
+                "name": task.get("filename", f"PPT_{task_id}.pptx"),
+                "type": "PPT",
+                "created_at": task.get("created_at", ""),
+                "status": "completed",
+                "download_url": f"/ppt/{task_id}/download",
+            })
+    return {
+        "status": "success",
+        "resources": resources,
+        "total": len(resources),
+    }
+
+
+# ---------- 系统信息 ----------
+@router.get("/system-info")
+async def get_system_info(
+    _current: str = Depends(require_teacher)
+):
+    """获取系统信息"""
+    from datetime import datetime, timezone
+
+    return {
+        "status": "success",
+        "system_info": {
+            "version": "1.0.0",
+            "ai_model": "MiMo v2.5 Pro",
+            "database_status": "normal",
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        },
+    }

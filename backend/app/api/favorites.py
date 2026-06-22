@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.favorites import FavoriteModel
-from .auth import require_auth
+from .auth import require_auth, verify_student_ownership
 import uuid
 
 router = APIRouter()

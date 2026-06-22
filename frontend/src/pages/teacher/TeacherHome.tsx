@@ -49,6 +49,18 @@ const TeacherHome: React.FC = () => {
     loadData();
   }, []);
 
+  // 页面重新可见时刷新数据
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     try {

@@ -13,7 +13,6 @@ import {
   Statistic,
   message,
   Input,
-  Divider,
 } from "antd";
 import {
   UserOutlined,
@@ -27,8 +26,6 @@ import {
   SaveOutlined,
   DeleteOutlined,
   EyeOutlined,
-  RiseOutlined,
-  FallOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store";

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   Row,
@@ -10,6 +10,8 @@ import {
   Input,
   Select,
   Tag,
+  Empty,
+  Spin,
 } from "antd";
 import {
   FileTextOutlined,
@@ -19,12 +21,45 @@ import {
   DownloadOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
-import { pptApi } from "../../services/api";
+import { pptApi, teacherApi } from "../../services/api";
+
+interface Resource {
+  resource_id: string;
+  name: string;
+  type: string;
+  created_at: string;
+  status: string;
+  download_url?: string;
+}
 
 const TeachingResources: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [pptTopic, setPptTopic] = useState("");
   const [pptSubject, setPptSubject] = useState("C语言");
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(false);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    loadResources();
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, []);
+
+  const loadResources = async () => {
+    setLoading(true);
+    try {
+      const res = await teacherApi.getResources();
+      if (res.data?.resources) {
+        setResources(res.data.resources);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGeneratePPT = async () => {
     if (!pptTopic.trim()) {
@@ -57,6 +92,7 @@ const TeachingResources: React.FC = () => {
         const status = res.data.data.status;
         if (status === "completed") {
           message.success("PPT生成完成！");
+          loadResources();
           return;
         }
         if (status === "failed") {
@@ -65,7 +101,7 @@ const TeachingResources: React.FC = () => {
         }
         if (attempts < maxAttempts) {
           attempts++;
-          setTimeout(poll, 2000);
+          pollTimerRef.current = setTimeout(poll, 2000);
         }
       } catch {
         // ignore
@@ -179,49 +215,52 @@ const TeachingResources: React.FC = () => {
 
       {/* 已生成的资源列表 */}
       <Card className="rounded-2xl border-0 shadow-sm" title="我的资源">
-        <div className="space-y-3">
-          {[
-            {
-              name: "C语言指针基础.pptx",
-              type: "PPT",
-              date: "2024-01-15",
-              status: "completed",
-            },
-            {
-              name: "电路分析实验报告.docx",
-              type: "文档",
-              date: "2024-01-14",
-              status: "completed",
-            },
-            {
-              name: "数据结构复习.pdf",
-              type: "PDF",
-              date: "2024-01-13",
-              status: "completed",
-            },
-          ].map((item, idx) => (
-            <div
-              key={idx}
-              className="flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-white hover:shadow-sm transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <FileTextOutlined className="text-[#0052ff] text-lg" />
-                <div>
-                  <div className="font-medium text-slate-800">{item.name}</div>
-                  <div className="text-xs text-slate-400">{item.date}</div>
+        <Spin spinning={loading}>
+          <div className="space-y-3">
+            {resources.length === 0 ? (
+              <div className="py-8 text-center">
+                <div className="text-slate-400 mb-2">暂无已生成的资源</div>
+                <div className="text-xs text-slate-300">
+                  使用上方AI生成功能创建资源
                 </div>
               </div>
-              <Space>
-                <Tag className="rounded-full border-0 bg-[#0052ff]-50 text-[#0052ff]">
-                  {item.type}
-                </Tag>
-                <Button type="link" icon={<DownloadOutlined />}>
-                  下载
-                </Button>
-              </Space>
-            </div>
-          ))}
-        </div>
+            ) : (
+              resources.map((item) => (
+                <div
+                  key={item.resource_id}
+                  className="flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-white hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileTextOutlined className="text-[#0052ff] text-lg" />
+                    <div>
+                      <div className="font-medium text-slate-800">
+                        {item.name}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {item.created_at.split("T")[0]}
+                      </div>
+                    </div>
+                  </div>
+                  <Space>
+                    <Tag className="rounded-full border-0 bg-blue-50 text-blue-600">
+                      {item.type}
+                    </Tag>
+                    {item.download_url && (
+                      <Button
+                        type="link"
+                        icon={<DownloadOutlined />}
+                        href={item.download_url}
+                        target="_blank"
+                      >
+                        下载
+                      </Button>
+                    )}
+                  </Space>
+                </div>
+              ))
+            )}
+          </div>
+        </Spin>
       </Card>
     </div>
   );

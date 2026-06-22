@@ -8,6 +8,7 @@ import {
   Table,
   Progress,
   Tag,
+  Empty,
 } from "antd";
 import {
   TeamOutlined,
@@ -41,6 +42,18 @@ const ClassAnalytics: React.FC = () => {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // 页面重新可见时刷新数据
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
   const loadData = async () => {
@@ -100,19 +113,19 @@ const ClassAnalytics: React.FC = () => {
       : 0;
 
   // 雷达图数据（基于真实数据计算）
-  const radarData = [
-    { subject: "基础知识", A: Math.min(100, avgScore || 75) },
-    { subject: "编程能力", A: Math.min(100, avgPoints || 68) },
-    {
-      subject: "算法思维",
-      A: Math.min(100, Math.round((avgScore || 75) * 0.8)),
-    },
-    { subject: "项目实践", A: Math.min(100, avgHours || 72) },
-    {
-      subject: "协作能力",
-      A: Math.min(100, Math.round((avgScore || 75) * 1.05)),
-    },
-  ];
+  const radarData =
+    students.length > 0
+      ? [
+          { subject: "基础知识", A: Math.min(100, avgScore) },
+          { subject: "编程能力", A: Math.min(100, avgPoints) },
+          { subject: "算法思维", A: Math.min(100, Math.round(avgScore * 0.8)) },
+          { subject: "项目实践", A: Math.min(100, avgHours) },
+          {
+            subject: "协作能力",
+            A: Math.min(100, Math.round(avgScore * 1.05)),
+          },
+        ]
+      : [];
 
   const columns = [
     {
@@ -224,29 +237,38 @@ const ClassAnalytics: React.FC = () => {
         <Col xs={24} lg={10}>
           <Card className="rounded-2xl border-0 shadow-sm" title="班级能力分布">
             <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="#e2e8f0" />
-                  <PolarAngleAxis
-                    dataKey="subject"
-                    tick={{ fill: "#64748b", fontSize: 12 }}
+              {radarData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="#e2e8f0" />
+                    <PolarAngleAxis
+                      dataKey="subject"
+                      tick={{ fill: "#64748b", fontSize: 12 }}
+                    />
+                    <PolarRadiusAxis
+                      angle={30}
+                      domain={[0, 100]}
+                      tick={false}
+                      axisLine={false}
+                    />
+                    <Radar
+                      name="班级平均"
+                      dataKey="A"
+                      stroke="#0052ff"
+                      fill="#0052ff"
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <Empty
+                    description="暂无学生数据"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
                   />
-                  <PolarRadiusAxis
-                    angle={30}
-                    domain={[0, 100]}
-                    tick={false}
-                    axisLine={false}
-                  />
-                  <Radar
-                    name="班级平均"
-                    dataKey="A"
-                    stroke="#0052ff"
-                    fill="#0052ff"
-                    fillOpacity={0.2}
-                    strokeWidth={2}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
+                </div>
+              )}
             </div>
           </Card>
         </Col>

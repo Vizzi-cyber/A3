@@ -52,7 +52,7 @@ async def trace_error(
 
     except Exception as e:
         logger.error(f"Error tracing failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/classify")
@@ -73,7 +73,7 @@ async def classify_misconception(
 
     except Exception as e:
         logger.error(f"Misconception classification failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/correct")
@@ -96,7 +96,7 @@ async def generate_correction(
 
     except Exception as e:
         logger.error(f"Correction generation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/full-analysis")
@@ -142,4 +142,4 @@ async def full_analysis(
 
     except Exception as e:
         logger.error(f"Full analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")

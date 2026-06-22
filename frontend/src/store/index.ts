@@ -2,6 +2,29 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ToastState } from "../types";
 
+/** Decode JWT payload without verification (for expiry check only) */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== "number") return false;
+  return payload.exp * 1000 < Date.now();
+}
+
 interface UserInfo {
   student_id: string;
   username: string;
@@ -68,10 +91,26 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<AppState>;
+        const token = typeof p.token === "string" ? p.token : null;
+        const tokenValid = !!token && !isTokenExpired(token);
+        const studentId = typeof p.studentId === "string" ? p.studentId : "";
+        const userInfo =
+          p.userInfo &&
+          typeof p.userInfo === "object" &&
+          "student_id" in p.userInfo
+            ? (p.userInfo as UserInfo)
+            : current.userInfo;
+        const currentSubject =
+          typeof p.currentSubject === "string"
+            ? p.currentSubject
+            : current.currentSubject;
         return {
           ...current,
-          ...p,
-          isLoggedIn: !!p.token,
+          token: tokenValid ? token : null,
+          isLoggedIn: tokenValid,
+          studentId: tokenValid ? studentId : "",
+          userInfo,
+          currentSubject,
         };
       },
     },

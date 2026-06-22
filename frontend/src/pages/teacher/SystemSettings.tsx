@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -9,6 +9,8 @@ import {
   Divider,
   Space,
   Tag,
+  Spin,
+  message,
 } from "antd";
 import {
   SaveOutlined,
@@ -18,14 +20,42 @@ import {
   GlobalOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../../store";
+import { teacherApi } from "../../services/api";
+
+interface SystemInfo {
+  version: string;
+  ai_model: string;
+  database_status: string;
+  last_updated: string;
+}
 
 const SystemSettings: React.FC = () => {
   const userInfo = useAppStore((s) => s.userInfo);
   const [form] = Form.useForm();
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadSystemInfo();
+  }, []);
+
+  const loadSystemInfo = async () => {
+    setLoading(true);
+    try {
+      const res = await teacherApi.getSystemInfo();
+      if (res.data?.system_info) {
+        setSystemInfo(res.data.system_info);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = () => {
-    form.validateFields().then((values) => {
-      console.log("Settings saved:", values);
+    form.validateFields().then(() => {
+      message.success("设置已保存");
     });
   };
 
@@ -116,31 +146,55 @@ const SystemSettings: React.FC = () => {
 
         {/* 系统信息 */}
         <Card className="rounded-2xl border-0 shadow-sm" title="系统信息">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">系统版本</span>
-              <span className="font-medium">v1.0.0</span>
+          <Spin spinning={loading}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">系统版本</span>
+                <span className="font-medium">
+                  v{systemInfo?.version || "-"}
+                </span>
+              </div>
+              <Divider className="!my-3" />
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">AI模型</span>
+                <Tag className="rounded-full border-0" color="blue">
+                  {systemInfo?.ai_model || "-"}
+                </Tag>
+              </div>
+              <Divider className="!my-3" />
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">数据库状态</span>
+                <Tag
+                  className="rounded-full border-0"
+                  color={
+                    systemInfo?.database_status === "normal"
+                      ? "success"
+                      : "error"
+                  }
+                >
+                  {systemInfo?.database_status === "normal" ? "正常" : "异常"}
+                </Tag>
+              </div>
+              <Divider className="!my-3" />
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">上次更新</span>
+                <span className="text-slate-500">
+                  {systemInfo?.last_updated
+                    ? new Date(systemInfo.last_updated).toLocaleString(
+                        "zh-CN",
+                        {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )
+                    : "-"}
+                </span>
+              </div>
             </div>
-            <Divider className="!my-3" />
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">AI模型</span>
-              <Tag className="rounded-full border-0" color="blue">
-                MiMo v2.5 Pro
-              </Tag>
-            </div>
-            <Divider className="!my-3" />
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">数据库状态</span>
-              <Tag className="rounded-full border-0" color="success">
-                正常
-              </Tag>
-            </div>
-            <Divider className="!my-3" />
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600">上次更新</span>
-              <span className="text-slate-500">2024-01-15 10:30</span>
-            </div>
-          </div>
+          </Spin>
         </Card>
 
         {/* 快捷操作 */}

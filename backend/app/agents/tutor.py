@@ -100,6 +100,15 @@ class TutorAgent(BaseAgent):
             "每次回复要有所不同，不要重复相同的引导问题或句式。"
         )
 
+    def get_normal_system_prompt(self) -> str:
+        return (
+            "你是一位专业的学习辅导助手，擅长用清晰易懂的方式讲解知识。"
+            "当学生提问时，你应该直接、准确地回答问题，给出详细的知识讲解和实用建议。"
+            "可以适当举例说明，帮助学生理解。"
+            "你的语气应温和、鼓励，避免批评。"
+            "重要：不要输出思考过程、分析步骤或'让我想想'之类的内心独白，直接给出对学生的回复内容。"
+        )
+
     async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         context:
@@ -143,8 +152,9 @@ class TutorAgent(BaseAgent):
             # 维护会话历史（带 LRU 淘汰）
             self._evict_old_sessions()
             history = self.session_histories.setdefault(session_id, [])
+            mode = context.get("mode", "socratic")
             if task == "answer_question":
-                result = await self._socratic_answer(question, history, context.get("profile", {}), llm)
+                result = await self._socratic_answer(question, history, context.get("profile", {}), llm, mode=mode)
             elif task == "hint":
                 result = await self._give_hint(question, history, llm)
             elif task == "encourage":
@@ -170,13 +180,20 @@ class TutorAgent(BaseAgent):
             self.logger.error(f"TutorAgent error: {e}")
             return {"status": "failed", "error": str(e)}
 
-    async def _socratic_answer(self, question: Union[str, List[Dict[str, Any]]], history: List[Dict[str, Any]], profile: Dict[str, Any], llm: Optional[BaseLLM] = None) -> Dict[str, Any]:
+    async def _socratic_answer(self, question: Union[str, List[Dict[str, Any]]], history: List[Dict[str, Any]], profile: Dict[str, Any], llm: Optional[BaseLLM] = None, mode: str = "socratic") -> Dict[str, Any]:
         weak_areas = profile.get("weak_areas", [])
         style = profile.get("cognitive_style", {}).get("primary", "visual")
         llm = llm or self.llm
 
         # 学习状态检测
         learning_state = self._detect_learning_state(history)
+
+        if mode == "socratic":
+            instruction = "请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
+            sys_prompt = self.get_system_prompt()
+        else:
+            instruction = "请直接、清晰地回答学生的问题，给出准确的知识讲解和实用建议。"
+            sys_prompt = self.get_normal_system_prompt()
 
         if isinstance(question, list):
             # 图文模式（OpenAI vision 格式）
@@ -185,12 +202,11 @@ class TutorAgent(BaseAgent):
                 f"认知风格：{style}\n"
                 f"学习状态：{learning_state['state']}\n"
                 f"{'教学建议：' + learning_state['hint'] if learning_state['hint'] else ''}\n"
-                "请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，"
-                "帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
+                f"{instruction}"
             )
             prefixed_content: List[Dict[str, Any]] = [{"type": "text", "text": prefix_text}] + question
             messages = [
-                {"role": "system", "content": self.get_system_prompt()},
+                {"role": "system", "content": sys_prompt},
                 *history,
                 {"role": "user", "content": prefixed_content},
             ]
@@ -201,12 +217,11 @@ class TutorAgent(BaseAgent):
                 f"认知风格：{style}\n"
                 f"学习状态：{learning_state['state']}\n"
                 f"{'教学建议：' + learning_state['hint'] if learning_state['hint'] else ''}\n"
-                "请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，"
-                "帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
+                f"{instruction}"
             )
             prompt = SafetyGuard.sanitize_prompt(prompt)
             messages = [
-                {"role": "system", "content": self.get_system_prompt()},
+                {"role": "system", "content": sys_prompt},
                 *history,
                 {"role": "user", "content": prompt},
             ]

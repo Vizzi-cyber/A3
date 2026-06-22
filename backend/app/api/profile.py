@@ -378,3 +378,77 @@ async def analyze_conversation(
         "message": "画像已根据对话更新" if llm_profile else "画像未变更（LLM 未返回有效数据）",
         "data": _profile_to_dict(profile),
     }
+
+
+@router.get("/{student_id}/retention")
+async def get_retention_data(
+    student_id: str,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth)
+):
+    """获取遗忘曲线数据（基于薄弱知识点）"""
+    from ..models.knowledge import QuizResultModel, LearningRecordModel
+    from datetime import datetime, timedelta, timezone
+
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's retention data")
+
+    # 获取学生画像中的薄弱知识点
+    profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
+    weak_areas = profile.weak_areas if profile else []
+
+    if not weak_areas:
+        return {
+            "status": "success",
+            "data": [],
+            "message": "暂无薄弱知识点数据",
+        }
+
+    # 获取最近的学习记录来计算掌握度
+    recent_records = db.query(LearningRecordModel).filter(
+        LearningRecordModel.student_id == student_id,
+        LearningRecordModel.kp_id.in_(weak_areas),
+    ).order_by(LearningRecordModel.created_at.desc()).limit(50).all()
+
+    # 按知识点分组，计算最近的掌握度
+    kp_progress = {}
+    for record in recent_records:
+        kp_id = record.kp_id
+        if kp_id not in kp_progress:
+            kp_progress[kp_id] = []
+        kp_progress[kp_id].append({
+            "progress": record.progress or 0,
+            "created_at": record.created_at.isoformat() if record.created_at else None,
+        })
+
+    # 构建遗忘曲线数据
+    retention_items = []
+    for kp_id in weak_areas[:4]:  # 最多显示4个
+        records = kp_progress.get(kp_id, [])
+        if records:
+            # 使用最近的进度作为掌握度
+            latest_progress = records[0].get("progress", 0)
+            retention = min(100, max(0, int(latest_progress * 100)))
+        else:
+            retention = 0
+
+        # 根据掌握度估算下次复习时间
+        if retention >= 80:
+            next_review = "一周后"
+        elif retention >= 60:
+            next_review = "三天后"
+        elif retention >= 40:
+            next_review = "明天"
+        else:
+            next_review = "今天"
+
+        retention_items.append({
+            "topic": kp_id,
+            "retention": retention,
+            "nextReview": next_review,
+        })
+
+    return {
+        "status": "success",
+        "data": retention_items,
+    }

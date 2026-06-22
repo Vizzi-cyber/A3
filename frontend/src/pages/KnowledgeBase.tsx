@@ -21,8 +21,13 @@ const KnowledgeBase: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([loadFolders(), loadNotes()]);
-      setLoading(false);
+      try {
+        await Promise.all([loadFolders(), loadNotes()]);
+      } catch {
+        // ignore load errors, show empty state
+      } finally {
+        setLoading(false);
+      }
     };
     init();
   }, []);

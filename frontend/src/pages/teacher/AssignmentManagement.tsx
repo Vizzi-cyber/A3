@@ -1,13 +1,29 @@
 import React from "react";
-import { Card, Table, Button, Tag, Space, Typography } from "antd";
+import { Card, Table, Button, Tag, Space, Typography, Empty } from "antd";
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
+import { useAppStore } from "../../store";
+
+interface Assignment {
+  key: string;
+  name: string;
+  knowledge_point: string;
+  deadline: string;
+  submitted: number;
+  total: number;
+  status: string;
+}
 
 const AssignmentManagement: React.FC = () => {
+  const userInfo = useAppStore((s) => s.userInfo);
+
+  // 后端暂无作业管理API，显示空状态
+  const assignments: Assignment[] = [];
+
   const columns = [
     {
       title: "作业名称",
@@ -74,36 +90,6 @@ const AssignmentManagement: React.FC = () => {
     },
   ];
 
-  const data = [
-    {
-      key: "1",
-      name: "指针基础练习",
-      knowledge_point: "指针概念",
-      deadline: "2024-01-20",
-      submitted: 15,
-      total: 20,
-      status: "active",
-    },
-    {
-      key: "2",
-      name: "数组排序实验",
-      knowledge_point: "数组与排序",
-      deadline: "2024-01-18",
-      submitted: 20,
-      total: 20,
-      status: "completed",
-    },
-    {
-      key: "3",
-      name: "文件操作综合题",
-      knowledge_point: "文件I/O",
-      deadline: "2024-01-25",
-      submitted: 0,
-      total: 20,
-      status: "draft",
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -120,7 +106,15 @@ const AssignmentManagement: React.FC = () => {
       </div>
 
       <Card className="rounded-2xl border-0 shadow-sm">
-        <Table columns={columns} dataSource={data} pagination={false} />
+        <Table
+          columns={columns}
+          dataSource={assignments}
+          loading={false}
+          pagination={false}
+          locale={{
+            emptyText: <Empty description="暂无作业数据，请创建作业" />,
+          }}
+        />
       </Card>
     </div>
   );

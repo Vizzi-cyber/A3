@@ -95,7 +95,7 @@ class ResourceTaskModel(Base):
     message = Column(String(512), default="")
     title = Column(String(200), default="")
     resource_type = Column(String(32), default="document")
-    subject = Column(String(50), default="Python")
+    subject = Column(String(50), default="C语言")
     difficulty = Column(String(20), default="medium")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

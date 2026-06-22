@@ -79,4 +79,4 @@ async def analyze_circuit(
 
     except Exception as e:
         logger.error(f"Circuit analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")

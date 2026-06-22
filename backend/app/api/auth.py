@@ -85,9 +85,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 security = HTTPBearer(auto_error=False)
 
 async def get_current_student_id(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
-    """依赖注入：从请求头提取并校验token（允许匿名）"""
+    """依赖注入：从请求头提取并校验token，未认证时抛401"""
     if not credentials:
-        return "anonymous"
+        raise HTTPException(status_code=401, detail="Not authenticated")
     token = credentials.credentials
     student_id = _verify_token(token)
     if not student_id:
@@ -126,6 +126,12 @@ async def require_teacher(
 def verify_token(token: str) -> Optional[str]:
     """公开token校验函数，供其他模块使用"""
     return _verify_token(token)
+
+
+def verify_student_ownership(requested_id: str, current_id: str) -> None:
+    """校验请求的 student_id 是否等于当前认证用户，否则抛 403"""
+    if requested_id != current_id:
+        raise HTTPException(status_code=403, detail="无权操作其他用户的数据")
 
 
 def verify_token_for_websocket(token: Optional[str]) -> Optional[str]:
@@ -171,8 +177,12 @@ async def debug_validate(password: str):
 
 
 @router.post("/register-teacher")
-async def register_teacher(request: UserRegisterRequest, db: Session = Depends(get_db)):
-    """教师注册"""
+async def register_teacher(
+    request: UserRegisterRequest,
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_auth),
+):
+    """教师注册（需要管理员认证）"""
     existing = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="student_id already exists")
@@ -211,8 +221,6 @@ async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
 @router.get("/me")
 async def get_me(student_id: str = Depends(get_current_student_id), db: Session = Depends(get_db)):
     """获取当前用户信息"""
-    if student_id == "anonymous":
-        raise HTTPException(status_code=401, detail="Not authenticated")
     user = db.query(UserModel).filter(UserModel.student_id == student_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

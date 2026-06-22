@@ -31,6 +31,7 @@ class TutorRequest(BaseModel):
     provider: Optional[str] = None  # bigmodel / deepseek / openai / spark
     rag_active: bool = True  # 是否启用画像/知识库检索增强
     task: str = "answer_question"  # answer_question / hint / encourage / explain_code / explain_error
+    mode: str = "socratic"  # socratic / normal
 
 
 class TutorResponse(BaseModel):
@@ -96,8 +97,9 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
                 "language": request.context.get("language", "C") if request.context else "C",
                 "profile": profile_for_prompt,
                 "llm_provider": request.provider,
+                "mode": request.mode,
             }),
-            timeout=15.0,
+            timeout=30.0,
         )
         if result.get("status") == "success":
             answer = result.get("answer", "很抱歉，我没有理解你的问题，可以再说一遍吗？")
@@ -184,6 +186,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 question = data.get("content", "")
                 provider = data.get("provider")
                 rag_active = bool(data.get("rag_active", True))
+                mode = data.get("mode", "socratic")
 
                 # Step 1: planner —— 任务拆解 / 安全检查
                 await manager.send_message(session_id, {
@@ -246,11 +249,18 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
 
                 # 构建消息历史
                 history = _tutor_agent.session_histories.setdefault(session_id, [])
-                prompt = SafetyGuard.sanitize_prompt(
-                    f"学生提问：{question}\n{profile_snippet}请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
-                )
+                if mode == "socratic":
+                    prompt = SafetyGuard.sanitize_prompt(
+                        f"学生提问：{question}\n{profile_snippet}请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
+                    )
+                    system_prompt = _tutor_agent.get_system_prompt()
+                else:
+                    prompt = SafetyGuard.sanitize_prompt(
+                        f"学生提问：{question}\n{profile_snippet}请直接、清晰地回答学生的问题，给出准确的知识讲解和实用建议。"
+                    )
+                    system_prompt = _tutor_agent.get_normal_system_prompt()
                 messages = [
-                    {"role": "system", "content": _tutor_agent.get_system_prompt()},
+                    {"role": "system", "content": system_prompt},
                     *history,
                     {"role": "user", "content": prompt},
                 ]
@@ -287,7 +297,7 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 except Exception as e:
                     logger.error(f"Stream error: {e}")
                     if not full_answer:
-                        full_answer = f"流式输出异常：{str(e)}"
+                        full_answer = "流式输出异常，请稍后重试"
                         if not client_disconnected:
                             await manager.send_message(session_id, {
                                 "type": "chunk",
@@ -405,6 +415,8 @@ async def get_student_qa_history(
     _current: str = Depends(require_auth),
 ):
     """获取学生的辅导问答历史（用于后续分析和优化）"""
+    if _current != student_id:
+        raise HTTPException(status_code=403, detail="无权访问其他学生的问答记录")
     query = db.query(TutorQAModel).filter(TutorQAModel.student_id == student_id)
     if session_id:
         query = query.filter(TutorQAModel.session_id == session_id)

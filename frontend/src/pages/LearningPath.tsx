@@ -4,7 +4,6 @@ import React, {
   useState,
   useMemo,
   useRef,
-  useCallback,
 } from "react";
 import {
   Typography,
@@ -59,6 +58,7 @@ import {
   profileApi,
   learningDataApi,
   logReflectionApi,
+  resourceApi,
   apiGet,
 } from "../services/api";
 import { kbApi } from "../services/knowledgeBaseApi";
@@ -84,17 +84,11 @@ const resourceTypeMeta: Record<
 > = {
   video: { icon: <PlayCircleOutlined />, color: "#ef4444", label: "视频" },
   code: { icon: <CodeOutlined />, color: "#3b82f6", label: "代码" },
-  doc: { icon: <FileTextOutlined />, color: "#10b981", label: "讲义" },
   quiz: { icon: <BookOutlined />, color: "#f59e0b", label: "测验" },
   questions: { icon: <BookOutlined />, color: "#f59e0b", label: "练习" },
   document: { icon: <FileTextOutlined />, color: "#10b981", label: "讲义" },
   mindmap: { icon: <ApartmentOutlined />, color: "#8b5cf6", label: "导图" },
   reading: { icon: <ReadOutlined />, color: "#06b6d4", label: "阅读" },
-  视频: { icon: <PlayCircleOutlined />, color: "#ef4444", label: "视频" },
-  代码: { icon: <CodeOutlined />, color: "#3b82f6", label: "代码" },
-  文档: { icon: <FileTextOutlined />, color: "#10b981", label: "文档" },
-  练习: { icon: <BookOutlined />, color: "#f59e0b", label: "练习" },
-  题目: { icon: <BookOutlined />, color: "#f59e0b", label: "题目" },
 };
 
 const resourceTypeLabel = (type: string): string =>
@@ -155,7 +149,12 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
       const treeData = parseMindmapToTree(data);
       return (
         <div className="max-h-96 overflow-auto overflow-x-hidden">
-          <Tree treeData={treeData} defaultExpandAll showLine />
+          <Tree
+            treeData={treeData}
+            defaultExpandAll
+            autoExpandParent
+            showLine
+          />
         </div>
       );
     } catch {
@@ -222,7 +221,6 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
 };
 
 const LearningPathPage: React.FC = () => {
-  const viewMode = "timeline";
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<PathNode | null>(null);
   const [pathData, setPathData] = useState<Record<string, unknown> | null>(
@@ -230,7 +228,7 @@ const LearningPathPage: React.FC = () => {
   );
   const [pathNodes, setPathNodes] = useState<PathNode[]>([]);
   const [pathStages, setPathStages] = useState<PathStage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showReviewAlert, setShowReviewAlert] = useState(() => {
     // 当天稍后提醒后保持隐藏；新一天自动恢复
     if (typeof window === "undefined") return true;
@@ -283,16 +281,24 @@ const LearningPathPage: React.FC = () => {
     null,
   );
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const generatingRef = useRef(false);
   const currentSubject = useAppStore((s) => s.currentSubject);
   const navigate = useNavigate();
   const timelineRef = useRef<HTMLDivElement>(null);
   const strokePathRef = useRef<SVGPathElement>(null);
+  const rightColRef = useRef<HTMLDivElement>(null);
+  const [matchedHeight, setMatchedHeight] = useState(0);
   const [timelineHeight, setTimelineHeight] = useState(0);
   const [visibleCount, setVisibleCount] = useState(0);
   const visibleCountRef = useRef(visibleCount);
   useEffect(() => {
     visibleCountRef.current = visibleCount;
   }, [visibleCount]);
+
+  const lineD = useMemo(() => {
+    const h = Math.max(timelineHeight, 1);
+    return `M 1.5 0 L 1.5 ${h}`;
+  }, [timelineHeight]);
 
   // 根据课程切换默认学习目标
   useEffect(() => {
@@ -307,11 +313,6 @@ const LearningPathPage: React.FC = () => {
   useEffect(() => {
     if (currentSubject) setGenSubject(currentSubject);
   }, [currentSubject]);
-
-  const lineD = useMemo(() => {
-    const h = Math.max(timelineHeight, 1);
-    return `M 8 0 L 8 ${h}`;
-  }, [timelineHeight]);
 
   // 加载本地保存的偏好和路径数据（按课程分别存储）
   useEffect(() => {
@@ -329,11 +330,13 @@ const LearningPathPage: React.FC = () => {
     }
   }, [studentId, currentSubject]);
 
-  // 加载画像建议
+  // 加载画像建议 + 薄弱知识点（合并为单次请求）
   useEffect(() => {
+    let ignore = false;
     const loadProfile = async () => {
       try {
         const res = await profileApi.get(studentId);
+        if (ignore) return;
         const p = res.data?.data;
         if (p) {
           const suggestions: string[] = [];
@@ -350,12 +353,31 @@ const LearningPathPage: React.FC = () => {
           if ((p.practical_preferences?.overall_score ?? 1) < 0.5)
             suggestions.push("实践偏好分较低，建议增加练习比重");
           setProfileSuggestions(suggestions);
-          // 复习提醒来自薄弱点列表（取前 5 条）
           setWeakReviewTopics((p.weak_areas || []).slice(0, 5));
+          // 薄弱知识点（用确定性哈希生成掌握度，避免每次渲染随机变化）
+          if (p.weak_areas?.length) {
+            setWeakPoints(
+              p.weak_areas.map((area: string) => ({
+                name: area,
+                mastery:
+                  (Math.abs(
+                    Array.from(area).reduce(
+                      (acc, ch) => acc * 31 + ch.charCodeAt(0),
+                      0,
+                    ),
+                  ) %
+                    40) +
+                  30,
+              })),
+            );
+          }
         }
       } catch {}
     };
     loadProfile();
+    return () => {
+      ignore = true;
+    };
   }, [studentId, currentSubject]);
 
   useEffect(() => {
@@ -380,6 +402,8 @@ const LearningPathPage: React.FC = () => {
           setPathData(res.data as unknown as Record<string, unknown>);
           setPathNodes(nodes as PathNode[]);
           setPathStages(stages);
+          setVisibleCount(nodes.length);
+          visibleCountRef.current = nodes.length;
         }
       } catch {
         if (!ignore) {
@@ -410,6 +434,20 @@ const LearningPathPage: React.FC = () => {
     return () => ro.disconnect();
   }, [pathNodes.length]);
 
+  // 右侧列高度 → 同步给左侧列（等高但左侧可滚动）
+  useLayoutEffect(() => {
+    const el = rightColRef.current;
+    if (!el) return;
+    const update = () => {
+      const h = el.scrollHeight;
+      if (h > 0) setMatchedHeight(h);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [resources.length, pathNodes.length]);
+
   // scroll-powered SVG stroke：随滚动逐渐绘制时间轴线
   useEffect(() => {
     const path = strokePathRef.current;
@@ -423,14 +461,12 @@ const LearningPathPage: React.FC = () => {
     const onScroll = () => {
       const rect = container.getBoundingClientRect();
       const vh = window.innerHeight;
-      // 当容器进入视口 80% 时开始绘制，底部到达视口 20% 时完成
       const start = rect.top - vh * 0.8;
       const end = rect.bottom - vh * 0.2;
       const range = end - start;
       const progress = Math.max(0, Math.min(1, -start / range));
       path.style.strokeDashoffset = `${len * (1 - progress)}`;
 
-      // 随 path 绘制进度逐步显现节点（只增不减）
       const count = Math.min(
         pathNodes.length,
         Math.max(
@@ -567,8 +603,6 @@ const LearningPathPage: React.FC = () => {
         type: r,
         icon: meta.icon,
         color: meta.color,
-        // 强制 key
-        ...{ _i: i },
       };
     });
   };
@@ -663,29 +697,38 @@ const LearningPathPage: React.FC = () => {
     action: "complete" | "skip" | "reset",
   ) => {
     const node = pathNodes.find((n) => n.id === nodeId);
-    // 标记完成：写入后端
-    if (action === "complete" && node) {
-      const elapsedSec = Math.max(
-        30,
-        Math.round((Date.now() - nodeOpenTimeRef.current) / 1000),
-      );
+    // 写入后端
+    if (node) {
       try {
-        await learningDataApi.record({
-          student_id: studentId,
-          kp_id: nodeKpId(node),
-          action: "complete",
-          duration: elapsedSec,
-          progress: 1,
-        });
-        // 自动整理到知识库
-        kbApi
-          .autoOrganize({
+        if (action === "complete") {
+          const elapsedSec = Math.max(
+            30,
+            Math.round((Date.now() - nodeOpenTimeRef.current) / 1000),
+          );
+          await learningDataApi.record({
+            student_id: studentId,
             kp_id: nodeKpId(node),
-            title: node.title,
-            content: `# ${node.title}\n\n学习路径节点完成。`,
-            action: "learn",
-          })
-          .catch(() => {});
+            action: "complete",
+            duration: elapsedSec,
+            progress: 1,
+          });
+          kbApi
+            .autoOrganize({
+              kp_id: nodeKpId(node),
+              title: node.title,
+              content: `# ${node.title}\n\n学习路径节点完成。`,
+              action: "learn",
+            })
+            .catch(() => {});
+        } else {
+          // skip / reset 也同步到后端
+          await learningDataApi.record({
+            student_id: studentId,
+            kp_id: nodeKpId(node),
+            action,
+            progress: action === "reset" ? 0 : undefined,
+          });
+        }
       } catch (e) {
         message.error((e as Error).message || "同步后端失败");
         return;
@@ -775,28 +818,10 @@ const LearningPathPage: React.FC = () => {
     };
   }, []);
 
-  // 加载薄弱知识点
-  useEffect(() => {
-    const loadWeakPoints = async () => {
-      try {
-        const res = await profileApi.get(studentId);
-        const p = res.data?.data;
-        if (p?.weak_areas?.length) {
-          setWeakPoints(
-            p.weak_areas.map((area: string) => ({
-              name: area,
-              mastery: Math.floor(Math.random() * 40 + 30),
-            })),
-          );
-        }
-      } catch {
-        // 静默失败
-      }
-    };
-    loadWeakPoints();
-  }, [studentId]);
-
   const handleGenerateResource = async () => {
+    // 防止双击并发
+    if (generatingRef.current) return;
+    generatingRef.current = true;
     // 清理可能残留的旧轮询
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -806,35 +831,21 @@ const LearningPathPage: React.FC = () => {
     setAgentStep(0);
     setGenResult("");
     try {
-      // 调用后端异步任务接口
-      const token = useAppStore.getState().token || "";
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || "/api/v1"}/resource/generate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            student_id: studentId,
-            topic:
-              genTarget === "weak"
-                ? selectedWeakPoints.join("、") || "薄弱知识点"
-                : targetTopic,
-            title:
-              genTarget === "weak"
-                ? selectedWeakPoints.join("、") || "薄弱知识点"
-                : targetTopic,
-            type: genType,
-            resource_types: [genType],
-            subject: genSubject,
-            difficulty: genDifficulty,
-            weak_points: genTarget === "weak" ? selectedWeakPoints : undefined,
-          }),
-        },
-      );
-      const data = await res.json();
+      const topic =
+        genTarget === "weak"
+          ? selectedWeakPoints.join("、") || "薄弱知识点"
+          : targetTopic;
+      const res = await resourceApi.generate({
+        student_id: studentId,
+        topic,
+        title: topic,
+        type: genType,
+        resource_types: [genType],
+        subject: genSubject,
+        difficulty: genDifficulty,
+        weak_points: genTarget === "weak" ? selectedWeakPoints : undefined,
+      });
+      const data = res.data;
       const taskId = data.task_id;
       if (!taskId) {
         throw new Error(data.message || "启动生成任务失败");
@@ -850,25 +861,20 @@ const LearningPathPage: React.FC = () => {
           clearInterval(intervalId);
           pollIntervalRef.current = null;
           setGeneratingResource(false);
+          generatingRef.current = false;
           setAgentStep(-1);
           message.error("生成超时，请稍后重试");
           return;
         }
         try {
-          const taskRes = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL || "/api/v1"}/resource/task/${taskId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${useAppStore.getState().token || ""}`,
-              },
-            },
-          );
-          const taskData = await taskRes.json();
+          const taskRes = await resourceApi.getTask(taskId);
+          const taskData = taskRes.data;
           if (taskData.status === "completed") {
             clearInterval(intervalId);
             pollIntervalRef.current = null;
             setAgentStep(AGENT_STEPS.length);
             setGeneratingResource(false);
+            generatingRef.current = false;
             // 提取生成结果
             const resources = taskData.resources || {};
             const firstKey = Object.keys(resources)[0];
@@ -884,6 +890,7 @@ const LearningPathPage: React.FC = () => {
             clearInterval(intervalId);
             pollIntervalRef.current = null;
             setGeneratingResource(false);
+            generatingRef.current = false;
             setAgentStep(-1);
             message.error(taskData.message || "生成失败");
           } else {
@@ -897,6 +904,7 @@ const LearningPathPage: React.FC = () => {
           clearInterval(intervalId);
           pollIntervalRef.current = null;
           setGeneratingResource(false);
+          generatingRef.current = false;
           setAgentStep(-1);
           message.error("网络错误，请稍后重试");
         }
@@ -904,6 +912,7 @@ const LearningPathPage: React.FC = () => {
       pollIntervalRef.current = intervalId;
     } catch (e) {
       setGeneratingResource(false);
+      generatingRef.current = false;
       setAgentStep(-1);
       message.error((e as Error).message || "生成失败");
     }
@@ -916,106 +925,67 @@ const LearningPathPage: React.FC = () => {
     ? Math.round((completedCount / pathNodes.length) * 100)
     : 0;
 
-  const _timelineItems = useMemo(
-    () =>
-      pathNodes.map((node) => ({
-        dot: (
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm"
-            style={{ background: statusColors[node.status] }}
-          >
-            <StatusIcon status={node.status} />
-          </div>
-        ),
-        color: statusColors[node.status],
-        children: (
-          <div
-            className="p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer"
-            onClick={() => openNodeDetail(node)}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Tag
-                className="rounded-full border-0 text-xs font-medium"
-                style={{
-                  background: statusBg[node.status],
-                  color: statusColors[node.status],
-                }}
-              >
-                {statusLabels[node.status]}
-              </Tag>
-              <span className="text-xs text-slate-400">{node.type}</span>
-            </div>
-            <Typography.Text className="font-bold text-slate-800 block text-base">
-              {node.title}
-            </Typography.Text>
-            <Typography.Text className="text-slate-400 text-sm">
-              {node.resources} 个资源
-            </Typography.Text>
-          </div>
-        ),
-      })),
-    [pathNodes],
-  );
-
   return (
     <div className="space-y-5">
       {/* 顶部控制栏 */}
       <Card
         className="border border-slate-100 rounded-2xl"
-        styles={{ body: { padding: "24px" } }}
+        styles={{ body: { padding: "16px 20px" } }}
       >
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Space>
-            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white text-sm">
               <FlagOutlined />
             </div>
             <div>
-              <Typography.Title level={4} className="!m-0 text-slate-800">
+              <Typography.Title level={5} className="!m-0 text-slate-800">
                 {targetTopic || "学习路径"}
               </Typography.Title>
               <Typography.Text className="text-slate-400 text-xs">
-                个性化路径 · 共 {pathNodes.length} 个阶段
+                {pathNodes.length} 个阶段 · 总计{" "}
+                {Math.ceil(
+                  pathNodes.reduce(
+                    (sum, n) => sum + (n.resources || 3) * 20,
+                    0,
+                  ) / dailyDuration,
+                )}{" "}
+                天 · 每日 {dailyDuration} 分钟
               </Typography.Text>
             </div>
-          </Space>
-          <Space>
-            <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs cursor-default">
-              <ClockCircleOutlined /> 时间轴视图
-            </Tag>
+          </div>
+          <Space size={8}>
             <Tooltip title="基于知识图谱约束的 LLM 路径规划">
               <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs cursor-default">
                 <ApartmentOutlined /> KG 约束
               </Tag>
             </Tooltip>
             <Button
-              type="primary"
               icon={<SwapOutlined />}
               loading={loading}
-              className="rounded-lg bg-primary"
+              className="rounded-lg"
               onClick={() => setDrawerOpen(true)}
             >
-              调整路径
+              调整
             </Button>
             <Button
-              className="rounded-lg border-slate-200"
+              className="rounded-lg"
               onClick={handleGeneratePath}
               loading={loading}
             >
               重新生成
             </Button>
             <Button
-              className="rounded-lg border-slate-200"
+              className="rounded-lg"
               icon={<HistoryOutlined />}
               onClick={() => setAdjustLogOpen(true)}
             >
-              调整记录
+              记录
             </Button>
           </Space>
         </div>
-
-        <div className="mt-6">
-          <div className="flex justify-between text-sm text-slate-500 mb-2">
-            <span className="font-medium">总体进度</span>
+        <div className="mt-3">
+          <div className="flex justify-between text-xs text-slate-500 mb-1">
+            <span>总体进度</span>
             <span className="font-bold text-primary">{progress}%</span>
           </div>
           <Progress
@@ -1064,68 +1034,67 @@ const LearningPathPage: React.FC = () => {
         </div>
       )}
 
-      {viewMode === "timeline" && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-10">
-          {pathNodes.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">
-              暂无学习路径
+      {/* 主内容区：左右分栏 */}
+      <div className="flex flex-col lg:flex-row gap-5">
+        {/* 左侧：SVG 时间轴（可滚动，高度与右侧同步） */}
+        <div className="w-full lg:w-[360px] shrink-0">
+          <div
+            className="bg-white rounded-2xl border border-slate-100 p-5"
+            style={{
+              maxHeight: matchedHeight || undefined,
+              overflowY: matchedHeight ? "auto" : undefined,
+            }}
+          >
+            <div className="font-semibold text-slate-800 text-sm mb-3 flex items-center gap-2">
+              <ClockCircleOutlined className="text-slate-400" />
+              学习路径
+              <span className="text-xs text-slate-400 font-normal ml-auto">
+                共 {pathNodes.length} 个节点
+              </span>
             </div>
-          ) : (
-            <div className="max-w-2xl mx-auto">
-              {/* 时间轴概览 */}
-              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
-                <div>
-                  <Typography.Text className="text-slate-500 text-sm">
-                    预计总时长
-                  </Typography.Text>
-                  <div className="text-2xl font-bold text-slate-800">
-                    {Math.ceil(
-                      pathNodes.reduce(
-                        (sum, n) => sum + (n.resources || 3) * 20,
-                        0,
-                      ) / dailyDuration,
-                    )}{" "}
-                    天
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Typography.Text className="text-slate-500 text-sm">
-                    每日学习
-                  </Typography.Text>
-                  <div className="text-2xl font-bold text-slate-800">
-                    {dailyDuration} 分钟
-                  </div>
-                </div>
+            {pathNodes.length === 0 ? (
+              <div className="text-center py-12 text-slate-400 text-sm">
+                暂无学习路径，点击「重新生成」创建
               </div>
-
-              {/* 自定义时间轴：避免 antd Timeline label 挤压 */}
-              <div className="relative" ref={timelineRef}>
-                {/* scroll-powered SVG stroke 中心线（背景层） */}
+            ) : (
+              <div className="relative overflow-x-hidden" ref={timelineRef}>
+                {/* SVG 中心线 */}
                 <svg
-                  className="absolute left-4 md:left-1/2 top-0 -translate-x-1/2 pointer-events-none overflow-visible"
-                  width={16}
+                  className="absolute left-[15px] top-0 pointer-events-none"
+                  width={3}
                   height={timelineHeight}
-                  viewBox={`0 0 16 ${Math.max(timelineHeight, 1)}`}
+                  viewBox={`0 0 3 ${Math.max(timelineHeight, 1)}`}
+                  style={{ overflow: "hidden" }}
                 >
-                  {/* 底色参考线 */}
                   <path
                     d={lineD}
                     stroke="#e2e8f0"
-                    strokeWidth={6}
+                    strokeWidth={2}
                     strokeLinecap="round"
                     fill="none"
                   />
-                  {/* scroll-powered 深绿色绘制线 */}
                   <path
                     ref={strokePathRef}
                     d={lineD}
-                    stroke="#10b981"
-                    strokeWidth={6}
+                    stroke="url(#timeline-gradient)"
+                    strokeWidth={2}
                     strokeLinecap="round"
                     fill="none"
                   />
+                  <defs>
+                    <linearGradient
+                      id="timeline-gradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#10b981" />
+                    </linearGradient>
+                  </defs>
                 </svg>
-                <div className="space-y-8">
+                <div className="space-y-1">
                   {pathNodes.map((node, idx) => {
                     const cumulativeMinutes = pathNodes
                       .slice(0, idx)
@@ -1134,458 +1103,454 @@ const LearningPathPage: React.FC = () => {
                       Math.floor(cumulativeMinutes / dailyDuration) + 1;
                     const weekNum = Math.ceil(dayNum / 7);
                     const isMilestone = dayNum % 7 === 1 && idx > 0;
-                    const isLeft = idx % 2 === 0;
+                    const isCurrent = node.status === "in-progress";
+                    const isDone = node.status === "completed";
                     return (
                       <div
                         key={node.id}
-                        className={`relative flex items-start gap-4 md:gap-8 transition-opacity transition-transform duration-700 ${idx < visibleCount ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"} ${isLeft ? "md:flex-row" : "md:flex-row-reverse"}`}
+                        className={`relative flex items-start gap-3 pl-10 pr-2 py-2.5 rounded-xl cursor-pointer transition-all hover:bg-slate-50/80 ${
+                          isCurrent
+                            ? "bg-indigo-50/50 ring-1 ring-indigo-100/60"
+                            : ""
+                        } ${idx < visibleCount ? "opacity-100" : "hidden"}`}
+                        onClick={() => openNodeDetail(node)}
                       >
-                        {/* 移动端：左侧固定；桌面端：交替 */}
-                        <div className="hidden md:block flex-1" />
-                        {/* 时间轴节点圆点 */}
-                        <div className="relative z-10 shrink-0">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm text-sm"
-                            style={{ background: statusColors[node.status] }}
-                          >
-                            <StatusIcon
-                              status={node.status}
-                              pendingIcon={
-                                <span className="text-xs font-bold">
-                                  {idx + 1}
-                                </span>
-                              }
-                            />
-                          </div>
-                        </div>
-                        {/* 内容卡片 */}
+                        {/* 状态圆点 */}
                         <div
-                          className={`flex-1 ${isLeft ? "md:text-left" : "md:text-right"}`}
+                          className="absolute left-[6px] top-3 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md z-10 ring-2 ring-white"
+                          style={{ background: statusColors[node.status] }}
                         >
-                          {/* 日期标签 */}
-                          <div
-                            className={`mb-2 text-xs leading-relaxed ${isLeft ? "md:text-left" : "md:text-right"}`}
-                          >
-                            <span className="font-bold text-slate-600 mr-2">
+                          <StatusIcon
+                            status={node.status}
+                            pendingIcon={
+                              <span className="text-[9px] font-bold">
+                                {idx + 1}
+                              </span>
+                            }
+                          />
+                        </div>
+                        {/* 内容 */}
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`font-medium text-slate-800 truncate ${isCurrent ? "text-[14px]" : "text-[13px]"}`}
+                            >
+                              {node.title}
+                            </span>
+                            {isMilestone && (
+                              <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-[9px] px-1 py-0 !leading-3 shrink-0">
+                                <FlagOutlined /> W{weekNum}
+                              </Tag>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-slate-400">
                               第 {dayNum} 天
                             </span>
-                            <span className="text-slate-400">
+                            <span className="text-[10px] text-slate-300">
+                              ·
+                            </span>
+                            <span className="text-[10px] text-slate-400">
                               {(node.resources || 3) * 20} 分钟
                             </span>
-                            {isMilestone && (
-                              <span className="text-amber-500 font-medium ml-2">
-                                第 {weekNum} 周
-                              </span>
-                            )}
-                          </div>
-                          {/* 卡片 */}
-                          <div
-                            className={`inline-block p-5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-card transition-all cursor-pointer max-w-sm text-left ${isMilestone ? "ring-2 ring-amber-100" : ""} ${changedNodeIds.has(node.id) ? "animate-pulse-once ring-2 ring-indigo-200" : ""}`}
-                            onClick={() => openNodeDetail(node)}
-                          >
-                            {isMilestone && (
-                              <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-xs mb-2">
-                                <FlagOutlined /> 里程碑 · 第 {weekNum} 周
-                              </Tag>
-                            )}
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <Tag
-                                className="rounded-full border-0 text-xs font-medium"
-                                style={{
-                                  background: statusBg[node.status],
-                                  color: statusColors[node.status],
-                                }}
-                              >
-                                {statusLabels[node.status]}
-                              </Tag>
-                              <span className="text-xs text-slate-400">
-                                {node.type}
-                              </span>
-                            </div>
-                            <Typography.Text className="font-bold text-slate-800 block text-base">
-                              {node.title}
-                            </Typography.Text>
-                            <Typography.Text className="text-slate-400 text-sm">
-                              {node.resources} 个资源
-                            </Typography.Text>
                           </div>
                         </div>
-                        {/* 移动端占位 */}
-                        <div className="md:hidden flex-1" />
                       </div>
                     );
                   })}
-                  {/* 最后一个节点后的“未完待续”标记 */}
-                  <div className="relative flex items-start gap-4 md:gap-8">
-                    <div className="hidden md:block flex-1" />
-                    <div className="relative z-10 shrink-0">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm text-sm bg-emerald-500">
-                        <span className="text-lg leading-none">…</span>
-                      </div>
+                  <div className="relative flex items-center gap-3 pl-10 py-2">
+                    <div className="absolute left-[6px] top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center bg-emerald-500 text-white z-10 text-[10px] shadow-md ring-2 ring-white">
+                      …
                     </div>
-                    <div className="flex-1">
-                      <div className="inline-block px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-xs font-medium text-emerald-600">
-                        未完待续 · 更多知识点持续更新中
-                      </div>
+                    <div className="inline-block px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[10px] font-medium text-emerald-600">
+                      未完待续
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* AI 资源生成面板 */}
-      <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-2xl border border-blue-100 p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white text-lg">
-            <ThunderboltOutlined />
+            )}
           </div>
-          <div className="flex-1">
-            <div className="font-semibold text-slate-800">AI 智能生成资源</div>
-            <div className="text-xs text-slate-400">
-              基于你的学习画像和最近错题，一键生成针对性资源
-            </div>
-          </div>
-          <Tag color="blue" className="rounded-full">
-            Beta
-          </Tag>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={genSubject}
-            onChange={setGenSubject}
-            size="middle"
-            style={{ width: 120 }}
-            options={[
-              { value: "C语言", label: "C语言" },
-              { value: "电路分析", label: "电路分析" },
-            ]}
-          />
-          <Select
-            value={genTarget}
-            onChange={setGenTarget}
-            size="middle"
-            style={{ width: 140 }}
-            options={[
-              { value: "weak", label: "针对薄弱点" },
-              { value: "goal", label: "针对学习目标" },
-              { value: "custom", label: "自定义主题" },
-            ]}
-          />
-          <Select
-            value={genType}
-            onChange={setGenType}
-            size="middle"
-            style={{ width: 120 }}
-            options={[
-              { value: "document", label: "课程讲义" },
-              { value: "mindmap", label: "知识导图" },
-              { value: "quiz", label: "练习题目" },
-              { value: "reading", label: "扩展阅读" },
-              { value: "code", label: "代码示例" },
-            ]}
-          />
-          <Select
-            value={genDifficulty}
-            onChange={setGenDifficulty}
-            size="middle"
-            style={{ width: 100 }}
-            options={[
-              { value: "easy", label: "简单" },
-              { value: "medium", label: "中等" },
-              { value: "hard", label: "困难" },
-            ]}
-          />
-          <Button
-            type="primary"
-            icon={<ThunderboltOutlined />}
-            onClick={handleGenerateResource}
-            loading={generatingResource}
-            className="rounded-lg bg-primary"
-          >
-            一键生成
-          </Button>
-        </div>
-
-        {genTarget === "weak" && weakPoints.length > 0 && (
-          <div className="mt-3 p-3 bg-white rounded-xl border border-slate-100">
-            <div className="text-xs text-slate-400 mb-2">
-              选择要针对的薄弱知识点（不选则全部针对）
-              {selectedWeakPoints.length > 0 && (
-                <span className="text-primary ml-1">
-                  · 已选 {selectedWeakPoints.length} 个
-                </span>
-              )}
-              ：
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {weakPoints.map((wp) => (
-                <Tag
-                  key={wp.name}
-                  color={
-                    selectedWeakPoints.includes(wp.name) ? "blue" : "default"
-                  }
-                  className="cursor-pointer text-xs"
-                  onClick={() =>
-                    setSelectedWeakPoints((prev) =>
-                      prev.includes(wp.name)
-                        ? prev.filter((n) => n !== wp.name)
-                        : [...prev, wp.name],
-                    )
-                  }
-                >
-                  {wp.name} ({wp.mastery}%)
-                </Tag>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {agentStep >= 0 && (
-          <div className="mt-4 p-3 bg-white rounded-xl border border-slate-100">
-            <div className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-1.5">
-              <RobotOutlined /> 多智能体协作中
-            </div>
-            <Steps
-              current={agentStep}
-              size="small"
-              items={AGENT_STEPS.map((s, i) => ({
-                title: s.title,
-                description: s.description,
-                status:
-                  agentStep > i
-                    ? "finish"
-                    : agentStep === i
-                      ? "process"
-                      : "wait",
-              }))}
-            />
-          </div>
-        )}
-
-        {genResult && (
-          <div className="mt-4 p-4 bg-white rounded-xl border border-slate-100 text-sm leading-relaxed whitespace-pre-wrap max-h-72 overflow-auto">
-            {genResult}
-          </div>
-        )}
-      </div>
-
-      {/* 资源列表 */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="font-semibold text-slate-800 flex items-center gap-2">
-            我的资源
-            <span className="text-xs text-slate-400 font-normal">
-              共 {resources.length} 个
-            </span>
-            <Button
-              type="text"
-              size="small"
-              icon={<ReloadOutlined />}
-              onClick={loadResources}
-              loading={resourcesLoading}
-            />
-          </div>
-          <Space wrap>
-            <Input.Search
-              placeholder="搜索资源"
-              allowClear
-              style={{ width: 160 }}
-              onSearch={(v) => {
-                setResourceKeyword(v);
-                setResourcePage(1);
-              }}
-            />
-            <Select
-              value={resourceFilter.type || undefined}
-              onChange={(v) => {
-                setResourceFilter((f) => ({ ...f, type: v || "" }));
-                setResourcePage(1);
-              }}
-              style={{ width: 96 }}
-              allowClear
-              placeholder="类型"
-              options={[
-                { value: "document", label: "讲义" },
-                { value: "questions", label: "练习" },
-                { value: "quiz", label: "测验" },
-                { value: "mindmap", label: "导图" },
-                { value: "code", label: "代码" },
-                { value: "reading", label: "阅读" },
-              ]}
-            />
-            <Select
-              value={resourceFilter.subject || undefined}
-              onChange={(v) => {
-                setResourceFilter((f) => ({ ...f, subject: v || "" }));
-                setResourcePage(1);
-              }}
-              style={{ width: 96 }}
-              allowClear
-              placeholder="学科"
-              options={[
-                { value: "C语言", label: "C语言" },
-                { value: "电路分析", label: "电路分析" },
-              ]}
-            />
-            <Select
-              value={resourceFilter.difficulty || undefined}
-              onChange={(v) => {
-                setResourceFilter((f) => ({ ...f, difficulty: v || "" }));
-                setResourcePage(1);
-              }}
-              style={{ width: 96 }}
-              allowClear
-              placeholder="难度"
-              options={[
-                { value: "easy", label: "简单" },
-                { value: "medium", label: "中等" },
-                { value: "hard", label: "困难" },
-              ]}
-            />
-          </Space>
-        </div>
-
-        {(() => {
-          const filtered = resources
-            .filter(
-              (r) => !resourceFilter.type || r.type === resourceFilter.type,
-            )
-            .filter(
-              (r) =>
-                !resourceFilter.subject || r.subject === resourceFilter.subject,
-            )
-            .filter(
-              (r) =>
-                !resourceFilter.difficulty ||
-                r.difficulty === resourceFilter.difficulty,
-            )
-            .filter(
-              (r) => !resourceKeyword || r.title.includes(resourceKeyword),
-            );
-          const pageSize = 8;
-          const paged = filtered.slice(
-            (resourcePage - 1) * pageSize,
-            resourcePage * pageSize,
-          );
-
-          if (resourcesLoading) {
-            return (
-              <div className="text-center py-8 text-slate-400 text-sm">
-                加载中...
+        {/* 右侧：AI 生成 + 资源列表 */}
+        <div ref={rightColRef} className="w-full lg:flex-1 shrink-0 space-y-5">
+          {/* AI 资源生成面板 */}
+          <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-2xl border border-blue-100 p-5">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+                <ThunderboltOutlined />
               </div>
-            );
-          }
-
-          if (filtered.length === 0) {
-            return (
-              <div className="text-center py-8 text-slate-400 text-sm">
-                <div className="mb-2">暂无资源，使用上方AI生成面板创建</div>
-                <Button
-                  size="small"
-                  type="link"
-                  onClick={() =>
-                    window.scrollTo({ top: 0, behavior: "smooth" })
-                  }
-                >
-                  <ThunderboltOutlined /> 去生成资源
-                </Button>
-              </div>
-            );
-          }
-
-          return (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {paged.map((r) => {
-                  const typeColor =
-                    r.type === "document" || r.type === "reading"
-                      ? "green"
-                      : r.type === "mindmap"
-                        ? "blue"
-                        : r.type === "questions" || r.type === "quiz"
-                          ? "orange"
-                          : r.type === "code"
-                            ? "geekblue"
-                            : "default";
-                  return (
-                    <div
-                      key={r.id}
-                      role="button"
-                      tabIndex={0}
-                      className="p-4 rounded-xl border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
-                      onClick={() => {
-                        setSelectedResource(r);
-                        setResourceDetailOpen(true);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setSelectedResource(r);
-                          setResourceDetailOpen(true);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        {resourceTypeMeta[r.type]?.icon || <FileTextOutlined />}
-                        <Tag
-                          className="rounded-full text-xs border-0"
-                          color={typeColor}
-                        >
-                          {resourceTypeLabel(r.type)}
-                        </Tag>
-                        {r.difficulty && (
-                          <Tag
-                            className="rounded-full text-xs border-0"
-                            color={
-                              r.difficulty === "easy"
-                                ? "success"
-                                : r.difficulty === "hard"
-                                  ? "error"
-                                  : "default"
-                            }
-                          >
-                            {r.difficulty === "easy"
-                              ? "简单"
-                              : r.difficulty === "hard"
-                                ? "困难"
-                                : "中等"}
-                          </Tag>
-                        )}
-                      </div>
-                      <div className="font-medium text-sm text-slate-800 line-clamp-2 mb-1">
-                        {r.title}
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-400">
-                        <span>{r.created_at?.slice(0, 10)}</span>
-                        {r.subject && <span>{r.subject}</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {filtered.length > pageSize && (
-                <div className="mt-4 flex justify-center">
-                  <Pagination
-                    current={resourcePage}
-                    total={filtered.length}
-                    pageSize={pageSize}
-                    onChange={setResourcePage}
-                    showSizeChanger={false}
-                    showQuickJumper
-                    size="small"
-                  />
+              <div className="flex-1">
+                <div className="font-semibold text-slate-800 text-sm">
+                  AI 智能生成
                 </div>
-              )}
-            </>
-          );
-        })()}
+                <div className="text-[11px] text-slate-400">
+                  基于画像和错题，一键生成针对性资源
+                </div>
+              </div>
+              <Tag color="blue" className="rounded-full text-[10px]">
+                Beta
+              </Tag>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={genSubject}
+                onChange={setGenSubject}
+                size="small"
+                style={{ width: 90 }}
+                options={[
+                  { value: "C语言", label: "C语言" },
+                  { value: "电路分析", label: "电路分析" },
+                ]}
+              />
+              <Select
+                value={genTarget}
+                onChange={setGenTarget}
+                size="small"
+                style={{ width: 110 }}
+                options={[
+                  { value: "weak", label: "针对薄弱点" },
+                  { value: "goal", label: "针对学习目标" },
+                  { value: "custom", label: "自定义主题" },
+                ]}
+              />
+              <Select
+                value={genType}
+                onChange={setGenType}
+                size="small"
+                style={{ width: 90 }}
+                options={[
+                  { value: "document", label: "课程讲义" },
+                  { value: "mindmap", label: "知识导图" },
+                  { value: "quiz", label: "练习题目" },
+                  { value: "reading", label: "扩展阅读" },
+                  { value: "code", label: "代码示例" },
+                ]}
+              />
+              <Select
+                value={genDifficulty}
+                onChange={setGenDifficulty}
+                size="small"
+                style={{ width: 72 }}
+                options={[
+                  { value: "easy", label: "简单" },
+                  { value: "medium", label: "中等" },
+                  { value: "hard", label: "困难" },
+                ]}
+              />
+              <Button
+                type="primary"
+                icon={<ThunderboltOutlined />}
+                onClick={handleGenerateResource}
+                loading={generatingResource}
+                disabled={generatingResource}
+                size="small"
+                className="rounded-lg bg-primary"
+              >
+                生成
+              </Button>
+            </div>
+
+            {genTarget === "weak" && weakPoints.length > 0 && (
+              <div className="mt-3 p-2.5 bg-white rounded-xl border border-slate-100">
+                <div className="text-[11px] text-slate-400 mb-1.5 flex items-center gap-1.5">
+                  薄弱知识点
+                  {selectedWeakPoints.length > 0 && (
+                    <span className="text-primary">
+                      已选 {selectedWeakPoints.length}
+                    </span>
+                  )}
+                  <span
+                    className="text-primary cursor-pointer hover:underline ml-auto"
+                    onClick={() =>
+                      setSelectedWeakPoints(weakPoints.map((wp) => wp.name))
+                    }
+                  >
+                    全选
+                  </span>
+                  <span
+                    className="text-slate-400 cursor-pointer hover:underline"
+                    onClick={() => setSelectedWeakPoints([])}
+                  >
+                    清空
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {weakPoints.map((wp) => (
+                    <Tag
+                      key={wp.name}
+                      color={
+                        selectedWeakPoints.includes(wp.name)
+                          ? "blue"
+                          : "default"
+                      }
+                      className="cursor-pointer text-[11px]"
+                      onClick={() =>
+                        setSelectedWeakPoints((prev) =>
+                          prev.includes(wp.name)
+                            ? prev.filter((n) => n !== wp.name)
+                            : [...prev, wp.name],
+                        )
+                      }
+                    >
+                      {wp.name} {wp.mastery}%
+                    </Tag>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {agentStep >= 0 && (
+              <div className="mt-3 p-2.5 bg-white rounded-xl border border-slate-100">
+                <div className="text-xs font-semibold text-slate-800 mb-1.5 flex items-center gap-1">
+                  <RobotOutlined /> 多智能体协作中
+                </div>
+                <Steps
+                  current={agentStep}
+                  size="small"
+                  items={AGENT_STEPS.map((s, i) => ({
+                    title: s.title,
+                    description: s.description,
+                    status:
+                      agentStep > i
+                        ? "finish"
+                        : agentStep === i
+                          ? "process"
+                          : "wait",
+                  }))}
+                />
+              </div>
+            )}
+
+            {genResult && (
+              <div className="mt-3 p-3 bg-white rounded-xl border border-slate-100 text-xs leading-relaxed whitespace-pre-wrap max-h-48 overflow-auto">
+                {genResult}
+              </div>
+            )}
+          </div>
+
+          {/* 资源列表 */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="font-semibold text-slate-800 flex items-center gap-2">
+                我的资源
+                <span className="text-xs text-slate-400 font-normal">
+                  共 {resources.length} 个
+                </span>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  onClick={loadResources}
+                  loading={resourcesLoading}
+                />
+              </div>
+              <Space wrap>
+                <Input.Search
+                  placeholder="搜索资源"
+                  allowClear
+                  style={{ width: 160 }}
+                  onSearch={(v) => {
+                    setResourceKeyword(v);
+                    setResourcePage(1);
+                  }}
+                />
+                <Select
+                  value={resourceFilter.type || undefined}
+                  onChange={(v) => {
+                    setResourceFilter((f) => ({ ...f, type: v || "" }));
+                    setResourcePage(1);
+                  }}
+                  style={{ width: 96 }}
+                  allowClear
+                  placeholder="类型"
+                  options={[
+                    { value: "document", label: "讲义" },
+                    { value: "questions", label: "练习" },
+                    { value: "quiz", label: "测验" },
+                    { value: "mindmap", label: "导图" },
+                    { value: "code", label: "代码" },
+                    { value: "reading", label: "阅读" },
+                  ]}
+                />
+                <Select
+                  value={resourceFilter.subject || undefined}
+                  onChange={(v) => {
+                    setResourceFilter((f) => ({ ...f, subject: v || "" }));
+                    setResourcePage(1);
+                  }}
+                  style={{ width: 96 }}
+                  allowClear
+                  placeholder="学科"
+                  options={[
+                    { value: "C语言", label: "C语言" },
+                    { value: "电路分析", label: "电路分析" },
+                  ]}
+                />
+                <Select
+                  value={resourceFilter.difficulty || undefined}
+                  onChange={(v) => {
+                    setResourceFilter((f) => ({ ...f, difficulty: v || "" }));
+                    setResourcePage(1);
+                  }}
+                  style={{ width: 96 }}
+                  allowClear
+                  placeholder="难度"
+                  options={[
+                    { value: "easy", label: "简单" },
+                    { value: "medium", label: "中等" },
+                    { value: "hard", label: "困难" },
+                  ]}
+                />
+              </Space>
+            </div>
+
+            {(() => {
+              const filtered = resources
+                .filter(
+                  (r) => !resourceFilter.type || r.type === resourceFilter.type,
+                )
+                .filter(
+                  (r) =>
+                    !resourceFilter.subject ||
+                    r.subject === resourceFilter.subject,
+                )
+                .filter(
+                  (r) =>
+                    !resourceFilter.difficulty ||
+                    r.difficulty === resourceFilter.difficulty,
+                )
+                .filter(
+                  (r) =>
+                    !resourceKeyword ||
+                    r.title
+                      .toLowerCase()
+                      .includes(resourceKeyword.toLowerCase()),
+                );
+              const pageSize = 8;
+              const paged = filtered.slice(
+                (resourcePage - 1) * pageSize,
+                resourcePage * pageSize,
+              );
+
+              if (resourcesLoading) {
+                return (
+                  <div className="text-center py-8 text-slate-400 text-sm">
+                    加载中...
+                  </div>
+                );
+              }
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-8 text-slate-400 text-sm">
+                    <div className="mb-2">暂无资源，使用上方AI生成面板创建</div>
+                    <Button
+                      size="small"
+                      type="link"
+                      onClick={() =>
+                        window.scrollTo({ top: 0, behavior: "smooth" })
+                      }
+                    >
+                      <ThunderboltOutlined /> 去生成资源
+                    </Button>
+                  </div>
+                );
+              }
+
+              return (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {paged.map((r) => {
+                      const typeColor =
+                        r.type === "document" || r.type === "reading"
+                          ? "green"
+                          : r.type === "mindmap"
+                            ? "blue"
+                            : r.type === "questions" || r.type === "quiz"
+                              ? "orange"
+                              : r.type === "code"
+                                ? "geekblue"
+                                : "default";
+                      return (
+                        <div
+                          key={r.id}
+                          role="button"
+                          tabIndex={0}
+                          className="p-4 rounded-xl border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
+                          onClick={() => {
+                            setSelectedResource(r);
+                            setResourceDetailOpen(true);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedResource(r);
+                              setResourceDetailOpen(true);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            {resourceTypeMeta[r.type]?.icon || (
+                              <FileTextOutlined />
+                            )}
+                            <Tag
+                              className="rounded-full text-xs border-0"
+                              color={typeColor}
+                            >
+                              {resourceTypeLabel(r.type)}
+                            </Tag>
+                            {r.difficulty && (
+                              <Tag
+                                className="rounded-full text-xs border-0"
+                                color={
+                                  r.difficulty === "easy"
+                                    ? "success"
+                                    : r.difficulty === "hard"
+                                      ? "error"
+                                      : "default"
+                                }
+                              >
+                                {r.difficulty === "easy"
+                                  ? "简单"
+                                  : r.difficulty === "hard"
+                                    ? "困难"
+                                    : "中等"}
+                              </Tag>
+                            )}
+                          </div>
+                          <div className="font-medium text-sm text-slate-800 line-clamp-2 mb-1">
+                            {r.title}
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-400">
+                            <span>{r.created_at?.slice(0, 10)}</span>
+                            {r.subject && <span>{r.subject}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {filtered.length > pageSize && (
+                    <div className="mt-4 flex justify-center">
+                      <Pagination
+                        current={resourcePage}
+                        total={filtered.length}
+                        pageSize={pageSize}
+                        onChange={setResourcePage}
+                        showSizeChanger={false}
+                        showQuickJumper
+                        size="small"
+                      />
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
       </div>
 
-      {/* 知识图谱视图 */}
       {/* 节点详情/调整抽屉 */}
       <Drawer
         title={

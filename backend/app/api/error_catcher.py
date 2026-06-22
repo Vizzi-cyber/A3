@@ -67,7 +67,7 @@ async def analyze_code_error(
 
     except Exception as e:
         logger.error(f"Error analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/catch-error")
@@ -90,7 +90,7 @@ async def catch_error(
 
     except Exception as e:
         logger.error(f"Error catching failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/analyze-misconception")
@@ -112,7 +112,7 @@ async def analyze_misconception(
 
     except Exception as e:
         logger.error(f"Misconception analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/validate-code")
@@ -134,4 +134,4 @@ async def validate_code(
 
     except Exception as e:
         logger.error(f"Code validation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")

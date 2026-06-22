@@ -104,7 +104,7 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       const res = await authApi.login(values);
-      const token = res.data.access_token;
+      const token = res.data?.access_token;
       if (!token) {
         message.error("登录失败：未获取到令牌");
         return;
@@ -114,7 +114,7 @@ const Login: React.FC = () => {
       let role = "student";
       try {
         const meRes = await authApi.me();
-        const u = meRes.data.data;
+        const u = meRes.data?.data;
         role = u.role;
         setUserInfo({
           student_id: u.student_id,

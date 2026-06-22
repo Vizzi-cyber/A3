@@ -83,7 +83,7 @@ async def build_knowledge_graph(
         raise HTTPException(status_code=504, detail="Graph build timed out")
     except Exception as e:
         logger.error(f"Knowledge graph build failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
     if result.get("status") != "success":
         raise HTTPException(status_code=500, detail=result.get("error", "Build failed"))

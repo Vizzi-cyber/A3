@@ -27,7 +27,7 @@ from ..schemas import (
 )
 from ..agents import ResourceGeneratorAgent
 from ..services import content_library
-from .auth import get_current_student_id, require_auth
+from .auth import require_auth
 from sqlalchemy.orm import Session
 from ..models.database import get_db, SessionLocal
 from ..models.knowledge import ResourceTaskModel
@@ -105,14 +105,14 @@ _MAX_TASKS = 500
 
 
 def _cleanup_old_tasks():
-    """当任务数超过上限时，删除最早完成的或最旧的 pending 任务"""
+    """当任务数超过上限时，删除最早的已完成任务（不删除 running/pending）"""
     db = SessionLocal()
     try:
         total = db.query(ResourceTaskModel).count()
         if total <= _MAX_TASKS:
             return
         to_remove = total - _MAX_TASKS
-        # 优先删除已完成的旧任务
+        # 仅删除已完成的旧任务，保护正在运行的任务
         old_completed = (
             db.query(ResourceTaskModel)
             .filter(ResourceTaskModel.status == "completed")
@@ -123,23 +123,9 @@ def _cleanup_old_tasks():
         for t in old_completed:
             db.delete(t)
         db.commit()
-
-        # 如果还不够，再删除最旧的任务
-        remaining = db.query(ResourceTaskModel).count()
-        if remaining > _MAX_TASKS:
-            to_remove2 = remaining - _MAX_TASKS
-            oldest = (
-                db.query(ResourceTaskModel)
-                .order_by(ResourceTaskModel.created_at)
-                .limit(to_remove2)
-                .all()
-            )
-            for t in oldest:
-                db.delete(t)
-            db.commit()
     except Exception as e:
         db.rollback()
-        logger.warning(f"Cleanup old tasks failed: {e}")
+        logger.warning(f"Cleanup old tasks failed: {e}", exc_info=True)
     finally:
         db.close()
 
@@ -153,8 +139,15 @@ async def generate_resource(
 ):
     """生成多模态学习资源 —— 后台任务直接调用 ResourceGeneratorAgent"""
     import uuid
+    # 校验 student_id 与认证身份一致
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="只能为自己生成资源")
     task_id = f"task_{uuid.uuid4().hex[:12]}"
-    _cleanup_old_tasks()
+    try:
+        loop = asyncio.get_running_loop()
+        loop.run_in_executor(None, _cleanup_old_tasks)
+    except RuntimeError:
+        pass
     # 兼容课设A3前端：如果传了 type 字段，转换为 resource_types
     resource_types = request.resource_types
     if request.type and request.type not in resource_types:
@@ -209,10 +202,9 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
         task.progress = 0.2
         db.commit()
 
-        # 类型映射：quiz→questions, reading→document
+        # 类型映射：quiz→questions（reading 保持独立类型）
         type_map = {
             "quiz": "questions",
-            "reading": "document",
             "video_script": "document",
         }
         resource_types = [type_map.get(rt, rt) for rt in request.resource_types]
@@ -220,7 +212,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
         results = {}
         tasks_to_run = []
         for rt in resource_types:
-            if rt == "document":
+            if rt in ("document", "reading"):
                 tasks_to_run.append(_resource_agent.process({
                     "task": "generate_document",
                     "topic": request.topic,
@@ -255,9 +247,20 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
                 task.message = f"Generating {len(tasks_to_run)} resource(s)..."
                 task.progress = 0.3
                 db.commit()
+
+                async def _limited(coro):
+                    async with _llm_semaphore:
+                        return await coro
+
+                limited_tasks = [_limited(t) for t in tasks_to_run]
+                # 动态超时：每种资源类型最多45s，考虑信号量并发限制
+                import math
+                max_concurrent = _llm_semaphore._value if hasattr(_llm_semaphore, '_value') else 3
+                rounds = math.ceil(len(limited_tasks) / max_concurrent)
+                dynamic_timeout = max(120.0, rounds * 50.0)
                 agent_results = await asyncio.wait_for(
-                    asyncio.gather(*tasks_to_run, return_exceptions=True),
-                    timeout=60.0,
+                    asyncio.gather(*limited_tasks, return_exceptions=True),
+                    timeout=dynamic_timeout,
                 )
                 for idx, res in enumerate(agent_results):
                     if isinstance(res, Exception):
@@ -278,11 +281,11 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.error(f"Task {task_id} failed: {e}")
+        logger.error(f"Task {task_id} failed: {e}", exc_info=True)
         task = db.query(ResourceTaskModel).filter(ResourceTaskModel.task_id == task_id).first()
         if task:
             task.status = "failed"
-            task.message = str(e)
+            task.message = "生成失败，请稍后重试"
             db.commit()
     finally:
         db.close()
@@ -316,10 +319,11 @@ async def list_resources(
     _current: str = Depends(require_auth),
 ):
     """返回已完成的资源生成任务列表"""
+    page_size = min(max(page_size, 1), 100)  # 限制每页最多 100 条
     query = db.query(ResourceTaskModel).filter(ResourceTaskModel.status == "completed")
     if type:
         # 反向映射：前端筛选值可能与 DB 存储值不同
-        reverse_map = {"quiz": "questions", "reading": "document"}
+        reverse_map = {"quiz": "questions"}
         db_type = reverse_map.get(type, type)
         query = query.filter(ResourceTaskModel.resource_type == db_type)
     if subject:
@@ -469,14 +473,15 @@ async def generate_code(request: CodeGenerateRequest, _current: str = Depends(re
 
 _DANGEROUS_MODULES = {
     "os", "sys", "subprocess", "shutil", "socket", "ctypes",
-    "urllib", "http", "ftplib", "telnetlib", "pathlib",
-    "pickle", "marshal", "base64", "platform", "multiprocessing",
+    "urllib", "http", "ftplib", "telnetlib",
+    "pickle", "marshal", "platform", "multiprocessing",
+    "builtins",
 }
 
 _DANGEROUS_CALLS = {
     "eval", "exec", "compile", "open", "input", "raw_input",
     "__import__", "breakpoint", "exit", "quit",
-    "getattr", "globals", "locals", "vars", "dir",
+    "globals", "locals", "vars",
 }
 
 
@@ -645,7 +650,7 @@ def _run_subprocess_safe(
             preexec = _set_limits
         else:
             job_handle = _create_win_job_object(128)
-            creation_flags = 0x00000200  # CREATE_BREAKAWAY_FROM_JOB
+            creation_flags = 0
 
         if job_handle:
             proc = subprocess.Popen(
@@ -683,7 +688,7 @@ def _run_subprocess_safe(
         error = "代码执行超时（限制 10 秒）"
     except Exception as e:
         output = ""
-        error = f"执行异常: {str(e)}"
+        error = "代码执行异常，请检查代码后重试"
     finally:
         for p in (cleanup_paths or []):
             try:

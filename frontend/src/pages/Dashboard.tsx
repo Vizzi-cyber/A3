@@ -32,35 +32,24 @@ import {
   ApartmentOutlined,
   StarOutlined,
   NodeIndexOutlined,
-  CheckCircleFilled,
-  FlagFilled,
   CheckCircleOutlined,
-  MoreOutlined,
   CalendarOutlined,
   DownOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import {
-  profileApi,
   dashboardApi,
   pathApi,
   gamificationApi,
   knowledgeApi,
   dailyQuizApi,
 } from "../services/api";
-import { buildRadarData } from "../utils/profile";
-import { calcLevel, fetchLevelConfig } from "../utils/level";
-// import { StatCard } from "../components/StatCard";
-import { SectionCard } from "../components/SectionCard";
-// import { StatRow } from "../components/StatRow";
-import { statusColors } from "../components/StatusTag";
+import { calcLevel } from "../utils/level";
 import type {
   DashboardTask,
   DashboardRecommendation,
   DashboardStats,
-  AlgorithmAnalysis,
   PathNode,
-  Achievement,
 } from "../types";
 
 const RESOURCE_META: Record<
@@ -111,6 +100,9 @@ const Dashboard: React.FC = () => {
   const [kgNodes, setKgNodes] = useState<
     { id: string; name: string; prerequisites: string[] }[]
   >([]);
+  const [trendData, setTrendData] = useState<{ date: string; value: number }[]>(
+    [],
+  );
 
   // 每日练习
   const [dailyQuiz, setDailyQuiz] = useState<{
@@ -181,6 +173,10 @@ const Dashboard: React.FC = () => {
           setStats(d.stats || stats);
           setTasks(d.tasks || []);
           setRecommendations(d.recommendations || []);
+          // 趋势数据用于 sparkline
+          if (d.trend?.length) {
+            setTrendData(d.trend);
+          }
         } else {
           errors.summary = true;
         }
@@ -265,34 +261,38 @@ const Dashboard: React.FC = () => {
       .catch(() => {});
   }, [studentId, calendarDate]);
 
+  // 页面重新可见时刷新数据（从其他页面返回时同步更新）
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && studentId) {
+        // 重新获取关键数据
+        dashboardApi
+          .getSummary(studentId)
+          .then((res) => {
+            if (res.data) {
+              const d = res.data;
+              setStats(d.stats || stats);
+              setTasks(d.tasks || []);
+              setRecommendations(d.recommendations || []);
+              if (d.trend?.length) {
+                setTrendData(d.trend);
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [studentId]);
+
   const completedCount = pathNodesState.filter(
     (n) => n.status === "completed",
   ).length;
 
   const courseCards = useMemo(() => {
-    const list =
-      pathNodesState.length > 0
-        ? pathNodesState.slice(0, 3)
-        : [
-            {
-              id: "1",
-              title: "设计基础",
-              status: "in-progress",
-              type: "设计",
-            },
-            {
-              id: "2",
-              title: "UX设计原理",
-              status: "pending",
-              type: "UX",
-            },
-            {
-              id: "3",
-              title: "3D建模入门",
-              status: "pending",
-              type: "3D",
-            },
-          ];
+    const list = pathNodesState.length > 0 ? pathNodesState.slice(0, 3) : [];
     const styles = [
       {
         bg: "bg-[#e8f0fe]",
@@ -343,7 +343,7 @@ const Dashboard: React.FC = () => {
         suffix: "个",
         icon: <TrophyOutlined />,
         color: "#10b981",
-        path: "/profile",
+        path: "/personal?tab=profile",
       },
       {
         title: "待完成任务",
@@ -530,13 +530,20 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {statCards.map((stat, idx) => {
-                const sparkData = Array.from({ length: 7 }, (_, i) => ({
-                  v: Math.max(
-                    0,
-                    (Number(stat.value) || 0) *
-                      (0.4 + Math.sin(i + idx) * 0.3 + i * 0.1),
-                  ),
-                }));
+                // 使用后端趋势数据生成 sparkline
+                const sparkData =
+                  trendData.length >= 2
+                    ? trendData.slice(-7).map((t) => ({
+                        v: Math.max(
+                          0,
+                          Math.round(
+                            ((t.value + 10) / 20) * (Number(stat.value) || 50),
+                          ),
+                        ),
+                      }))
+                    : Array.from({ length: 7 }, (_, i) => ({
+                        v: 0,
+                      }));
                 return (
                   <div
                     key={idx}

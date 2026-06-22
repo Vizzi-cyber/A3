@@ -52,7 +52,7 @@ async def get_roles(
         return result
     except Exception as e:
         logger.error(f"Get roles failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/match")
@@ -77,7 +77,7 @@ async def match_team(
 
     except Exception as e:
         logger.error(f"Team matching failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/suggest")
@@ -103,7 +103,7 @@ async def suggest_role(
         raise
     except Exception as e:
         logger.error(f"Role suggestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/rebalance")
@@ -130,4 +130,4 @@ async def rebalance(
 
     except Exception as e:
         logger.error(f"Rebalance failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")

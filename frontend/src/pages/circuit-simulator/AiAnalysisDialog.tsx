@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Input, Button, Spin, Tag, message } from "antd";
 import { RobotOutlined, SendOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useCircuitStore } from "./store";
 import { useAppStore } from "../../store";
-import { api } from "../../services/api";
+import { circuitApi, profileApi } from "../../services/api";
 
 interface AiAnalysisDialogProps {
   open: boolean;
@@ -19,6 +19,21 @@ const AiAnalysisDialog: React.FC<AiAnalysisDialogProps> = ({
   const [question, setQuestion] = useState("");
   const [analysis, setAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
+  const [studentLevel, setStudentLevel] = useState("beginner");
+
+  useEffect(() => {
+    if (!open || !studentId) return;
+    profileApi
+      .get(studentId)
+      .then((res) => {
+        const profile = res?.data?.data;
+        const overallScore = profile?.knowledge_base?.overall_score || 0;
+        if (overallScore >= 80) setStudentLevel("advanced");
+        else if (overallScore >= 50) setStudentLevel("intermediate");
+        else setStudentLevel("beginner");
+      })
+      .catch(() => {});
+  }, [open, studentId]);
 
   const quickQuestions = [
     "这个电路的功能是什么？",
@@ -48,12 +63,12 @@ const AiAnalysisDialog: React.FC<AiAnalysisDialogProps> = ({
           value: c.value,
         }));
 
-      const res = await api.post("/circuit-analysis/analyze", {
+      const res = await circuitApi.analyze({
         netlist,
         node_voltages: simulationResult?.nodeVoltages || {},
         branch_currents: simulationResult?.branchCurrents || {},
         student_question: questionText,
-        student_level: "beginner",
+        student_level: studentLevel,
       });
 
       const data = res.data;

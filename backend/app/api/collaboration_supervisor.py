@@ -72,7 +72,7 @@ async def generate_daily_report(
         return result
     except Exception as e:
         logger.error(f"Daily report generation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/detect-blockers")
@@ -91,7 +91,7 @@ async def detect_blockers(
         return result
     except Exception as e:
         logger.error(f"Blocker detection failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/resolve-conflict")
@@ -111,7 +111,7 @@ async def resolve_conflict(
         return result
     except Exception as e:
         logger.error(f"Conflict resolution failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/knowledge-sharing")
@@ -130,7 +130,7 @@ async def knowledge_sharing(
         return result
     except Exception as e:
         logger.error(f"Knowledge sharing failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/sync-progress")
@@ -150,4 +150,4 @@ async def sync_progress(
         return result
     except Exception as e:
         logger.error(f"Progress sync failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")

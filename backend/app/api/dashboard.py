@@ -15,7 +15,7 @@ from ..models.favorites import FavoriteModel
 from ..models.trend import TrendDataModel
 from ..algorithms.effect_evaluation import LearningEffectEvaluator
 from ..algorithms.trend_analysis import MultiFactorTrendAnalyzer
-from .auth import require_auth
+from .auth import require_auth, verify_student_ownership
 from ..utils import calculate_streak
 
 router = APIRouter()
@@ -28,6 +28,7 @@ def _fmt_iso(dt):
 @router.get("/{student_id}/summary")
 async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取 Dashboard 聚合数据：今日任务、统计卡片、推荐资源、画像摘要"""
+    verify_student_ownership(student_id, _current)
 
     # ---------- 画像 ----------
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
@@ -257,6 +258,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
 @router.get("/{student_id}/timeline")
 async def get_growth_timeline(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取成长时间轴数据 — 里程碑事件列表"""
+    verify_student_ownership(student_id, _current)
 
     # 查询学习记录（最近90天）
     cutoff = datetime.now(timezone.utc) - timedelta(days=90)
@@ -383,6 +385,7 @@ async def get_growth_timeline(student_id: str, db: Session = Depends(get_db), _c
 @router.get("/{student_id}/active-dates")
 async def get_active_dates(student_id: str, year: int = Query(None), month: int = Query(None), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取学生指定月份有学习活动的日期列表（用于日历高亮）"""
+    verify_student_ownership(student_id, _current)
     now = datetime.now(timezone.utc)
     y = year or now.year
     m = month or now.month

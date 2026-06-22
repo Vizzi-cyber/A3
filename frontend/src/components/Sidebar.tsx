@@ -3,7 +3,6 @@ import { Layout, Menu, Typography, Space, Tooltip } from "antd";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   DashboardOutlined,
-  PieChartOutlined,
   NodeIndexOutlined,
   ReadOutlined,
   UserOutlined,
@@ -32,11 +31,10 @@ const { Sider } = Layout;
 
 const studentMenuItems = [
   { key: "/", icon: <DashboardOutlined />, label: "学习仪表盘" },
-  { key: "/profile", icon: <PieChartOutlined />, label: "对话画像" },
+  { key: "/tutor", icon: <RobotOutlined />, label: "智能辅导" },
   { key: "/learning-path", icon: <NodeIndexOutlined />, label: "学习路径" },
   { key: "/resources", icon: <ReadOutlined />, label: "学习中心" },
   { key: "/challenges", icon: <ThunderboltOutlined />, label: "知识冒险" },
-  { key: "/tutor", icon: <RobotOutlined />, label: "智能辅导" },
   { key: "/error-diagnosis", icon: <BugOutlined />, label: "错误诊断" },
   {
     key: "/project-collaboration",

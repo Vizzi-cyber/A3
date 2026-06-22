@@ -1382,6 +1382,11 @@ export async function apiGet<T>(path: string): Promise<T> {
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (res.status === 401) {
+    useAppStore.getState().logout();
+    window.location.href = "/login";
+    throw new Error("登录已过期，请重新登录");
+  }
   if (!res.ok) {
     const err = await res
       .json()
@@ -1407,6 +1412,11 @@ export async function apiStream(
     headers,
     body: JSON.stringify(body),
   });
+  if (res.status === 401) {
+    useAppStore.getState().logout();
+    window.location.href = "/login";
+    throw new Error("登录已过期，请重新登录");
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: "请求失败" }));
     throw new Error(err.message || `HTTP ${res.status}`);

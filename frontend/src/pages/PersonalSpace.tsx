@@ -48,11 +48,8 @@ import {
   MessageOutlined,
   ApartmentOutlined,
   CheckCircleOutlined,
-  ReloadOutlined,
-  BookOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
-  ArrowRightOutlined,
 } from "@ant-design/icons";
 import type {
   ReflectionEntry,
@@ -434,6 +431,16 @@ const PersonalSpace: React.FC = () => {
   } | null>(null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  // 画像维度详情 & 遗忘曲线补充数据
+  const [dimensions, setDimensions] = useState<
+    { label: string; value: number; color: string }[]
+  >([]);
+  const [retentionItems, setRetentionItems] = useState<
+    { topic: string; retention: number; nextReview: string }[]
+  >([]);
+  const [historyData, setHistoryData] = useState<
+    { date: string; value: number }[]
+  >([]);
   const studentId = useAppStore((s) => s.studentId);
   const loadedTabs = useRef<Set<string>>(new Set());
 
@@ -442,6 +449,18 @@ const PersonalSpace: React.FC = () => {
     const t = searchParams.get("tab");
     if (t && t !== activeTab) setActiveTab(t);
   }, [searchParams]);
+
+  // 页面重新可见时刷新数据（从其他页面返回时同步更新）
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && studentId) {
+        loadedTabs.current.clear();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [studentId]);
 
   useEffect(() => {
     const load = async () => {
@@ -452,18 +471,11 @@ const PersonalSpace: React.FC = () => {
         p.catch(() => null);
 
       // 按 Tab 分组：只拉取当前 Tab 需要的接口
-      const needsHistory = ["history", "focus", "forgetting"].includes(
-        activeTab,
-      );
-      const needsBadges = activeTab === "badges";
-      const needsLeaderboard = activeTab === "leaderboard";
+      const needsHistory = activeTab === "history";
+      const needsBadges = activeTab === "profile";
+      const needsLeaderboard = activeTab === "profile";
       const needsFavorites = activeTab === "favorites";
-      const needsReflections = [
-        "reflection",
-        "cornell",
-        "feynman",
-        "notes-history",
-      ].includes(activeTab);
+      const needsReflections = activeTab === "notes";
 
       // profile 总是拉取（多个 Tab 依赖 weak_areas 等字段）
       const [pRes, dRes, ptRes, aRes, hRes, thRes, fRes, rRes] =
@@ -497,7 +509,32 @@ const PersonalSpace: React.FC = () => {
       try {
         if (pRes?.data?.data) {
           setProfile(pRes.data.data);
-          setProfileData(buildRadarData(pRes.data.data));
+          const radar = buildRadarData(pRes.data.data);
+          setProfileData(radar);
+          // 维度详情
+          setDimensions(
+            radar.map((item) => ({
+              label: item.subject,
+              value: Math.round(item.A),
+              color:
+                item.subject === "知识基础"
+                  ? "#4f46e5"
+                  : item.subject === "认知风格"
+                    ? "#0ea5e9"
+                    : item.subject === "学习偏好"
+                      ? "#10b981"
+                      : item.subject === "薄弱点"
+                        ? "#f59e0b"
+                        : item.subject === "学习进度"
+                          ? "#8b5cf6"
+                          : "#ec4899",
+            })),
+          );
+          // 遗忘曲线数据：从API获取
+          const retentionRes = await safe(profileApi.getRetention(studentId));
+          if (retentionRes?.data?.data) {
+            setRetentionItems(retentionRes.data.data);
+          }
         }
         if (dRes?.data)
           setDashboardStats(dRes.data as unknown as Record<string, unknown>);
@@ -608,6 +645,15 @@ const PersonalSpace: React.FC = () => {
           (thRes?.data?.data as
             | Array<{ date: string; trend_factor: number }>
             | undefined) || [];
+        // 画像历史变化（近7天）
+        if (trendList.length) {
+          setHistoryData(
+            trendList.slice(-7).map((d) => ({
+              date: d.date.slice(5),
+              value: Math.round(d.trend_factor * 100),
+            })),
+          );
+        }
         trendList.forEach((tp) => {
           const f = Math.max(-1, Math.min(1, Number(tp.trend_factor) || 0));
           trendByDate[String(tp.date).slice(0, 10)] = Math.round((f + 1) * 50);
@@ -818,6 +864,11 @@ const PersonalSpace: React.FC = () => {
       setReflections([entry, ...reflections]);
       setNewReflection("");
       message.success("反思已保存");
+      // 同步到画像
+      const conversationContext = `学生写了今日反思：${newReflection.trim()}`;
+      profileApi
+        .analyzeConversation(studentId, conversationContext)
+        .catch(() => {});
     } catch (_e) {
       message.error("保存失败");
     }
@@ -853,10 +904,41 @@ const PersonalSpace: React.FC = () => {
         ...prev,
       ]);
       message.success("康奈尔笔记已保存");
+
+      // 同步到画像
+      const conversationContext = `学生记录了康奈尔笔记：线索栏：${cornellNotes.cues}；笔记栏：${cornellNotes.notes}；总结：${cornellNotes.summary}`;
+      profileApi
+        .analyzeConversation(studentId, conversationContext)
+        .catch(() => {});
     } catch (_e) {
       message.error("保存失败");
     }
   };
+
+  // 康奈尔笔记自动保存（防抖 2 秒）
+  const cornellAutoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const cornellDirtyRef = useRef(false);
+
+  useEffect(() => {
+    cornellDirtyRef.current = true;
+    if (cornellAutoSaveTimer.current)
+      clearTimeout(cornellAutoSaveTimer.current);
+    cornellAutoSaveTimer.current = setTimeout(() => {
+      if (
+        cornellDirtyRef.current &&
+        (cornellNotes.cues || cornellNotes.notes || cornellNotes.summary)
+      ) {
+        cornellDirtyRef.current = false;
+        handleSaveCornell();
+      }
+    }, 2000);
+    return () => {
+      if (cornellAutoSaveTimer.current)
+        clearTimeout(cornellAutoSaveTimer.current);
+    };
+  }, [cornellNotes.cues, cornellNotes.notes, cornellNotes.summary]);
 
   const handleSaveFeynman = async () => {
     if (!feynmanInput.trim()) return;
@@ -880,6 +962,11 @@ const PersonalSpace: React.FC = () => {
         ...prev,
       ]);
       message.success("费曼练习已保存");
+      // 同步到画像
+      const conversationContext = `学生进行了费曼练习，用自己的话解释：${feynmanInput.trim()}`;
+      profileApi
+        .analyzeConversation(studentId, conversationContext)
+        .catch(() => {});
       setFeynmanInput("");
     } catch (_e) {
       message.error("保存失败");
@@ -1447,71 +1534,6 @@ const PersonalSpace: React.FC = () => {
             ),
           },
           {
-            key: "leaderboard",
-            label: (
-              <span className="flex items-center gap-1.5">
-                <TrophyOutlined /> 排行榜
-              </span>
-            ),
-            children: <Leaderboard />,
-          },
-          {
-            key: "badges",
-            label: (
-              <span className="flex items-center gap-1.5">
-                <TrophyOutlined /> 成就徽章
-              </span>
-            ),
-            children: (
-              <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="font-semibold text-slate-800">我的成就</div>
-                  <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
-                    已解锁 {badgeList.filter((b) => b.unlocked).length} /{" "}
-                    {badgeList.length}
-                  </Tag>
-                </div>
-                <Row gutter={[20, 20]}>
-                  {badgeList.map((badge: BadgeItemLocal) => (
-                    <Col xs={12} sm={8} lg={6} key={badge.id}>
-                      <div
-                        className={`flex flex-col items-center gap-3 p-5 rounded-xl border transition-all ${
-                          badge.unlocked
-                            ? "bg-white border-slate-100 hover:shadow-card"
-                            : "bg-slate-50 border-slate-100 opacity-50"
-                        }`}
-                      >
-                        <div
-                          className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl"
-                          style={{
-                            background: badge.unlocked
-                              ? badge.color
-                              : "#cbd5e1",
-                          }}
-                        >
-                          {badge.icon}
-                        </div>
-                        <div className="text-center">
-                          <div className="font-semibold text-slate-800 text-sm">
-                            {badge.name}
-                          </div>
-                          <div className="text-xs text-slate-400 mt-1">
-                            {badge.desc}
-                          </div>
-                        </div>
-                        {badge.unlocked && (
-                          <Tag className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">
-                            已解锁
-                          </Tag>
-                        )}
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              </div>
-            ),
-          },
-          {
             key: "growth",
             label: (
               <span className="flex items-center gap-1.5">
@@ -1525,81 +1547,15 @@ const PersonalSpace: React.FC = () => {
             ),
           },
           {
-            key: "reflection",
+            key: "notes",
             label: (
               <span className="flex items-center gap-1.5">
-                <EditOutlined /> 自我反思
+                <EditOutlined /> 笔记与反思
               </span>
             ),
             children: (
               <div className="space-y-5">
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <div className="font-semibold text-slate-800 mb-4">
-                    写今日反思
-                  </div>
-                  <Input.TextArea
-                    rows={4}
-                    placeholder="今天学到了什么？有哪些地方还需要提高？记录下来，帮助你加深记忆..."
-                    value={newReflection}
-                    onChange={(e) => setNewReflection(e.target.value)}
-                    className="rounded-xl bg-slate-50 border-slate-200 mb-3"
-                  />
-                  <Button
-                    type="primary"
-                    className="rounded-lg bg-primary"
-                    onClick={handleAddReflection}
-                  >
-                    保存反思
-                  </Button>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <div className="font-semibold text-slate-800 mb-4">
-                    反思记录
-                  </div>
-                  <div className="space-y-4">
-                    {reflections.length ? (
-                      reflections.map((r) => (
-                        <div
-                          key={r.id}
-                          className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary/30 hover:bg-white hover:shadow-card transition-all cursor-pointer"
-                          onClick={() => handleOpenReflectionEdit(r)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Tag className="rounded-full border-0 bg-primary-50 text-primary text-xs">
-                                {r.topic}
-                              </Tag>
-                              <span className="text-xs text-slate-400">
-                                {r.date}
-                              </span>
-                            </div>
-                            <span className="text-xs text-primary opacity-70">
-                              点击编辑
-                            </span>
-                          </div>
-                          <Typography.Text className="text-slate-700 text-sm leading-relaxed block">
-                            {r.content}
-                          </Typography.Text>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-slate-400 text-sm">暂无反思记录</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ),
-          },
-          {
-            key: "cornell",
-            label: (
-              <span className="flex items-center gap-1.5">
-                <BookOutlined /> 康奈尔笔记
-              </span>
-            ),
-            children: (
-              <div className="space-y-5">
+                {/* 康奈尔笔记 */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-6">
                   <div className="font-semibold text-slate-800 mb-4">
                     康奈尔笔记法
@@ -1666,7 +1622,53 @@ const PersonalSpace: React.FC = () => {
                   </Button>
                 </div>
 
-                {/* 笔记时间线（汉堡折叠） */}
+                {/* 费曼练习 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="font-semibold text-slate-800 mb-4">
+                    费曼学习法
+                  </div>
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-sm text-amber-800 mb-4">
+                    <strong>费曼技巧：</strong>
+                    选择你要学习的概念，尝试用最简单的语言向一个"小孩"解释它。如果你卡住了，就回到材料中重新学习，然后再次尝试简化。
+                  </div>
+                  <Input.TextArea
+                    rows={6}
+                    placeholder="用你自己的话，尝试向一个外行解释最近学到的知识点..."
+                    value={feynmanInput}
+                    onChange={(e) => setFeynmanInput(e.target.value)}
+                    className="rounded-xl bg-slate-50 border-slate-200 mb-3"
+                  />
+                  <Button
+                    type="primary"
+                    className="rounded-lg bg-primary"
+                    onClick={handleSaveFeynman}
+                  >
+                    <ThunderboltOutlined /> 提交费曼练习
+                  </Button>
+                </div>
+
+                {/* 自由反思 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="font-semibold text-slate-800 mb-4">
+                    写今日反思
+                  </div>
+                  <Input.TextArea
+                    rows={4}
+                    placeholder="今天学到了什么？有哪些地方还需要提高？记录下来，帮助你加深记忆..."
+                    value={newReflection}
+                    onChange={(e) => setNewReflection(e.target.value)}
+                    className="rounded-xl bg-slate-50 border-slate-200 mb-3"
+                  />
+                  <Button
+                    type="primary"
+                    className="rounded-lg bg-primary"
+                    onClick={handleAddReflection}
+                  >
+                    保存反思
+                  </Button>
+                </div>
+
+                {/* 笔记时间线 */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-2">
                   <Collapse
                     ghost
@@ -1701,35 +1703,37 @@ const PersonalSpace: React.FC = () => {
                                       <Tag
                                         className={`rounded-full border-0 text-xs ${
                                           n.type === "cornell"
-                                            ? "bg-purple-50 text-purple-600"
+                                            ? "bg-sky-50 text-sky-600"
                                             : n.type === "feynman"
                                               ? "bg-amber-50 text-amber-600"
-                                              : "bg-emerald-50 text-emerald-600"
+                                              : "bg-primary-50 text-primary"
                                         }`}
                                       >
-                                        {n.title}
+                                        {n.type === "cornell"
+                                          ? "康奈尔笔记"
+                                          : n.type === "feynman"
+                                            ? "费曼练习"
+                                            : "反思"}
                                       </Tag>
-                                    </div>
-                                    <Space>
                                       <span className="text-xs text-slate-400">
                                         {n.date}
                                       </span>
-                                      <span className="text-xs text-primary opacity-70">
-                                        点击编辑
-                                      </span>
-                                    </Space>
+                                    </div>
+                                    <span className="text-xs text-primary opacity-70">
+                                      点击编辑
+                                    </span>
                                   </div>
-                                  <Typography.Paragraph
-                                    className="text-slate-700 text-sm leading-relaxed !mb-0 whitespace-pre-wrap"
-                                    ellipsis={{ rows: 4, expandable: false }}
-                                  >
-                                    {n.content || "（无内容）"}
-                                  </Typography.Paragraph>
+                                  <Typography.Text className="text-slate-700 text-sm leading-relaxed block">
+                                    {n.content?.slice(0, 100)}
+                                    {(n.content?.length || 0) > 100
+                                      ? "..."
+                                      : ""}
+                                  </Typography.Text>
                                 </div>
                               ))
                             ) : (
-                              <div className="text-slate-400 text-sm py-6 text-center">
-                                暂无笔记，保存后会按时间顺序列在这里
+                              <div className="text-slate-400 text-sm text-center py-4">
+                                暂无笔记记录
                               </div>
                             )}
                           </div>
@@ -1738,169 +1742,6 @@ const PersonalSpace: React.FC = () => {
                     ]}
                   />
                 </div>
-              </div>
-            ),
-          },
-          {
-            key: "feynman",
-            label: (
-              <span className="flex items-center gap-1.5">
-                <BulbOutlined /> 费曼练习
-              </span>
-            ),
-            children: (
-              <div className="space-y-5">
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <div className="font-semibold text-slate-800 mb-4">
-                    费曼学习法
-                  </div>
-                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-sm text-amber-800 mb-4">
-                    <strong>费曼技巧：</strong>
-                    选择你要学习的概念，尝试用最简单的语言向一个"小孩"解释它。如果你卡住了，就回到材料中重新学习，然后再次尝试简化。
-                  </div>
-                  <Input.TextArea
-                    rows={6}
-                    placeholder="用你自己的话，尝试向一个外行解释最近学到的知识点..."
-                    value={feynmanInput}
-                    onChange={(e) => setFeynmanInput(e.target.value)}
-                    className="rounded-xl bg-slate-50 border-slate-200 mb-3"
-                  />
-                  <Button
-                    type="primary"
-                    className="rounded-lg bg-primary"
-                    onClick={handleSaveFeynman}
-                  >
-                    <ThunderboltOutlined /> 提交费曼练习
-                  </Button>
-                </div>
-              </div>
-            ),
-          },
-          {
-            key: "forgetting",
-            label: (
-              <span className="flex items-center gap-1.5">
-                <ReloadOutlined /> 遗忘曲线
-              </span>
-            ),
-            children: (
-              <div className="space-y-5">
-                <Row gutter={[20, 20]}>
-                  <Col xs={24} lg={12}>
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <LineChartOutlined className="text-primary" />
-                        <span className="font-semibold text-slate-800">
-                          艾宾浩斯遗忘曲线
-                        </span>
-                      </div>
-                      <div className="h-60">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={[
-                              { day: "1天", memory: 100 },
-                              { day: "2天", memory: 55 },
-                              { day: "3天", memory: 42 },
-                              { day: "5天", memory: 35 },
-                              { day: "8天", memory: 30 },
-                              { day: "15天", memory: 25 },
-                              { day: "30天", memory: 20 },
-                            ]}
-                          >
-                            <CartesianGrid
-                              strokeDasharray="3 3"
-                              stroke="#f1f5f9"
-                            />
-                            <XAxis
-                              dataKey="day"
-                              tick={{ fill: "#64748b", fontSize: 11 }}
-                              axisLine={false}
-                              tickLine={false}
-                            />
-                            <YAxis
-                              domain={[0, 100]}
-                              tick={{ fill: "#64748b" }}
-                              axisLine={false}
-                              tickLine={false}
-                            />
-                            <Tooltip
-                              contentStyle={{
-                                borderRadius: 12,
-                                border: "none",
-                                boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                              }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="memory"
-                              name="理论记忆保留率"
-                              stroke="#ef4444"
-                              strokeWidth={2}
-                              dot={{ r: 3 }}
-                              strokeDasharray="5 5"
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={24} lg={12}>
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                      <div className="font-semibold text-slate-800 mb-4">
-                        待复习知识点
-                      </div>
-                      <div className="space-y-3">
-                        {reviewTopics.length ? (
-                          reviewTopics.map((item: ReviewTopic) => (
-                            <div
-                              key={item.topic}
-                              className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100"
-                            >
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-slate-800">
-                                  {item.topic}
-                                </div>
-                                <div className="text-xs text-slate-400">
-                                  下次复习: {item.nextReview}
-                                </div>
-                              </div>
-                              <div className="w-20">
-                                <Progress
-                                  percent={item.retention}
-                                  size="small"
-                                  strokeColor={
-                                    item.retention > 70
-                                      ? "#10b981"
-                                      : item.retention > 50
-                                        ? "#f59e0b"
-                                        : "#ef4444"
-                                  }
-                                  trailColor="#f1f5f9"
-                                  showInfo={false}
-                                />
-                              </div>
-                              <Tag
-                                className={`rounded-full border-0 text-xs ${
-                                  item.retention > 70
-                                    ? "bg-emerald-50 text-emerald-600"
-                                    : item.retention > 50
-                                      ? "bg-amber-50 text-amber-600"
-                                      : "bg-red-50 text-red-600"
-                                }`}
-                              >
-                                {item.retention}%
-                              </Tag>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-slate-400 text-sm">
-                            暂无薄弱知识点
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
               </div>
             ),
           },
@@ -1920,15 +1761,8 @@ const PersonalSpace: React.FC = () => {
                       level={5}
                       className="!m-0 font-semibold text-slate-800"
                     >
-                      画像摘要
+                      六维画像雷达
                     </Typography.Title>
-                    <Button
-                      type="link"
-                      className="text-primary font-medium"
-                      onClick={() => navigate("/profile")}
-                    >
-                      详情 <ArrowRightOutlined />
-                    </Button>
                   </div>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
@@ -1969,6 +1803,46 @@ const PersonalSpace: React.FC = () => {
                         {item.subject}: {Math.round(item.A)}
                       </Tag>
                     ))}
+                  </div>
+                </div>
+
+                {/* 维度详情 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <Typography.Title
+                    level={5}
+                    className="!m-0 mb-4 font-semibold text-slate-800"
+                  >
+                    维度详情
+                  </Typography.Title>
+                  <div className="space-y-2.5">
+                    {dimensions.length === 0 ? (
+                      <div className="text-xs text-slate-400 py-3 text-center">
+                        尚未生成画像，可在智能辅导对话中自动构建
+                      </div>
+                    ) : (
+                      dimensions.map((dim) => (
+                        <div key={dim.label}>
+                          <div className="flex justify-between mb-1">
+                            <Typography.Text className="text-sm text-slate-600 font-medium">
+                              {dim.label}
+                            </Typography.Text>
+                            <Typography.Text
+                              className="text-sm font-bold"
+                              style={{ color: dim.color }}
+                            >
+                              {dim.value}
+                            </Typography.Text>
+                          </div>
+                          <Progress
+                            percent={dim.value}
+                            showInfo={false}
+                            strokeColor={dim.color}
+                            trailColor="#f1f5f9"
+                            size="small"
+                          />
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -2130,13 +2004,266 @@ const PersonalSpace: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    type="primary"
-                    className="mt-5 rounded-lg bg-primary"
-                    onClick={() => navigate("/profile")}
-                  >
-                    手动修正画像
-                  </Button>
+                </div>
+
+                {/* 遗忘曲线 · 知识点衰减 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <Typography.Title
+                      level={5}
+                      className="!m-0 font-semibold text-slate-800"
+                    >
+                      遗忘曲线 · 知识点衰减
+                    </Typography.Title>
+                    <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
+                      艾宾浩斯
+                    </Tag>
+                  </div>
+                  <Row gutter={20}>
+                    <Col xs={24} lg={12}>
+                      <div className="h-56">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={[
+                              {
+                                day: "第1天",
+                                theoretical: 100,
+                                actual: retentionItems[0]?.retention,
+                              },
+                              {
+                                day: "第2天",
+                                theoretical: 55,
+                                actual: retentionItems[1]?.retention,
+                              },
+                              {
+                                day: "第3天",
+                                theoretical: 42,
+                                actual: retentionItems[2]?.retention,
+                              },
+                              {
+                                day: "第5天",
+                                theoretical: 35,
+                                actual: retentionItems[3]?.retention,
+                              },
+                              { day: "第8天", theoretical: 30 },
+                              { day: "第15天", theoretical: 25 },
+                              { day: "第30天", theoretical: 20 },
+                            ]}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#f1f5f9"
+                            />
+                            <XAxis
+                              dataKey="day"
+                              tick={{ fill: "#64748b", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tick={{ fill: "#64748b" }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                borderRadius: 12,
+                                border: "none",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="theoretical"
+                              name="理论记忆保留率"
+                              stroke="#ef4444"
+                              strokeWidth={2}
+                              dot={{ r: 3 }}
+                              strokeDasharray="5 5"
+                            />
+                            {retentionItems.length > 0 && (
+                              <Line
+                                type="monotone"
+                                dataKey="actual"
+                                name="你的薄弱点保留率"
+                                stroke="#4f46e5"
+                                strokeWidth={2}
+                                dot={{ r: 4, fill: "#4f46e5" }}
+                                connectNulls={false}
+                              />
+                            )}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <div className="space-y-3">
+                        {retentionItems.length === 0 ? (
+                          <div className="text-sm text-slate-400 text-center py-10">
+                            画像中尚无薄弱点，继续学习几个知识点后这里会自动生成复习计划
+                          </div>
+                        ) : (
+                          retentionItems.map((item) => (
+                            <div
+                              key={item.topic}
+                              className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100"
+                            >
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-slate-800">
+                                  {item.topic}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                  下次复习: {item.nextReview}
+                                </div>
+                              </div>
+                              <div className="w-24">
+                                <Progress
+                                  percent={item.retention}
+                                  size="small"
+                                  strokeColor={
+                                    item.retention > 70
+                                      ? "#10b981"
+                                      : item.retention > 50
+                                        ? "#f59e0b"
+                                        : "#ef4444"
+                                  }
+                                  trailColor="#f1f5f9"
+                                  showInfo={false}
+                                />
+                              </div>
+                              <Tag
+                                className={`rounded-full border-0 text-xs ${item.retention > 70 ? "bg-emerald-50 text-emerald-600" : item.retention > 50 ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600"}`}
+                              >
+                                {item.retention}%
+                              </Tag>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+
+                {/* 画像历史变化 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <Typography.Title
+                      level={5}
+                      className="!m-0 font-semibold text-slate-800"
+                    >
+                      画像历史变化
+                    </Typography.Title>
+                    <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
+                      近7天
+                    </Tag>
+                  </div>
+                  <div className="h-56">
+                    {historyData.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                        暂无趋势数据，完成几道练习后再来看
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={historyData}>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f1f5f9"
+                          />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fill: "#64748b" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={{ fill: "#64748b" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              borderRadius: 12,
+                              border: "none",
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                            }}
+                            cursor={{ stroke: "#e2e8f0", strokeWidth: 2 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke="#4f46e5"
+                            strokeWidth={3}
+                            dot={{ fill: "#4f46e5", strokeWidth: 2, r: 4 }}
+                            activeDot={{
+                              r: 6,
+                              fill: "#fff",
+                              stroke: "#4f46e5",
+                              strokeWidth: 2,
+                            }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                {/* 排行榜 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="font-semibold text-slate-800 mb-4">
+                    <TrophyOutlined className="mr-2 text-amber-500" />
+                    排行榜
+                  </div>
+                  <Leaderboard />
+                </div>
+
+                {/* 成就徽章 */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="font-semibold text-slate-800">我的成就</div>
+                    <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
+                      已解锁 {badgeList.filter((b) => b.unlocked).length} /{" "}
+                      {badgeList.length}
+                    </Tag>
+                  </div>
+                  <Row gutter={[20, 20]}>
+                    {badgeList.map((badge: BadgeItemLocal) => (
+                      <Col xs={12} sm={8} lg={6} key={badge.id}>
+                        <div
+                          className={`flex flex-col items-center gap-3 p-5 rounded-xl border transition-all ${
+                            badge.unlocked
+                              ? "bg-white border-slate-100 hover:shadow-card"
+                              : "bg-slate-50 border-slate-100 opacity-50"
+                          }`}
+                        >
+                          <div
+                            className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl"
+                            style={{
+                              background: badge.unlocked
+                                ? badge.color
+                                : "#cbd5e1",
+                            }}
+                          >
+                            {badge.icon}
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-slate-800 text-sm">
+                              {badge.name}
+                            </div>
+                            <div className="text-xs text-slate-400 mt-1">
+                              {badge.desc}
+                            </div>
+                          </div>
+                          {badge.unlocked && (
+                            <Tag className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">
+                              已解锁
+                            </Tag>
+                          )}
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
                 </div>
               </div>
             ),

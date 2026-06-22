@@ -42,7 +42,7 @@ async def list_projects(
         return result
     except Exception as e:
         logger.error(f"List projects failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/decompose")
@@ -66,7 +66,7 @@ async def decompose_project(
 
     except Exception as e:
         logger.error(f"Project decomposition failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/project-info")
@@ -87,7 +87,7 @@ async def get_project_info(
 
     except Exception as e:
         logger.error(f"Get project info failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.post("/estimate")
@@ -109,4 +109,4 @@ async def estimate_workload(
 
     except Exception as e:
         logger.error(f"Workload estimation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")

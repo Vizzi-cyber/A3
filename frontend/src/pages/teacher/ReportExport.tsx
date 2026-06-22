@@ -11,6 +11,7 @@ import {
   message,
   DatePicker,
   Select,
+  Empty,
 } from "antd";
 import {
   FileTextOutlined,
@@ -26,17 +27,47 @@ const ReportExport: React.FC = () => {
   const [students, setStudents] = useState<
     Array<{ student_id: string; username: string }>
   >([]);
+  const [recentExports, setRecentExports] = useState<
+    Array<{
+      export_id: string;
+      name: string;
+      date: string;
+      format: string;
+      status: string;
+    }>
+  >([]);
   const [loading, setLoading] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<
+    [dayjs.Dayjs | null, dayjs.Dayjs | null]
+  >([null, null]);
+  const [exportFormat, setExportFormat] = useState("pdf");
 
   useEffect(() => {
-    loadStudents();
+    loadData();
   }, []);
 
-  const loadStudents = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const res = await teacherApi.getStudents();
-      setStudents(res.data.students || []);
+      const [studentsRes, exportsRes] = await Promise.all([
+        teacherApi.getStudents().catch(() => null),
+        teacherApi.getExportRecords().catch(() => null),
+      ]);
+      if (studentsRes?.data?.students) {
+        setStudents(studentsRes.data.students);
+      }
+      if (exportsRes?.data?.exports) {
+        setRecentExports(
+          exportsRes.data.exports.map((e) => ({
+            export_id: e.export_id,
+            name: `${e.report_type}_${e.created_at.split("T")[0]}.${e.format}`,
+            date: e.created_at.split("T")[0],
+            format: e.format,
+            status: e.status,
+          })),
+        );
+      }
     } catch {
       // ignore
     } finally {
@@ -44,8 +75,17 @@ const ReportExport: React.FC = () => {
     }
   };
 
-  const handleExport = (type: string, format: string) => {
-    message.success(`${type}已导出为${format}格式`);
+  const handleExport = async (type: string, format: string) => {
+    try {
+      await teacherApi.createExport({
+        report_type: type,
+        format: format,
+      });
+      message.success(`${type}导出任务已创建`);
+      loadData(); // 刷新导出记录
+    } catch {
+      message.error("导出失败");
+    }
   };
 
   const reports = [
@@ -67,12 +107,6 @@ const ReportExport: React.FC = () => {
       icon: <FilePdfOutlined className="text-xl" />,
       color: "#ef4444",
     },
-  ];
-
-  const recentExports = [
-    { name: "班级学情报告_20240115.pdf", date: "2024-01-15", size: "2.3MB" },
-    { name: "学生学习报告_20240114.xlsx", date: "2024-01-14", size: "1.8MB" },
-    { name: "成绩分析_20240113.pdf", date: "2024-01-13", size: "3.1MB" },
   ];
 
   return (
@@ -130,6 +164,8 @@ const ReportExport: React.FC = () => {
                   mode="multiple"
                   placeholder="选择要导出的学生"
                   className="w-full"
+                  value={selectedStudents}
+                  onChange={setSelectedStudents}
                   options={students.map((s) => ({
                     value: s.student_id,
                     label: s.username || s.student_id,
@@ -140,14 +176,19 @@ const ReportExport: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-600 mb-2">
                   时间范围
                 </label>
-                <DatePicker.RangePicker className="w-full" />
+                <DatePicker.RangePicker
+                  className="w-full"
+                  value={dateRange}
+                  onChange={(dates) => setDateRange(dates || [null, null])}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-2">
                   导出格式
                 </label>
                 <Select
-                  defaultValue="pdf"
+                  value={exportFormat}
+                  onChange={setExportFormat}
                   className="w-full"
                   options={[
                     { value: "pdf", label: "PDF文档" },
@@ -156,7 +197,12 @@ const ReportExport: React.FC = () => {
                   ]}
                 />
               </div>
-              <Button type="primary" className="bg-[#0052ff] rounded-xl" block>
+              <Button
+                type="primary"
+                className="bg-[#0052ff] rounded-xl"
+                block
+                onClick={() => handleExport("自定义报告", exportFormat)}
+              >
                 <DownloadOutlined /> 生成报告
               </Button>
             </div>
@@ -168,6 +214,14 @@ const ReportExport: React.FC = () => {
           <Card className="rounded-2xl border-0 shadow-sm" title="最近导出">
             <List
               dataSource={recentExports}
+              locale={{
+                emptyText: (
+                  <Empty
+                    description="暂无导出记录"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  />
+                ),
+              }}
               renderItem={(item) => (
                 <List.Item
                   actions={[
@@ -190,7 +244,7 @@ const ReportExport: React.FC = () => {
                         <ClockCircleOutlined className="text-xs" />
                         <span className="text-xs">{item.date}</span>
                         <Tag className="rounded-full border-0 text-xs">
-                          {item.size}
+                          {item.format?.toUpperCase()}
                         </Tag>
                       </Space>
                     }

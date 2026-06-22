@@ -141,7 +141,7 @@ async def generate_image(
             message="Image generation task submitted (async)",
         )
     except ImageGenerationError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.get("/result/{task_id}", response_model=ImageResultResponse)
@@ -172,7 +172,7 @@ async def get_image_result_api(task_id: str, _current: str = Depends(require_aut
             message="Done" if status == "done" else f"Status: {status}",
         )
     except ImageGenerationError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
 
 
 @router.get("/tasks")

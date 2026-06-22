@@ -16,7 +16,6 @@ import OnboardingQuestionnaire, {
 import "./App.css";
 
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
-const Profile = React.lazy(() => import("./pages/Profile"));
 const LearningPath = React.lazy(() => import("./pages/LearningPath"));
 const ResourceCenter = React.lazy(() => import("./pages/ResourceCenter"));
 const ResourceDetail = React.lazy(() => import("./pages/ResourceDetail"));
@@ -136,14 +135,6 @@ const PrivateLayout: React.FC = () => {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<HomeRoute />} />
-                <Route
-                  path="/profile"
-                  element={
-                    <PageWrapper>
-                      <Profile />
-                    </PageWrapper>
-                  }
-                />
                 <Route
                   path="/learning-path"
                   element={
