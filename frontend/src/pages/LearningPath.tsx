@@ -285,6 +285,7 @@ const LearningPathPage: React.FC = () => {
   const currentSubject = useAppStore((s) => s.currentSubject);
   const navigate = useNavigate();
   const timelineRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const strokePathRef = useRef<SVGPathElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
   const [matchedHeight, setMatchedHeight] = useState(0);
@@ -448,23 +449,21 @@ const LearningPathPage: React.FC = () => {
     return () => ro.disconnect();
   }, [resources.length, pathNodes.length]);
 
-  // scroll-powered SVG stroke：随滚动逐渐绘制时间轴线
+  // scroll-powered SVG stroke：面板内部滚动时逐渐绘制时间轴线
   useEffect(() => {
     const path = strokePathRef.current;
-    const container = timelineRef.current;
-    if (!path || !container || timelineHeight <= 0) return;
+    const scrollEl = scrollContainerRef.current;
+    if (!path || !scrollEl || timelineHeight <= 0) return;
 
     const len = path.getTotalLength();
     path.style.strokeDasharray = `${len}`;
     path.style.strokeDashoffset = `${len}`;
 
     const onScroll = () => {
-      const rect = container.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const start = rect.top - vh * 0.8;
-      const end = rect.bottom - vh * 0.2;
-      const range = end - start;
-      const progress = Math.max(0, Math.min(1, -start / range));
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      const maxScroll = scrollHeight - clientHeight;
+      if (maxScroll <= 0) return;
+      const progress = Math.max(0, Math.min(1, scrollTop / maxScroll));
       path.style.strokeDashoffset = `${len * (1 - progress)}`;
 
       const count = Math.min(
@@ -477,10 +476,10 @@ const LearningPathPage: React.FC = () => {
       setVisibleCount(count);
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
 
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => scrollEl.removeEventListener("scroll", onScroll);
   }, [timelineHeight, pathNodes.length]);
 
   // 从后端同步已完成节点（避免刷新后丢失）
@@ -1039,10 +1038,23 @@ const LearningPathPage: React.FC = () => {
         {/* 左侧：SVG 时间轴（可滚动，高度与右侧同步） */}
         <div className="w-full lg:w-[360px] shrink-0">
           <div
+            ref={scrollContainerRef}
             className="bg-white rounded-2xl border border-slate-100 p-5"
             style={{
               maxHeight: matchedHeight || undefined,
               overflowY: matchedHeight ? "auto" : undefined,
+            }}
+            onWheel={(e) => {
+              const el = scrollContainerRef.current;
+              if (!el) return;
+              const { scrollTop, scrollHeight, clientHeight } = el;
+              const maxScroll = scrollHeight - clientHeight;
+              if (maxScroll <= 0) return;
+              // 如果已经到顶/到底，不再阻止默认滚动
+              if (scrollTop <= 0 && e.deltaY < 0) return;
+              if (scrollTop >= maxScroll && e.deltaY > 0) return;
+              e.preventDefault();
+              el.scrollTop += e.deltaY;
             }}
           >
             <div className="font-semibold text-slate-800 text-sm mb-3 flex items-center gap-2">
@@ -1057,7 +1069,7 @@ const LearningPathPage: React.FC = () => {
                 暂无学习路径，点击「重新生成」创建
               </div>
             ) : (
-              <div className="relative overflow-x-hidden" ref={timelineRef}>
+              <div className="relative" ref={timelineRef}>
                 {/* SVG 中心线 */}
                 <svg
                   className="absolute left-[15px] top-0 pointer-events-none"
@@ -1142,17 +1154,6 @@ const LearningPathPage: React.FC = () => {
                                 <FlagOutlined /> W{weekNum}
                               </Tag>
                             )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-slate-400">
-                              第 {dayNum} 天
-                            </span>
-                            <span className="text-[10px] text-slate-300">
-                              ·
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {(node.resources || 3) * 20} 分钟
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -1336,7 +1337,9 @@ const LearningPathPage: React.FC = () => {
               <div className="font-semibold text-slate-800 flex items-center gap-2">
                 我的资源
                 <span className="text-xs text-slate-400 font-normal">
-                  共 {resources.length} 个
+                  共{" "}
+                  {resources.filter((r) => r.subject === currentSubject).length}{" "}
+                  个
                 </span>
                 <Button
                   type="text"
@@ -1375,20 +1378,6 @@ const LearningPathPage: React.FC = () => {
                   ]}
                 />
                 <Select
-                  value={resourceFilter.subject || undefined}
-                  onChange={(v) => {
-                    setResourceFilter((f) => ({ ...f, subject: v || "" }));
-                    setResourcePage(1);
-                  }}
-                  style={{ width: 96 }}
-                  allowClear
-                  placeholder="学科"
-                  options={[
-                    { value: "C语言", label: "C语言" },
-                    { value: "电路分析", label: "电路分析" },
-                  ]}
-                />
-                <Select
                   value={resourceFilter.difficulty || undefined}
                   onChange={(v) => {
                     setResourceFilter((f) => ({ ...f, difficulty: v || "" }));
@@ -1408,13 +1397,9 @@ const LearningPathPage: React.FC = () => {
 
             {(() => {
               const filtered = resources
+                .filter((r) => r.subject === currentSubject)
                 .filter(
                   (r) => !resourceFilter.type || r.type === resourceFilter.type,
-                )
-                .filter(
-                  (r) =>
-                    !resourceFilter.subject ||
-                    r.subject === resourceFilter.subject,
                 )
                 .filter(
                   (r) =>
