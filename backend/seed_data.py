@@ -2697,6 +2697,1093 @@ print(f'  最大功率 Pmax = {P_max*1000:.2f}mW')""",
         ],
         mindmap={"root": "戴维南与诺顿定理", "children": [{"name": "戴维南定理"}, {"name": "诺顿定理"}, {"name": "开路电压"}, {"name": "等效电阻"}, {"name": "短路电流"}, {"name": "互换关系"}, {"name": "最大功率传输"}]},
     ),
+    # ============================================================
+    # STM32嵌入式开发 知识点
+    # ============================================================
+    KnowledgePointModel(
+        kp_id="kp_s01", name="STM32基础入门", subject="基础入门", course="STM32嵌入式", difficulty=0.2,
+        prerequisites=[], description="芯片架构、开发环境搭建、工程模板创建、GPIO基础",
+        tags=["STM32", "ARM", "Cortex-M3", "Keil", "工程模板"],
+        document="""# STM32基础入门
+
+## 1. STM32芯片概述
+
+STM32是意法半导体（ST）推出的基于ARM Cortex-M3内核的32位微控制器系列。STM32F103是入门级经典型号。
+
+### 核心参数
+| 参数 | 数值 |
+|------|------|
+| 内核 | ARM Cortex-M3 |
+| 主频 | 72MHz |
+| Flash | 64KB/128KB/256KB/512KB |
+| SRAM | 20KB/48KB/64KB/96KB |
+| GPIO | 37~112个 |
+
+## 2. 开发环境搭建
+
+### Keil MDK 安装
+1. 安装 Keil MDK-ARM
+2. 安装 STM32F10x 器件支持包（DFP）
+3. 安装 ST-Link 驱动
+
+### 工程模板创建
+```
+Project/
+├── User/          # 用户代码（main.c, stm32f10x_it.c）
+├── StdPeriph_Driver/  # 标准外设库
+├── CMSIS/         # ARM内核支持文件
+├── Output/        # 编译输出
+└── Listings/      # 编译列表
+```
+
+## 3. GPIO基础
+
+GPIO（General Purpose Input/Output）是通用输入输出端口，STM32每个GPIO引脚可配置为：
+- **输入模式**：上拉输入、下拉输入、浮空输入、模拟输入
+- **输出模式**：推挽输出、开漏输出、复用推挽、复用开漏
+
+### GPIO初始化步骤
+```c
+RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);  // 开启时钟
+GPIO_InitTypeDef GPIO_InitStructure;
+GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;  // 推挽输出
+GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+GPIO_Init(GPIOA, &GPIO_InitStructure);
+```
+
+> **重点**：操作GPIO前必须先开启对应GPIO端口的时钟！
+""",
+        code_example="""#include "stm32f10x.h"
+#include "Delay.h"
+
+int main(void)
+{
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    while (1)
+    {
+        GPIO_ResetBits(GPIOA, GPIO_Pin_0);
+        Delay_ms(500);
+        GPIO_SetBits(GPIOA, GPIO_Pin_0);
+        Delay_ms(500);
+    }
+}""",
+        questions=[
+            {"q_id": "q_s01_1", "type": "single_choice", "content": "STM32F103的内核架构是？", "options": [{"id": "A", "text": "ARM Cortex-M0"}, {"id": "B", "text": "ARM Cortex-M3"}, {"id": "C", "text": "ARM Cortex-M4"}, {"id": "D", "text": "ARM Cortex-A9"}], "correct_answer": "B", "explanation": "STM32F103系列采用ARM Cortex-M3内核，主频72MHz。"},
+            {"q_id": "q_s01_2", "type": "single_choice", "content": "操作GPIO前必须先做什么？", "options": [{"id": "A", "text": "配置引脚模式"}, {"id": "B", "text": "开启GPIO端口时钟"}, {"id": "C", "text": "设置输出速度"}, {"id": "D", "text": "初始化中断"}], "correct_answer": "B", "explanation": "STM32外设默认时钟关闭，操作前必须先使能对应GPIO端口的时钟。"},
+            {"q_id": "q_s01_3", "type": "single_choice", "content": "推挽输出的特点是？", "options": [{"id": "A", "text": "只能输出低电平"}, {"id": "B", "text": "只能输出高电平"}, {"id": "C", "text": "可以输出高电平和低电平"}, {"id": "D", "text": "只能输入"}], "correct_answer": "C", "explanation": "推挽输出可以主动驱动高电平和低电平，驱动能力较强。"},
+        ],
+        mindmap={"root": "STM32基础入门", "children": [{"name": "芯片架构"}, {"name": "开发环境"}, {"name": "Keil MDK"}, {"name": "工程模板"}, {"name": "GPIO基础"}, {"name": "引脚模式"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s02", name="GPIO输出控制", subject="GPIO与外设", course="STM32嵌入式", difficulty=0.25,
+        prerequisites=["kp_s01"], description="通用输入输出端口输出模式，驱动LED、蜂鸣器、舵机等外设",
+        tags=["GPIO", "LED", "蜂鸣器", "推挽输出", "输出控制"],
+        document="""# GPIO输出控制
+
+## 1. GPIO输出模式
+
+### 推挽输出（Push-Pull）
+- 可输出高电平（VDD）和低电平（VSS）
+- 驱动能力强，适合驱动LED、蜂鸣器等
+- 最常用输出模式
+
+### 开漏输出（Open-Drain）
+- 只能主动拉低，高电平需外部上拉
+- 适合电平转换和线与逻辑
+- I2C通信常用此模式
+
+## 2. 驱动LED
+
+### 接线方式
+- LED正极 → GPIO引脚（通过限流电阻）
+- LED负极 → GND
+- 限流电阻：220Ω~1kΩ
+
+### 代码实现
+```c
+// 点亮LED（低电平有效）
+GPIO_ResetBits(GPIOA, GPIO_Pin_0);
+// 熄灭LED
+GPIO_SetBits(GPIOA, GPIO_Pin_0);
+// 翻转LED
+GPIO_WriteBit(GPIOA, GPIO_Pin_0,
+    (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_0)));
+```
+
+## 3. 驱动蜂鸣器
+
+有源蜂鸣器：给电即响，用GPIO直接驱动
+无源蜂鸣器：需要PWM信号驱动
+
+## 4. 驱动舵机
+
+舵机通过50Hz PWM信号控制角度：
+- 0.5ms脉宽 → 0°
+- 1.5ms脉宽 → 90°
+- 2.5ms脉宽 → 180°
+""",
+        code_example="""#include "stm32f10x.h"
+#include "Delay.h"
+
+int main(void)
+{
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    while (1)
+    {
+        GPIO_ResetBits(GPIOA, GPIO_Pin_0);  // LED亮
+        Delay_ms(500);
+        GPIO_SetBits(GPIOA, GPIO_Pin_0);    // LED灭
+        Delay_ms(500);
+    }
+}""",
+        questions=[
+            {"q_id": "q_s02_1", "type": "single_choice", "content": "驱动LED通常使用哪种GPIO输出模式？", "options": [{"id": "A", "text": "开漏输出"}, {"id": "B", "text": "推挽输出"}, {"id": "C", "text": "浮空输入"}, {"id": "D", "text": "模拟输入"}], "correct_answer": "B", "explanation": "推挽输出驱动能力强，适合驱动LED等外设。"},
+            {"q_id": "q_s02_2", "type": "single_choice", "content": "LED限流电阻的典型值是？", "options": [{"id": "A", "text": "10Ω"}, {"id": "B", "text": "100Ω"}, {"id": "C", "text": "220Ω"}, {"id": "D", "text": "10kΩ"}], "correct_answer": "C", "explanation": "220Ω是常用限流电阻值，可将LED电流限制在约10mA。"},
+        ],
+        mindmap={"root": "GPIO输出控制", "children": [{"name": "推挽输出"}, {"name": "开漏输出"}, {"name": "LED驱动"}, {"name": "蜂鸣器驱动"}, {"name": "舵机控制"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s03", name="GPIO输入检测", subject="GPIO与外设", course="STM32嵌入式", difficulty=0.25,
+        prerequisites=["kp_s01"], description="通用输入输出端口输入模式，按键检测、传感器接口",
+        tags=["GPIO", "按键", "传感器", "输入检测", "消抖"],
+        document="""# GPIO输入检测
+
+## 1. GPIO输入模式
+
+### 上拉输入（Input Pull-Up）
+- 内部上拉电阻，默认高电平
+- 按键接地，按下时低电平
+- 最常用的按键检测方式
+
+### 下拉输入（Input Pull-Down）
+- 内部下拉电阻，默认低电平
+- 按键接VCC，按下时高电平
+
+### 浮空输入（Input Floating）
+- 无内部上下拉，电平由外部决定
+- 适合外部已有上下拉的场景
+
+## 2. 按键检测
+
+### 硬件消抖
+- 并联100nF电容滤除抖动
+
+### 软件消抖
+```c
+if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)  // 按下
+{
+    Delay_ms(20);  // 等待消抖
+    if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)  // 确认按下
+    {
+        // 执行操作
+        while (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0);  // 等待松开
+    }
+}
+```
+
+## 3. 传感器接口
+
+### 数字传感器
+- 输出高低电平，直接用GPIO读取
+- 如：光敏传感器、红外避障传感器
+
+### 模拟传感器
+- 输出模拟电压，需要用ADC采集
+- 如：温度传感器、电位器
+""",
+        code_example="""#include "stm32f10x.h"
+#include "Delay.h"
+
+int main(void)
+{
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    // PA0: LED输出
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    // PA1: 按键输入（上拉）
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    while (1)
+    {
+        if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)
+        {
+            Delay_ms(20);
+            if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)
+            {
+                GPIO_WriteBit(GPIOA, GPIO_Pin_0,
+                    (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_0)));
+                while (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0);
+            }
+        }
+    }
+}""",
+        questions=[
+            {"q_id": "q_s03_1", "type": "single_choice", "content": "按键检测通常使用哪种输入模式？", "options": [{"id": "A", "text": "浮空输入"}, {"id": "B", "text": "上拉输入"}, {"id": "C", "text": "模拟输入"}, {"id": "D", "text": "下拉输入"}], "correct_answer": "B", "explanation": "上拉输入默认高电平，按键接地后按下为低电平，是最常用的按键检测方式。"},
+            {"q_id": "q_s03_2", "type": "single_choice", "content": "软件消抖的延时时间通常为？", "options": [{"id": "A", "text": "1ms"}, {"id": "B", "text": "5ms"}, {"id": "C", "text": "20ms"}, {"id": "D", "text": "100ms"}], "correct_answer": "C", "explanation": "按键机械抖动通常在5~20ms，延时20ms可有效消除抖动。"},
+        ],
+        mindmap={"root": "GPIO输入检测", "children": [{"name": "上拉输入"}, {"name": "下拉输入"}, {"name": "浮空输入"}, {"name": "按键检测"}, {"name": "软件消抖"}, {"name": "传感器接口"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s04", name="OLED显示模块", subject="通信协议", course="STM32嵌入式", difficulty=0.4,
+        prerequisites=["kp_s01"], description="I2C通信协议、SSD1306驱动、文字图形显示",
+        tags=["OLED", "SSD1306", "I2C", "显示", "0.96寸"],
+        document="""# OLED显示模块
+
+## 1. OLED简介
+
+0.96寸OLED显示屏，分辨率128×64，驱动芯片SSD1306，支持I2C和SPI接口。
+
+## 2. I2C通信协议
+
+I2C使用两根线通信：
+- **SCL**：时钟线
+- **SDA**：数据线
+
+### 时序
+1. 起始信号：SCL高电平时，SDA由高变低
+2. 停止信号：SCL高电平时，SDA由低变高
+3. 数据传输：SCL低电平时改变SDA，高电平时读取
+
+### 设备地址
+- SSD1306默认地址：0x3C（7位）/ 0x78（8位）
+
+## 3. SSD1306初始化
+
+```c
+// 关闭显示
+SSD1306_WriteCmd(0xAE);
+// 设置对比度
+SSD1306_WriteCmd(0x81);
+SSD1306_WriteCmd(0x7F);
+// 正常显示
+SSD1306_WriteCmd(0xA6);
+// 开启显示
+SSD1306_WriteCmd(0xAF);
+```
+
+## 4. 显示文字
+
+使用字模库将字符转换为点阵数据，通过I2C发送到OLED。
+""",
+        code_example="""#include "stm32f10x.h"
+#include "OLED.h"
+
+int main(void)
+{
+    OLED_Init();
+    OLED_Clear();
+    OLED_ShowString(0, 0, "Hello STM32!");
+    OLED_ShowNum(0, 2, 12345, 5);
+    OLED_ShowSignedNum(0, 4, -67);
+    while (1) {}
+}""",
+        questions=[
+            {"q_id": "q_s04_1", "type": "single_choice", "content": "SSD1306 OLED的默认I2C地址是？", "options": [{"id": "A", "text": "0x3C"}, {"id": "B", "text": "0x50"}, {"id": "C", "text": "0xA0"}, {"id": "D", "text": "0xD0"}], "correct_answer": "A", "explanation": "SSD1306的7位I2C地址默认为0x3C。"},
+            {"q_id": "q_s04_2", "type": "single_choice", "content": "I2C通信使用几根数据线？", "options": [{"id": "A", "text": "1根"}, {"id": "B", "text": "2根"}, {"id": "C", "text": "3根"}, {"id": "D", "text": "4根"}], "correct_answer": "B", "explanation": "I2C使用SCL（时钟）和SDA（数据）两根线通信。"},
+        ],
+        mindmap={"root": "OLED显示模块", "children": [{"name": "SSD1306"}, {"name": "I2C协议"}, {"name": "SCL/SDA"}, {"name": "设备地址"}, {"name": "字模库"}, {"name": "显示文字"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s05", name="定时器与PWM", subject="高级外设", course="STM32嵌入式", difficulty=0.45,
+        prerequisites=["kp_s02"], description="定时中断、PWM输出、输入捕获、编码器接口",
+        tags=["定时器", "TIM", "PWM", "输入捕获", "编码器"],
+        document="""# 定时器与PWM
+
+## 1. 定时器概述
+
+STM32F103有多个定时器：
+- **TIM1**：高级控制定时器
+- **TIM2~TIM4**：通用定时器
+- **TIM5~TIM7**：基本定时器
+
+## 2. 定时中断
+
+### 配置步骤
+1. 开启定时器时钟
+2. 配置时基单元（PSC预分频、ARR自动重装载）
+3. 配置NVIC中断
+4. 使能更新中断
+5. 启动定时器
+
+```c
+TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+TIM_TimeBaseStructure.TIM_Period = 999;      // ARR
+TIM_TimeBaseStructure.TIM_Prescaler = 7199;  // PSC
+TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+TIM_Cmd(TIM2, ENABLE);
+```
+
+## 3. PWM输出
+
+PWM（脉冲宽度调制）通过改变占空比控制输出：
+- **占空比** = CCR / (ARR+1) × 100%
+- 频率 = 时钟 / ((PSC+1) × (ARR+1))
+
+### 应用
+- LED亮度调节
+- 舵机角度控制
+- 电机速度控制
+
+## 4. 输入捕获
+
+测量外部信号的频率和脉宽，常用于红外接收、超声波测距等。
+""",
+        code_example="""#include "stm32f10x.h"
+#include "Delay.h"
+
+void PWM_Init(void)
+{
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    TIM_TimeBaseStructure.TIM_Period = 100 - 1;
+    TIM_TimeBaseStructure.TIM_Prescaler = 0;
+    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+    TIM_OCInitTypeDef TIM_OCInitStructure;
+    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+    TIM_OC1Init(TIM2, &TIM_OCInitStructure);
+    TIM_Cmd(TIM2, ENABLE);
+}
+int main(void)
+{
+    PWM_Init();
+    uint8_t i;
+    while (1)
+    {
+        for (i = 0; i <= 100; i++) { TIM_SetCompare1(TIM2, i); Delay_ms(10); }
+        for (i = 0; i <= 100; i++) { TIM_SetCompare1(TIM2, 100 - i); Delay_ms(10); }
+    }
+}""",
+        questions=[
+            {"q_id": "q_s05_1", "type": "single_choice", "content": "PWM占空比的计算公式是？", "options": [{"id": "A", "text": "CCR / ARR × 100%"}, {"id": "B", "text": "ARR / CCR × 100%"}, {"id": "C", "text": "PSC / ARR × 100%"}, {"id": "D", "text": "CCR / PSC × 100%"}], "correct_answer": "A", "explanation": "占空比 = CCR / (ARR+1) × 100%，CCR越大占空比越高。"},
+            {"q_id": "q_s05_2", "type": "single_choice", "content": "舵机控制需要多少频率的PWM信号？", "options": [{"id": "A", "text": "1Hz"}, {"id": "B", "text": "10Hz"}, {"id": "C", "text": "50Hz"}, {"id": "D", "text": "1000Hz"}], "correct_answer": "C", "explanation": "舵机标准控制信号为50Hz（周期20ms），脉宽0.5~2.5ms对应0°~180°。"},
+        ],
+        mindmap={"root": "定时器与PWM", "children": [{"name": "定时中断"}, {"name": "PWM输出"}, {"name": "占空比"}, {"name": "输入捕获"}, {"name": "编码器接口"}, {"name": "LED呼吸灯"}, {"name": "舵机控制"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s06", name="ADC模数转换", subject="高级外设", course="STM32嵌入式", difficulty=0.45,
+        prerequisites=["kp_s05"], description="模拟信号采集、电压测量、多通道扫描",
+        tags=["ADC", "模数转换", "电压采集", "模拟信号"],
+        document="""# ADC模数转换
+
+## 1. ADC概述
+
+STM32F103内置2个12位逐次逼近型ADC（ADC1、ADC2），共16个通道。
+
+### 关键参数
+| 参数 | 数值 |
+|------|------|
+| 分辨率 | 12位（0~4095） |
+| 转换时间 | 最短1μs（72MHz/12=6MHz） |
+| 输入范围 | 0~3.3V |
+| 通道数 | 16个外部通道 |
+
+## 2. ADC配置
+
+### 单次转换
+```c
+ADC_InitTypeDef ADC_InitStructure;
+ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
+ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+ADC_Init(ADC1, &ADC_InitStructure);
+ADC_Cmd(ADC1, ENABLE);
+```
+
+### 读取电压
+```c
+uint16_t adc_value = ADC_GetConversionValue(ADC1);
+float voltage = adc_value * 3.3f / 4095;
+```
+
+## 3. 多通道扫描
+
+按顺序采集多个通道的数据，适合多传感器场景。
+
+## 4. 应用场景
+- 电位器电压检测
+- 温度传感器读取
+- 光敏传感器采集
+- 电池电压监测
+""",
+        code_example="""#include "stm32f10x.h"
+
+uint16_t ADC_Read(uint8_t channel)
+{
+    ADC_RegularChannelConfig(ADC1, channel, 1, ADC_SampleTime_55Cycles5);
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+    while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC));
+    return ADC_GetConversionValue(ADC1);
+}
+int main(void)
+{
+    // ADC初始化代码...
+    while (1)
+    {
+        uint16_t adc_val = ADC_Read(ADC_Channel_0);
+        float voltage = adc_val * 3.3f / 4095;
+    }
+}""",
+        questions=[
+            {"q_id": "q_s06_1", "type": "single_choice", "content": "STM32F103 ADC的分辨率是？", "options": [{"id": "A", "text": "8位"}, {"id": "B", "text": "10位"}, {"id": "C", "text": "12位"}, {"id": "D", "text": "16位"}], "correct_answer": "C", "explanation": "STM32F103内置12位ADC，转换结果范围0~4095。"},
+            {"q_id": "q_s06_2", "type": "single_choice", "content": "ADC输入电压范围是？", "options": [{"id": "A", "text": "0~5V"}, {"id": "B", "text": "0~3.3V"}, {"id": "C", "text": "0~1.8V"}, {"id": "D", "text": "0~12V"}], "correct_answer": "B", "explanation": "STM32的ADC输入范围为0~3.3V，超过可能损坏芯片。"},
+        ],
+        mindmap={"root": "ADC模数转换", "children": [{"name": "12位分辨率"}, {"name": "单次转换"}, {"name": "连续转换"}, {"name": "多通道扫描"}, {"name": "电压计算"}, {"name": "传感器采集"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s07", name="DMA数据转运", subject="高级外设", course="STM32嵌入式", difficulty=0.6,
+        prerequisites=["kp_s06"], description="直接内存访问、高效数据传输、DMA+ADC",
+        tags=["DMA", "直接内存访问", "数据传输", "高效"],
+        document="""# DMA数据转运
+
+## 1. DMA概述
+
+DMA（Direct Memory Access）直接内存访问，可在不占用CPU的情况下传输数据。
+
+### STM32F103 DMA特性
+- 2个DMA控制器（DMA1、DMA2）
+- DMA1有7个通道，DMA2有5个通道
+- 支持存储器↔外设、存储器↔存储器传输
+
+## 2. DMA工作原理
+
+```
+外设 → DMA → 存储器（无需CPU干预）
+```
+
+### 传输参数
+- **源地址**：数据来源（外设数据寄存器或内存）
+- **目标地址**：数据去向
+- **传输数量**：传输多少个数据
+- **传输方向**：外设到内存 / 内存到外设 / 内存到内存
+
+## 3. DMA+ADC
+
+使用DMA自动将ADC转换结果搬运到数组，无需CPU逐个读取：
+
+```c
+uint16_t adc_buffer[10];
+DMA_InitTypeDef DMA_InitStructure;
+DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
+DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)adc_buffer;
+DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+DMA_InitStructure.DMA_BufferSize = 10;
+DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+```
+
+## 4. 应用场景
+- ADC连续采集
+- 串口数据接收
+- SPI/I2C批量传输
+""",
+        code_example="""#include "stm32f10x.h"
+
+uint16_t adc_buffer[10];
+
+void DMA_ADC_Init(void)
+{
+    DMA_InitTypeDef DMA_InitStructure;
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)adc_buffer;
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+    DMA_InitStructure.DMA_BufferSize = 10;
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+    DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+    DMA_Cmd(DMA1_Channel1, ENABLE);
+}""",
+        questions=[
+            {"q_id": "q_s07_1", "type": "single_choice", "content": "DMA的主要优势是？", "options": [{"id": "A", "text": "提高CPU运算速度"}, {"id": "B", "text": "不占用CPU进行数据传输"}, {"id": "C", "text": "增加内存容量"}, {"id": "D", "text": "降低功耗"}], "correct_answer": "B", "explanation": "DMA可以在不占用CPU的情况下进行数据传输，提高系统效率。"},
+        ],
+        mindmap={"root": "DMA数据转运", "children": [{"name": "DMA1"}, {"name": "DMA2"}, {"name": "传输方向"}, {"name": "DMA+ADC"}, {"name": "循环模式"}, {"name": "高效传输"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s08", name="UART串口通信", subject="通信协议", course="STM32嵌入式", difficulty=0.4,
+        prerequisites=["kp_s01"], description="串口发送接收、中断处理、数据包协议",
+        tags=["UART", "USART", "串口", "通信", "波特率"],
+        document="""# UART串口通信
+
+## 1. UART概述
+
+UART（Universal Asynchronous Receiver/Transmitter）通用异步收发器，是最常用的串行通信接口。
+
+### 关键参数
+| 参数 | 说明 |
+|------|------|
+| 波特率 | 每秒传输的位数，常用9600/115200 |
+| 数据位 | 5/6/7/8位，常用8位 |
+| 停止位 | 1/1.5/2位，常用1位 |
+| 校验位 | 无/奇/偶校验 |
+
+## 2. 硬件连接
+
+STM32 USART1：
+- **PA9** → TX（发送）
+- **PA10** → RX（接收）
+
+USB-TTL模块：
+- TXD → STM32 RXD
+- RXD → STM32 TXD
+- GND → GND（必须共地）
+
+## 3. 串口配置
+
+```c
+USART_InitTypeDef USART_InitStructure;
+USART_InitStructure.USART_BaudRate = 115200;
+USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+USART_InitStructure.USART_StopBits = USART_StopBits_1;
+USART_InitStructure.USART_Parity = USART_Parity_No;
+USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+USART_Init(USART1, &USART_InitStructure);
+USART_Cmd(USART1, ENABLE);
+```
+
+## 4. printf重定向
+
+```c
+int fputc(int ch, FILE *f)
+{
+    USART_SendData(USART1, ch);
+    while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+    return ch;
+}
+```
+""",
+        code_example="""#include "stm32f10x.h"
+#include <stdio.h>
+
+void USART_Init(void)
+{
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOA, ENABLE);
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    USART_InitTypeDef USART_InitStructure;
+    USART_InitStructure.USART_BaudRate = 115200;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+    USART_Init(USART1, &USART_InitStructure);
+    USART_Cmd(USART1, ENABLE);
+}
+int fputc(int ch, FILE *f)
+{
+    USART_SendData(USART1, ch);
+    while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+    return ch;
+}
+int main(void)
+{
+    USART_Init();
+    printf("Hello STM32!\\r\\n");
+    while (1) {}
+}""",
+        questions=[
+            {"q_id": "q_s08_1", "type": "single_choice", "content": "STM32 USART1的TX引脚是？", "options": [{"id": "A", "text": "PA9"}, {"id": "B", "text": "PA10"}, {"id": "C", "text": "PA11"}, {"id": "D", "text": "PA12"}], "correct_answer": "A", "explanation": "USART1的TX引脚为PA9，RX引脚为PA10。"},
+            {"q_id": "q_s08_2", "type": "single_choice", "content": "串口通信中TX和RX应该如何连接？", "options": [{"id": "A", "text": "TX接TX，RX接RX"}, {"id": "B", "text": "TX接RX，RX接TX"}, {"id": "C", "text": "随意连接"}, {"id": "D", "text": "只需要接TX"}], "correct_answer": "B", "explanation": "串口通信是交叉连接：设备A的TX接设备B的RX，反之亦然。"},
+        ],
+        mindmap={"root": "UART串口通信", "children": [{"name": "波特率"}, {"name": "TX/RX"}, {"name": "数据格式"}, {"name": "printf重定向"}, {"name": "中断接收"}, {"name": "数据包协议"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s09", name="I2C通信协议", subject="通信协议", course="STM32嵌入式", difficulty=0.55,
+        prerequisites=["kp_s04"], description="I2C时序、软件/硬件I2C、MPU6050六轴传感器",
+        tags=["I2C", "SCL", "SDA", "MPU6050", "传感器"],
+        document="""# I2C通信协议
+
+## 1. I2C概述
+
+I2C（Inter-Integrated Circuit）是飞利浦公司开发的两线式串行通信协议。
+
+### 特点
+- 只需2根线：SCL（时钟）、SDA（数据）
+- 支持多主多从
+- 标准模式100kHz，快速模式400kHz
+
+## 2. I2C时序
+
+### 起始信号
+SCL为高电平时，SDA由高电平变为低电平
+
+### 停止信号
+SCL为高电平时，SDA由低电平变为高电平
+
+### 数据传输
+- SCL低电平时，发送方改变SDA
+- SCL高电平时，接收方读取SDA
+- 每传输8位，接收方发送ACK（第9个时钟）
+
+## 3. 软件I2C实现
+
+```c
+void I2C_Start(void)
+{
+    SDA_OUT();
+    SDA_HIGH();
+    SCL_HIGH();
+    Delay_us(5);
+    SDA_LOW();  // 起始
+    Delay_us(5);
+    SCL_LOW();
+}
+```
+
+## 4. MPU6050六轴传感器
+
+MPU6050通过I2C输出加速度和陀螺仪数据：
+- 设备地址：0xD0（写）/ 0xD1（读）
+- 加速度寄存器：0x3B~0x40
+- 陀螺仪寄存器：0x43~0x48
+""",
+        code_example="""#include "stm32f10x.h"
+#include "Delay.h"
+
+#define MPU6050_ADDR 0xD0
+void I2C_Start(void) { /* 起始信号 */ }
+void I2C_Stop(void) { /* 停止信号 */ }
+void MPU6050_WriteReg(uint8_t reg, uint8_t data)
+{
+    I2C_Start();
+    I2C_SendByte(MPU6050_ADDR);
+    I2C_SendByte(reg);
+    I2C_SendByte(data);
+    I2C_Stop();
+}
+void MPU6050_Init(void)
+{
+    MPU6050_WriteReg(0x6B, 0x80);  // 复位
+    Delay_ms(100);
+    MPU6050_WriteReg(0x6B, 0x00);  // 唤醒
+}
+int main(void)
+{
+    MPU6050_Init();
+    while (1) { /* 读取传感器数据 */ }
+}""",
+        questions=[
+            {"q_id": "q_s09_1", "type": "single_choice", "content": "I2C通信使用几根线？", "options": [{"id": "A", "text": "1根"}, {"id": "B", "text": "2根"}, {"id": "C", "text": "3根"}, {"id": "D", "text": "4根"}], "correct_answer": "B", "explanation": "I2C使用SCL（时钟线）和SDA（数据线）两根线。"},
+            {"q_id": "q_s09_2", "type": "single_choice", "content": "MPU6050的I2C设备地址是？", "options": [{"id": "A", "text": "0x3C"}, {"id": "B", "text": "0x50"}, {"id": "C", "text": "0xD0"}, {"id": "D", "text": "0xA0"}], "correct_answer": "C", "explanation": "MPU6050的7位地址为0x68，8位写地址为0xD0。"},
+        ],
+        mindmap={"root": "I2C通信协议", "children": [{"name": "SCL/SDA"}, {"name": "起始信号"}, {"name": "停止信号"}, {"name": "ACK应答"}, {"name": "软件I2C"}, {"name": "MPU6050"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s10", name="SPI通信协议", subject="通信协议", course="STM32嵌入式", difficulty=0.55,
+        prerequisites=["kp_s01"], description="SPI时序、软件/硬件SPI、W25Q64 Flash存储器",
+        tags=["SPI", "全双工", "W25Q64", "Flash", "高速"],
+        document="""# SPI通信协议
+
+## 1. SPI概述
+
+SPI（Serial Peripheral Interface）串行外设接口，是全双工高速通信协议。
+
+### 特点
+- 4根线：SCK（时钟）、MOSI（主出从入）、MISO（主入从出）、CS（片选）
+- 全双工：可同时收发数据
+- 高速：可达数十MHz
+- 一主多从：每个从机需要独立CS
+
+## 2. SPI模式
+
+| 模式 | CPOL | CPHA | 空闲时钟 | 采样边沿 |
+|------|------|------|---------|---------|
+| Mode 0 | 0 | 0 | 低 | 上升沿 |
+| Mode 1 | 0 | 1 | 低 | 下降沿 |
+| Mode 2 | 1 | 0 | 高 | 下降沿 |
+| Mode 3 | 1 | 1 | 高 | 上升沿 |
+
+## 3. W25Q64 Flash
+
+W25Q64是8MB SPI Flash存储器：
+- 读ID：0x9F
+- 读数据：0x03 + 地址
+- 页编程：0x02 + 地址 + 数据
+- 扇区擦除：0x20 + 地址
+
+## 4. 硬件SPI配置
+
+```c
+SPI_InitTypeDef SPI_InitStructure;
+SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256;
+SPI_Init(SPI1, &SPI_InitStructure);
+```
+""",
+        code_example="""#include "stm32f10x.h"
+
+uint8_t SPI_ReadID(void)
+{
+    uint8_t id;
+    CS_LOW();
+    SPI_SendData(SPI1, 0x9F);
+    while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);
+    SPI_ReceiveData(SPI1);  // dummy
+    SPI_SendData(SPI1, 0xFF);
+    while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);
+    id = SPI_ReceiveData(SPI1);
+    CS_HIGH();
+    return id;
+}
+int main(void)
+{
+    // SPI初始化...
+    uint8_t flash_id = SPI_ReadID();
+    while (1) {}
+}""",
+        questions=[
+            {"q_id": "q_s10_1", "type": "single_choice", "content": "SPI通信是全双工还是半双工？", "options": [{"id": "A", "text": "半双工"}, {"id": "B", "text": "全双工"}, {"id": "C", "text": "单工"}, {"id": "D", "text": "以上都可以"}], "correct_answer": "B", "explanation": "SPI使用独立的MOSI和MISO线，支持全双工通信。"},
+        ],
+        mindmap={"root": "SPI通信协议", "children": [{"name": "SCK"}, {"name": "MOSI"}, {"name": "MISO"}, {"name": "CS片选"}, {"name": "SPI模式"}, {"name": "W25Q64"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s11", name="RTC实时时钟", subject="高级外设", course="STM32嵌入式", difficulty=0.4,
+        prerequisites=["kp_s01"], description="备份寄存器、RTC配置、日历功能",
+        tags=["RTC", "实时时钟", "日历", "备份域", "闹钟"],
+        document="""# RTC实时时钟
+
+## 1. RTC概述
+
+RTC（Real-Time Clock）实时时钟，可在掉电后通过备用电池继续运行。
+
+### STM32F103 RTC特性
+- 32位计数器，可记录约136年
+- 使用LSE（32.768kHz）外部晶振
+- 支持闹钟中断
+- 位于备份域，VBAT供电可保持运行
+
+## 2. RTC配置
+
+### 启用备份域访问
+```c
+RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+PWR_BackupAccessCmd(ENABLE);
+```
+
+### 配置LSE晶振
+```c
+RCC_LSEConfig(RCC_LSE_ON);
+while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET);
+RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+RCC_RTCCLKCmd(ENABLE);
+```
+
+### 设置时间
+```c
+RTC_SetCounter(hours * 3600 + minutes * 60 + seconds);
+```
+
+## 3. 日历功能
+
+将秒数转换为年月日时分秒：
+```c
+uint32_t time = RTC_GetCounter();
+uint8_t hours = time / 3600 % 24;
+uint8_t minutes = time / 60 % 60;
+uint8_t seconds = time % 60;
+```
+
+## 4. 闹钟中断
+
+设置闹钟值，到达时触发中断，可用于定时唤醒。
+""",
+        code_example="""#include "stm32f10x.h"
+
+void RTC_Init(void)
+{
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+    PWR_BackupAccessCmd(ENABLE);
+    if (BKP_ReadBackupRegister(BKP_DR1) != 0xA5A5)
+    {
+        RCC_LSEConfig(RCC_LSE_ON);
+        while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET);
+        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+        RCC_RTCCLKCmd(ENABLE);
+        RTC_WaitForSynchro();
+        RTC_WaitForLastTask();
+        RTC_SetPrescaler(32767);
+        RTC_WaitForLastTask();
+        RTC_SetCounter(0);
+        BKP_WriteBackupRegister(BKP_DR1, 0xA5A5);
+    }
+}
+int main(void)
+{
+    RTC_Init();
+    while (1)
+    {
+        uint32_t time = RTC_GetCounter();
+    }
+}""",
+        questions=[
+            {"q_id": "q_s11_1", "type": "single_choice", "content": "RTC的时钟源通常使用？", "options": [{"id": "A", "text": "HSI内部高速时钟"}, {"id": "B", "text": "HSE外部高速晶振"}, {"id": "C", "text": "LSE 32.768kHz晶振"}, {"id": "D", "text": "LSI内部低速时钟"}], "correct_answer": "C", "explanation": "RTC通常使用LSE 32.768kHz晶振，精度高且功耗低。"},
+        ],
+        mindmap={"root": "RTC实时时钟", "children": [{"name": "备份域"}, {"name": "LSE晶振"}, {"name": "计数器"}, {"name": "日历功能"}, {"name": "闹钟中断"}, {"name": "VBAT供电"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s12", name="低功耗模式", subject="高级外设", course="STM32嵌入式", difficulty=0.55,
+        prerequisites=["kp_s08", "kp_s11"], description="睡眠、停止、待机模式配置与唤醒",
+        tags=["低功耗", "睡眠", "停止", "待机", "唤醒"],
+        document="""# 低功耗模式
+
+## 1. 低功耗模式概述
+
+STM32提供3种低功耗模式：
+
+| 模式 | 唤醒方式 | 功耗 | 保持内容 |
+|------|---------|------|---------|
+| 睡眠 | 任何中断 | 较高 | 全部 |
+| 停止 | 外部中断/WKUP | 极低 | SRAM和寄存器 |
+| 待机 | WKUP引脚/复位 | 最低 | 仅备份域 |
+
+## 2. 睡眠模式
+
+CPU停止运行，但外设继续工作：
+```c
+SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+__WFI();  // 等待中断唤醒
+```
+
+## 3. 停止模式
+
+所有时钟停止，SRAM和寄存器内容保持：
+```c
+PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
+```
+
+## 4. 待机模式
+
+最低功耗，仅备份域保持：
+```c
+PWR_EnterSTANDBYMode();
+```
+
+## 5. 唤醒方式
+- **睡眠**：任意中断
+- **停止**：EXTI中断、WKUP引脚
+- **待机**：WKUP引脚上升沿、复位、IWDG复位
+
+## 6. 应用场景
+- 电池供电设备：待机模式
+- 定时采集：停止+RTC闹钟唤醒
+- 低功耗传感器：睡眠+外部中断唤醒
+""",
+        code_example="""#include "stm32f10x.h"
+
+void EnterStandbyMode(void)
+{
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+    PWR_WakeUpPinCmd ENABLE);
+    PWR_EnterSTANDBYMode();
+}
+int main(void)
+{
+    // 初始化...
+    Delay_ms(5000);  // 工作5秒
+    EnterStandbyMode();  // 进入待机
+    // 唤醒后从头执行
+}""",
+        questions=[
+            {"q_id": "q_s12_1", "type": "single_choice", "content": "哪种低功耗模式功耗最低？", "options": [{"id": "A", "text": "睡眠模式"}, {"id": "B", "text": "停止模式"}, {"id": "C", "text": "待机模式"}, {"id": "D", "text": "三种一样"}], "correct_answer": "C", "explanation": "待机模式功耗最低，仅备份域保持，SRAM和寄存器内容丢失。"},
+        ],
+        mindmap={"root": "低功耗模式", "children": [{"name": "睡眠模式"}, {"name": "停止模式"}, {"name": "待机模式"}, {"name": "WKUP唤醒"}, {"name": "EXTI唤醒"}, {"name": "应用场景"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s13", name="看门狗", subject="高级外设", course="STM32嵌入式", difficulty=0.4,
+        prerequisites=["kp_s05"], description="独立看门狗、窗口看门狗配置与应用",
+        tags=["看门狗", "IWDG", "WWDG", "复位", "程序监控"],
+        document="""# 看门狗
+
+## 1. 看门狗概述
+
+看门狗（Watchdog）用于监控程序运行，防止程序跑飞或死锁。
+
+### 两种看门狗
+| 类型 | 时钟源 | 特点 |
+|------|--------|------|
+| IWDG独立看门狗 | LSI 40kHz | 简单，独立运行 |
+| WWDG窗口看门狗 | APB1时钟 | 精确，可设窗口 |
+
+## 2. 独立看门狗（IWDG）
+
+### 工作原理
+- 递减计数器，从重装载值递减到0时产生复位
+- 必须在计数器归零前"喂狗"（重装载）
+- 如果程序跑飞未喂狗，系统自动复位
+
+### 配置
+```c
+IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+IWDG_SetPrescaler(IWDG_Prescaler_64);
+IWDG_SetReload(625);  // 超时时间 = 64/40000 * 625 = 1秒
+IWDG_ReloadCounter();
+IWDG_Enable();
+```
+
+### 喂狗
+```c
+IWDG_ReloadCounter();  // 在主循环中定期调用
+```
+
+## 3. 窗口看门狗（WWDG）
+
+- 必须在窗口范围内喂狗
+- 太早或太晚都会复位
+- 适合对时序要求严格的场景
+
+## 4. 应用场景
+- 工业控制系统
+- 汽车电子
+- 任何需要高可靠性的场景
+""",
+        code_example="""#include "stm32f10x.h"
+
+void IWDG_Init(void)
+{
+    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+    IWDG_SetPrescaler(IWDG_Prescaler_64);
+    IWDG_SetReload(625);
+    IWDG_ReloadCounter();
+    IWDG_Enable();
+}
+int main(void)
+{
+    // 系统初始化...
+    IWDG_Init();
+    while (1)
+    {
+        // 正常工作...
+        IWDG_ReloadCounter();  // 喂狗
+        Delay_ms(500);
+    }
+}""",
+        questions=[
+            {"q_id": "q_s13_1", "type": "single_choice", "content": "看门狗的作用是？", "options": [{"id": "A", "text": "提高运算速度"}, {"id": "B", "text": "监控程序防止跑飞"}, {"id": "C", "text": "节省功耗"}, {"id": "D", "text": "增加存储空间"}], "correct_answer": "B", "explanation": "看门狗用于监控程序运行，程序跑飞未喂狗时自动复位系统。"},
+        ],
+        mindmap={"root": "看门狗", "children": [{"name": "IWDG"}, {"name": "WWDG"}, {"name": "喂狗"}, {"name": "重装载值"}, {"name": "系统复位"}, {"name": "程序监控"}]},
+    ),
+    KnowledgePointModel(
+        kp_id="kp_s14", name="Flash操作", subject="高级外设", course="STM32嵌入式", difficulty=0.4,
+        prerequisites=["kp_s01"], description="内部Flash读写、芯片ID读取",
+        tags=["Flash", "存储器", "读写", "芯片ID", "擦除"],
+        document="""# Flash操作
+
+## 1. Flash概述
+
+STM32F103内置Flash存储器，用于存储程序代码和数据。
+
+### Flash特性
+| 参数 | 数值 |
+|------|------|
+| 编程粒度 | 半字（16位） |
+| 擦除粒度 | 扇区（1KB~2KB） |
+| 编程时间 | 40~70μs |
+| 擦写次数 | 10万次 |
+
+## 2. 读取Flash
+
+Flash可像内存一样直接读取：
+```c
+uint32_t data = *(volatile uint32_t*)0x08000000;
+```
+
+## 3. 写入Flash
+
+### 写入步骤
+1. 解锁Flash（写入密钥）
+2. 擦除目标扇区
+3. 逐半字写入数据
+4. 锁定Flash
+
+```c
+FLASH_Unlock();
+FLASH_ErasePage(FLASH_START_ADDR);
+FLASH_ProgramHalfWord(FLASH_START_ADDR, 0x1234);
+FLASH_Lock();
+```
+
+## 4. 读取芯片ID
+
+每个STM32有唯一96位芯片ID：
+```c
+uint32_t id0 = *(uint32_t*)(0x1FFFF7E8);  // 低32位
+uint32_t id1 = *(uint32_t*)(0x1FFFF7EC);  // 中32位
+uint32_t id2 = *(uint32_t*)(0x1FFFF7F0);  // 高32位
+```
+
+## 5. 应用场景
+- 存储配置参数
+- 在线升级（IAP）
+- 数据记录
+- 唯一设备标识
+""",
+        code_example="""#include "stm32f10x.h"
+
+#define FLASH_START_ADDR 0x08000000 + 60 * 1024  // 最后一页
+
+void Flash_Write(uint32_t addr, uint16_t data)
+{
+    FLASH_Unlock();
+    FLASH_ErasePage(addr);
+    FLASH_ProgramHalfWord(addr, data);
+    FLASH_Lock();
+}
+uint16_t Flash_Read(uint32_t addr)
+{
+    return *(volatile uint16_t*)addr;
+}
+void ReadChipID(void)
+{
+    uint32_t id0 = *(uint32_t*)(0x1FFFF7E8);
+    uint32_t id1 = *(uint32_t*)(0x1FFFF7EC);
+    uint32_t id2 = *(uint32_t*)(0x1FFFF7F0);
+}
+int main(void)
+{
+    ReadChipID();
+    Flash_Write(FLASH_START_ADDR, 0xABCD);
+    uint16_t val = Flash_Read(FLASH_START_ADDR);
+    while (1) {}
+}""",
+        questions=[
+            {"q_id": "q_s14_1", "type": "single_choice", "content": "STM32 Flash的编程粒度是？", "options": [{"id": "A", "text": "字节（8位）"}, {"id": "B", "text": "半字（16位）"}, {"id": "C", "text": "字（32位）"}, {"id": "D", "text": "扇区"}], "correct_answer": "B", "explanation": "STM32F103 Flash编程粒度为半字（16位），擦除粒度为扇区。"},
+        ],
+        mindmap={"root": "Flash操作", "children": [{"name": "读取Flash"}, {"name": "写入Flash"}, {"name": "擦除扇区"}, {"name": "芯片ID"}, {"name": "IAP升级"}, {"name": "参数存储"}]},
+    ),
 ]
 db.add_all(kps)
 db.commit()

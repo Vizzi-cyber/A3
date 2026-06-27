@@ -159,7 +159,11 @@ async def get_daily_quiz(
     # 从知识库中收集所有题目
     kp_query = db.query(KnowledgePointModel)
     if subject:
-        kp_query = kp_query.filter(KnowledgePointModel.subject == subject)
+        COURSE_NAMES = {"C语言", "电路分析", "STM32嵌入式"}
+        if subject in COURSE_NAMES:
+            kp_query = kp_query.filter(KnowledgePointModel.course == subject)
+        else:
+            kp_query = kp_query.filter(KnowledgePointModel.subject == subject)
     kps = kp_query.all()
     all_questions = []
     for kp in kps:

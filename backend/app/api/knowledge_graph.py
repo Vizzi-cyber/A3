@@ -45,11 +45,19 @@ async def build_knowledge_graph(
 ):
     """从数据库知识点构建知识图谱（调用 LLM）"""
     # 查询该学科的所有知识点
-    kps = (
-        db.query(KnowledgePointModel)
-        .filter(KnowledgePointModel.subject == request.subject)
-        .all()
-    )
+    COURSE_NAMES = {"C语言", "电路分析", "STM32嵌入式"}
+    if request.subject in COURSE_NAMES:
+        kps = (
+            db.query(KnowledgePointModel)
+            .filter(KnowledgePointModel.course == request.subject)
+            .all()
+        )
+    else:
+        kps = (
+            db.query(KnowledgePointModel)
+            .filter(KnowledgePointModel.subject == request.subject)
+            .all()
+        )
     if not kps:
         # 如果按 subject 过滤没有结果，尝试获取全部
         kps = db.query(KnowledgePointModel).all()

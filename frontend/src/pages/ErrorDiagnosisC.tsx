@@ -285,14 +285,17 @@ const ErrorDiagnosis: React.FC = () => {
         setActiveTab("trace");
         message.success("思维溯源完成");
 
-        // 更新最后一条历史记录的溯源信息
+        // 更新当前分析的记录的溯源信息（匹配当前代码内容）
         if (history.length > 0) {
-          const updated = [...history];
-          updated[0] = {
-            ...updated[0],
-            misconceptionTrace: data.trace,
-            correctionStrategy: data.correction,
-          };
+          const updated = history.map((r) =>
+            r.code === code
+              ? {
+                  ...r,
+                  misconceptionTrace: data.trace,
+                  correctionStrategy: data.correction,
+                }
+              : r,
+          );
           setHistory(updated);
           localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
         }
@@ -352,26 +355,42 @@ const ErrorDiagnosis: React.FC = () => {
       { dimension: "问题分析", fullMark: 100 },
     ];
 
-    const syntaxScore = Math.max(
-      20,
-      100 - (errorAnalysis.syntax_errors?.length || 0) * 25,
+    const syntaxCount = errorAnalysis.syntax_errors?.length || 0;
+    const logicCount = errorAnalysis.logic_errors?.length || 0;
+    const misconceptionCount = errorAnalysis.misconceptions?.length || 0;
+    const totalErrors = syntaxCount + logicCount + misconceptionCount;
+
+    // 基于错误数量的合理评分：无错误=95，每增加一个错误扣分，最低20
+    const syntaxScore = Math.max(20, 95 - syntaxCount * 15);
+    const logicScore = Math.max(20, 95 - logicCount * 20);
+    const conceptScore = Math.max(20, 95 - misconceptionCount * 25);
+
+    // 代码规范：有命名/格式相关语法错误则扣分
+    const hasNormIssues = errorAnalysis.syntax_errors?.some(
+      (e) =>
+        e.description?.includes("命名") ||
+        e.description?.includes("规范") ||
+        e.description?.includes("格式"),
     );
-    const logicScore = Math.max(
-      20,
-      100 - (errorAnalysis.logic_errors?.length || 0) * 30,
-    );
-    const conceptScore = Math.max(
-      20,
-      100 - (errorAnalysis.misconceptions?.length || 0) * 35,
-    );
-    const normScore = errorAnalysis.syntax_errors?.some(
-      (e) => e.description?.includes("命名") || e.description?.includes("规范"),
-    )
-      ? 60
-      : 85;
-    const debugScore = errorOutput ? 50 : 70;
+    const normScore = hasNormIssues
+      ? Math.max(30, 80 - syntaxCount * 10)
+      : totalErrors === 0
+        ? 95
+        : 75;
+
+    // 调试能力：提供了编译器错误信息说明有调试意识
+    const debugScore = errorOutput.trim() ? 70 : totalErrors === 0 ? 90 : 55;
+
+    // 问题分析：总体评估越详细说明分析能力越强
+    const assessmentLen = errorAnalysis.overall_assessment?.length || 0;
     const analysisScore =
-      errorAnalysis.overall_assessment?.length > 50 ? 75 : 55;
+      assessmentLen > 100
+        ? 80
+        : assessmentLen > 50
+          ? 65
+          : totalErrors === 0
+            ? 85
+            : 50;
 
     return dims.map((d, i) => {
       const scores = [

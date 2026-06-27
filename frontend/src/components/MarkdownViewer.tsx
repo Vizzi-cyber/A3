@@ -159,6 +159,32 @@ const markdownComponents: Record<string, any> = {
   hr() {
     return <hr className="md-hr" />;
   },
+  a({
+    href,
+    children,
+    ...props
+  }: {
+    href?: string;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) {
+    if (href && /\.md$/i.test(href)) {
+      const courseId = href.replace(/\.md$/i, "");
+      return (
+        <span
+          className="course-nav-link text-primary cursor-pointer hover:underline"
+          data-course-id={courseId}
+        >
+          {children}
+        </span>
+      );
+    }
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+        {children}
+      </a>
+    );
+  },
   svg({
     children,
     ...props

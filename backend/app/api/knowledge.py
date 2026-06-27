@@ -17,6 +17,7 @@ class KnowledgePointCreate(BaseModel):
     kp_id: str = Field(..., max_length=64)
     name: str = Field(..., max_length=256)
     subject: str = Field(..., max_length=64)
+    course: Optional[str] = Field(None, max_length=64)
     difficulty: float = Field(0.5, ge=0.0, le=1.0)
     prerequisites: List[str] = []
     description: Optional[str] = None
@@ -33,6 +34,7 @@ async def create_kp(request: KnowledgePointCreate, db: Session = Depends(get_db)
         kp_id=request.kp_id,
         name=request.name,
         subject=request.subject,
+        course=request.course,
         difficulty=request.difficulty,
         prerequisites=request.prerequisites,
         description=request.description,
@@ -56,7 +58,7 @@ async def list_kps(
     query = db.query(KnowledgePointModel)
     if subject:
         # 课程级别筛选：C语言、电路分析等
-        COURSE_NAMES = {"C语言", "电路分析"}
+        COURSE_NAMES = {"C语言", "电路分析", "STM32嵌入式"}
         if subject in COURSE_NAMES:
             query = query.filter(KnowledgePointModel.course == subject)
         else:

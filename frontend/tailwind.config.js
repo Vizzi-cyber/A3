@@ -53,15 +53,48 @@ export default {
           850: "#1e293b",
           900: "#0f172a",
         },
+        // 电路仿真器设计 token
+        surface: "#ffffff",
+        bg: "#f8fafc",
+        ink: {
+          DEFAULT: "#1e293b",
+          secondary: "#64748b",
+          faint: "#94a3b8",
+        },
+        border: "#e2e8f0",
+        accent: {
+          DEFAULT: "#4f46e5",
+          light: "#eef2ff",
+        },
+        teal: {
+          DEFAULT: "#0d9488",
+          light: "#ccfbf1",
+        },
+        warm: {
+          DEFAULT: "#ea580c",
+          light: "#fff7ed",
+        },
       },
       boxShadow: {
         card: "0 1px 3px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0,0,0,0.02)",
         "card-hover":
           "0 8px 24px -4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0,0,0,0.02)",
+        "card-shadow":
+          "0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)",
         soft: "0 2px 8px rgba(0, 0, 0, 0.06)",
         float: "0 16px 32px -4px rgba(0, 0, 0, 0.1)",
-        glow: "0 0 16px rgba(0, 82, 255, 0.15)",
+        glow: "0 0 16px rgba(79, 70, 229, 0.15)",
         "inner-light": "inset 0 1px 0 rgba(255,255,255,0.5)",
+      },
+      fontFamily: {
+        display: [
+          "'Inter'",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "'Segoe UI'",
+          "Roboto",
+          "sans-serif",
+        ],
       },
       borderRadius: {
         "2xl": "1rem",

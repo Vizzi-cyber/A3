@@ -1467,4 +1467,74 @@ export async function apiStream(
   markDone();
 }
 
+// ---------- STM32 课程内容 ----------
+export const stm32Api = {
+  listCourses: () =>
+    api.get<{
+      status: string;
+      data: {
+        courses: Array<{
+          id: string;
+          filename: string;
+          title: string;
+        }>;
+      };
+    }>("/stm32/courses"),
+
+  getCourseContent: (courseId: string) =>
+    api.get<{
+      status: string;
+      data: {
+        id: string;
+        filename: string;
+        title: string;
+        content: string;
+      };
+    }>(`/stm32/courses/${encodeURIComponent(courseId)}`),
+
+  listWiringDiagrams: () =>
+    api.get<{
+      status: string;
+      data: {
+        diagrams: Array<{
+          filename: string;
+          title: string;
+          url: string;
+        }>;
+      };
+    }>("/stm32/wiring-diagrams"),
+
+  listProjects: () =>
+    api.get<{
+      status: string;
+      data: {
+        projects: Array<{
+          dirname: string;
+          title: string;
+          file_count: number;
+        }>;
+      };
+    }>("/stm32/projects"),
+
+  getProjectFiles: (dirname: string) =>
+    api.get<{
+      status: string;
+      data: {
+        dirname: string;
+        files: Array<{ path: string; size: number }>;
+      };
+    }>(`/stm32/projects/${encodeURIComponent(dirname)}`),
+
+  getKnowledgeTree: () =>
+    api.get<{
+      status: string;
+      data: {
+        courses: Array<Record<string, unknown>>;
+        knowledge_points: Array<Record<string, unknown>>;
+        experiments: Array<Record<string, unknown>>;
+        learning_paths: Array<Record<string, unknown>>;
+      };
+    }>("/stm32/knowledge-tree"),
+};
+
 export default api;

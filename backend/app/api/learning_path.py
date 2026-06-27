@@ -100,7 +100,11 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
     if not raw_path or not raw_path.get("stages"):
         kp_query = db.query(KnowledgePointModel)
         if request.subject:
-            kp_query = kp_query.filter(KnowledgePointModel.subject == request.subject)
+            COURSE_NAMES = {"C语言", "电路分析", "STM32嵌入式"}
+            if request.subject in COURSE_NAMES:
+                kp_query = kp_query.filter(KnowledgePointModel.course == request.subject)
+            else:
+                kp_query = kp_query.filter(KnowledgePointModel.subject == request.subject)
         kps = kp_query.all()
         if kps:
             planner = DAGPathPlanner()
@@ -159,7 +163,11 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
     subject = request.subject or "C语言"
     if not raw_path or not raw_path.get("stages"):
         # 查询该课程的知识点，按顺序生成默认路径
-        fallback_kps = db.query(KnowledgePointModel).filter(KnowledgePointModel.subject == subject).order_by(KnowledgePointModel.created_at.asc()).all()
+        COURSE_NAMES = {"C语言", "电路分析", "STM32嵌入式"}
+        if subject in COURSE_NAMES:
+            fallback_kps = db.query(KnowledgePointModel).filter(KnowledgePointModel.course == subject).order_by(KnowledgePointModel.created_at.asc()).all()
+        else:
+            fallback_kps = db.query(KnowledgePointModel).filter(KnowledgePointModel.subject == subject).order_by(KnowledgePointModel.created_at.asc()).all()
         if fallback_kps:
             # 按4个阶段分配知识点
             chunk_size = max(1, len(fallback_kps) // 4)
@@ -245,7 +253,11 @@ async def get_current_path(
         raise HTTPException(status_code=403, detail="Cannot view other student's path")
     query = db.query(KnowledgePointModel)
     if subject:
-        query = query.filter(KnowledgePointModel.subject == subject)
+        COURSE_NAMES = {"C语言", "电路分析", "STM32嵌入式"}
+        if subject in COURSE_NAMES:
+            query = query.filter(KnowledgePointModel.course == subject)
+        else:
+            query = query.filter(KnowledgePointModel.subject == subject)
     kps = query.order_by(KnowledgePointModel.created_at.asc()).all()
     # 使用聚合查询计算每个KP的最大进度，避免加载全部记录
     since = datetime.now(timezone.utc) - timedelta(days=365)

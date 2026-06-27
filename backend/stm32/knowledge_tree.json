@@ -1,0 +1,500 @@
+{
+  "description": "STM32课程知识树 - 完整的层级结构和对应关系",
+
+  "courses": [
+    {
+      "id": 1,
+      "name": "STM32嵌入式开发基础",
+      "description": "从零基础到高级外设，系统学习STM32F103嵌入式开发。包含GPIO、定时器、通信接口等核心外设。",
+      "difficulty": "初学者",
+      "target_major": "嵌入式系统/电子信息/自动化",
+      "image": "STM32Project-有注释版/1-1 接线图/2-1 工程模板.jpg"
+    }
+  ],
+
+  "knowledge_points": [
+    {
+      "id": 1,
+      "name": "STM32基础入门",
+      "description": "芯片架构、开发环境搭建、工程模板创建、GPIO基础",
+      "parent_id": null,
+      "level": 1,
+      "difficulty": "简单",
+      "course_id": 1,
+      "sort_order": 1,
+      "prerequisites": [],
+      "icon": "chip",
+      "color": "#4CAF50",
+      "resource_ids": [1, 40, 43],
+      "experiment_ids": []
+    },
+    {
+      "id": 2,
+      "name": "GPIO输出控制",
+      "description": "通用输入输出端口输出模式，驱动LED、蜂鸣器、舵机等外设",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "简单",
+      "course_id": 1,
+      "sort_order": 1,
+      "prerequisites": [1],
+      "icon": "output",
+      "color": "#2196F3",
+      "resource_ids": [2, 3, 4],
+      "experiment_ids": [1, 2]
+    },
+    {
+      "id": 3,
+      "name": "GPIO输入检测",
+      "description": "通用输入输出端口输入模式，按键检测、传感器接口",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "简单",
+      "course_id": 1,
+      "sort_order": 2,
+      "prerequisites": [1],
+      "icon": "input",
+      "color": "#2196F3",
+      "resource_ids": [5, 6, 8, 9],
+      "experiment_ids": [3]
+    },
+    {
+      "id": 4,
+      "name": "OLED显示模块",
+      "description": "I2C通信协议、SSD1306驱动、文字图形显示",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "中等",
+      "course_id": 1,
+      "sort_order": 3,
+      "prerequisites": [1],
+      "icon": "display",
+      "color": "#FF9800",
+      "resource_ids": [7, 41, 42],
+      "experiment_ids": []
+    },
+    {
+      "id": 5,
+      "name": "定时器与PWM",
+      "description": "定时中断、PWM输出、输入捕获、编码器接口",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "中等",
+      "course_id": 1,
+      "sort_order": 4,
+      "prerequisites": [2],
+      "icon": "timer",
+      "color": "#9C27B0",
+      "resource_ids": [10, 11, 12, 13, 14, 15, 16, 17],
+      "experiment_ids": [4, 5]
+    },
+    {
+      "id": 6,
+      "name": "ADC模数转换",
+      "description": "模拟信号采集、电压测量、多通道扫描",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "中等",
+      "course_id": 1,
+      "sort_order": 5,
+      "prerequisites": [5],
+      "icon": "adc",
+      "color": "#00BCD4",
+      "resource_ids": [18, 19],
+      "experiment_ids": []
+    },
+    {
+      "id": 7,
+      "name": "DMA数据转运",
+      "description": "直接内存访问、高效数据传输、DMA+ADC",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "困难",
+      "course_id": 1,
+      "sort_order": 6,
+      "prerequisites": [6],
+      "icon": "dma",
+      "color": "#F44336",
+      "resource_ids": [20, 21],
+      "experiment_ids": []
+    },
+    {
+      "id": 8,
+      "name": "UART串口通信",
+      "description": "串口发送接收、中断处理、数据包协议",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "中等",
+      "course_id": 1,
+      "sort_order": 7,
+      "prerequisites": [1],
+      "icon": "uart",
+      "color": "#795548",
+      "resource_ids": [22, 23, 24, 25],
+      "experiment_ids": [6]
+    },
+    {
+      "id": 9,
+      "name": "I2C通信协议",
+      "description": "I2C时序、软件/硬件I2C、MPU6050六轴传感器",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "困难",
+      "course_id": 1,
+      "sort_order": 8,
+      "prerequisites": [4],
+      "icon": "i2c",
+      "color": "#607D8B",
+      "resource_ids": [26, 27],
+      "experiment_ids": [7]
+    },
+    {
+      "id": 10,
+      "name": "SPI通信协议",
+      "description": "SPI时序、软件/硬件SPI、W25Q64 Flash存储器",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "困难",
+      "course_id": 1,
+      "sort_order": 9,
+      "prerequisites": [1],
+      "icon": "spi",
+      "color": "#607D8B",
+      "resource_ids": [28, 29],
+      "experiment_ids": []
+    },
+    {
+      "id": 11,
+      "name": "RTC实时时钟",
+      "description": "备份寄存器、RTC配置、日历功能",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "中等",
+      "course_id": 1,
+      "sort_order": 10,
+      "prerequisites": [1],
+      "icon": "rtc",
+      "color": "#E91E63",
+      "resource_ids": [30, 31],
+      "experiment_ids": []
+    },
+    {
+      "id": 12,
+      "name": "低功耗模式",
+      "description": "睡眠、停止、待机模式配置与唤醒",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "困难",
+      "course_id": 1,
+      "sort_order": 11,
+      "prerequisites": [8, 11],
+      "icon": "power",
+      "color": "#3F51B5",
+      "resource_ids": [32, 33, 34, 35],
+      "experiment_ids": []
+    },
+    {
+      "id": 13,
+      "name": "看门狗",
+      "description": "独立看门狗、窗口看门狗配置与应用",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "中等",
+      "course_id": 1,
+      "sort_order": 12,
+      "prerequisites": [5],
+      "icon": "watchdog",
+      "color": "#FF5722",
+      "resource_ids": [36, 37],
+      "experiment_ids": []
+    },
+    {
+      "id": 14,
+      "name": "Flash操作",
+      "description": "内部Flash读写、芯片ID读取",
+      "parent_id": 1,
+      "level": 2,
+      "difficulty": "中等",
+      "course_id": 1,
+      "sort_order": 13,
+      "prerequisites": [1],
+      "icon": "flash",
+      "color": "#CDDC39",
+      "resource_ids": [38, 39],
+      "experiment_ids": []
+    }
+  ],
+
+  "experiments": [
+    {
+      "id": 1,
+      "title": "LED闪烁实验",
+      "knowledge_id": 2,
+      "difficulty": "简单",
+      "objective": "掌握GPIO输出配置，实现LED闪烁效果",
+      "principle": "GPIO推挽输出模式可驱动LED，通过延时函数实现闪烁效果。推挽输出可以输出高电平和低电平，驱动能力较强。",
+      "components": ["STM32F103C8T6最小系统板", "LED", "220Ω电阻", "面包板", "杜邦线"],
+      "steps": [
+        {"step": 1, "action": "开启GPIOA时钟", "detail": "RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE)"},
+        {"step": 2, "action": "配置PA0为推挽输出", "detail": "GPIO_Mode_Out_PP, GPIO_Pin_0, GPIO_Speed_50MHz"},
+        {"step": 3, "action": "主循环中设置低电平", "detail": "GPIO_ResetBits(GPIOA, GPIO_Pin_0)"},
+        {"step": 4, "action": "延时500ms", "detail": "Delay_ms(500)"},
+        {"step": 5, "action": "设置高电平", "detail": "GPIO_SetBits(GPIOA, GPIO_Pin_0)"},
+        {"step": 6, "action": "延时500ms", "detail": "Delay_ms(500)"}
+      ],
+      "circuit_diagram": {
+        "connections": [
+          {"from": "PA0", "to": "LED正极", "note": "GPIO输出"},
+          {"from": "LED负极", "to": "220Ω电阻", "note": "限流"},
+          {"from": "220Ω电阻", "to": "GND", "note": "接地"}
+        ],
+        "image": "STM32Project-有注释版/1-1 接线图/3-1 LED闪烁.jpg"
+      },
+      "code_template": "#include \"stm32f10x.h\"\n#include \"Delay.h\"\n\nint main(void)\n{\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);\n    \n    GPIO_InitTypeDef GPIO_InitStructure;\n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;\n    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    while (1)\n    {\n        GPIO_ResetBits(GPIOA, GPIO_Pin_0);\n        Delay_ms(500);\n        GPIO_SetBits(GPIOA, GPIO_Pin_0);\n        Delay_ms(500);\n    }\n}",
+      "scoring_criteria": {
+        "接线正确": 30,
+        "代码完整": 40,
+        "现象明显": 20,
+        "报告规范": 10
+      },
+      "report_template": ["实验目的", "实验原理", "实验步骤", "实验现象", "代码分析", "心得体会"]
+    },
+    {
+      "id": 2,
+      "title": "按键控制LED实验",
+      "knowledge_id": 3,
+      "difficulty": "简单",
+      "objective": "掌握GPIO输入配置，实现按键控制LED",
+      "principle": "GPIO上拉输入模式检测按键状态，按下时引脚为低电平。通过软件消抖处理实现稳定控制。",
+      "components": ["STM32F103C8T6最小系统板", "LED", "220Ω电阻", "按键", "面包板", "杜邦线"],
+      "steps": [
+        {"step": 1, "action": "开启GPIOA时钟", "detail": "RCC_APB2PeriphClockCmd"},
+        {"step": 2, "action": "配置PA0为推挽输出(LED)", "detail": "GPIO_Mode_Out_PP"},
+        {"step": 3, "action": "配置PA1为上拉输入(按键)", "detail": "GPIO_Mode_IPU"},
+        {"step": 4, "action": "检测按键状态", "detail": "GPIO_ReadInputDataBit"},
+        {"step": 5, "action": "消抖延时20ms", "detail": "Delay_ms(20)"},
+        {"step": 6, "action": "切换LED状态", "detail": "BitAction取反"}
+      ],
+      "circuit_diagram": {
+        "connections": [
+          {"from": "PA1", "to": "按键引脚1", "note": "GPIO输入"},
+          {"from": "按键引脚2", "to": "GND", "note": "接地"},
+          {"from": "PA0", "to": "LED正极", "note": "GPIO输出"},
+          {"from": "LED负极", "to": "220Ω电阻", "note": "限流"},
+          {"from": "220Ω电阻", "to": "GND", "note": "接地"}
+        ],
+        "image": "STM32Project-有注释版/1-1 接线图/3-4 按键控制LED.jpg"
+      },
+      "code_template": "#include \"stm32f10x.h\"\n#include \"Delay.h\"\n\nint main(void)\n{\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);\n    \n    GPIO_InitTypeDef GPIO_InitStructure;\n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    while (1)\n    {\n        if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)\n        {\n            Delay_ms(20);\n            if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)\n            {\n                GPIO_WriteBit(GPIOA, GPIO_Pin_0, \n                    (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_0)));\n                while (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0);\n            }\n        }\n    }\n}",
+      "scoring_criteria": {
+        "接线正确": 30,
+        "代码完整": 40,
+        "现象明显": 20,
+        "报告规范": 10
+      },
+      "report_template": ["实验目的", "实验原理", "实验步骤", "实验现象", "代码分析", "心得体会"]
+    },
+    {
+      "id": 3,
+      "title": "光敏传感器实验",
+      "knowledge_id": 3,
+      "difficulty": "中等",
+      "objective": "掌握传感器接口，实现光照检测控制蜂鸣器",
+      "principle": "光敏传感器输出数字信号，光照不足时输出低电平。通过检测传感器状态控制蜂鸣器。",
+      "components": ["STM32F103C8T6最小系统板", "光敏传感器模块", "有源蜂鸣器", "面包板", "杜邦线"],
+      "steps": [
+        {"step": 1, "action": "配置PA1为上拉输入", "detail": "连接传感器DO"},
+        {"step": 2, "action": "配置PA2为推挽输出", "detail": "连接蜂鸣器"},
+        {"step": 3, "action": "检测传感器状态", "detail": "GPIO_ReadInputDataBit"},
+        {"step": 4, "action": "控制蜂鸣器", "detail": "光照不足时鸣叫"}
+      ],
+      "circuit_diagram": {
+        "connections": [
+          {"from": "PA1", "to": "传感器DO", "note": "数字输出"},
+          {"from": "3.3V", "to": "传感器VCC", "note": "电源"},
+          {"from": "GND", "to": "传感器GND", "note": "接地"},
+          {"from": "PA2", "to": "蜂鸣器正极", "note": "GPIO输出"},
+          {"from": "蜂鸣器负极", "to": "GND", "note": "接地"}
+        ],
+        "image": "STM32Project-有注释版/1-1 接线图/3-5 光敏传感器控制蜂鸣器.jpg"
+      },
+      "code_template": "#include \"stm32f10x.h\"\n\nint main(void)\n{\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);\n    \n    GPIO_InitTypeDef GPIO_InitStructure;\n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    while (1)\n    {\n        if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)\n            GPIO_SetBits(GPIOA, GPIO_Pin_2);\n        else\n            GPIO_ResetBits(GPIOA, GPIO_Pin_2);\n    }\n}",
+      "scoring_criteria": {
+        "接线正确": 30,
+        "代码完整": 40,
+        "现象明显": 20,
+        "报告规范": 10
+      },
+      "report_template": ["实验目的", "实验原理", "实验步骤", "实验现象", "代码分析", "心得体会"]
+    },
+    {
+      "id": 4,
+      "title": "PWM呼吸灯实验",
+      "knowledge_id": 5,
+      "difficulty": "中等",
+      "objective": "掌握PWM输出配置，实现LED亮度渐变效果",
+      "principle": "PWM通过改变占空比控制输出电压，占空比越大LED越亮。通过循环改变CCR值实现呼吸效果。",
+      "components": ["STM32F103C8T6最小系统板", "LED", "220Ω电阻", "面包板", "杜邦线"],
+      "steps": [
+        {"step": 1, "action": "配置PA0为复用推挽输出", "detail": "GPIO_Mode_AF_PP"},
+        {"step": 2, "action": "配置TIM2时基单元", "detail": "ARR=99, PSC=0"},
+        {"step": 3, "action": "配置PWM输出", "detail": "TIM_OCMode_PWM1"},
+        {"step": 4, "action": "循环改变CCR值", "detail": "0~100渐变"},
+        {"step": 5, "action": "观察LED亮度变化", "detail": "呼吸灯效果"}
+      ],
+      "circuit_diagram": {
+        "connections": [
+          {"from": "PA0(TIM2_CH1)", "to": "LED正极", "note": "PWM输出"},
+          {"from": "LED负极", "to": "220Ω电阻", "note": "限流"},
+          {"from": "220Ω电阻", "to": "GND", "note": "接地"}
+        ],
+        "image": "STM32Project-有注释版/1-1 接线图/6-3 PWM驱动LED呼吸灯.jpg"
+      },
+      "code_template": "#include \"stm32f10x.h\"\n#include \"Delay.h\"\n\nvoid PWM_Init(void)\n{\n    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);\n    \n    GPIO_InitTypeDef GPIO_InitStructure;\n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;\n    TIM_TimeBaseStructure.TIM_Period = 100 - 1;\n    TIM_TimeBaseStructure.TIM_Prescaler = 0;\n    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);\n    \n    TIM_OCInitTypeDef TIM_OCInitStructure;\n    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;\n    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;\n    TIM_OC1Init(TIM2, &TIM_OCInitStructure);\n    \n    TIM_Cmd(TIM2, ENABLE);\n}\n\nint main(void)\n{\n    PWM_Init();\n    uint8_t i;\n    while (1)\n    {\n        for (i = 0; i <= 100; i++)\n        {\n            TIM_SetCompare1(TIM2, i);\n            Delay_ms(10);\n        }\n        for (i = 0; i <= 100; i++)\n        {\n            TIM_SetCompare1(TIM2, 100 - i);\n            Delay_ms(10);\n        }\n    }\n}",
+      "scoring_criteria": {
+        "接线正确": 30,
+        "代码完整": 40,
+        "现象明显": 20,
+        "报告规范": 10
+      },
+      "report_template": ["实验目的", "实验原理", "实验步骤", "实验现象", "代码分析", "心得体会"]
+    },
+    {
+      "id": 5,
+      "title": "舵机控制实验",
+      "knowledge_id": 5,
+      "difficulty": "中等",
+      "objective": "掌握PWM驱动舵机的角度控制",
+      "principle": "舵机通过50Hz PWM信号控制，脉宽0.5ms~2.5ms对应角度0°~180°。周期20ms。",
+      "components": ["STM32F103C8T6最小系统板", "SG90舵机", "面包板", "杜邦线"],
+      "steps": [
+        {"step": 1, "action": "配置TIM2产生50Hz PWM", "detail": "PSC=71, ARR=19999"},
+        {"step": 2, "action": "设置脉宽范围", "detail": "500~2500us"},
+        {"step": 3, "action": "编写角度映射函数", "detail": "pulse = 500 + angle*2000/180"},
+        {"step": 4, "action": "测试不同角度", "detail": "0°, 90°, 180°"}
+      ],
+      "circuit_diagram": {
+        "connections": [
+          {"from": "PA0(TIM2_CH1)", "to": "舵机信号线(橙)", "note": "PWM输出"},
+          {"from": "5V", "to": "舵机电源线(红)", "note": "电源"},
+          {"from": "GND", "to": "舵机地线(棕)", "note": "接地"}
+        ],
+        "image": "STM32Project-有注释版/1-1 接线图/6-4 PWM驱动舵机.jpg"
+      },
+      "code_template": "#include \"stm32f10x.h\"\n#include \"Delay.h\"\n\nvoid Servo_Init(void)\n{\n    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);\n    \n    GPIO_InitTypeDef GPIO_InitStructure;\n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;\n    TIM_TimeBaseStructure.TIM_Period = 20000 - 1;\n    TIM_TimeBaseStructure.TIM_Prescaler = 72 - 1;\n    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);\n    \n    TIM_OCInitTypeDef TIM_OCInitStructure;\n    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;\n    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;\n    TIM_OCInitStructure.TIM_Pulse = 1500;\n    TIM_OC1Init(TIM2, &TIM_OCInitStructure);\n    \n    TIM_Cmd(TIM2, ENABLE);\n}\n\nvoid Servo_SetAngle(uint16_t angle)\n{\n    uint16_t pulse = 500 + angle * 2000 / 180;\n    TIM_SetCompare1(TIM2, pulse);\n}\n\nint main(void)\n{\n    Servo_Init();\n    while (1)\n    {\n        Servo_SetAngle(0);\n        Delay_ms(1000);\n        Servo_SetAngle(90);\n        Delay_ms(1000);\n        Servo_SetAngle(180);\n        Delay_ms(1000);\n    }\n}",
+      "scoring_criteria": {
+        "接线正确": 30,
+        "代码完整": 40,
+        "现象明显": 20,
+        "报告规范": 10
+      },
+      "report_template": ["实验目的", "实验原理", "实验步骤", "实验现象", "代码分析", "心得体会"]
+    },
+    {
+      "id": 6,
+      "title": "串口发送实验",
+      "knowledge_id": 8,
+      "difficulty": "中等",
+      "objective": "掌握UART串口配置，实现数据发送",
+      "principle": "UART是异步串行通信协议，通过TX/RX引脚进行数据收发。波特率115200，8位数据位，1位停止位。",
+      "components": ["STM32F103C8T6最小系统板", "USB-TTL模块", "杜邦线"],
+      "steps": [
+        {"step": 1, "action": "配置PA9为复用推挽输出(TX)", "detail": "GPIO_Mode_AF_PP"},
+        {"step": 2, "action": "配置PA10为浮空输入(RX)", "detail": "GPIO_Mode_IN_FLOATING"},
+        {"step": 3, "action": "配置USART1", "detail": "波特率115200"},
+        {"step": 4, "action": "编写发送函数", "detail": "USART_SendData"},
+        {"step": 5, "action": "重定向printf", "detail": "fputc函数"}
+      ],
+      "circuit_diagram": {
+        "connections": [
+          {"from": "PA9(TX)", "to": "USB-TTL RXD", "note": "串口发送"},
+          {"from": "PA10(RX)", "to": "USB-TTL TXD", "note": "串口接收"},
+          {"from": "GND", "to": "USB-TTL GND", "note": "共地"}
+        ],
+        "image": "STM32Project-有注释版/1-1 接线图/9-1 串口发送.jpg"
+      },
+      "code_template": "#include \"stm32f10x.h\"\n#include <stdio.h>\n\nvoid USART_Init(void)\n{\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);\n    \n    GPIO_InitTypeDef GPIO_InitStructure;\n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;\n    GPIO_Init(GPIOA, &GPIO_InitStructure);\n    \n    USART_InitTypeDef USART_InitStructure;\n    USART_InitStructure.USART_BaudRate = 115200;\n    USART_InitStructure.USART_WordLength = USART_WordLength_8b;\n    USART_InitStructure.USART_StopBits = USART_StopBits_1;\n    USART_InitStructure.USART_Parity = USART_Parity_No;\n    USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;\n    USART_Init(USART1, &USART_InitStructure);\n    \n    USART_Cmd(USART1, ENABLE);\n}\n\nint fputc(int ch, FILE *f)\n{\n    USART_SendData(USART1, ch);\n    while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);\n    return ch;\n}\n\nint main(void)\n{\n    USART_Init();\n    printf(\"Hello STM32!\\r\\n\");\n    while (1) {}\n}",
+      "scoring_criteria": {
+        "接线正确": 30,
+        "代码完整": 40,
+        "现象明显": 20,
+        "报告规范": 10
+      },
+      "report_template": ["实验目的", "实验原理", "实验步骤", "实验现象", "代码分析", "心得体会"]
+    },
+    {
+      "id": 7,
+      "title": "MPU6050加速度计读取实验",
+      "knowledge_id": 9,
+      "difficulty": "困难",
+      "objective": "掌握I2C通信，读取MPU6050六轴传感器数据",
+      "principle": "MPU6050通过I2C接口输出加速度和陀螺仪数据，需要配置寄存器并读取原始数据。设备地址0xD0。",
+      "components": ["STM32F103C8T6最小系统板", "MPU6050模块", "OLED显示屏", "面包板", "杜邦线"],
+      "steps": [
+        {"step": 1, "action": "配置I2C引脚PB10/PB11", "detail": "开漏输出模式"},
+        {"step": 2, "action": "编写I2C起始/停止信号", "detail": "SCL/SDA时序"},
+        {"step": 3, "action": "初始化MPU6050寄存器", "detail": "0x6B写0x00"},
+        {"step": 4, "action": "读取加速度数据", "detail": "0x3B~0x40"},
+        {"step": 5, "action": "OLED显示数据", "detail": "格式化输出"}
+      ],
+      "circuit_diagram": {
+        "connections": [
+          {"from": "PB10(SCL)", "to": "MPU6050 SCL", "note": "I2C时钟"},
+          {"from": "PB11(SDA)", "to": "MPU6050 SDA", "note": "I2C数据"},
+          {"from": "3.3V", "to": "MPU6050 VCC", "note": "电源"},
+          {"from": "GND", "to": "MPU6050 GND", "note": "接地"},
+          {"from": "PB10", "to": "OLED SCL", "note": "共用I2C"},
+          {"from": "PB11", "to": "OLED SDA", "note": "共用I2C"}
+        ],
+        "image": "STM32Project-有注释版/1-1 接线图/10-1 软件I2C读写MPU6050.jpg"
+      },
+      "code_template": "#include \"stm32f10x.h\"\n#include \"Delay.h\"\n#include \"OLED.h\"\n\n#define MPU6050_ADDR 0xD0\n\nvoid I2C_Init(void)\n{\n    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);\n    GPIO_InitTypeDef GPIO_InitStructure;\n    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;\n    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;\n    GPIO_Init(GPIOB, &GPIO_InitStructure);\n}\n\nvoid MPU6050_Init(void)\n{\n    MPU6050_WriteReg(0x6B, 0x80);\n    Delay_ms(100);\n    MPU6050_WriteReg(0x6B, 0x00);\n    MPU6050_WriteReg(0x1B, 0x00);\n    MPU6050_WriteReg(0x1C, 0x00);\n}\n\nint main(void)\n{\n    OLED_Init();\n    I2C_Init();\n    MPU6050_Init();\n    \n    while (1)\n    {\n        int16_t ax, ay, az;\n        MPU6050_ReadAccel(&ax, &ay, &az);\n        // 显示数据...\n    }\n}",
+      "scoring_criteria": {
+        "接线正确": 30,
+        "代码完整": 40,
+        "现象明显": 20,
+        "报告规范": 10
+      },
+      "report_template": ["实验目的", "实验原理", "实验步骤", "实验现象", "代码分析", "心得体会"]
+    }
+  ],
+
+  "learning_paths": [
+    {
+      "id": 1,
+      "name": "零基础入门路线",
+      "description": "适合完全没有基础的学习者，从最简单的GPIO开始",
+      "target_level": "初学者",
+      "estimated_hours": 20,
+      "knowledge_ids": [1, 2, 3, 5, 8],
+      "experiment_ids": [1, 2, 3]
+    },
+    {
+      "id": 2,
+      "name": "核心外设掌握路线",
+      "description": "掌握定时器、ADC、串口等核心外设",
+      "target_level": "中级",
+      "estimated_hours": 30,
+      "knowledge_ids": [4, 5, 6, 7, 8],
+      "experiment_ids": [4, 5, 6]
+    },
+    {
+      "id": 3,
+      "name": "通信协议深入路线",
+      "description": "深入学习I2C、SPI、UART等通信协议",
+      "target_level": "高级",
+      "estimated_hours": 40,
+      "knowledge_ids": [8, 9, 10, 11, 12],
+      "experiment_ids": [7]
+    },
+    {
+      "id": 4,
+      "name": "完整课程学习路线",
+      "description": "按顺序学习所有知识点，打牢基础",
+      "target_level": "全阶段",
+      "estimated_hours": 100,
+      "knowledge_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "experiment_ids": [1, 2, 3, 4, 5, 6, 7]
+    }
+  ]
+}

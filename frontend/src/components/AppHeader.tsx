@@ -204,26 +204,19 @@ const AppHeader: React.FC = () => {
         <div className="flex items-center gap-4 md:gap-6">
           {/* 课程切换按钮 */}
           <div className="flex items-center bg-slate-100 rounded-full p-1">
-            <button
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                currentSubject === "C语言"
-                  ? "bg-primary text-white shadow-md"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-              onClick={() => setCurrentSubject("C语言")}
-            >
-              C语言
-            </button>
-            <button
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                currentSubject === "电路分析"
-                  ? "bg-primary text-white shadow-md"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-              onClick={() => setCurrentSubject("电路分析")}
-            >
-              电路分析
-            </button>
+            {(["C语言", "电路分析", "STM32嵌入式"] as const).map((course) => (
+              <button
+                key={course}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                  currentSubject === course
+                    ? "bg-primary text-white shadow-md"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+                onClick={() => setCurrentSubject(course)}
+              >
+                {course}
+              </button>
+            ))}
           </div>
 
           <div className="hidden md:block relative" ref={searchRef}>

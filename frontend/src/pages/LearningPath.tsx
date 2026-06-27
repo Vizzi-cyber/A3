@@ -305,6 +305,8 @@ const LearningPathPage: React.FC = () => {
   useEffect(() => {
     if (currentSubject === "电路分析") {
       setTargetTopic("掌握电路分析基础理论与分析方法");
+    } else if (currentSubject === "STM32嵌入式") {
+      setTargetTopic("掌握STM32嵌入式开发基础与外设驱动");
     } else {
       setTargetTopic("掌握 C语言程序设计与数据结构基础");
     }
@@ -573,7 +575,11 @@ const LearningPathPage: React.FC = () => {
   const nodeKpId = (node: PathNode): string => {
     if (node.kp_id) return String(node.kp_id);
     const idNum = Number(node.id);
-    const prefix = currentSubject === "电路分析" ? "kp_e" : "kp_c";
+    const prefixMap: Record<string, string> = {
+      电路分析: "kp_e",
+      STM32嵌入式: "kp_s",
+    };
+    const prefix = prefixMap[currentSubject] ?? "kp_c";
     if (Number.isFinite(idNum) && idNum >= 1 && idNum <= 20) {
       return `${prefix}${String(idNum).padStart(2, "0")}`;
     }
@@ -1203,6 +1209,7 @@ const LearningPathPage: React.FC = () => {
                 options={[
                   { value: "C语言", label: "C语言" },
                   { value: "电路分析", label: "电路分析" },
+                  { value: "STM32嵌入式", label: "STM32嵌入式" },
                 ]}
               />
               <Select
@@ -2015,12 +2022,27 @@ const LearningPathPage: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {[
-                    "指针部分太难，多加点基础练习",
-                    "我想加快进度，减少理论讲解",
-                    "跳过文件操作，优先学动态内存",
-                    "增加更多实战项目",
-                  ].map((tip) => (
+                  {(currentSubject === "STM32嵌入式"
+                    ? [
+                        "GPIO外设配置太复杂，多加点基础练习",
+                        "我想加快进度，减少寄存器理论讲解",
+                        "跳过看门狗，优先学串口通信",
+                        "增加更多STM32实战项目",
+                      ]
+                    : currentSubject === "电路分析"
+                      ? [
+                          "电路分析太难了，多加点基础练习",
+                          "我想加快进度，减少公式推导",
+                          "跳过暂态分析，优先学稳态分析",
+                          "增加更多电路仿真实验",
+                        ]
+                      : [
+                          "指针部分太难，多加点基础练习",
+                          "我想加快进度，减少理论讲解",
+                          "跳过文件操作，优先学动态内存",
+                          "增加更多实战项目",
+                        ]
+                  ).map((tip) => (
                     <Tag
                       key={tip}
                       className="rounded-full border-slate-200 text-slate-600 text-xs cursor-pointer hover:border-primary hover:text-primary transition-all"

@@ -76,31 +76,21 @@ const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 页面切换时滚动到顶部
     window.scrollTo(0, 0);
-
     const el = ref.current;
     if (!el) return;
     el.style.opacity = "0";
-    el.style.transform = "translateY(10px)";
-    el.style.transition = "opacity 0.3s ease-out, transform 0.3s ease-out";
-
-    const frame = requestAnimationFrame(() => {
-      el.style.opacity = "1";
-      el.style.transform = "translateY(0)";
+    el.style.transform = "translateY(6px)";
+    el.style.transition = "opacity 0.15s ease-out, transform 0.15s ease-out";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.opacity = "1";
+        el.style.transform = "translateY(0)";
+      });
     });
-
-    return () => {
-      cancelAnimationFrame(frame);
-      el.style.opacity = "0";
-    };
   }, []);
 
-  return (
-    <div ref={ref} style={{ opacity: 0 }}>
-      {children}
-    </div>
-  );
+  return <div ref={ref}>{children}</div>;
 };
 
 /** 根据角色选择首页 */

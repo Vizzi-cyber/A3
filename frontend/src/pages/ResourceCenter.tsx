@@ -47,6 +47,7 @@ import {
   learningDataApi,
   logReflectionApi,
   profileApi,
+  stm32Api,
 } from "../services/api";
 import PPTGenerator from "../components/PPTGenerator";
 import type { ChatMessage, QuestionItem, VisionContentItem } from "../types";
@@ -126,12 +127,62 @@ const ResourceCenter: React.FC = () => {
   const navigate = useNavigate();
   const [weakReviewTopics, setWeakReviewTopics] = useState<string[]>([]);
   const [showReviewBanner, setShowReviewBanner] = useState(true);
+  const [stm32WiringDiagrams, setStm32WiringDiagrams] = useState<
+    { filename: string; title: string; url: string }[]
+  >([]);
+  const [stm32Projects, setStm32Projects] = useState<
+    { dirname: string; title: string; file_count: number }[]
+  >([]);
+  const [selectedProject, setSelectedProject] = useState<{
+    dirname: string;
+    title: string;
+    files: { path: string; size: number }[];
+  } | null>(null);
+  const [projectFilesLoading, setProjectFilesLoading] = useState(false);
 
   const welcomeMessages: Record<string, string> = {
     C语言:
       "你好！我正在和你一起学习《C语言基础》。C语言是计算机专业的入门语言，掌握它对于理解计算机底层原理至关重要。有什么不懂的地方随时问我。",
     电路分析:
       "你好！我正在和你一起学习《电路分析》。电路分析是电气工程的基础课程，掌握电路定律和分析方法对理解电子系统至关重要。有什么不懂的地方随时问我。",
+    STM32嵌入式:
+      "你好！我正在和你一起学习《STM32嵌入式开发》。STM32是嵌入式领域最主流的微控制器之一，掌握它能帮助你快速入门物联网和智能硬件开发。有什么不懂的地方随时问我。",
+  };
+
+  // kp_id → STM32 课程文件映射
+  const stm32KpCourseMap: Record<string, string> = {
+    kp_s01: "01_基础入门",
+    kp_s02: "01_基础入门",
+    kp_s03: "03_输入设备",
+    kp_s04: "02_显示模块",
+    kp_s05: "04_定时器",
+    kp_s06: "05_ADC模数转换",
+    kp_s07: "06_DMA数据转运",
+    kp_s08: "07_串口通信",
+    kp_s09: "08_I2C通信",
+    kp_s10: "09_SPI通信",
+    kp_s11: "10_RTC实时时钟",
+    kp_s12: "11_低功耗模式",
+    kp_s13: "12_看门狗",
+    kp_s14: "13_Flash操作",
+  };
+
+  // kp_id → 接线图章节前缀映射（文件名格式："{章节号}-{序号} 名称.jpg"）
+  const stm32WiringChapterMap: Record<string, string[]> = {
+    kp_s01: ["2", "3"], // 基础入门：工程模板、LED/蜂鸣器/按键
+    kp_s02: ["2", "3"], // 基础入门（同上）
+    kp_s03: ["5"], // 输入设备：红外传感器、旋转编码器
+    kp_s04: ["4"], // 显示模块：OLED
+    kp_s05: ["6"], // 定时器：定时中断、PWM、输入捕获、编码器
+    kp_s06: ["7"], // ADC：单通道、多通道
+    kp_s07: ["8"], // DMA：数据转运、DMA+AD
+    kp_s08: ["9"], // 串口：发送、接收、HEX、文本
+    kp_s09: ["10"], // I2C：软件/硬件I2C读写MPU6050
+    kp_s10: ["11"], // SPI：软件/硬件SPI读写W25Q64
+    kp_s11: ["12"], // RTC：备份寄存器、实时时钟
+    kp_s12: ["13"], // 低功耗：主频、睡眠、停止、待机
+    kp_s13: ["14"], // 看门狗：独立看门狗、窗口看门狗
+    kp_s14: ["15"], // Flash：读写内部FLASH、芯片ID
   };
 
   const currentTopic = useMemo(
@@ -310,8 +361,10 @@ const ResourceCenter: React.FC = () => {
   }, [studentId]);
 
   // 切换代码语言时重新生成代码（仅当语言本身变化时触发，避免 activeKey 切换导致重复请求）
+  // STM32 课程跳过：代码已包含在课程 Markdown 中
   useEffect(() => {
     if (!activeKey || !currentTopic) return;
+    if (activeKey.startsWith("kp_s")) return;
     if (prevCodeLangRef.current === codeLanguage) return;
     prevCodeLangRef.current = codeLanguage;
     let ignore = false;
@@ -337,55 +390,98 @@ const ResourceCenter: React.FC = () => {
   useEffect(() => {
     if (!activeKey || !currentTopic) return;
     let ignore = false;
+    const isStm32 = activeKey.startsWith("kp_s");
+
     const load = async () => {
       setResLoading(true);
       try {
-        // 优先加载文档（用户最常查看），其余资源延迟加载
-        const docRes = await resourceApi.generateDocument({
-          student_id: studentId,
-          topic: currentTopic,
-          kp_id: activeKey,
-        });
-        if (ignore) return;
-        if (docRes.data?.document) setDocContent(docRes.data.document);
+        if (isStm32) {
+          // STM32 课程：从后端课程文件加载
+          const courseId = stm32KpCourseMap[activeKey];
+          if (courseId) {
+            const courseRes = await stm32Api.getCourseContent(courseId);
+            if (ignore) return;
+            if (courseRes.data?.data?.content) {
+              setDocContent(courseRes.data.data.content);
+            }
+          }
 
-        // 并行加载剩余资源
-        const [codeRes, qRes, mapRes] = await Promise.all([
-          resourceApi.generateCode({
+          // STM32 课程仍使用 API 加载练习题和思维导图
+          const [qRes, mapRes] = await Promise.all([
+            resourceApi.generateQuestions({
+              student_id: studentId,
+              topic: currentTopic,
+              count: 3,
+              kp_id: activeKey,
+            }),
+            resourceApi.generateMindmap({
+              student_id: studentId,
+              topic: currentTopic,
+              kp_id: activeKey,
+            }),
+          ]);
+          if (ignore) return;
+          const qs = Array.isArray(qRes.data?.questions)
+            ? qRes.data.questions
+            : [];
+          if (qs.length) setQuestions(qs);
+          setQuizAnswers({});
+          setQuizSubmitted({});
+          setQuizScore(null);
+          if (mapRes.data?.mindmap) {
+            setMindmap({
+              root: mapRes.data.mindmap.root || currentTopic,
+              children: (mapRes.data.mindmap.children || []) as {
+                name: string;
+              }[],
+            });
+          }
+        } else {
+          // C语言 / 电路分析：原有逻辑
+          const docRes = await resourceApi.generateDocument({
             student_id: studentId,
             topic: currentTopic,
-            language: codeLanguage,
             kp_id: activeKey,
-          }),
-          resourceApi.generateQuestions({
-            student_id: studentId,
-            topic: currentTopic,
-            count: 3,
-            kp_id: activeKey,
-          }),
-          resourceApi.generateMindmap({
-            student_id: studentId,
-            topic: currentTopic,
-            kp_id: activeKey,
-          }),
-        ]);
-        if (ignore) return;
-        if (codeRes.data?.code) setCodeContent(codeRes.data.code);
-        const qs = Array.isArray(qRes.data?.questions)
-          ? qRes.data.questions
-          : [];
-        if (qs.length) setQuestions(qs);
-        // 重置答题状态
-        setQuizAnswers({});
-        setQuizSubmitted({});
-        setQuizScore(null);
-        if (mapRes.data?.mindmap) {
-          setMindmap({
-            root: mapRes.data.mindmap.root || currentTopic,
-            children: (mapRes.data.mindmap.children || []) as {
-              name: string;
-            }[],
           });
+          if (ignore) return;
+          if (docRes.data?.document) setDocContent(docRes.data.document);
+
+          const [codeRes, qRes, mapRes] = await Promise.all([
+            resourceApi.generateCode({
+              student_id: studentId,
+              topic: currentTopic,
+              language: codeLanguage,
+              kp_id: activeKey,
+            }),
+            resourceApi.generateQuestions({
+              student_id: studentId,
+              topic: currentTopic,
+              count: 3,
+              kp_id: activeKey,
+            }),
+            resourceApi.generateMindmap({
+              student_id: studentId,
+              topic: currentTopic,
+              kp_id: activeKey,
+            }),
+          ]);
+          if (ignore) return;
+          if (codeRes.data?.code) setCodeContent(codeRes.data.code);
+          const qs = Array.isArray(qRes.data?.questions)
+            ? qRes.data.questions
+            : [];
+          if (qs.length) setQuestions(qs);
+          setQuizAnswers({});
+          setQuizSubmitted({});
+          setQuizScore(null);
+          if (mapRes.data?.mindmap) {
+            setMindmap({
+              root: mapRes.data.mindmap.root || currentTopic,
+              children: (mapRes.data.mindmap.children || []) as {
+                name: string;
+              }[],
+            });
+          }
         }
       } catch (_e) {
         if (!ignore) message.error("资源加载失败，显示默认内容");
@@ -398,6 +494,33 @@ const ResourceCenter: React.FC = () => {
       ignore = true;
     };
   }, [activeKey, studentId]);
+
+  // 独立加载 STM32 接线图和代码工程（避免竞态条件）
+  useEffect(() => {
+    if (storeCurrentSubject !== "STM32嵌入式") return;
+    let ignore = false;
+    const load = async () => {
+      try {
+        const [wiringRes, projectsRes] = await Promise.allSettled([
+          stm32Api.listWiringDiagrams(),
+          stm32Api.listProjects(),
+        ]);
+        if (ignore) return;
+        if (wiringRes.status === "fulfilled") {
+          setStm32WiringDiagrams(wiringRes.value.data?.data?.diagrams || []);
+        }
+        if (projectsRes.status === "fulfilled") {
+          setStm32Projects(projectsRes.value.data?.data?.projects || []);
+        }
+      } catch {
+        // 静默失败
+      }
+    };
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, [storeCurrentSubject]);
 
   // 加载艾宾浩斯复习提醒
   useEffect(() => {
@@ -938,7 +1061,29 @@ const ResourceCenter: React.FC = () => {
             styles={{ body: { padding: "40px" } }}
           >
             <Spin spinning={resLoading}>
-              <MarkdownViewer content={docContent} />
+              <div
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  const link = target.closest(
+                    ".course-nav-link",
+                  ) as HTMLElement;
+                  if (!link) return;
+                  const courseId = link.dataset.courseId;
+                  if (!courseId) return;
+                  e.preventDefault();
+                  // 反向查找对应的 kp_id（courseId 可能是 URL 编码的）
+                  const decodedCourseId = decodeURIComponent(courseId);
+                  const reverseMap = Object.entries(stm32KpCourseMap);
+                  const match = reverseMap.find(
+                    ([, cid]) => cid === decodedCourseId,
+                  );
+                  if (match) {
+                    setActiveKey(match[0]);
+                  }
+                }}
+              >
+                <MarkdownViewer content={docContent} />
+              </div>
             </Spin>
             {resourceFeedback[currentTopic] === "bad" && (
               <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600">
@@ -1304,6 +1449,147 @@ const ResourceCenter: React.FC = () => {
                   ),
                   children: <AlgorithmVisualizer />,
                 },
+                ...(storeCurrentSubject === "STM32嵌入式"
+                  ? [
+                      {
+                        key: "wiring",
+                        label: (
+                          <span className="flex items-center gap-1.5 text-sm">
+                            <PictureOutlined /> 接线图
+                          </span>
+                        ),
+                        children: (
+                          <div className="space-y-4">
+                            {(() => {
+                              // 按当前知识点过滤接线图
+                              const chapters =
+                                stm32WiringChapterMap[activeKey] || [];
+                              const filtered =
+                                chapters.length > 0
+                                  ? stm32WiringDiagrams.filter((d) =>
+                                      chapters.some((ch) =>
+                                        d.filename.startsWith(`${ch}-`),
+                                      ),
+                                    )
+                                  : stm32WiringDiagrams;
+
+                              if (filtered.length === 0) {
+                                return (
+                                  <Typography.Text className="text-slate-400">
+                                    暂无接线图
+                                  </Typography.Text>
+                                );
+                              }
+
+                              return (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                  {filtered.map((d) => (
+                                    <div
+                                      key={d.filename}
+                                      className="rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-all cursor-pointer"
+                                      onClick={() =>
+                                        window.open(
+                                          `/api/v1/stm32/wiring/${d.filename}`,
+                                          "_blank",
+                                        )
+                                      }
+                                    >
+                                      <img
+                                        src={`/api/v1/stm32/wiring/${d.filename}`}
+                                        alt={d.title}
+                                        className="w-full h-40 object-cover bg-slate-100"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src =
+                                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160'%3E%3Crect fill='%23f1f5f9' width='200' height='160'/%3E%3Ctext x='100' y='84' text-anchor='middle' fill='%2394a3b8' font-size='13'%3E图片加载失败%3C/text%3E%3C/svg%3E";
+                                        }}
+                                      />
+                                      <div className="p-2 text-xs text-slate-600 text-center truncate">
+                                        {d.title}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        ),
+                      },
+                      {
+                        key: "projects",
+                        label: (
+                          <span className="flex items-center gap-1.5 text-sm">
+                            <CodeOutlined /> 代码工程
+                          </span>
+                        ),
+                        children: (
+                          <div className="space-y-3">
+                            {(() => {
+                              // 按当前知识点过滤代码工程
+                              const chapters =
+                                stm32WiringChapterMap[activeKey] || [];
+                              const filtered =
+                                chapters.length > 0
+                                  ? stm32Projects.filter((p) =>
+                                      chapters.some((ch) =>
+                                        p.dirname.startsWith(`${ch}-`),
+                                      ),
+                                    )
+                                  : stm32Projects;
+
+                              if (filtered.length === 0) {
+                                return (
+                                  <Typography.Text className="text-slate-400">
+                                    暂无代码工程
+                                  </Typography.Text>
+                                );
+                              }
+
+                              return filtered.map((p) => (
+                                <Card
+                                  key={p.dirname}
+                                  size="small"
+                                  className="rounded-xl border-slate-100 hover:border-primary/30 transition-all cursor-pointer"
+                                  title={
+                                    <span className="text-sm font-medium text-slate-700">
+                                      {p.title}
+                                    </span>
+                                  }
+                                  extra={
+                                    <Tag className="rounded-full border-0 bg-slate-100 text-slate-500 text-xs">
+                                      {p.file_count} 个文件
+                                    </Tag>
+                                  }
+                                  onClick={async () => {
+                                    setProjectFilesLoading(true);
+                                    try {
+                                      const res =
+                                        await stm32Api.getProjectFiles(
+                                          p.dirname,
+                                        );
+                                      setSelectedProject({
+                                        dirname: p.dirname,
+                                        title: p.title,
+                                        files: res.data?.data?.files || [],
+                                      });
+                                    } catch {
+                                      message.error("加载工程文件失败");
+                                    } finally {
+                                      setProjectFilesLoading(false);
+                                    }
+                                  }}
+                                >
+                                  <Typography.Text className="text-xs text-slate-400">
+                                    工程目录：{p.dirname}
+                                  </Typography.Text>
+                                </Card>
+                              ));
+                            })()}
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
               ]}
             />
           </Card>
@@ -1447,6 +1733,51 @@ const ResourceCenter: React.FC = () => {
         <div className="p-2 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap max-h-[60vh] overflow-y-auto">
           {codeExplanation}
         </div>
+      </Modal>
+
+      {/* 代码工程文件列表弹窗 */}
+      <Modal
+        title={
+          <span className="text-sm font-semibold">
+            {selectedProject?.title || "代码工程"}
+          </span>
+        }
+        open={!!selectedProject}
+        onCancel={() => setSelectedProject(null)}
+        footer={null}
+        width={560}
+        className="rounded-2xl"
+      >
+        {projectFilesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Spin />
+          </div>
+        ) : selectedProject ? (
+          <div className="max-h-[60vh] overflow-y-auto">
+            <div className="text-xs text-slate-400 mb-3">
+              目录：{selectedProject.dirname} · {selectedProject.files.length}{" "}
+              个文件
+            </div>
+            <div className="space-y-1">
+              {selectedProject.files.map((f) => (
+                <div
+                  key={f.path}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-50 text-sm"
+                >
+                  <CodeOutlined className="text-slate-400 text-xs" />
+                  <span className="flex-1 text-slate-700 font-mono text-xs truncate">
+                    {f.path}
+                  </span>
+                  <span className="text-slate-400 text-xs whitespace-nowrap">
+                    {f.size > 1024
+                      ? `${(f.size / 1024).toFixed(1)} KB`
+                      : `${f.size} B`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </Modal>
 
       {!chatOpen && (

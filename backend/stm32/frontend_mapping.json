@@ -1,0 +1,237 @@
+{
+  "description": "前端显示映射关系 - 知识点、资源、实验、接线图的完整对应关系",
+
+  "icon_mapping": {
+    "chip": "💻",
+    "output": "🔌",
+    "input": "🔘",
+    "display": "📺",
+    "timer": "⏱️",
+    "adc": "📊",
+    "dma": "🚀",
+    "uart": "📡",
+    "i2c": "🔗",
+    "spi": "⚡",
+    "rtc": "🕐",
+    "power": "🔋",
+    "watchdog": "🐕",
+    "flash": "💾"
+  },
+
+  "color_mapping": {
+    "简单": "#4CAF50",
+    "中等": "#FF9800",
+    "困难": "#F44336"
+  },
+
+  "knowledge_tree": {
+    "1": {
+      "name": "STM32基础入门",
+      "icon": "chip",
+      "level": 1,
+      "children": ["2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"],
+      "resources": [
+        {"id": 1, "title": "STM32工程模板", "type": "code"},
+        {"id": 40, "title": "Delay延时函数模块", "type": "code"},
+        {"id": 43, "title": "Keil工程清理工具", "type": "code"}
+      ],
+      "experiments": []
+    },
+    "2": {
+      "name": "GPIO输出控制",
+      "icon": "output",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 2, "title": "LED闪烁", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/3-1 LED闪烁.jpg"},
+        {"id": 3, "title": "LED流水灯", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/3-2 LED流水灯.jpg"},
+        {"id": 4, "title": "蜂鸣器控制", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/3-3 蜂鸣器.jpg"}
+      ],
+      "experiments": [
+        {"id": 1, "title": "LED闪烁实验", "difficulty": "简单"},
+        {"id": 2, "title": "按键控制LED实验", "difficulty": "简单"}
+      ]
+    },
+    "3": {
+      "name": "GPIO输入检测",
+      "icon": "input",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 5, "title": "按键控制LED", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/3-4 按键控制LED.jpg"},
+        {"id": 6, "title": "光敏传感器控制蜂鸣器", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/3-5 光敏传感器控制蜂鸣器.jpg"},
+        {"id": 8, "title": "对射式红外传感器计次", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/5-1 对射式红外传感器计次.jpg"},
+        {"id": 9, "title": "旋转编码器计次", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/5-2 旋转编码器计次.jpg"}
+      ],
+      "experiments": [
+        {"id": 3, "title": "光敏传感器实验", "difficulty": "中等"}
+      ]
+    },
+    "4": {
+      "name": "OLED显示模块",
+      "icon": "display",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 7, "title": "OLED显示屏(I2C)", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/4-1 OLED显示屏.jpg"},
+        {"id": 41, "title": "OLED驱动模块(I2C)", "type": "code"},
+        {"id": 42, "title": "OLED驱动模块(SPI)", "type": "code"}
+      ],
+      "experiments": []
+    },
+    "5": {
+      "name": "定时器与PWM",
+      "icon": "timer",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 10, "title": "定时器定时中断", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-1 定时器定时中断.jpg"},
+        {"id": 11, "title": "定时器外部时钟", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-2 定时器外部时钟.jpg"},
+        {"id": 12, "title": "PWM驱动LED呼吸灯", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-3 PWM驱动LED呼吸灯.jpg"},
+        {"id": 13, "title": "PWM驱动舵机", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-4 PWM驱动舵机.jpg"},
+        {"id": 14, "title": "PWM驱动直流电机", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-5 PWM驱动直流电机.jpg"},
+        {"id": 15, "title": "输入捕获模式测频率", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-6 输入捕获模式测频率.jpg"},
+        {"id": 16, "title": "PWMI模式测频率占空比", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-7 PWMI模式测频率占空比.jpg"},
+        {"id": 17, "title": "编码器接口测速", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/6-8 编码器接口测速.jpg"}
+      ],
+      "experiments": [
+        {"id": 4, "title": "PWM呼吸灯实验", "difficulty": "中等"},
+        {"id": 5, "title": "舵机控制实验", "difficulty": "中等"}
+      ]
+    },
+    "6": {
+      "name": "ADC模数转换",
+      "icon": "adc",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 18, "title": "ADC单通道采集", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/7-1 AD单通道.jpg"},
+        {"id": 19, "title": "ADC多通道采集", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/7-2 AD多通道.jpg"}
+      ],
+      "experiments": []
+    },
+    "7": {
+      "name": "DMA数据转运",
+      "icon": "dma",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 20, "title": "DMA数据转运", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/8-1 DMA数据转运.jpg"},
+        {"id": 21, "title": "DMA+ADC多通道", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/8-2 DMA+AD多通道.jpg"}
+      ],
+      "experiments": []
+    },
+    "8": {
+      "name": "UART串口通信",
+      "icon": "uart",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 22, "title": "串口发送", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/9-1 串口发送.jpg"},
+        {"id": 23, "title": "串口发送+接收", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/9-2 串口发送+接收.jpg"},
+        {"id": 24, "title": "串口收发HEX数据包", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/9-3 串口收发HEX数据包.jpg"},
+        {"id": 25, "title": "串口收发文本数据包", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/9-4 串口收发文本数据包.jpg"}
+      ],
+      "experiments": [
+        {"id": 6, "title": "串口发送实验", "difficulty": "中等"}
+      ]
+    },
+    "9": {
+      "name": "I2C通信协议",
+      "icon": "i2c",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 26, "title": "软件I2C读写MPU6050", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/10-1 软件I2C读写MPU6050.jpg"},
+        {"id": 27, "title": "硬件I2C读写MPU6050", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/10-2 硬件I2C读写MPU6050.jpg"}
+      ],
+      "experiments": [
+        {"id": 7, "title": "MPU6050加速度计读取实验", "difficulty": "困难"}
+      ]
+    },
+    "10": {
+      "name": "SPI通信协议",
+      "icon": "spi",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 28, "title": "软件SPI读写W25Q64", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/11-1 软件SPI读写W25Q64.jpg"},
+        {"id": 29, "title": "硬件SPI读写W25Q64", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/11-2 硬件SPI读写W25Q64.jpg"}
+      ],
+      "experiments": []
+    },
+    "11": {
+      "name": "RTC实时时钟",
+      "icon": "rtc",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 30, "title": "读写备份寄存器", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/12-1 读写备份寄存器.jpg"},
+        {"id": 31, "title": "实时时钟RTC", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/12-2 实时时钟.jpg"}
+      ],
+      "experiments": []
+    },
+    "12": {
+      "name": "低功耗模式",
+      "icon": "power",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 32, "title": "修改主频", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/13-1 修改主频.jpg"},
+        {"id": 33, "title": "睡眠模式+串口", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/13-2 睡眠模式+串口发送+接收.jpg"},
+        {"id": 34, "title": "停止模式+红外传感器", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/13-3 停止模式+对射式红外传感器计次.jpg"},
+        {"id": 35, "title": "待机模式+RTC", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/13-4 待机模式+实时时钟.jpg"}
+      ],
+      "experiments": []
+    },
+    "13": {
+      "name": "看门狗",
+      "icon": "watchdog",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 36, "title": "独立看门狗IWDG", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/14-1 独立看门狗.jpg"},
+        {"id": 37, "title": "窗口看门狗WWDG", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/14-2 窗口看门狗.jpg"}
+      ],
+      "experiments": []
+    },
+    "14": {
+      "name": "Flash操作",
+      "icon": "flash",
+      "level": 2,
+      "parent": "1",
+      "children": [],
+      "resources": [
+        {"id": 38, "title": "读写内部FLASH", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/15-1 读写内部FLASH.jpg"},
+        {"id": 39, "title": "读取芯片ID", "type": "code", "image": "STM32Project-有注释版/1-1 接线图/15-2 读取芯片ID.jpg"}
+      ],
+      "experiments": []
+    }
+  },
+
+  "resource_type_labels": {
+    "code": "代码工程",
+    "document": "文档教程",
+    "image": "接线图",
+    "quiz": "练习题",
+    "video": "视频教程"
+  },
+
+  "difficulty_labels": {
+    "简单": {"color": "#4CAF50", "stars": "⭐"},
+    "中等": {"color": "#FF9800", "stars": "⭐⭐"},
+    "困难": {"color": "#F44336", "stars": "⭐⭐⭐"}
+  }
+}
