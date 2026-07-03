@@ -447,7 +447,7 @@ async def get_teaching_resources(
                 "type": "PPT",
                 "created_at": task.get("created_at", ""),
                 "status": "completed",
-                "download_url": f"/ppt/{task_id}/download",
+                "download_url": f"/api/v1/ppt/{task_id}/download",
             })
     return {
         "status": "success",

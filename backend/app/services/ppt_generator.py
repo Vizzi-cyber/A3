@@ -953,8 +953,8 @@ async def generate_ppt(
     """完整 PPT 生成流程"""
     if llm is None:
         try:
-            from ..services.llm_factory import get_llm
-            llm = get_llm("bigmodel")
+            from ..services.llm_factory import LLMFactory
+            llm = LLMFactory.get_default_llm()
         except Exception as e:
             logger.warning(f"PPT生成LLM初始化失败，将使用默认大纲: {e}")
 

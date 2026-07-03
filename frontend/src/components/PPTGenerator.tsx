@@ -123,13 +123,24 @@ const PPTGenerator: React.FC<PPTGeneratorProps> = ({
     }
   };
 
-  const handleDownload = () => {
-    if (taskId && filename) {
+  const handleDownload = async () => {
+    if (!taskId || !filename) return;
+    try {
       const url = pptApi.downloadUrl(taskId);
+      const response = await fetch(url);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        message.error(err.detail || "下载失败，请稍后重试");
+        return;
+      }
+      const blob = await response.blob();
       const a = document.createElement("a");
-      a.href = url;
+      a.href = URL.createObjectURL(blob);
       a.download = filename;
       a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      message.error("下载失败，请检查网络连接");
     }
   };
 

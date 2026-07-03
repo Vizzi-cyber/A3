@@ -3,9 +3,10 @@ PPT 自动生成 API
 """
 import asyncio
 import os
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -92,6 +93,7 @@ async def generate_ppt_endpoint(req: PPTGenerateRequest, bg: BackgroundTasks, _c
         "filename": None,
         "slide_count": None,
         "path": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
     bg.add_task(_generate_task, task_id, req.topic, req.subject)
@@ -134,24 +136,28 @@ async def download_ppt(task_id: str, request: Request, token: str = Query(None, 
         token_to_verify = token
 
     if not token_to_verify:
-        return {"status": "error", "message": "未提供认证信息"}
+        raise HTTPException(status_code=401, detail="未提供认证信息")
 
     try:
         student_id = verify_token(token_to_verify)
         if not student_id:
-            return {"status": "error", "message": "认证失败"}
+            raise HTTPException(status_code=401, detail="认证失败")
+    except HTTPException:
+        raise
     except Exception:
-        return {"status": "error", "message": "认证失败"}
+        raise HTTPException(status_code=401, detail="认证失败")
 
     task = _ppt_tasks.get(task_id)
     if not task:
-        return {"status": "error", "message": "任务不存在"}
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task["status"] == "failed":
+        raise HTTPException(status_code=400, detail="PPT生成失败，请重新生成")
     if task["status"] != "completed":
-        return {"status": "error", "message": "PPT尚未生成完成"}
+        raise HTTPException(status_code=400, detail="PPT尚未生成完成")
 
     file_path = task.get("path")
     if not file_path or not os.path.exists(file_path):
-        return {"status": "error", "message": "文件不存在"}
+        raise HTTPException(status_code=404, detail="文件不存在")
 
     return FileResponse(
         path=file_path,
