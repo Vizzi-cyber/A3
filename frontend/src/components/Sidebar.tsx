@@ -23,6 +23,8 @@ import {
   LineChartOutlined,
   FileExcelOutlined,
   SettingOutlined,
+  BulbOutlined,
+  RocketOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import { dashboardApi } from "../services/api";
@@ -66,6 +68,15 @@ const teacherMenuItems = [
     label: "班级对比",
   },
   { key: "/teacher/reports", icon: <FileExcelOutlined />, label: "报告导出" },
+  { type: "divider" as const },
+  { key: "/teacher/lesson-plan", icon: <BulbOutlined />, label: "AI智能备课" },
+  {
+    key: "/teacher/insights",
+    icon: <LineChartOutlined />,
+    label: "AI学情洞察",
+  },
+  { key: "/teacher/smart-quiz", icon: <RocketOutlined />, label: "AI智能组卷" },
+  { type: "divider" as const },
   { key: "/teacher/settings", icon: <SettingOutlined />, label: "系统设置" },
   { key: "/teacher/personal", icon: <UserOutlined />, label: "个人空间" },
 ];
@@ -92,18 +103,20 @@ const Sidebar: React.FC = () => {
 
   const navMenuItems = React.useMemo(
     () =>
-      menuItems.map((item) => ({
-        key: item.key,
-        icon: item.icon,
-        label: collapsed ? (
-          <Tooltip title={item.label} placement="right">
-            <span>{item.label}</span>
-          </Tooltip>
-        ) : (
-          item.label
-        ),
-        onClick: () => navigate(item.key),
-      })),
+      menuItems
+        .filter((item) => item.key)
+        .map((item) => ({
+          key: item.key!,
+          icon: item.icon,
+          label: collapsed ? (
+            <Tooltip title={item.label} placement="right">
+              <span>{item.label}</span>
+            </Tooltip>
+          ) : (
+            item.label
+          ),
+          onClick: () => navigate(item.key!),
+        })),
     [collapsed, navigate],
   );
 

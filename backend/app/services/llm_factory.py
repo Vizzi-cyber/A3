@@ -45,11 +45,17 @@ class BaseLLM(ABC):
     @staticmethod
     def _try_parse_json(text: str) -> Optional[Dict[str, Any]]:
         """尝试多种方式解析 JSON，成功返回 dict，失败返回 None"""
+        if not text or not text.strip():
+            return None
+
+        # 1. 直接解析
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             pass
 
+        # 2. 提取 markdown 代码块中的 JSON（支持各种 backtick 变体）
+        # 匹配 ```json ... ``` 或 ``` ... ```
         match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text, re.IGNORECASE)
         if match:
             try:
@@ -57,12 +63,30 @@ class BaseLLM(ABC):
             except json.JSONDecodeError:
                 pass
 
+        # 3. 从 { 到最后一个 } 提取 JSON（处理 LLM 输出带前后文本的情况）
         match = re.search(r"(\{[\s\S]*\})", text)
         if match:
             try:
                 return json.loads(match.group(1).strip())
             except json.JSONDecodeError:
-                pass
+                # 尝试修复常见问题：移除尾部逗号
+                fixed = re.sub(r",\s*([}\]])", r"\1", match.group(1).strip())
+                try:
+                    return json.loads(fixed)
+                except json.JSONDecodeError:
+                    pass
+
+        # 4. 尝试找到最外层 {} 并解析（处理截断或编码问题）
+        start = text.find("{")
+        if start >= 0:
+            # 从最后一个 } 向前找
+            end = text.rfind("}")
+            if end > start:
+                try:
+                    return json.loads(text[start:end + 1])
+                except json.JSONDecodeError:
+                    pass
+
         return None
 
     async def generate_json(

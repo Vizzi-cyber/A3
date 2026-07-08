@@ -618,13 +618,13 @@ export const AIGrowthComment: React.FC<{ data: KnowledgeTreeData }> = ({
   }
 
   return (
-    <div className="bg-gradient-to-r from-indigo-50 via-white to-purple-50 rounded-2xl border border-indigo-100 p-5">
+    <div className="bg-gradient-to-r from-blue-50 via-white to-blue-50 rounded-2xl border border-blue-100 p-5">
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center text-white shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center text-white shrink-0">
           <ExperimentOutlined />
         </div>
         <div>
-          <div className="text-sm font-bold text-indigo-700 mb-1">
+          <div className="text-sm font-bold text-blue-700 mb-1">
             AI 成长评语
           </div>
           <div className="space-y-1">
@@ -673,13 +673,13 @@ export const GrowthLogItem: React.FC<{
 }> = ({ log }) => {
   const iconMap: Record<string, React.ReactNode> = {
     trophy: <TrophyOutlined className="text-amber-500" />,
-    star: <StarOutlined className="text-indigo-500" />,
+    star: <StarOutlined className="text-blue-500" />,
     fire: <FireOutlined className="text-red-500" />,
     heart: <HeartOutlined className="text-pink-500" />,
   };
   return (
     <div className="flex flex-col items-center text-center py-3 px-2 group hover:bg-slate-50 rounded-xl transition-colors">
-      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-sm border border-slate-100 group-hover:border-indigo-200 transition-colors mb-2">
+      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-sm border border-slate-100 group-hover:border-blue-200 transition-colors mb-2">
         {iconMap[log.icon] || <StarOutlined className="text-slate-400" />}
       </div>
       <div className="text-sm text-slate-700 font-medium leading-snug">
@@ -737,7 +737,7 @@ export const LevelProgress: React.FC<{
       </div>
       <div className="flex justify-between mt-2">
         <span className="text-xs text-slate-400 font-medium">Lv.{level}</span>
-        <span className="text-xs text-indigo-500 font-bold">
+        <span className="text-xs text-blue-500 font-bold">
           {lvInfo.current_xp}/{lvInfo.xp_per_level}
         </span>
         <span className="text-xs text-slate-400 font-medium">
@@ -865,7 +865,7 @@ const KnowledgeTree: React.FC = () => {
       </div>
 
       {/* 页面标题 */}
-      <div className="anim-card flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl px-5 py-3">
+      <div className="anim-card flex items-center gap-3 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-100 rounded-xl px-5 py-3">
         <span className="text-2xl">{stateEmoji[data.tree_state] || "🌱"}</span>
         <div className="flex-1 min-w-0">
           <span className="text-base font-bold text-slate-800">知识树</span>
@@ -923,7 +923,7 @@ const KnowledgeTree: React.FC = () => {
               <div className="flex items-center justify-center gap-4 mt-2">
                 <div className="text-center">
                   <div className="text-xs text-slate-400">成长值</div>
-                  <div className="text-lg font-bold text-indigo-600">
+                  <div className="text-lg font-bold text-blue-600">
                     {data.growth_value}
                   </div>
                 </div>
@@ -1023,7 +1023,7 @@ const KnowledgeTree: React.FC = () => {
           {/* 学习趋势图 */}
           <div className="anim-card bg-white rounded-2xl border border-slate-100 shadow-card p-5">
             <div className="flex items-center gap-2 mb-4">
-              <RiseOutlined className="text-indigo-500" />
+              <RiseOutlined className="text-blue-500" />
               <span className="text-sm font-bold text-slate-700">
                 近7天学习趋势
               </span>
@@ -1087,7 +1087,7 @@ const KnowledgeTree: React.FC = () => {
             </ResponsiveContainer>
             <div className="flex justify-center gap-6 mt-3">
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <div className="w-3 h-1 bg-indigo-500 rounded" />
+                <div className="w-3 h-1 bg-blue-500 rounded" />
                 学习次数
               </div>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">

@@ -1,13 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { Card, Row, Col, Typography, Space, Tag, Spin } from "antd";
+import {
+  Card,
+  Row,
+  Col,
+  Typography,
+  Space,
+  Tag,
+  Spin,
+  Modal,
+  Input,
+  Select,
+  Button,
+  message,
+  Tabs,
+  Empty,
+} from "antd";
 import {
   FileTextOutlined,
-  VideoCameraOutlined,
   CodeOutlined,
   ApartmentOutlined,
   DownloadOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
-import { teacherApi } from "../../services/api";
+import { pptApi, resourceApi, teacherApi } from "../../services/api";
 import PPTGenerator from "../../components/PPTGenerator";
 
 interface Resource {
@@ -23,6 +38,22 @@ const TeachingResources: React.FC = () => {
   const [pptModalOpen, setPptModalOpen] = useState(false);
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // 思维导图
+  const [mindmapOpen, setMindmapOpen] = useState(false);
+  const [mindmapTopic, setMindmapTopic] = useState("");
+  const [mindmapGenerating, setMindmapGenerating] = useState(false);
+  const [mindmapData, setMindmapData] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+
+  // 代码示例
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeTopic, setCodeTopic] = useState("");
+  const [codeLanguage, setCodeLanguage] = useState("C");
+  const [codeGenerating, setCodeGenerating] = useState(false);
+  const [codeData, setCodeData] = useState<string | null>(null);
 
   useEffect(() => {
     loadResources();
@@ -42,6 +73,58 @@ const TeachingResources: React.FC = () => {
     }
   };
 
+  const handleGenerateMindmap = async () => {
+    if (!mindmapTopic.trim()) {
+      message.warning("请输入主题");
+      return;
+    }
+    setMindmapGenerating(true);
+    try {
+      const res = await resourceApi.generateMindmap({
+        student_id: "teacher_001",
+        topic: mindmapTopic,
+      });
+      if (res.data?.mindmap) {
+        setMindmapData(res.data.mindmap);
+        message.success("思维导图生成成功");
+      }
+    } catch {
+      message.error("思维导图生成失败");
+    } finally {
+      setMindmapGenerating(false);
+    }
+  };
+
+  const handleGenerateCode = async () => {
+    if (!codeTopic.trim()) {
+      message.warning("请输入主题");
+      return;
+    }
+    setCodeGenerating(true);
+    try {
+      const res = await resourceApi.generateCode({
+        student_id: "teacher_001",
+        topic: codeTopic,
+        language: codeLanguage,
+      });
+      if (res.data?.code) {
+        setCodeData(res.data.code);
+        message.success("代码示例生成成功");
+      }
+    } catch {
+      message.error("代码示例生成失败");
+    } finally {
+      setCodeGenerating(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (codeData) {
+      navigator.clipboard.writeText(codeData);
+      message.success("已复制到剪贴板");
+    }
+  };
+
   const resourceTypes = [
     {
       title: "PPT课件",
@@ -51,27 +134,41 @@ const TeachingResources: React.FC = () => {
       onClick: () => setPptModalOpen(true),
     },
     {
-      title: "教学视频",
-      desc: "视频资源管理",
-      icon: <VideoCameraOutlined className="text-2xl" />,
-      color: "#ef4444",
-      onClick: () => {},
-    },
-    {
       title: "代码示例",
       desc: "示例代码库",
       icon: <CodeOutlined className="text-2xl" />,
       color: "#3b82f6",
-      onClick: () => {},
+      onClick: () => setCodeOpen(true),
     },
     {
       title: "思维导图",
       desc: "知识结构图",
       icon: <ApartmentOutlined className="text-2xl" />,
       color: "#0052ff",
-      onClick: () => {},
+      onClick: () => setMindmapOpen(true),
     },
   ];
+
+  const renderMindmapTree = (
+    node: Record<string, unknown>,
+    level = 0,
+  ): React.ReactNode => {
+    const name = (node.name || node.root || "") as string;
+    const children = (node.children || []) as Record<string, unknown>[];
+    return (
+      <div key={name + level} style={{ marginLeft: level * 20 }}>
+        <div
+          className={`py-1 px-2 rounded ${level === 0 ? "font-bold text-[#0052ff] text-base" : "text-slate-700 text-sm"}`}
+        >
+          {level > 0 && <span className="text-slate-300 mr-1">-</span>}
+          {name}
+        </div>
+        {children.map((child, idx) => (
+          <div key={idx}>{renderMindmapTree(child, level + 1)}</div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -111,7 +208,7 @@ const TeachingResources: React.FC = () => {
               <div className="py-8 text-center">
                 <div className="text-slate-400 mb-2">暂无已生成的资源</div>
                 <div className="text-xs text-slate-300">
-                  点击上方"PPT课件"卡片生成资源
+                  点击上方卡片生成资源
                 </div>
               </div>
             ) : (
@@ -154,7 +251,7 @@ const TeachingResources: React.FC = () => {
         </Spin>
       </Card>
 
-      {/* PPT 生成器弹窗 - 与学生端一致 */}
+      {/* PPT 生成器弹窗 */}
       <PPTGenerator
         open={pptModalOpen}
         onClose={() => {
@@ -162,6 +259,159 @@ const TeachingResources: React.FC = () => {
           loadResources();
         }}
       />
+
+      {/* 思维导图弹窗 */}
+      <Modal
+        title="AI 思维导图生成"
+        open={mindmapOpen}
+        onCancel={() => {
+          setMindmapOpen(false);
+          setMindmapData(null);
+          setMindmapTopic("");
+        }}
+        footer={null}
+        width={700}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-2">
+              主题
+            </label>
+            <Input
+              placeholder="例如：C语言指针详解、数据结构总复习"
+              value={mindmapTopic}
+              onChange={(e) => setMindmapTopic(e.target.value)}
+              onPressEnter={handleGenerateMindmap}
+            />
+          </div>
+          <Button
+            type="primary"
+            icon={<ApartmentOutlined />}
+            onClick={handleGenerateMindmap}
+            loading={mindmapGenerating}
+            className="bg-[#0052ff]"
+          >
+            生成思维导图
+          </Button>
+
+          {mindmapData && (
+            <div className="mt-4 p-4 bg-slate-50 rounded-xl max-h-96 overflow-auto">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-600">
+                  生成结果
+                </span>
+                <Button
+                  size="small"
+                  icon={<CopyOutlined />}
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      JSON.stringify(mindmapData, null, 2),
+                    );
+                    message.success("已复制到剪贴板");
+                  }}
+                >
+                  复制JSON
+                </Button>
+              </div>
+              {renderMindmapTree(mindmapData)}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* 代码示例弹窗 */}
+      <Modal
+        title="AI 代码示例生成"
+        open={codeOpen}
+        onCancel={() => {
+          setCodeOpen(false);
+          setCodeData(null);
+          setCodeTopic("");
+        }}
+        footer={null}
+        width={800}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2">
+                主题
+              </label>
+              <Input
+                placeholder="例如：链表增删查改、冒泡排序实现"
+                value={codeTopic}
+                onChange={(e) => setCodeTopic(e.target.value)}
+                onPressEnter={handleGenerateCode}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2">
+                编程语言
+              </label>
+              <Select
+                value={codeLanguage}
+                onChange={setCodeLanguage}
+                className="w-full"
+                options={[
+                  { value: "C", label: "C语言" },
+                  { value: "Python", label: "Python" },
+                  { value: "Java", label: "Java" },
+                ]}
+              />
+            </div>
+          </div>
+          <Button
+            type="primary"
+            icon={<CodeOutlined />}
+            onClick={handleGenerateCode}
+            loading={codeGenerating}
+            className="bg-[#0052ff]"
+          >
+            生成代码示例
+          </Button>
+
+          {codeData && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-600">
+                  生成结果
+                </span>
+                <Space>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={handleCopyCode}
+                  >
+                    复制代码
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={() => {
+                      const ext =
+                        codeLanguage.toLowerCase() === "c"
+                          ? "c"
+                          : codeLanguage.toLowerCase();
+                      const blob = new Blob([codeData], { type: "text/plain" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${codeTopic}.${ext}`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    下载文件
+                  </Button>
+                </Space>
+              </div>
+              <pre className="p-4 bg-slate-900 text-green-400 rounded-xl text-sm overflow-auto max-h-80 font-mono">
+                {codeData}
+              </pre>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -485,8 +485,8 @@ const ProjectCollaboration: React.FC = () => {
                 </div>
                 <div className="text-xs text-gray-500">进度分数</div>
               </div>
-              <div className="p-3 rounded-lg bg-purple-50 border border-purple-200 text-center">
-                <div className="text-lg font-semibold text-purple-600">
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                <div className="text-lg font-semibold text-blue-600">
                   {dailyReport.team_health.overall_score}
                 </div>
                 <div className="text-xs text-gray-500">综合分数</div>

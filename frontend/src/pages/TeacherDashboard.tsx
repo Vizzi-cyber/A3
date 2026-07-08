@@ -204,7 +204,7 @@ const TeacherDashboard: React.FC = () => {
           <div className="text-xs text-gray-500">本周活跃</div>
         </Card>
         <Card size="small" className="text-center">
-          <div className="text-2xl font-semibold text-purple-600">
+          <div className="text-2xl font-semibold text-blue-600">
             {overview?.avg_weekly_hours || 0}h
           </div>
           <div className="text-xs text-gray-500">周均学时</div>

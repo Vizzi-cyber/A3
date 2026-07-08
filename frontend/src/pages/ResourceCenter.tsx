@@ -846,7 +846,7 @@ const ResourceCenter: React.FC = () => {
             </Tooltip>
             <Tooltip title={ragActive ? "RAG 检索增强已启用" : "RAG 已关闭"}>
               <Tag
-                className={`rounded-full border-0 text-xs cursor-pointer ${ragActive ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-400"}`}
+                className={`rounded-full border-0 text-xs cursor-pointer ${ragActive ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"}`}
                 onClick={() => setRagActive(!ragActive)}
               >
                 <ApartmentOutlined /> {ragActive ? "RAG 检索中" : "RAG 关闭"}
@@ -1284,7 +1284,7 @@ const ResourceCenter: React.FC = () => {
                                   } else {
                                     optClass += isSelected
                                       ? "bg-primary-50 border-primary-200 text-primary cursor-pointer"
-                                      : "bg-slate-50 border-slate-100 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-primary cursor-pointer";
+                                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-primary cursor-pointer";
                                   }
                                   return (
                                     <div

@@ -481,7 +481,7 @@ const Dashboard: React.FC = () => {
                     {course.num}
                   </span>
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isCompleted ? "bg-emerald-100 text-emerald-600" : isInProgress ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isCompleted ? "bg-emerald-100 text-emerald-700" : isInProgress ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}
                   >
                     {statusLabel}
                   </span>

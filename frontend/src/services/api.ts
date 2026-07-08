@@ -1260,19 +1260,11 @@ export const teacherApi = {
       total: number;
     }>("/teacher/exports"),
 
-  createExport: (data: {
+  exportReport: (data: {
     report_type: string;
-    format: string;
+    format?: string;
     student_ids?: string[];
-  }) =>
-    api.post<{
-      status: string;
-      export_id: string;
-      report_type: string;
-      format: string;
-      created_at: string;
-      message: string;
-    }>("/teacher/exports", null, { params: data }),
+  }) => api.post("/teacher/export", data, { responseType: "blob" }),
 
   getResources: () =>
     api.get<{
@@ -1298,6 +1290,152 @@ export const teacherApi = {
         last_updated: string;
       };
     }>("/teacher/system-info"),
+
+  getAlerts: () =>
+    api.get<{
+      status: string;
+      alerts: Array<{
+        student_id: string;
+        username: string;
+        reasons: Array<{ text: string; suggestion: string }>;
+        level: string;
+        avg_score: number | null;
+        recent_records: number;
+      }>;
+      total: number;
+      high_risk: number;
+      medium_risk: number;
+    }>("/teacher/alerts"),
+};
+
+// ---------- 作业管理 ----------
+export const assignmentApi = {
+  create: (data: {
+    title: string;
+    description?: string;
+    subject?: string;
+    deadline?: string;
+    max_score?: number;
+    questions?: Array<Record<string, unknown>>;
+  }) =>
+    api.post<{ status: string; assignment_id: string; message: string }>(
+      "/assignment/create",
+      data,
+    ),
+
+  list: () =>
+    api.get<{
+      status: string;
+      assignments: Array<{
+        assignment_id: string;
+        title: string;
+        description: string;
+        subject: string;
+        deadline: string | null;
+        max_score: number;
+        questions_count: number;
+        created_at: string;
+        status: string;
+        submission_count: number;
+      }>;
+      total: number;
+    }>("/assignment/list"),
+
+  getDetail: (assignmentId: string) =>
+    api.get<{
+      status: string;
+      assignment: Record<string, unknown>;
+    }>(`/assignment/${assignmentId}`),
+
+  submit: (data: {
+    assignment_id: string;
+    answers?: Array<Record<string, unknown>>;
+    code?: string;
+    content?: string;
+  }) =>
+    api.post<{
+      status: string;
+      submission_id: string;
+      auto_score: number;
+      message: string;
+    }>("/assignment/submit", data),
+
+  getSubmissions: (assignmentId: string) =>
+    api.get<{
+      status: string;
+      submissions: Array<{
+        submission_id: string;
+        student_id: string;
+        username: string;
+        score: number;
+        max_score: number;
+        status: string;
+        submitted_at: string;
+        graded_at: string | null;
+        feedback: string;
+      }>;
+      total: number;
+    }>(`/assignment/${assignmentId}/submissions`),
+
+  grade: (data: {
+    submission_id: string;
+    score: number;
+    feedback?: string;
+    grade?: string;
+  }) =>
+    api.post<{ status: string; message: string }>("/assignment/grade", data),
+
+  getStats: (assignmentId: string) =>
+    api.get<{
+      status: string;
+      stats: {
+        assignment_id: string;
+        title: string;
+        total_students: number;
+        submitted_count: number;
+        submission_rate: number;
+        graded_count: number;
+        avg_score: number;
+        max_score: number;
+        min_score: number;
+        distribution: Record<string, number>;
+      };
+    }>(`/assignment/${assignmentId}/stats`),
+
+  delete: (assignmentId: string) =>
+    api.delete<{ status: string; message: string }>(
+      `/assignment/${assignmentId}`,
+    ),
+
+  getMySubmissions: (studentId: string) =>
+    api.get<{
+      status: string;
+      submissions: Array<{
+        submission_id: string;
+        assignment_id: string;
+        assignment_title: string;
+        score: number;
+        max_score: number;
+        status: string;
+        feedback: string;
+        submitted_at: string;
+      }>;
+    }>(`/assignment/my/${studentId}`),
+
+  plagiarismCheck: (assignmentId: string, threshold = 0.7) =>
+    api.get<{
+      status: string;
+      pairs: Array<{
+        student_a: string;
+        student_b: string;
+        similarity: number;
+      }>;
+      total_comparisons: number;
+      suspicious_count: number;
+      threshold: number;
+    }>(`/assignment/${assignmentId}/plagiarism`, {
+      params: { threshold },
+    }),
 };
 
 // ---------- 教师注册 ----------
@@ -1535,6 +1673,35 @@ export const stm32Api = {
         learning_paths: Array<Record<string, unknown>>;
       };
     }>("/stm32/knowledge-tree"),
+};
+
+// ---------- AI教研助手 ----------
+export const teachingAssistApi = {
+  generateLessonPlan: (data: { topic: string; style: string }) =>
+    api.post<{ status: string; data: Record<string, unknown> }>(
+      "/teaching-assist/lesson-plan",
+      data,
+      { timeout: 120000 },
+    ),
+
+  generateInsights: () =>
+    api.post<{ status: string; data: Record<string, unknown> }>(
+      "/teaching-assist/insights",
+      {},
+      { timeout: 120000 },
+    ),
+
+  generateSmartQuiz: (data: {
+    topic: string;
+    knowledge_points?: string[];
+    difficulty?: string;
+    count?: number;
+  }) =>
+    api.post<{ status: string; data: Record<string, unknown> }>(
+      "/teaching-assist/smart-quiz",
+      data,
+      { timeout: 120000 },
+    ),
 };
 
 export default api;

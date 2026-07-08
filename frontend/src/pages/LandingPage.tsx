@@ -71,7 +71,7 @@ const features = [
     icon: <FileTextOutlined className="text-xl" />,
     title: "自适应资源生成",
     desc: "讲解文档、练习题、思维导图、代码示例、PPT 一键生成，难度自适应，减少等待。",
-    color: "bg-violet-50 text-violet-600",
+    color: "bg-blue-50 text-blue-600",
   },
 ];
 
@@ -424,9 +424,7 @@ const LandingPage: React.FC = () => {
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tighter text-slate-900">
                   让 AI 为你
                   <br />
-                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-violet-500 to-secondary">
-                    定制专属学习路径
-                  </span>
+                  <span className="text-primary">定制专属学习路径</span>
                 </h1>
               </div>
               <p className="hero-sub mt-6 text-lg text-slate-500 max-w-lg leading-relaxed">
@@ -823,7 +821,7 @@ const LandingPage: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-sky-400 flex items-center justify-center text-white text-xs shadow-glow">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white text-xs shadow-glow">
                       根
                     </div>
                     <div className="w-px h-3 bg-slate-200" />
@@ -1129,7 +1127,7 @@ const LandingPage: React.FC = () => {
       >
         <div className="max-w-3xl mx-auto relative z-10">
           <div className="text-center mb-12">
-            <div className="inline-block px-3 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-600 text-xs font-medium mb-4">
+            <div className="inline-block px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-medium mb-4">
               常见问题
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight">

@@ -97,7 +97,7 @@ const DailyChallenge: React.FC = () => {
                   className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg shrink-0 ${
                     c.completed
                       ? "bg-slate-300"
-                      : "bg-gradient-to-br from-indigo-500 to-purple-500"
+                      : "bg-gradient-to-br from-blue-500 to-blue-600"
                   }`}
                 >
                   {c.completed ? <CheckCircleOutlined /> : <GiftOutlined />}

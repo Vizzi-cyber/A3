@@ -15,7 +15,11 @@ export default defineConfig({
   projects: [
     {
       name: "api",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        executablePath:
+          "C:/Users/15722/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe",
+      },
     },
   ],
 });

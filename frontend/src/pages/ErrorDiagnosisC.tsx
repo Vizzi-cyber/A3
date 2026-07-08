@@ -720,7 +720,7 @@ const ErrorDiagnosis: React.FC = () => {
                         <Panel
                           header={
                             <div className="flex items-center gap-2">
-                              <ThunderboltOutlined className="text-purple-500" />
+                              <ThunderboltOutlined className="text-blue-500" />
                               <span className="font-medium text-gray-700">
                                 思维误区
                               </span>

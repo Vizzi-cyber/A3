@@ -3,7 +3,7 @@
 提供全班数据概览、学生管理、成绩分析等功能
 """
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -61,8 +61,8 @@ async def get_overview(
     total_students = db.query(UserModel).filter(UserModel.role == "student").count()
 
     # 活跃学生（最近7天有学习记录）
-    from datetime import datetime, timedelta, timezone
-    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    from datetime import datetime, timedelta
+    week_ago = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
     active_students = db.query(LearningRecordModel.student_id).filter(
         LearningRecordModel.created_at >= week_ago
     ).distinct().count()
@@ -379,15 +379,11 @@ async def get_weak_points(
     }
 
 
-# ---------- 导出记录 ----------
-class ExportRecord(BaseModel):
-    export_id: str
-    report_type: str
-    format: str
+# ---------- 导出 ----------
+class ExportRequest(BaseModel):
+    report_type: str = Field(..., description="scores / progress / ranking / all")
+    format: str = Field("csv", description="csv / xlsx")
     student_ids: Optional[List[str]] = None
-    created_at: str
-    file_size: Optional[str] = None
-    status: str
 
 
 @router.get("/exports")
@@ -396,8 +392,6 @@ async def get_export_records(
     _current: str = Depends(require_teacher)
 ):
     """获取导出记录列表"""
-    # 目前返回空列表，实际应从数据库查询
-    # TODO: 创建 ExportRecordModel 表来存储导出记录
     return {
         "status": "success",
         "exports": [],
@@ -405,28 +399,150 @@ async def get_export_records(
     }
 
 
-@router.post("/exports")
-async def create_export_record(
-    report_type: str,
-    format: str,
-    student_ids: Optional[List[str]] = None,
+@router.post("/export")
+async def export_report(
+    request: ExportRequest,
     db: Session = Depends(get_db),
-    _current: str = Depends(require_teacher)
+    _current: str = Depends(require_teacher),
 ):
-    """创建导出记录"""
-    import uuid
+    """导出学生成绩/进度报表，返回 CSV 文件"""
+    import csv
+    import io
     from datetime import datetime, timezone
 
-    export_id = str(uuid.uuid4())[:8]
-    # TODO: 保存到数据库
-    return {
-        "status": "success",
-        "export_id": export_id,
-        "report_type": report_type,
-        "format": format,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "message": "导出任务已创建",
-    }
+    # 查询学生
+    query = db.query(UserModel).filter(UserModel.role == "student")
+    if request.student_ids:
+        query = query.filter(UserModel.student_id.in_(request.student_ids))
+    students = query.all()
+
+    if request.report_type == "scores":
+        rows = []
+        for s in students:
+            quizzes = db.query(QuizResultModel).filter(
+                QuizResultModel.student_id == s.student_id
+            ).all()
+            if quizzes:
+                avg = round(sum(q.score for q in quizzes) / len(quizzes), 1)
+                rows.append({
+                    "student_id": s.student_id,
+                    "username": s.username,
+                    "quiz_count": len(quizzes),
+                    "avg_score": avg,
+                    "max_score": max(q.score for q in quizzes),
+                    "min_score": min(q.score for q in quizzes),
+                })
+            else:
+                rows.append({
+                    "student_id": s.student_id,
+                    "username": s.username,
+                    "quiz_count": 0,
+                    "avg_score": 0,
+                    "max_score": 0,
+                    "min_score": 0,
+                })
+        fieldnames = ["student_id", "username", "quiz_count", "avg_score", "max_score", "min_score"]
+        title = "成绩报表"
+
+    elif request.report_type == "progress":
+        rows = []
+        for s in students:
+            records = db.query(LearningRecordModel).filter(
+                LearningRecordModel.student_id == s.student_id
+            ).all()
+            total_duration = sum(r.duration or 0 for r in records)
+            completed = sum(1 for r in records if r.action == "complete")
+            rows.append({
+                "student_id": s.student_id,
+                "username": s.username,
+                "total_records": len(records),
+                "total_hours": round(total_duration / 3600, 1),
+                "completed_kps": completed,
+            })
+        fieldnames = ["student_id", "username", "total_records", "total_hours", "completed_kps"]
+        title = "学习进度报表"
+
+    elif request.report_type == "ranking":
+        rows = []
+        for s in students:
+            points = db.query(PointsModel).filter(PointsModel.student_id == s.student_id).first()
+            records = db.query(LearningRecordModel).filter(
+                LearningRecordModel.student_id == s.student_id
+            ).all()
+            total_duration = sum(r.duration or 0 for r in records)
+            avg_score_q = db.query(func.avg(QuizResultModel.score)).filter(
+                QuizResultModel.student_id == s.student_id
+            ).scalar()
+            trend = db.query(TrendDataModel).filter(
+                TrendDataModel.student_id == s.student_id
+            ).order_by(TrendDataModel.date.desc()).first()
+            rows.append({
+                "student_id": s.student_id,
+                "username": s.username,
+                "total_points": points.total_points if points else 0,
+                "total_hours": round(total_duration / 3600, 1),
+                "avg_score": round(avg_score_q, 1) if avg_score_q else 0,
+                "trend_state": trend.trend_state if trend else "unknown",
+            })
+        rows.sort(key=lambda x: x["total_points"], reverse=True)
+        for i, r in enumerate(rows):
+            r["rank"] = i + 1
+        fieldnames = ["rank", "student_id", "username", "total_points", "total_hours", "avg_score", "trend_state"]
+        title = "学生排行榜"
+
+    else:  # all
+        rows = []
+        for s in students:
+            points = db.query(PointsModel).filter(PointsModel.student_id == s.student_id).first()
+            records = db.query(LearningRecordModel).filter(
+                LearningRecordModel.student_id == s.student_id
+            ).all()
+            total_duration = sum(r.duration or 0 for r in records)
+            completed = sum(1 for r in records if r.action == "complete")
+            quizzes = db.query(QuizResultModel).filter(
+                QuizResultModel.student_id == s.student_id
+            ).all()
+            avg_score_q = db.query(func.avg(QuizResultModel.score)).filter(
+                QuizResultModel.student_id == s.student_id
+            ).scalar()
+            trend = db.query(TrendDataModel).filter(
+                TrendDataModel.student_id == s.student_id
+            ).order_by(TrendDataModel.date.desc()).first()
+            rows.append({
+                "student_id": s.student_id,
+                "username": s.username,
+                "total_points": points.total_points if points else 0,
+                "total_hours": round(total_duration / 3600, 1),
+                "completed_kps": completed,
+                "quiz_count": len(quizzes),
+                "avg_score": round(avg_score_q, 1) if avg_score_q else 0,
+                "trend_state": trend.trend_state if trend else "unknown",
+            })
+        fieldnames = ["student_id", "username", "total_points", "total_hours", "completed_kps", "quiz_count", "avg_score", "trend_state"]
+        title = "综合报表"
+
+    # 生成 CSV
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+
+    from fastapi.responses import StreamingResponse
+    output.seek(0)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"{title}_{timestamp}.csv"
+
+    # UTF-8 BOM for Excel compatibility with Chinese characters
+    bom_output = "﻿" + output.getvalue()
+
+    from urllib.parse import quote
+    encoded_filename = quote(filename, safe="")
+
+    return StreamingResponse(
+        iter([bom_output.encode("utf-8")]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+    )
 
 
 # ---------- 教学资源 ----------
@@ -472,4 +588,117 @@ async def get_system_info(
             "database_status": "normal",
             "last_updated": datetime.now(timezone.utc).isoformat(),
         },
+    }
+
+
+# ---------- 学习预警 ----------
+@router.get("/alerts")
+async def get_learning_alerts(
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_teacher)
+):
+    """获取学习预警列表 —— 多维度风险检测"""
+    from datetime import datetime, timedelta
+
+    alerts = []
+    students = db.query(UserModel).filter(UserModel.role == "student").all()
+    now = datetime.utcnow()
+    # Use strftime to match SQLite's datetime format (no 'T', no timezone suffix)
+    week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+    two_weeks_ago = (now - timedelta(days=14)).strftime("%Y-%m-%d %H:%M:%S")
+
+    for s in students:
+        sid = s.student_id
+        reasons = []
+
+        # 1. 近7天无学习记录
+        recent_records = db.query(LearningRecordModel).filter(
+            LearningRecordModel.student_id == sid,
+            LearningRecordModel.created_at >= week_ago,
+        ).count()
+        if recent_records == 0:
+            reasons.append({"text": "近7天无学习记录", "suggestion": "建议安排一对一沟通了解学习状态"})
+
+        # 2. 测验平均分低于60
+        avg_score = db.query(func.avg(QuizResultModel.score)).filter(
+            QuizResultModel.student_id == sid
+        ).scalar()
+        if avg_score is not None and avg_score < 60:
+            reasons.append({"text": f"测验平均分偏低 ({round(avg_score, 1)}分)", "suggestion": "建议安排知识点补习和针对性练习"})
+
+        # 3. 趋势下滑
+        trend = db.query(TrendDataModel).filter(
+            TrendDataModel.student_id == sid
+        ).order_by(TrendDataModel.date.desc()).first()
+        if trend and trend.trend_state in ("decline", "warning"):
+            state_text = "下滑" if trend.trend_state == "decline" else "预警"
+            reasons.append({"text": f"学习趋势{state_text}", "suggestion": "建议分析近期学习内容难度，适当降低或调整学习路径"})
+
+        # 4. 薄弱知识点过多
+        profile = db.query(StudentProfileModel).filter(
+            StudentProfileModel.student_id == sid
+        ).first()
+        if profile and profile.weak_areas and len(profile.weak_areas) >= 5:
+            reasons.append({"text": f"薄弱知识点过多 ({len(profile.weak_areas)}个)", "suggestion": "建议制定专项突破计划，重点攻克核心知识点"})
+
+        # 5. 测验趋势下降（近7天正确率 vs 前7天）
+        recent_stats = db.query(
+            func.sum(QuizResultModel.correct_count),
+            func.sum(QuizResultModel.total_questions),
+        ).filter(
+            QuizResultModel.student_id == sid,
+            QuizResultModel.created_at >= week_ago,
+        ).first()
+        recent_correct = recent_stats[0] or 0
+        recent_total = recent_stats[1] or 0
+
+        prev_stats = db.query(
+            func.sum(QuizResultModel.correct_count),
+            func.sum(QuizResultModel.total_questions),
+        ).filter(
+            QuizResultModel.student_id == sid,
+            QuizResultModel.created_at >= two_weeks_ago,
+            QuizResultModel.created_at < week_ago,
+        ).first()
+        prev_correct = prev_stats[0] or 0
+        prev_total = prev_stats[1] or 0
+
+        if recent_total >= 3 and prev_total >= 3:
+            recent_acc = recent_correct / recent_total
+            prev_acc = prev_correct / prev_total
+            if prev_acc - recent_acc > 0.2:
+                reasons.append({"text": f"测验正确率下降{round((prev_acc - recent_acc) * 100)}% (前{round(prev_acc*100)}%→近{round(recent_acc*100)}%)", "suggestion": "建议关注学习状态变化，排查是否有知识断层"})
+            elif recent_acc < 0.3:
+                reasons.append({"text": f"近期测验正确率过低 ({round(recent_acc*100)}%)", "suggestion": "建议降低题目难度，加强基础巩固"})
+
+        # 6. 错题积压（total_questions - correct_count）
+        wrong_stats = db.query(
+            func.sum(QuizResultModel.total_questions - QuizResultModel.correct_count),
+        ).filter(
+            QuizResultModel.student_id == sid,
+        ).scalar() or 0
+        if wrong_stats >= 10:
+            reasons.append({"text": f"未纠正错题过多 ({wrong_stats}题)", "suggestion": "建议安排错题复习，逐一攻克易错知识点"})
+        elif wrong_stats >= 5:
+            reasons.append({"text": f"错题积压 ({wrong_stats}题)", "suggestion": "建议定期回顾错题，防止同类错误反复"})
+
+        if reasons:
+            level = "high" if len(reasons) >= 3 else ("medium" if len(reasons) >= 2 else "low")
+            alerts.append({
+                "student_id": sid,
+                "username": s.username,
+                "reasons": reasons,
+                "level": level,
+                "avg_score": round(avg_score, 1) if avg_score else None,
+                "recent_records": recent_records,
+            })
+
+    alerts.sort(key=lambda x: (0 if x["level"] == "high" else 1 if x["level"] == "medium" else 2, -len(x["reasons"])))
+
+    return {
+        "status": "success",
+        "alerts": alerts,
+        "total": len(alerts),
+        "high_risk": sum(1 for a in alerts if a["level"] == "high"),
+        "medium_risk": sum(1 for a in alerts if a["level"] == "medium"),
     }

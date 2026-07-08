@@ -54,9 +54,9 @@ const DIMENSIONS = [
     label: "闯关挑战榜",
     desc: "测验平均分排名",
     icon: <RocketOutlined />,
-    color: "#8b5cf6",
-    gradient: "from-purple-400 to-violet-500",
-    bg: "from-purple-50 to-violet-50",
+    color: "#0052ff",
+    gradient: "from-blue-400 to-blue-600",
+    bg: "from-blue-50 to-blue-100",
     metric: "分",
   },
   {
@@ -74,9 +74,9 @@ const DIMENSIONS = [
     label: "进步最快榜",
     desc: "近期能力提升排名",
     icon: <RiseOutlined />,
-    color: "#6366f1",
-    gradient: "from-indigo-400 to-violet-500",
-    bg: "from-indigo-50 to-violet-50",
+    color: "#f59e0b",
+    gradient: "from-amber-400 to-orange-500",
+    bg: "from-amber-50 to-orange-50",
     metric: "%",
   },
 ];
@@ -215,16 +215,14 @@ const RankList: React.FC<{
             key={entry.student_id}
             className={`rank-item flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
               isMe
-                ? "bg-indigo-50 border border-indigo-200 shadow-sm"
+                ? "bg-blue-50 border border-blue-200 shadow-sm"
                 : "bg-white border border-slate-100 hover:bg-slate-50"
             }`}
           >
             {/* 排名 */}
             <div
               className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
-                isMe
-                  ? "bg-indigo-500 text-white"
-                  : "bg-slate-100 text-slate-500"
+                isMe ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"
               }`}
             >
               {entry.rank}
@@ -234,7 +232,7 @@ const RankList: React.FC<{
             <div
               className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold ${
                 isMe
-                  ? "bg-gradient-to-br from-indigo-400 to-purple-500"
+                  ? "bg-gradient-to-br from-blue-400 to-blue-600"
                   : "bg-gradient-to-br from-slate-300 to-slate-400"
               }`}
             >
@@ -246,13 +244,13 @@ const RankList: React.FC<{
               <div className="flex items-center gap-2">
                 <span
                   className={`text-sm font-medium truncate ${
-                    isMe ? "text-indigo-700" : "text-slate-700"
+                    isMe ? "text-blue-700" : "text-slate-700"
                   }`}
                 >
                   {entry.username}
                 </span>
                 {isMe && (
-                  <Tag className="rounded-full border-0 bg-indigo-100 text-indigo-600 text-[10px] px-1.5 py-0">
+                  <Tag className="rounded-full border-0 bg-blue-100 text-blue-600 text-[10px] px-1.5 py-0">
                     我
                   </Tag>
                 )}

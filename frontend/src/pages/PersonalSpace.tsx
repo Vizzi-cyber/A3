@@ -1902,7 +1902,7 @@ const PersonalSpace: React.FC = () => {
                       <p className="mb-2">
                         <strong className="text-slate-800">认知风格：</strong>{" "}
                         你的主要认知风格为{" "}
-                        <Tag className="rounded-full border-0 bg-purple-50 text-purple-600">
+                        <Tag className="rounded-full border-0 bg-blue-50 text-blue-600">
                           {cognitivePrimary}
                         </Tag>
                         ，系统会优先推送

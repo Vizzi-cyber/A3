@@ -10,6 +10,7 @@ import {
   message,
   Modal,
   Descriptions,
+  Typography,
 } from "antd";
 import {
   SearchOutlined,
@@ -183,7 +184,9 @@ const StudentManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold m-0">学生管理</h2>
+        <Typography.Title level={4} className="!m-0">
+          学生管理
+        </Typography.Title>
         <Button icon={<ReloadOutlined />} onClick={loadStudents}>
           刷新
         </Button>

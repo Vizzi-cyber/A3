@@ -374,7 +374,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 </Radio.Button>
                 <Radio.Button value={90} className="!h-auto !py-4 text-left">
                   <div className="flex items-center gap-2">
-                    <CodeOutlined className="text-purple-500" />
+                    <CodeOutlined className="text-blue-500" />
                     <div>
                       <div className="font-medium">1.5小时</div>
                       <div className="text-xs text-slate-400">深度学习</div>
@@ -448,7 +448,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                   className="w-full text-left h-auto !py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <RocketOutlined className="text-purple-500 text-lg" />
+                    <RocketOutlined className="text-blue-500 text-lg" />
                     <div>
                       <div className="font-medium">项目实战</div>
                       <div className="text-xs text-slate-400">
@@ -521,7 +521,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                   className="!h-auto !py-6 text-center"
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <CheckCircleOutlined className="text-2xl text-purple-500" />
+                    <CheckCircleOutlined className="text-2xl text-blue-500" />
                     <div>
                       <div className="font-medium">均衡发展</div>
                       <div className="text-xs text-slate-400">
