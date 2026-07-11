@@ -1,5 +1,5 @@
 // ============================================
-// 全局类型定义 - AI Learning System
+// 全局类型定义 - LearnLab
 // ============================================
 
 export interface ApiResponse<T = unknown> {

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """应用配置类"""
 
     # 应用信息
-    APP_NAME: str = "AI Learning System"
+    APP_NAME: str = "LearnLab"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     SECRET_KEY: str = ""
@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     # LangSmith配置（可选）
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_API_KEY: Optional[str] = None
-    LANGCHAIN_PROJECT: str = "ai-learning-system"
+    LANGCHAIN_PROJECT: str = "learnlab"
 
     # 反思循环配置
     REFLECTION_ENABLED: bool = False  # 全局开关，默认关闭（Agent 需显式启用）

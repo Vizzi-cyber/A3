@@ -52,7 +52,10 @@ playwright-report/
 
 # Environment variables
 .env
-!backend/.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
 
 # Frontend
 frontend/node_modules/
