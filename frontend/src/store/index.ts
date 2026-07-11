@@ -82,7 +82,7 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     }),
     {
-      name: "learnlab-storage",
+      name: "ai-learning-storage",
       partialize: (state) => ({
         token: state.token,
         studentId: state.studentId,

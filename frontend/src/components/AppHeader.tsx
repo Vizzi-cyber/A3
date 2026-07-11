@@ -403,7 +403,7 @@ const AppHeader: React.FC = () => {
           </div>
           <div className="text-center pt-2">
             <Typography.Text className="text-xs text-slate-400">
-              如有问题请联系管理员 · LearnLab 团队
+              如有问题请联系管理员 · AI Learning 团队
             </Typography.Text>
           </div>
         </div>

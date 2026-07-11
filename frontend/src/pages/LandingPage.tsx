@@ -173,7 +173,7 @@ const BrowserMockup: React.FC<{
         <div className="h-5 bg-white rounded-md border border-slate-200 flex items-center px-2">
           <LockOutlined className="text-slate-300 text-[10px] mr-1.5" />
           <span className="text-[10px] text-slate-400">
-            learnlab.app/dashboard
+            ai-learning.system/dashboard
           </span>
         </div>
       </div>
@@ -332,7 +332,7 @@ const LandingPage: React.FC = () => {
               <RobotOutlined className="text-white text-sm" />
             </div>
             <span className="font-bold text-lg tracking-tight text-slate-900">
-              LearnLab
+              AI Learning
             </span>
           </div>
 
@@ -1210,7 +1210,9 @@ const LandingPage: React.FC = () => {
                 <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
                   <RobotOutlined className="text-white text-xs" />
                 </div>
-                <span className="font-semibold text-slate-900">LearnLab</span>
+                <span className="font-semibold text-slate-900">
+                  AI Learning
+                </span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
                 基于大模型的个性化资源生成与学习多智能体系统，第十五届中国软件杯大赛
@@ -1253,7 +1255,7 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="pt-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-slate-400">
-              &copy; {new Date().getFullYear()} LearnLab
+              &copy; {new Date().getFullYear()} AI Learning System
             </div>
             <div className="flex items-center gap-6 text-xs text-slate-400">
               <span>第十五届中国软件杯 A3 赛题</span>

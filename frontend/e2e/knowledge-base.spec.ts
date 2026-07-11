@@ -20,7 +20,7 @@ async function authenticateViaApi(page: any) {
       state: { token, studentId: "student_001" },
       version: 0,
     };
-    localStorage.setItem("learnlab-storage", JSON.stringify(state));
+    localStorage.setItem("ai-learning-storage", JSON.stringify(state));
   }, access_token);
 
   await page.reload();

@@ -16,7 +16,7 @@ _LEVEL_MAP = {
 }
 
 
-def setup_logger(name: str = "learnlab") -> logging.Logger:
+def setup_logger(name: str = "ai_learning") -> logging.Logger:
     """设置日志记录器"""
     env_level = os.getenv("LOG_LEVEL", "INFO").upper()
     level = _LEVEL_MAP.get(env_level, logging.INFO)

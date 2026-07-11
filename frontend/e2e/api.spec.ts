@@ -6,7 +6,7 @@ let studentId = "student_001";
 
 test.describe.configure({ mode: "serial" });
 
-test.describe("LearnLab - Backend API Tests", () => {
+test.describe("AI Learning System - Backend API Tests", () => {
   let token: string;
   const studentId = "student_001";
 

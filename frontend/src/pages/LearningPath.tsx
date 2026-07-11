@@ -65,6 +65,7 @@ import { kbApi } from "../services/knowledgeBaseApi";
 // import { buildRadarData } from "../utils/profile";
 import { StatusIcon } from "../components/StatusIcon";
 import AdjustmentLogPanel from "../components/AdjustmentLogPanel";
+import MarkdownViewer from "../components/MarkdownViewer";
 import {
   // StatusTag,
   statusColors,
@@ -117,12 +118,22 @@ const AGENT_STEPS = [
 function parseMindmapToTree(data: unknown): Array<Record<string, unknown>> {
   if (!data || typeof data !== "object") return [];
   const obj = data as Record<string, unknown>;
-  if (obj.root && Array.isArray(obj.children)) {
+
+  // 处理 {"mindmap": {...}} 格式
+  let mindmapData = obj;
+  if (obj.mindmap && typeof obj.mindmap === "object") {
+    mindmapData = obj.mindmap as Record<string, unknown>;
+  }
+
+  // 处理直接 {"root": "...", "children": [...]} 格式
+  if (mindmapData.root && Array.isArray(mindmapData.children)) {
     return [
       {
-        title: String(obj.root),
+        title: String(mindmapData.root),
         key: "root",
-        children: obj.children.map((c, i) => parseMindmapNode(c, `root_${i}`)),
+        children: mindmapData.children.map((c, i) =>
+          parseMindmapNode(c, `root_${i}`),
+        ),
       },
     ];
   }
@@ -148,20 +159,28 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
       const data = JSON.parse(content);
       const treeData = parseMindmapToTree(data);
       return (
-        <div className="max-h-96 overflow-auto overflow-x-hidden">
-          <Tree
-            treeData={treeData}
-            defaultExpandAll
-            autoExpandParent
-            showLine
-          />
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+          <div className="flex items-center gap-2 mb-3">
+            <ApartmentOutlined className="text-blue-500" />
+            <span className="font-medium text-blue-700">思维导图</span>
+          </div>
+          <div className="bg-white rounded-lg p-3 max-h-96 overflow-auto overflow-x-hidden">
+            <Tree
+              treeData={treeData}
+              defaultExpandAll
+              autoExpandParent
+              showLine
+            />
+          </div>
         </div>
       );
     } catch {
       return (
-        <pre className="text-sm whitespace-pre-wrap max-h-96 overflow-auto bg-slate-50 p-3 rounded-lg">
-          {content}
-        </pre>
+        <div className="bg-slate-50 p-4 rounded-xl">
+          <pre className="text-sm whitespace-pre-wrap max-h-96 overflow-auto">
+            {content}
+          </pre>
+        </div>
       );
     }
   }
@@ -173,27 +192,51 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
         return (
           <div className="space-y-4 max-h-96 overflow-auto">
             {questions.map((q: Record<string, unknown>, i: number) => (
-              <div key={i} className="p-3 bg-slate-50 rounded-lg">
-                <div className="font-medium text-sm mb-2">
-                  {i + 1}. {String(q.content || q.question || "")}
-                </div>
-                {Array.isArray(q.options) &&
-                  q.options.map((opt: Record<string, string>, j: number) => (
-                    <div key={j} className="text-sm text-slate-600 ml-4">
-                      {opt.id || String.fromCharCode(65 + j)}.{" "}
-                      {opt.text || String(opt)}
+              <div
+                key={i}
+                className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {i + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-800 mb-2">
+                      {String(q.content || q.question || "")}
                     </div>
-                  ))}
-                {q.correct_answer ? (
-                  <div className="text-xs text-emerald-600 mt-2">
-                    正确答案: {String(q.correct_answer)}
+                    {Array.isArray(q.options) && (
+                      <div className="space-y-1 ml-2">
+                        {q.options.map(
+                          (opt: Record<string, string>, j: number) => (
+                            <div
+                              key={j}
+                              className="text-sm text-slate-600 flex items-center gap-2"
+                            >
+                              <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs">
+                                {opt.id || String.fromCharCode(65 + j)}
+                              </span>
+                              <span>{opt.text || String(opt)}</span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
+                    {q.correct_answer && (
+                      <div className="mt-3 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <span className="text-emerald-600 font-medium text-sm">
+                          ✓ 正确答案: {String(q.correct_answer)}
+                        </span>
+                      </div>
+                    )}
+                    {q.explanation && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                        <span className="text-blue-600 text-sm">
+                          💡 {String(q.explanation)}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                ) : null}
-                {q.explanation ? (
-                  <div className="text-xs text-slate-400 mt-1">
-                    解析: {String(q.explanation)}
-                  </div>
-                ) : null}
+                </div>
               </div>
             ))}
           </div>
@@ -206,16 +249,41 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
 
   if (type === "code") {
     return (
-      <pre className="text-sm bg-slate-900 text-slate-100 p-4 rounded-lg max-h-96 overflow-auto whitespace-pre-wrap">
-        <code>{content}</code>
-      </pre>
+      <div className="rounded-xl overflow-hidden border border-slate-200">
+        <div className="bg-slate-800 px-4 py-2 flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          </div>
+          <span className="text-slate-400 text-xs ml-2">代码示例</span>
+        </div>
+        <pre className="bg-slate-900 text-slate-100 p-4 max-h-96 overflow-auto whitespace-pre-wrap text-sm leading-relaxed">
+          <code>{content}</code>
+        </pre>
+      </div>
     );
   }
 
-  // document / reading / 其他：纯文本展示
+  // document / reading / 其他：使用 Markdown 渲染
   return (
-    <div className="text-sm leading-7 whitespace-pre-wrap max-h-96 overflow-auto text-slate-700">
-      {content}
+    <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+      <div
+        className="prose prose-slate prose-sm max-w-none
+        prose-headings:text-slate-800 prose-headings:font-semibold
+        prose-h1:text-xl prose-h1:mb-4 prose-h1:pb-2 prose-h1:border-b prose-h1:border-slate-200
+        prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-blue-700
+        prose-h3:text-base prose-h3:mt-4 prose-h3:mb-2
+        prose-p:text-slate-600 prose-p:leading-relaxed
+        prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-pink-600 prose-code:before:content-none prose-code:after:content-none
+        prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl prose-pre:border prose-pre:border-slate-200
+        prose-li:text-slate-600
+        prose-strong:text-slate-800
+        prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+        max-h-[500px] overflow-auto"
+      >
+        <MarkdownViewer content={content} />
+      </div>
     </div>
   );
 };

@@ -44,9 +44,12 @@ import { buildRadarData } from "../utils/profile";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
+const WS_BASE_URL =
+  import.meta.env.VITE_WS_BASE_URL ||
+  (typeof window !== "undefined"
+    ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}${API_BASE_URL}`
+    : "");
 
 interface DisplayMessage {
   id: string;
@@ -274,31 +277,52 @@ const Tutor: React.FC = () => {
       document.removeEventListener("visibilitychange", handleVisibility);
   }, [studentId, loadProfile]);
 
-  // 加载会话列表
+  // 加载会话列表（只在初始加载时调用，不依赖 profile 避免循环重置）
   const loadConversations = useCallback(async () => {
+    // 如果正在加载中或已有消息（非欢迎消息），跳过避免覆盖流式输出
+    if (conversationsLoading) return;
+
     setConversationsLoading(true);
     try {
-      const res = await tutorApi.getHistory(`${studentId}_tutor`);
-      const convs = (res.data as any)?.conversations || [];
+      const res = await tutorApi.getHistory(`${studentId}_default`);
+      const data = res.data as any;
+      // API 返回 messages 数组，需要转换为前端格式
+      const msgs = data?.messages || [];
+      const convs = msgs.map((m: any, idx: number) => ({
+        id: `conv-${idx}`,
+        role: m.role === "assistant" ? "ai" : m.role,
+        content: m.content,
+        time: "",
+      }));
       setConversations(convs);
 
-      // 只有当没有会话 AND 画像未初始化时才显示引导欢迎
-      const hasProfile =
-        profile?.knowledge_base &&
-        Object.keys(profile.knowledge_base).length > 0;
-      if (convs.length === 0 && !hasProfile) {
-        setIsFirstLogin(true);
-        setMessages([
-          {
-            ...GUIDED_WELCOME,
-            time: new Date().toLocaleTimeString("zh-CN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          },
-        ]);
-      } else {
-        setMessages([
+      // 只有在没有消息时才设置欢迎消息（避免覆盖正在进行的对话）
+      setMessages((prev) => {
+        // 如果已有用户消息，不重置
+        if (prev.some((m) => m.role === "user")) return prev;
+
+        // 如果有历史消息，加载历史
+        if (convs.length > 0) {
+          return convs;
+        }
+
+        // 只有当没有会话 AND 画像未初始化时才显示引导欢迎
+        const hasProfile =
+          profile?.knowledge_base &&
+          Object.keys(profile.knowledge_base).length > 0;
+        if (!hasProfile) {
+          setIsFirstLogin(true);
+          return [
+            {
+              ...GUIDED_WELCOME,
+              time: new Date().toLocaleTimeString("zh-CN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            },
+          ];
+        }
+        return [
           {
             ...(socraticMode ? WELCOME_SOCRATIC : WELCOME_NORMAL),
             time: new Date().toLocaleTimeString("zh-CN", {
@@ -306,22 +330,25 @@ const Tutor: React.FC = () => {
               minute: "2-digit",
             }),
           },
-        ]);
-      }
+        ];
+      });
     } catch {
-      setMessages([
-        {
-          ...(socraticMode ? WELCOME_SOCRATIC : WELCOME_NORMAL),
-          time: new Date().toLocaleTimeString("zh-CN", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.role === "user")) return prev;
+        return [
+          {
+            ...(socraticMode ? WELCOME_SOCRATIC : WELCOME_NORMAL),
+            time: new Date().toLocaleTimeString("zh-CN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          },
+        ];
+      });
     } finally {
       setConversationsLoading(false);
     }
-  }, [studentId, profile]);
+  }, [studentId]); // 移除 profile 依赖，避免循环
 
   useEffect(() => {
     loadConversations();
@@ -350,7 +377,7 @@ const Tutor: React.FC = () => {
   // 建立 WebSocket 连接
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    const sessionId = `${studentId}_tutor`;
+    const sessionId = `${studentId}_default`;
     const wsUrl = token
       ? `${WS_BASE_URL}/tutor/ws/${sessionId}?token=${encodeURIComponent(token)}`
       : `${WS_BASE_URL}/tutor/ws/${sessionId}`;
@@ -507,7 +534,7 @@ const Tutor: React.FC = () => {
       const res = await tutorApi.ask({
         student_id: studentId,
         question: value,
-        session_id: `${studentId}_tutor`,
+        session_id: `${studentId}_default`,
         provider: modelProvider === "default" ? undefined : modelProvider,
         rag_active: ragActive,
         mode: socraticMode ? "socratic" : "normal",

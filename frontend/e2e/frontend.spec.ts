@@ -23,7 +23,7 @@ async function authenticateViaApi(page: any) {
       state: { token, studentId: "student_001" },
       version: 0,
     };
-    localStorage.setItem("learnlab-storage", JSON.stringify(state));
+    localStorage.setItem("ai-learning-storage", JSON.stringify(state));
   }, access_token);
 
   // Reload to trigger Zustand hydration from localStorage
@@ -39,7 +39,7 @@ test.describe("Frontend E2E Tests", () => {
   test("Login page loads correctly", async ({ page }) => {
     await page.goto("http://localhost:5173/login");
     await page.waitForLoadState("networkidle");
-    await expect(page).toHaveTitle(/LearnLab/);
+    await expect(page).toHaveTitle(/AI Learning System/);
 
     // Wait for Ant Design to render
     await page.waitForSelector(".ant-tabs", { timeout: 10000 });

@@ -166,7 +166,7 @@ class ResourceGeneratorAgent(BaseAgent):
         text = await self.llm.ainvoke([
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
-        ], temperature=0.5)
+        ], temperature=0.5, max_tokens=4096)  # 增加 max_tokens 避免内容截断
         return {"status": "success", "task": "document", "content": text, "format": "markdown"}
 
     async def _generate_questions(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -209,7 +209,7 @@ class ResourceGeneratorAgent(BaseAgent):
         text = await self.llm.ainvoke([
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
-        ], temperature=0.4)
+        ], temperature=0.4, max_tokens=4096)  # 增加 max_tokens 避免内容截断
         # 代码语法校验
         code_check = HallucinationGuard.verify_code_output(text, language)
         return {"status": "success", "task": "code_examples", "content": text, "syntax_check": code_check}
@@ -231,7 +231,7 @@ class ResourceGeneratorAgent(BaseAgent):
         data = await self.llm.generate_json([
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
-        ], temperature=0.4)
+        ], temperature=0.4, max_tokens=4096)  # 增加 max_tokens 避免 JSON 截断
         return {"status": "success", "task": "mindmap", "content": data}
 
     async def _match_resources(self, context: Dict[str, Any]) -> Dict[str, Any]:

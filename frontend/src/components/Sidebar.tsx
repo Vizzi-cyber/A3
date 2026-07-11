@@ -139,7 +139,7 @@ const Sidebar: React.FC = () => {
               level={5}
               className="!m-0 text-slate-900 font-bold tracking-tight"
             >
-              LearnLab
+              AI Learning
             </Typography.Title>
           )}
         </Space>
