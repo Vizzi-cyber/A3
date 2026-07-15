@@ -61,6 +61,15 @@ if not exist "%ROOT%\backend\.env" (
 )
 
 echo [4/4] 启动服务...
+
+REM 清理旧的后端进程
+echo 清理旧进程...
+for /f "tokens=5" %%p in ('netstat -ano ^| find ":8000 " ^| find "LISTENING"') do (
+    echo 关闭端口 8000 上的旧进程 PID: %%p
+    taskkill /F /PID %%p >nul 2>&1
+)
+timeout /t 2 /nobreak >nul
+
 echo.
 echo ==========================================
 echo  后端服务启动中...
