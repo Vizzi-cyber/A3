@@ -808,13 +808,14 @@ const LearningPathPage: React.FC = () => {
       }
     }
     setPathNodes((prev) => {
-      const updated = prev.map((n) => {
+      const updated = prev.map((n): PathNode => {
         if (n.id !== nodeId) return n;
-        if (action === "complete") return { ...n, status: "completed" };
+        if (action === "complete")
+          return { ...n, status: "completed" as const };
         if (action === "skip")
-          return { ...n, status: "pending", skipped: true };
+          return { ...n, status: "pending" as const, skipped: true };
         if (action === "reset")
-          return { ...n, status: "pending", skipped: false };
+          return { ...n, status: "pending" as const, skipped: false };
         return n;
       });
       // 完成后自动将下一个待办节点设为进行中
@@ -826,7 +827,7 @@ const LearningPathPage: React.FC = () => {
         if (nextPending !== -1) {
           updated[nextPending] = {
             ...updated[nextPending],
-            status: "in-progress",
+            status: "in-progress" as const,
           };
         }
       }

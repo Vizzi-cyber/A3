@@ -52,6 +52,29 @@ class ResourceGeneratorAgent(BaseAgent):
                 return node
         return None
 
+    def _build_profile_snippet(self, context: Dict[str, Any]) -> str:
+        """从 context 提取画像信息构建个性化 prompt 片段"""
+        profile = context.get("profile", {})
+        style = context.get("cognitive_style", profile.get("cognitive_style", {}).get("primary", "visual"))
+        weak_areas = profile.get("weak_areas", [])
+        knowledge_level = profile.get("knowledge_base", {}).get("overall_score", 0.5)
+        interest_areas = profile.get("interest_areas", [])
+
+        parts = []
+        parts.append(f"学生认知风格：{style}")
+        if weak_areas:
+            parts.append(f"薄弱知识点：{', '.join(weak_areas[:5])}")
+        level_map = {0: "基础", 0.3: "初等", 0.5: "中等", 0.7: "中高等", 0.9: "高等"}
+        level_label = "中等"
+        for threshold, label in sorted(level_map.items()):
+            if knowledge_level >= threshold:
+                level_label = label
+        parts.append(f"学生知识水平：{level_label}")
+        if interest_areas:
+            interests = [a.get("area", str(a))[:20] for a in interest_areas[:3]]
+            parts.append(f"兴趣领域：{', '.join(interests)}")
+        return "\n".join(parts)
+
     def _build_resource_constraint_prompt(self, topic: str) -> str:
         """构建资源生成约束 prompt 片段"""
         node = self._get_node_info(topic)
@@ -136,9 +159,12 @@ class ResourceGeneratorAgent(BaseAgent):
             return {"status": "failed", "error": str(e)}
 
     async def _generate_outline(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        profile_snippet = self._build_profile_snippet(context)
         prompt = (
             f"请为主题《{context['topic']}》生成一份教学大纲。\n"
             f"难度：{context.get('difficulty', 'medium')}\n"
+            f"学生画像参考：\n{profile_snippet}\n"
+            "请贴合学生的知识水平和薄弱点来调整大纲的侧重点。\n"
             "返回 JSON：{\"outline\": [\"1. 引言\", \"2. ...\"]}"
         )
         prompt = SafetyGuard.sanitize_prompt(prompt)
@@ -155,13 +181,15 @@ class ResourceGeneratorAgent(BaseAgent):
     async def _generate_document(self, context: Dict[str, Any]) -> Dict[str, Any]:
         style = context.get("cognitive_style", "visual")
         topic = context["topic"]
+        profile_snippet = self._build_profile_snippet(context)
 
         # 知识图谱约束
         graph_constraint = self._build_resource_constraint_prompt(topic)
 
         prompt = (
             f"请为主题《{topic}》撰写一份面向{style}型学习者的学习文档。\n"
-            "要求：结构清晰、有具体例子、适合该认知风格。"
+            f"学生画像参考：\n{profile_snippet}\n"
+            "要求：结构清晰、有具体例子、适合该认知风格，重点讲解学生的薄弱知识点。"
         )
         if graph_constraint:
             prompt += graph_constraint
@@ -176,12 +204,15 @@ class ResourceGeneratorAgent(BaseAgent):
     async def _generate_questions(self, context: Dict[str, Any]) -> Dict[str, Any]:
         count = context.get("constraints", {}).get("count", 5)
         topic = context["topic"]
+        profile_snippet = self._build_profile_snippet(context)
 
         # 知识图谱约束
         graph_constraint = self._build_resource_constraint_prompt(topic)
 
         prompt = (
             f"请为主题《{topic}》生成 {count} 道练习题。\n"
+            f"学生画像参考：\n{profile_snippet}\n"
+            "请针对学生的薄弱知识点多出题，题目难度匹配学生的知识水平。\n"
             "包含选择题、填空题或简答题，并提供答案与解析。\n"
             "返回 JSON：{\"questions\": [{\"type\": \"choice\", \"question\": \"...\", \"answer\": \"...\", \"explanation\": \"...\"}]}"
         )
