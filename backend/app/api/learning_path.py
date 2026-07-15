@@ -68,13 +68,16 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
 
     # 加载学生画像用于个性化
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
+    # daily_duration 前端传来的是分钟，转换为小时
+    daily_hours = (request.daily_duration or 60) / 60.0
+    weekly_study_capacity = max(1, round(daily_hours * 7))
     profile_dict = {
-        "learning_tempo": {"weekly_study_capacity": request.daily_duration or 10},
+        "learning_tempo": {"weekly_study_capacity": weekly_study_capacity},
         "weak_areas": profile.weak_areas or [] if profile else [],
         "knowledge_level": request.difficulty or 3,
         "preference": request.preference or "balanced",
     } if profile else {
-        "learning_tempo": {"weekly_study_capacity": request.daily_duration or 10},
+        "learning_tempo": {"weekly_study_capacity": weekly_study_capacity},
         "preference": request.preference or "balanced",
     }
 

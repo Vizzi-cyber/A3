@@ -672,7 +672,7 @@ const PersonalSpace: React.FC = () => {
           return {
             day: dayLabels[new Date(d).getDay()],
             focus: Math.max(0, Math.min(100, focus)),
-            duration: Math.round(agg.durationSum / 60),
+            duration: Math.round(agg.durationSum / 6) / 10,
           };
         });
         if (aggregated.some((a) => a.focus > 0 || a.duration > 0)) {

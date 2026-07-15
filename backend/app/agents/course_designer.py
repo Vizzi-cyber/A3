@@ -13,6 +13,7 @@ from .resource_generator import ResourceGeneratorAgent
 from .path_planner import PathPlannerAgent
 from .tutor import TutorAgent
 from ..services.llm_factory import BaseLLM, LLMFactory
+from ..core.safety import SafetyGuard, HallucinationGuard
 
 
 class CourseDesignerAgent(BaseAgent):

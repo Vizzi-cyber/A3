@@ -146,6 +146,10 @@ class ResourceGeneratorAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ], temperature=0.4)
+        # 防幻觉校验
+        schema_check = HallucinationGuard.verify_json_schema(data, ["outline"])
+        if not schema_check["valid"]:
+            self.logger.warning(f"Outline JSON schema check: {schema_check['message']}")
         return {"status": "success", "task": "outline", "content": data.get("outline", [])}
 
     async def _generate_document(self, context: Dict[str, Any]) -> Dict[str, Any]:
