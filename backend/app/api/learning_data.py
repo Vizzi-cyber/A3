@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel, ResourceFeedbackModel
+from ..models.student import StudentProfileModel
 from ..models.gamification import PointsModel, AchievementModel, LeaderboardModel
 from ..services.gamification_service import award_points, maybe_unlock_achievement
 from ..services.path_adjustment_engine import maybe_check_path_adjustment
@@ -125,6 +126,24 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
 
     db.commit()
     db.refresh(quiz)
+
+    # ---------- 更新学生画像（测验结果写回） ----------
+    try:
+        profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
+        if profile:
+            kb = profile.knowledge_base or {}
+            if request.kp_id:
+                kb[request.kp_id] = max(kb.get(request.kp_id, 0), request.score / 100.0)
+            if request.weak_tags:
+                weak = list(set(profile.weak_areas or []))
+                for tag in (request.weak_tags or []):
+                    if isinstance(tag, str) and tag not in weak:
+                        weak.append(tag)
+                profile.weak_areas = weak
+            profile.knowledge_base = kb
+            db.commit()
+    except Exception:
+        logger.warning(f"Failed to update profile from quiz: student_id={request.student_id}")
 
     # 检查是否需要调整路径
     await maybe_check_path_adjustment(request.student_id, db)

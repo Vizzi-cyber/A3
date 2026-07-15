@@ -807,8 +807,8 @@ const LearningPathPage: React.FC = () => {
         return;
       }
     }
-    setPathNodes((prev) =>
-      prev.map((n) => {
+    setPathNodes((prev) => {
+      const updated = prev.map((n) => {
         if (n.id !== nodeId) return n;
         if (action === "complete") return { ...n, status: "completed" };
         if (action === "skip")
@@ -816,8 +816,22 @@ const LearningPathPage: React.FC = () => {
         if (action === "reset")
           return { ...n, status: "pending", skipped: false };
         return n;
-      }),
-    );
+      });
+      // 完成后自动将下一个待办节点设为进行中
+      if (action === "complete") {
+        const currentIdx = updated.findIndex((n) => n.id === nodeId);
+        const nextPending = updated.findIndex(
+          (n, i) => i > currentIdx && n.status === "pending" && !n.skipped,
+        );
+        if (nextPending !== -1) {
+          updated[nextPending] = {
+            ...updated[nextPending],
+            status: "in-progress",
+          };
+        }
+      }
+      return updated;
+    });
     message.success(
       action === "complete"
         ? "已标记完成"

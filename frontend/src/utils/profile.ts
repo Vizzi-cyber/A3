@@ -39,7 +39,8 @@ export const buildRadarData = (
   const ppScore = normalizeScore(pp.overall_score) || 80;
 
   const weak = p.weak_areas || [];
-  const weakScore = weak.length > 0 ? Math.max(30, 100 - weak.length * 10) : 85;
+  // 薄弱点越少分数越高：0项=100, 1项=85, 2项=70, 3项=55, 4项以上=40
+  const weakScore = Math.max(40, 100 - weak.length * 15);
 
   const goals = p.learning_goals || [];
   const completedGoals = goals.filter((g: unknown) => {

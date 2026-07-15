@@ -151,7 +151,7 @@ async def get_trend_history(student_id: str, days: int = 30, db: Session = Depen
     trends = (
         db.query(TrendDataModel)
         .filter(TrendDataModel.student_id == student_id)
-        .order_by(TrendDataModel.date.desc())
+        .order_by(TrendDataModel.date.asc())
         .limit(days)
         .all()
     )
