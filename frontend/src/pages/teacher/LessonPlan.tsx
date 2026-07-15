@@ -270,42 +270,44 @@ export default function LessonPlan() {
                       </>
                     }
                   >
-                    <Collapse accordion>
-                      {result.teaching_process.map((phase, i) => (
-                        <Collapse.Panel
-                          key={i}
-                          header={
-                            <div className="flex items-center gap-2">
-                              <Tag color="blue">{phase.phase}</Tag>
-                              <Text type="secondary">{phase.duration}</Text>
-                            </div>
-                          }
-                        >
-                          {phase.activities && (
-                            <div className="mb-3">
-                              <Text strong>活动：</Text>
-                              <ul className="mt-1">
-                                {phase.activities.map((a, j) => (
-                                  <li key={j}>{a}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {phase.teacher_behavior && (
-                            <div className="mb-2">
-                              <Tag color="purple">教师</Tag>
-                              <Text>{phase.teacher_behavior}</Text>
-                            </div>
-                          )}
-                          {phase.student_behavior && (
-                            <div>
-                              <Tag color="cyan">学生</Tag>
-                              <Text>{phase.student_behavior}</Text>
-                            </div>
-                          )}
-                        </Collapse.Panel>
-                      ))}
-                    </Collapse>
+                    <Collapse
+                      accordion
+                      items={result.teaching_process.map((phase, i) => ({
+                        key: i,
+                        label: (
+                          <div className="flex items-center gap-2">
+                            <Tag color="blue">{phase.phase}</Tag>
+                            <Text type="secondary">{phase.duration}</Text>
+                          </div>
+                        ),
+                        children: (
+                          <>
+                            {phase.activities && (
+                              <div className="mb-3">
+                                <Text strong>活动：</Text>
+                                <ul className="mt-1">
+                                  {phase.activities.map((a, j) => (
+                                    <li key={j}>{a}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {phase.teacher_behavior && (
+                              <div className="mb-2">
+                                <Tag color="purple">教师</Tag>
+                                <Text>{phase.teacher_behavior}</Text>
+                              </div>
+                            )}
+                            {phase.student_behavior && (
+                              <div>
+                                <Tag color="cyan">学生</Tag>
+                                <Text>{phase.student_behavior}</Text>
+                              </div>
+                            )}
+                          </>
+                        ),
+                      }))}
+                    />
                   </Card>
                 )}
 

@@ -106,7 +106,7 @@ class ResultEvaluatorAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         return {
             "status": "success",
             "task": "evaluate_code",
@@ -155,7 +155,7 @@ class ResultEvaluatorAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         return {
             "status": "success",
             "task": "evaluate_collaboration",
@@ -202,7 +202,7 @@ class ResultEvaluatorAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         return {
             "status": "success",
             "task": "evaluate_deliverable",
@@ -254,7 +254,7 @@ class ResultEvaluatorAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         return {
             "status": "success",
             "task": "evaluate_learning",
@@ -317,7 +317,7 @@ class ResultEvaluatorAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         return {
             "status": "success",
             "task": "full_report",

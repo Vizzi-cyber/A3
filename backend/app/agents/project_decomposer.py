@@ -195,7 +195,7 @@ class ProjectDecomposerAgent(BaseAgent):
                 {"role": "user", "content": prompt},
             ]
 
-            data = await self.llm.generate_json(messages, temperature=0.3)
+            data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
             return {
                 "status": "success",
                 "task": "get_project_info",

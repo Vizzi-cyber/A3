@@ -189,13 +189,17 @@ const ErrorDiagnosis: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data } = await api.post("/error-catcher/analyze", {
-        code,
-        language,
-        task: "catch_error",
-        student_level: studentLevel,
-        error_output: errorOutput || undefined,
-      });
+      const { data } = await api.post(
+        "/error-catcher/analyze",
+        {
+          code,
+          language,
+          task: "catch_error",
+          student_level: studentLevel,
+          error_output: errorOutput || undefined,
+        },
+        { timeout: 120000 },
+      );
 
       if (data.status === "success") {
         setErrorAnalysis(data.analysis);
@@ -273,11 +277,15 @@ const ErrorDiagnosis: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data } = await api.post("/misconception-tracer/full-analysis", {
-        code,
-        error_type: errorType,
-        error_description: errorAnalysis?.overall_assessment || "",
-      });
+      const { data } = await api.post(
+        "/misconception-tracer/full-analysis",
+        {
+          code,
+          error_type: errorType,
+          error_description: errorAnalysis?.overall_assessment || "",
+        },
+        { timeout: 180000 },
+      );
 
       if (data.status === "success") {
         setMisconceptionTrace(data.trace);
@@ -301,7 +309,7 @@ const ErrorDiagnosis: React.FC = () => {
         }
 
         // 异步更新学生画像（思维溯源信息）
-        const traceContext = `思维溯源分析：错误类型=${data.trace.error_model.type}，根本原因=${data.trace.root_cause}，严重程度=${data.trace.severity}`;
+        const traceContext = `思维溯源分析：错误类型=${data.trace.error_model?.type || "未知"}，根本原因=${data.trace.root_cause}，严重程度=${data.trace.severity}`;
         profileApi.analyzeConversation(studentId, traceContext).catch(() => {});
 
         // 上报思维溯源学习数据
@@ -313,7 +321,7 @@ const ErrorDiagnosis: React.FC = () => {
             duration: 0,
             progress: 0.2,
             meta: {
-              error_model_type: data.trace.error_model.type,
+              error_model_type: data.trace.error_model?.type || "unknown",
               root_cause: data.trace.root_cause,
               severity: data.trace.severity,
               correction_time: data.correction?.estimated_correction_time,
@@ -428,7 +436,7 @@ const ErrorDiagnosis: React.FC = () => {
       {
         id: "model",
         label: "错误模型",
-        content: `${misconceptionTrace.error_model.type} - ${misconceptionTrace.error_model.subtype}`,
+        content: `${misconceptionTrace.error_model?.type || "未知"} - ${misconceptionTrace.error_model?.subtype || "未知"}`,
         color: "#a855f7",
         bgColor: "#faf5ff",
         borderColor: "#d8b4fe",
@@ -488,10 +496,10 @@ const ErrorDiagnosis: React.FC = () => {
       </div>
 
       {/* 主内容区 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* 左侧：代码输入 */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <div className="flex flex-col gap-4 h-full">
+          <div className="bg-white rounded-lg border border-gray-200 p-5 flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <CodeOutlined className="text-gray-400" />
@@ -525,7 +533,8 @@ const ErrorDiagnosis: React.FC = () => {
                 '请输入C语言代码...\n\n示例：\n#include <stdio.h>\nint main() {\n    int a = 1;\n    if(a = 1) {\n        printf("equal");\n    }\n    return 0;\n}'
               }
               style={{
-                height: 240,
+                flex: 1,
+                minHeight: 300,
                 fontFamily: "'Fira Code', 'Source Code Pro', monospace",
                 fontSize: 13,
                 lineHeight: 1.6,
@@ -553,7 +562,7 @@ const ErrorDiagnosis: React.FC = () => {
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-auto">
             <Button
               type="primary"
               icon={<SearchOutlined />}
@@ -578,7 +587,7 @@ const ErrorDiagnosis: React.FC = () => {
         </div>
 
         {/* 右侧：分析结果 */}
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {/* Tab切换 */}
           <div className="bg-white rounded-lg border border-gray-200 p-1 flex">
             <button
@@ -606,7 +615,7 @@ const ErrorDiagnosis: React.FC = () => {
           </div>
 
           {/* 内容区 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 min-h-[400px]">
+          <div className="bg-white rounded-lg border border-gray-200 p-5 min-h-[400px] max-h-[700px] overflow-y-auto flex-1">
             <Spin spinning={loading}>
               {activeTab === "catch" ? (
                 errorAnalysis ? (
@@ -625,7 +634,7 @@ const ErrorDiagnosis: React.FC = () => {
                     </div>
 
                     {/* 语法错误 */}
-                    {errorAnalysis.syntax_errors.length > 0 && (
+                    {errorAnalysis.syntax_errors?.length > 0 && (
                       <Collapse
                         defaultActiveKey={["syntax"]}
                         className="bg-transparent border-0"
@@ -669,7 +678,7 @@ const ErrorDiagnosis: React.FC = () => {
                     )}
 
                     {/* 逻辑错误 */}
-                    {errorAnalysis.logic_errors.length > 0 && (
+                    {errorAnalysis.logic_errors?.length > 0 && (
                       <Collapse
                         defaultActiveKey={["logic"]}
                         className="bg-transparent border-0"
@@ -712,7 +721,7 @@ const ErrorDiagnosis: React.FC = () => {
                     )}
 
                     {/* 思维误区 */}
-                    {errorAnalysis.misconceptions.length > 0 && (
+                    {errorAnalysis.misconceptions?.length > 0 && (
                       <Collapse
                         defaultActiveKey={["misconceptions"]}
                         className="bg-transparent border-0"
@@ -762,7 +771,7 @@ const ErrorDiagnosis: React.FC = () => {
                     )}
 
                     {/* 建议 */}
-                    {errorAnalysis.suggestions.length > 0 && (
+                    {errorAnalysis.suggestions?.length > 0 && (
                       <div className="p-4 rounded-lg bg-green-50 border border-green-200">
                         <div className="flex items-center gap-2 mb-3">
                           <BulbOutlined className="text-green-600" />
@@ -854,14 +863,14 @@ const ErrorDiagnosis: React.FC = () => {
                     <div className="flex items-center gap-2 mb-2">
                       <ThunderboltOutlined className="text-gray-500" />
                       <span className="font-medium text-gray-700 text-sm">
-                        {misconceptionTrace.error_model.type}
+                        {misconceptionTrace.error_model?.type || "未知"}
                       </span>
                       <span className="text-xs text-gray-400">
-                        - {misconceptionTrace.error_model.subtype}
+                        - {misconceptionTrace.error_model?.subtype || "未知"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 m-0">
-                      {misconceptionTrace.error_model.description}
+                      {misconceptionTrace.error_model?.description || ""}
                     </p>
                   </div>
 
@@ -894,7 +903,7 @@ const ErrorDiagnosis: React.FC = () => {
                   </div>
 
                   {/* 关联错误 */}
-                  {misconceptionTrace.related_errors.length > 0 && (
+                  {misconceptionTrace.related_errors?.length > 0 && (
                     <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
                       <div className="text-xs font-medium text-orange-600 mb-2">
                         关联错误

@@ -253,29 +253,27 @@ export default function SmartQuiz() {
                   className="rounded-2xl border-0 shadow-sm"
                   title="题目列表"
                 >
-                  <Collapse accordion>
-                    {result.questions.map((q) => (
-                      <Collapse.Panel
-                        key={q.id}
-                        header={
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Text strong>第{q.id}题</Text>
-                            <Tag>{TYPE_LABEL[q.type] || q.type}</Tag>
-                            <Tag
-                              color={
-                                DIFFICULTY_COLOR[q.difficulty] || "default"
-                              }
-                            >
-                              {q.difficulty === "basic"
-                                ? "基础"
-                                : q.difficulty === "intermediate"
-                                  ? "中等"
-                                  : "拔高"}
-                            </Tag>
-                            <Tag color="blue">{q.score}分</Tag>
-                          </div>
-                        }
-                      >
+                  <Collapse
+                    accordion
+                    items={result.questions.map((q) => ({
+                      key: q.id,
+                      label: (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Text strong>第{q.id}题</Text>
+                          <Tag>{TYPE_LABEL[q.type] || q.type}</Tag>
+                          <Tag
+                            color={DIFFICULTY_COLOR[q.difficulty] || "default"}
+                          >
+                            {q.difficulty === "basic"
+                              ? "基础"
+                              : q.difficulty === "intermediate"
+                                ? "中等"
+                                : "拔高"}
+                          </Tag>
+                          <Tag color="blue">{q.score}分</Tag>
+                        </div>
+                      ),
+                      children: (
                         <div className="space-y-3">
                           <div className="text-base">{q.question}</div>
 
@@ -327,9 +325,9 @@ export default function SmartQuiz() {
                             </Tag>
                           )}
                         </div>
-                      </Collapse.Panel>
-                    ))}
-                  </Collapse>
+                      ),
+                    }))}
+                  />
                 </Card>
               )}
 

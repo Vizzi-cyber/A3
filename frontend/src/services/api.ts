@@ -940,7 +940,7 @@ export const collaborationApi = {
       status: string;
       task: string;
       report: Record<string, unknown>;
-    }>("/collaboration-supervisor/daily-report", data),
+    }>("/collaboration-supervisor/daily-report", data, { timeout: 120000 }),
 
   detectBlockers: (data: {
     team_members: TeamMember[];
@@ -951,7 +951,7 @@ export const collaborationApi = {
       task: string;
       blockers: unknown[];
       analysis: Record<string, unknown>;
-    }>("/collaboration-supervisor/detect-blockers", data),
+    }>("/collaboration-supervisor/detect-blockers", data, { timeout: 120000 }),
 
   resolveConflict: (data: {
     conflict_description: string;
@@ -962,7 +962,7 @@ export const collaborationApi = {
       status: string;
       task: string;
       resolution: Record<string, unknown>;
-    }>("/collaboration-supervisor/resolve-conflict", data),
+    }>("/collaboration-supervisor/resolve-conflict", data, { timeout: 120000 }),
 
   knowledgeSharing: (data: {
     team_members: TeamMember[];
@@ -972,7 +972,9 @@ export const collaborationApi = {
       status: string;
       task: string;
       plan: Record<string, unknown>;
-    }>("/collaboration-supervisor/knowledge-sharing", data),
+    }>("/collaboration-supervisor/knowledge-sharing", data, {
+      timeout: 120000,
+    }),
 
   syncProgress: (data: {
     project_id: string;
@@ -988,7 +990,7 @@ export const collaborationApi = {
       completed_tasks: number;
       member_progress: unknown[];
       sync_time: string;
-    }>("/collaboration-supervisor/sync-progress", data),
+    }>("/collaboration-supervisor/sync-progress", data, { timeout: 120000 }),
 };
 
 // ---------- 项目拆解 ----------
@@ -1016,7 +1018,7 @@ export const projectDecomposerApi = {
       status: string;
       decomposition: Record<string, unknown>;
       detail?: string;
-    }>("/project-decomposer/decompose", data),
+    }>("/project-decomposer/decompose", data, { timeout: 120000 }),
   estimate: (data: {
     project_type: string;
     team_size: number;
@@ -1025,7 +1027,7 @@ export const projectDecomposerApi = {
     api.post<{
       status: string;
       estimation: Record<string, unknown>;
-    }>("/project-decomposer/estimate", data),
+    }>("/project-decomposer/estimate", data, { timeout: 120000 }),
 };
 
 // ---------- 角色匹配 ----------
@@ -1050,7 +1052,7 @@ export const roleMatcherApi = {
       status: string;
       assignments: Record<string, unknown>[];
       detail?: string;
-    }>("/role-matcher/match", data),
+    }>("/role-matcher/match", data, { timeout: 120000 }),
 };
 
 // ---------- 匹配推荐 ----------
@@ -1098,7 +1100,7 @@ export const evaluationApi = {
       status: string;
       task: string;
       evaluation: Record<string, unknown>;
-    }>("/result-evaluator/evaluate-code", data),
+    }>("/result-evaluator/evaluate-code", data, { timeout: 120000 }),
 
   evaluateCollaboration: (data: {
     team_members: TeamMember[];
@@ -1108,7 +1110,7 @@ export const evaluationApi = {
       status: string;
       task: string;
       evaluation: Record<string, unknown>;
-    }>("/result-evaluator/evaluate-collaboration", data),
+    }>("/result-evaluator/evaluate-collaboration", data, { timeout: 120000 }),
 
   evaluateDeliverable: (data: {
     project_info: Record<string, unknown>;
@@ -1119,7 +1121,7 @@ export const evaluationApi = {
       status: string;
       task: string;
       evaluation: Record<string, unknown>;
-    }>("/result-evaluator/evaluate-deliverable", data),
+    }>("/result-evaluator/evaluate-deliverable", data, { timeout: 120000 }),
 
   evaluateLearning: (data: {
     team_members: TeamMember[];
@@ -1130,7 +1132,7 @@ export const evaluationApi = {
       status: string;
       task: string;
       evaluation: Record<string, unknown>;
-    }>("/result-evaluator/evaluate-learning", data),
+    }>("/result-evaluator/evaluate-learning", data, { timeout: 120000 }),
 
   fullReport: (data: {
     project_info: Record<string, unknown>;
@@ -1145,7 +1147,7 @@ export const evaluationApi = {
       status: string;
       task: string;
       report: Record<string, unknown>;
-    }>("/result-evaluator/full-report", data),
+    }>("/result-evaluator/full-report", data, { timeout: 180000 }),
 };
 
 // ---------- 教师端 ----------

@@ -114,7 +114,7 @@ class CollaborationSupervisionAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         return {
             "status": "success",
             "task": "daily_report",
@@ -178,7 +178,7 @@ class CollaborationSupervisionAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        llm_analysis = await self.llm.generate_json(messages, temperature=0.3)
+        llm_analysis = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
 
         return {
             "status": "success",
@@ -226,7 +226,7 @@ class CollaborationSupervisionAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
         return {
             "status": "success",
             "task": "resolve_conflict",
@@ -282,7 +282,7 @@ class CollaborationSupervisionAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         return {
             "status": "success",
             "task": "knowledge_sharing",

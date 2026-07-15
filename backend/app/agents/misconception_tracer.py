@@ -114,7 +114,13 @@ class MisconceptionTracerAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+        if data.get("status") == "error":
+            return {
+                "status": "failed",
+                "task": "trace_error",
+                "error": data.get("message", "LLM 返回内容无法解析"),
+            }
         return {
             "status": "success",
             "task": "trace_error",
@@ -163,7 +169,13 @@ class MisconceptionTracerAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
+        if data.get("status") == "error":
+            return {
+                "status": "failed",
+                "task": "classify_misconception",
+                "error": data.get("message", "LLM 返回内容无法解析"),
+            }
         return {
             "status": "success",
             "task": "classify_misconception",
@@ -212,7 +224,13 @@ class MisconceptionTracerAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.5)
+        data = await self.llm.generate_json(messages, temperature=0.5, max_tokens=4096)
+        if data.get("status") == "error":
+            return {
+                "status": "failed",
+                "task": "generate_correction",
+                "error": data.get("message", "LLM 返回内容无法解析"),
+            }
         return {
             "status": "success",
             "task": "generate_correction",

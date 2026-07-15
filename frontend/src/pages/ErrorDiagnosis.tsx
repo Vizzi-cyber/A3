@@ -20,7 +20,9 @@ const ErrorDiagnosis: React.FC = () => {
       <Suspense
         fallback={
           <div className="flex items-center justify-center min-h-[60vh]">
-            <Spin size="large" tip="加载 STM32 电路仿真..." />
+            <Spin size="large" tip="加载 STM32 电路仿真...">
+              <div style={{ padding: 50 }} />
+            </Spin>
           </div>
         }
       >
@@ -33,7 +35,9 @@ const ErrorDiagnosis: React.FC = () => {
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Spin size="large" tip="加载中..." />
+          <Spin size="large" tip="加载中...">
+            <div style={{ padding: 50 }} />
+          </Spin>
         </div>
       }
     >

@@ -181,7 +181,7 @@ class RoleMatcherAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
         return {
             "status": "success",
             "task": "match_team",
@@ -223,7 +223,7 @@ class RoleMatcherAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
         return {
             "status": "success",
             "task": "suggest_role",
@@ -273,7 +273,7 @@ class RoleMatcherAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
         return {
             "status": "success",
             "task": "rebalance",

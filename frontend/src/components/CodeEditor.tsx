@@ -26,7 +26,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             className="flex items-center justify-center bg-slate-900 text-slate-400"
             style={{ height }}
           >
-            <Spin tip="加载编辑器中..." />
+            <Spin tip="加载编辑器中...">
+              <div style={{ padding: 50 }} />
+            </Spin>
           </div>
         }
       >

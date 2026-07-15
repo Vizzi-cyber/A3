@@ -75,29 +75,18 @@ class ErrorCatcherAgent(BaseAgent):
         student_level = context.get("student_level", "beginner")
         error_output = context.get("error_output", "")
 
-        prompt = (
-            f"请分析以下 {language} 代码中的错误：\n\n"
-            f"```{language.lower()}\n{code}\n```\n\n"
-        )
+        prompt = f"分析以下{language}代码错误，直接返回JSON：\n```{language.lower()}\n{code}\n```\n"
 
         if error_output:
-            prompt += f"编译器错误信息：\n```\n{error_output}\n```\n\n"
+            prompt += f"编译器错误：{error_output}\n"
 
         prompt += (
-            f"学生水平：{student_level}\n\n"
-            "请按以下格式分析：\n"
-            "1. **语法错误**：列出所有语法错误（如果有）\n"
-            "2. **逻辑错误**：列出所有逻辑错误（如果有）\n"
-            "3. **思维误区**：识别学生可能存在的思维误区（如果有）\n"
-            "4. **修复建议**：给出具体的修复方法\n\n"
-            "返回 JSON 格式：\n"
-            "{\n"
-            '  "syntax_errors": [{"line": 1, "description": "...", "fix": "..."}],\n'
-            '  "logic_errors": [{"description": "...", "impact": "...", "fix": "..."}],\n'
-            '  "misconceptions": [{"type": "...", "description": "...", "why_student_makes_this_mistake": "...", "correct_concept": "..."}],\n'
-            '  "suggestions": ["..."],\n'
-            '  "overall_assessment": "..."\n'
-            "}"
+            f"学生水平：{student_level}\n"
+            '返回格式：{"syntax_errors":[{"line":1,"description":"简述","fix":"修复方法"}],'
+            '"logic_errors":[{"description":"简述","impact":"影响","fix":"修复方法"}],'
+            '"misconceptions":[{"type":"类型","description":"简述","why_student_makes_this_mistake":"原因","correct_concept":"正确概念"}],'
+            '"suggestions":["建议1","建议2"],'
+            '"overall_assessment":"总体评估"}'
         )
 
         prompt = SafetyGuard.sanitize_prompt(prompt)
@@ -106,7 +95,13 @@ class ErrorCatcherAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
+        if data.get("status") == "error":
+            return {
+                "status": "failed",
+                "task": "catch_error",
+                "error": data.get("message", "LLM 返回内容无法解析"),
+            }
         return {
             "status": "success",
             "task": "catch_error",
@@ -149,7 +144,13 @@ class ErrorCatcherAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+        if data.get("status") == "error":
+            return {
+                "status": "failed",
+                "task": "analyze_misconception",
+                "error": data.get("message", "LLM 返回内容无法解析"),
+            }
         return {
             "status": "success",
             "task": "analyze_misconception",
@@ -182,7 +183,13 @@ class ErrorCatcherAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
 
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
+        if data.get("status") == "error":
+            return {
+                "status": "failed",
+                "task": "validate_code",
+                "error": data.get("message", "LLM 返回内容无法解析"),
+            }
         return {
             "status": "success",
             "task": "validate_code",

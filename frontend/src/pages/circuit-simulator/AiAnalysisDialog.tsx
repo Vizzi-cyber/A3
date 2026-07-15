@@ -139,7 +139,9 @@ const AiAnalysisDialog: React.FC<AiAnalysisDialogProps> = ({
       {/* Results */}
       {loading && (
         <div className="flex items-center justify-center py-8">
-          <Spin tip="AI 正在分析电路..." />
+          <Spin tip="AI 正在分析电路...">
+            <div style={{ padding: 50 }} />
+          </Spin>
         </div>
       )}
 

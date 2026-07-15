@@ -608,7 +608,7 @@ def build_pptx(outline: Dict[str, Any], output_path: str) -> str:
             add_text(slide, Inches(1.5), Inches(3.6), Inches(10), Inches(0.8),
                     slide_data.get("subtitle", ""), size=20, color=RGBColor(0xC7, 0xD2, 0xFE), align=PP_ALIGN.CENTER)
             add_text(slide, Inches(1.5), Inches(5.5), Inches(10), Inches(0.5),
-                    "AI Learning System · 智能生成", size=14, color=RGBColor(0xA5, 0xB4, 0xFC), align=PP_ALIGN.CENTER)
+                    "LearnLab · 智能生成", size=14, color=RGBColor(0xA5, 0xB4, 0xFC), align=PP_ALIGN.CENTER)
 
         # ── 概念定义页 ──
         elif slide_type == "definition":

@@ -3,7 +3,7 @@
 ## 1. 数据库概述
 
 - **数据库类型**：SQLite
-- **数据库文件路径**：`ai_learning.db`
+- **数据库文件路径**：`ai_learning_v2.db`
 - **ORM 框架**：SQLAlchemy（declarative_base）
 - **连接方式**：通过 `backend/app/models/database.py` 创建引擎与会话，支持通过环境变量切换为 PostgreSQL
 - **时区处理**：DateTime 字段均使用 `timezone=True`，默认服务器时间为 `func.now()`

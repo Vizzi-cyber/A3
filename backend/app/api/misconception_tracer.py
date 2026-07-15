@@ -117,6 +117,9 @@ async def full_analysis(
             "profile": request.profile,
         })
 
+        if trace_result.get("status") != "success":
+            raise HTTPException(status_code=500, detail=trace_result.get("error", "思维溯源失败"))
+
         # Step 2: 分类思维误区
         classify_result = await _tracer_agent.process({
             "task": "classify_misconception",
@@ -129,15 +132,17 @@ async def full_analysis(
             "task": "generate_correction",
             "code": request.code,
             "error_type": request.error_type,
-            "misconception_type": classify_result.get("classification", {}).get("primary_category", ""),
+            "misconception_type": classify_result.get("classification", {}).get("primary_category", "") if classify_result.get("status") == "success" else "",
             "profile": request.profile,
         })
+
+        correction = correction_result.get("correction") if correction_result.get("status") == "success" else None
 
         return {
             "status": "success",
             "trace": trace_result.get("trace_result"),
             "classification": classify_result.get("classification"),
-            "correction": correction_result.get("correction"),
+            "correction": correction,
         }
 
     except Exception as e:

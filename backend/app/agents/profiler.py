@@ -87,7 +87,7 @@ class ProfilerAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ]
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         if data.get("status") == "error":
             return {"status": "partial_failure", "llm_output": data, "profile": self._default_profile(context.get("student_id", ""))}
         profile = data.get("profile", data)
@@ -144,7 +144,7 @@ class ProfilerAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ]
-        data = await self.llm.generate_json(messages, temperature=0.3)
+        data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
         profile = data.get("profile", data) if data.get("status") != "error" else current_profile
         # 如果 LLM 返回了不完整画像，做补齐
         profile = self._ensure_complete_profile(profile, current_profile)
@@ -163,7 +163,7 @@ class ProfilerAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ]
-        data = await self.llm.generate_json(messages, temperature=0.4)
+        data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
         return {"status": "success", "analysis": data}
 
     def _default_profile(self, student_id: str) -> Dict[str, Any]:

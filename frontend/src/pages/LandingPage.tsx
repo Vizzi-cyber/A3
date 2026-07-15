@@ -173,7 +173,7 @@ const BrowserMockup: React.FC<{
         <div className="h-5 bg-white rounded-md border border-slate-200 flex items-center px-2">
           <LockOutlined className="text-slate-300 text-[10px] mr-1.5" />
           <span className="text-[10px] text-slate-400">
-            ai-learning.system/dashboard
+            learnlab.system/dashboard
           </span>
         </div>
       </div>
@@ -262,7 +262,7 @@ const LandingPage: React.FC = () => {
         },
       );
       gsap.fromTo(
-        ".stat-item",
+        ".step-card",
         { y: 30, autoAlpha: 0 },
         {
           y: 0,

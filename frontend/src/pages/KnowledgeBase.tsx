@@ -42,7 +42,9 @@ const KnowledgeBase: React.FC = () => {
         className="flex items-center justify-center"
         style={{ height: "calc(100vh - 128px)" }}
       >
-        <Spin size="large" tip="加载知识库..." />
+        <Spin size="large" tip="加载知识库...">
+          <div style={{ padding: 50 }} />
+        </Spin>
       </div>
     );
   }
