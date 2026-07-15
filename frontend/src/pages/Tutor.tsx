@@ -1085,29 +1085,40 @@ const Tutor: React.FC = () => {
           className="rounded-2xl"
         >
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                <PolarGrid stroke="#E5E6EB" />
-                <PolarAngleAxis
-                  dataKey="subject"
-                  tick={{ fill: "#4E5969", fontSize: 10 }}
-                />
-                <PolarRadiusAxis
-                  angle={30}
-                  domain={[0, 100]}
-                  tick={false}
-                  axisLine={false}
-                />
-                <Radar
-                  name="当前能力"
-                  dataKey="A"
-                  stroke="#4f46e5"
-                  fill="#4f46e5"
-                  fillOpacity={0.2}
-                  strokeWidth={2}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
+            {radarData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="70%"
+                  data={radarData}
+                >
+                  <PolarGrid stroke="#E5E6EB" />
+                  <PolarAngleAxis
+                    dataKey="subject"
+                    tick={{ fill: "#4E5969", fontSize: 10 }}
+                  />
+                  <PolarRadiusAxis
+                    angle={30}
+                    domain={[0, 100]}
+                    tick={false}
+                    axisLine={false}
+                  />
+                  <Radar
+                    name="当前能力"
+                    dataKey="A"
+                    stroke="#4f46e5"
+                    fill="#4f46e5"
+                    fillOpacity={0.2}
+                    strokeWidth={2}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                加载中...
+              </div>
+            )}
           </div>
         </Card>
 

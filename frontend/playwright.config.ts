@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -16,9 +16,12 @@ export default defineConfig({
     {
       name: "api",
       use: {
-        ...devices["Desktop Chrome"],
-        executablePath:
-          "C:/Users/15722/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe",
+        browserName: "chromium",
+        headless: true,
+        launchOptions: {
+          executablePath:
+            "C:/Users/15722/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe",
+        },
       },
     },
   ],
