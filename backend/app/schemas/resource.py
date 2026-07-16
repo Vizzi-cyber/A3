@@ -20,6 +20,7 @@ class QuestionsGenerateRequest(BaseModel):
     topic: str = Field(..., max_length=500)
     count: int = Field(5, ge=1, le=20)
     kp_id: Optional[str] = None
+    subject: Optional[str] = None
 
 
 class QuestionsGenerateResponse(BaseModel):

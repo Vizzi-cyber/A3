@@ -204,15 +204,18 @@ class ResourceGeneratorAgent(BaseAgent):
     async def _generate_questions(self, context: Dict[str, Any]) -> Dict[str, Any]:
         count = context.get("constraints", {}).get("count", 5)
         topic = context["topic"]
+        subject = context.get("subject") or context.get("constraints", {}).get("subject", "C语言")
         profile_snippet = self._build_profile_snippet(context)
 
         # 知识图谱约束
         graph_constraint = self._build_resource_constraint_prompt(topic)
 
         prompt = (
-            f"请为主题《{topic}》生成 {count} 道练习题。\n"
+            f"请为{subject}课程主题《{topic}》生成 {count} 道练习题。\n"
             f"学生画像参考：\n{profile_snippet}\n"
             "请针对学生的薄弱知识点多出题，题目难度匹配学生的知识水平。\n"
+            f"重要：所有题目必须与{subject}课程内容相关，不要出其他学科题目。\n"
+            "要求：题目准确无歧义，代码示例完整可运行，填空题不要求填写关键字而是直接填写语法或表达式。\n"
             "包含选择题、填空题或简答题，并提供答案与解析。\n"
             "返回 JSON：{\"questions\": [{\"type\": \"choice\", \"question\": \"...\", \"answer\": \"...\", \"explanation\": \"...\"}]}"
         )

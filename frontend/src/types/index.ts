@@ -195,6 +195,7 @@ export interface QuestionsGenerationRequest {
   topic: string;
   count?: number;
   kp_id?: string;
+  subject?: string;
 }
 
 export interface QuestionsGenerationResponse {

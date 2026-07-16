@@ -297,7 +297,7 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db), _current:
         raise HTTPException(status_code=400, detail="Invalid task_id format")
     task = db.query(ResourceTaskModel).filter(ResourceTaskModel.task_id == task_id).first()
     if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+        return {"task_id": task_id, "status": "not_found", "progress": 0, "resources": None, "message": "Task not found"}
     return {
         "task_id": task.task_id,
         "status": task.status,
@@ -416,13 +416,16 @@ async def generate_questions(request: QuestionsGenerateRequest, _current: str = 
         for i in range(request.count)
     ]
 
+    constraints_dict = {"count": request.count}
+    if request.subject:
+        constraints_dict["subject"] = request.subject
     questions, _ = await _generate_with_agent(
         task="generate_questions",
         topic=request.topic,
         lib_key="questions",
         kp_id=request.kp_id,
         default_content=default_questions,
-        constraints={"count": request.count},
+        constraints=constraints_dict,
         extract_content=lambda raw: raw if isinstance(raw, list) and len(raw) > 0 else None,
     )
     return {

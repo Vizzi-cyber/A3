@@ -411,6 +411,7 @@ const ResourceCenter: React.FC = () => {
               topic: currentTopic,
               count: 3,
               kp_id: activeKey,
+              subject: storeCurrentSubject,
             }),
             resourceApi.generateMindmap({
               student_id: studentId,
@@ -480,6 +481,7 @@ const ResourceCenter: React.FC = () => {
               topic: currentTopic,
               count: 3,
               kp_id: activeKey,
+              subject: storeCurrentSubject,
             }),
             resourceApi.generateMindmap({
               student_id: studentId,
@@ -797,9 +799,7 @@ const ResourceCenter: React.FC = () => {
       }
     } catch (e: unknown) {
       const errMsg = extractApiError(e, "生成失败");
-      if (errMsg !== "timeout" && errMsg !== "failed") {
-        message.error(errMsg);
-      }
+      message.error(errMsg);
     } finally {
       setImageLoading(false);
     }
@@ -1474,6 +1474,12 @@ const ResourceCenter: React.FC = () => {
                             src={generatedImage}
                             alt="AI 生成图片"
                             className="rounded-xl border border-slate-200 max-w-full"
+                            onError={() => {
+                              message.error(
+                                "图片加载失败，可能是链接已过期，请重新生成",
+                              );
+                              setGeneratedImage("");
+                            }}
                           />
                         </div>
                       )}
