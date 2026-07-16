@@ -1,6 +1,7 @@
 """
 知识点管理API
 """
+import json
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -82,7 +83,7 @@ async def list_kps(
                 "document": k.document,
                 "code_example": k.code_example,
                 "questions": k.questions,
-                "mindmap": k.mindmap,
+                "mindmap": k.mindmap if isinstance(k.mindmap, str) or k.mindmap is None else json.dumps(k.mindmap, ensure_ascii=False),
             }
             for k in kps
         ],
@@ -147,6 +148,6 @@ async def get_kp(kp_id: str, db: Session = Depends(get_db), _current: str = Depe
             "document": kp.document,
             "code_example": kp.code_example,
             "questions": kp.questions,
-            "mindmap": kp.mindmap,
+            "mindmap": kp.mindmap if isinstance(kp.mindmap, str) or kp.mindmap is None else json.dumps(kp.mindmap, ensure_ascii=False),
         },
     }

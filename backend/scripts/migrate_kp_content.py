@@ -16,7 +16,7 @@ CONTENTS = {
             {"q_id": "q_c01_1", "type": "single_choice", "content": "C语言的发明者和发明时间分别是？", "options": [{"id": "A", "text": "Dennis Ritchie，1972年"}, {"id": "B", "text": "Ken Thompson，1969年"}, {"id": "C", "text": "Bjarne Stroustrup，1979年"}, {"id": "D", "text": "James Gosling，1995年"}], "correct_answer": "A", "explanation": "C语言由丹尼斯·里奇（Dennis Ritchie）于1972年在贝尔实验室开发。"},
             {"q_id": "q_c01_2", "type": "single_choice", "content": "C语言程序的正确入口函数是？", "options": [{"id": "A", "text": "void start()"}, {"id": "B", "text": "int main()"}, {"id": "C", "text": "function main()"}, {"id": "D", "text": "begin()"}], "correct_answer": "B", "explanation": "C语言标准规定程序入口为 int main(void) 或 int main(int argc, char *argv[])。"}
         ]),
-        "mindmap": json.dumps({"root": "C语言概述", "children": [{"name": "发展历史"}, {"name": "语言特点"}, {"name": "程序结构"}, {"name": "开发环境"}, {"name": "应用领域"}]}),
+        "mindmap": "# C语言概述\n## 发展历史\n## 语言特点\n## 程序结构\n## 开发环境\n## 应用领域",
     },
     "kp_c02": {
         "document": "## 数据类型与变量\n\nC语言是**强类型语言**，每个变量必须先声明类型再使用。\n\n### 基本数据类型\n| 类型 | 说明 | 典型大小 |\n|------|------|---------|\n| `char` | 字符型 | 1字节 |\n| `short`| 短整型 | 2字节 |\n| `int`  | 整型 | 4字节 |\n| `long` | 长整型 | 4/8字节 |\n| `float`| 单精度浮点 | 4字节 |\n| `double`| 双精度浮点 | 8字节 |\n\n### 变量声明与初始化\n```c\nint age = 20;          // 声明并初始化\nfloat pi = 3.14159;    // 浮点数\nchar grade = 'A';      // 单引号表示字符\n```\n\n### 常量\n- `#define MAX 100` —— 宏常量，编译时替换\n- `const int MIN = 0;` —— 只读变量，有类型检查\n\n> 注意事项：变量未初始化时值为**垃圾值**（不确定），务必在首次使用前赋值。\n",
@@ -25,7 +25,7 @@ CONTENTS = {
             {"q_id": "q_c02_1", "type": "single_choice", "content": "在C语言中，以下哪个是合法的变量名？", "options": [{"id": "A", "text": "2ndValue"}, {"id": "B", "text": "_count"}, {"id": "C", "text": "float"}, {"id": "D", "text": "my-var"}], "correct_answer": "B", "explanation": "变量名不能以数字开头，不能是关键字，不能包含连字符。下划线开头是合法的。"},
             {"q_id": "q_c02_2", "type": "single_choice", "content": "执行 int a = 5, b = 2; printf(\"%d\", a / b); 的输出是？", "options": [{"id": "A", "text": "2.5"}, {"id": "B", "text": "2"}, {"id": "C", "text": "3"}, {"id": "D", "text": "编译错误"}], "correct_answer": "B", "explanation": "两个 int 相除执行整数除法，小数部分直接截断，5/2 = 2。"}
         ]),
-        "mindmap": json.dumps({"root": "数据类型与变量", "children": [{"name": "基本类型"}, {"name": "变量声明"}, {"name": "常量定义"}, {"name": "类型转换"}, {"name": "格式化输出"}]}),
+        "mindmap": "# 数据类型与变量\n## 基本类型\n## 变量声明\n## 常量定义\n## 类型转换\n## 格式化输出",
     },
     "kp_c03": {
         "document": "## 运算符与表达式\n\nC语言提供丰富的运算符，用于算术、比较、逻辑和位运算。\n\n### 算术运算符\n`+` `-` `*` `/` `%`\n> 整数除法截断小数；取模 `%` 要求两边都是整数。\n\n### 关系与逻辑运算符\n| 运算符 | 含义 | 示例 |\n|--------|------|------|\n| `==` | 等于 | `a == b` |\n| `!=` | 不等于 | `a != b` |\n| `&&` | 逻辑与 | `a > 0 && b > 0` |\n| `||` | 逻辑或 | `a > 0 || b > 0` |\n| `!`  | 逻辑非 | `!(a == b)` |\n\n### 赋值运算符\n```c\na += 5;   // 等价于 a = a + 5;\na *= 2;   // 等价于 a = a * 2;\n```\n\n### 优先级\n括号 `()` > 单目 `!` > 算术 `*` `/` > 关系 `>` `==` > 逻辑 `&&` > 赋值 `=`\n\n> 建议：复杂表达式多用括号，避免依赖优先级记忆。\n",
@@ -34,7 +34,13 @@ CONTENTS = {
             {"q_id": "q_c03_1", "type": "single_choice", "content": "表达式 `5 % 3` 的结果是？", "options": [{"id": "A", "text": "1"}, {"id": "B", "text": "2"}, {"id": "C", "text": "1.6"}, {"id": "D", "text": "编译错误"}], "correct_answer": "B", "explanation": "5 除以 3 商 1 余 2，取模运算返回余数 2。"},
             {"q_id": "q_c03_2", "type": "single_choice", "content": "以下逻辑表达式中，当 a=0, b=5 时结果为真（1）的是？", "options": [{"id": "A", "text": "a && b"}, {"id": "B", "text": "a || b"}, {"id": "C", "text": "!b"}, {"id": "D", "text": "a == b"}], "correct_answer": "B", "explanation": "|| 是逻辑或，只要一侧为真即为真。b=5 为非零值，视为真。"}
         ]),
-        "mindmap": json.dumps({"root": "运算符与表达式", "children": [{"name": "算术运算符"}, {"name": "关系运算符"}, {"name": "逻辑运算符"}, {"name": "赋值运算符"}, {"name": "位运算符"}, {"name": "优先级"}]}),
+        "mindmap": "# 运算符与表达式
+## 算术运算符
+## 关系运算符
+## 逻辑运算符
+## 赋值运算符
+## 位运算符
+## 优先级",
     },
     "kp_c04": {
         "document": "## 控制结构\n\n控制结构决定程序的执行流程，包括分支和循环两大类。\n\n### 分支结构\n```c\n// if-else\nif (score >= 90) {\n    printf(\"优秀\");\n} else if (score >= 60) {\n    printf(\"及格\");\n} else {\n    printf(\"不及格\");\n}\n\n// switch\nswitch (grade) {\n    case 'A': printf(\"优秀\"); break;\n    case 'B': printf(\"良好\"); break;\n    default:  printf(\"其他\"); break;\n}\n```\n\n### 循环结构\n```c\n// for 循环：已知次数\nfor (int i = 0; i < 5; i++) {\n    printf(\"%d \", i);\n}\n\n// while 循环：条件驱动\nwhile (n > 0) {\n    n--;\n}\n\n// do-while 循环：至少执行一次\ndo {\n    scanf(\"%d\", &n);\n} while (n < 0);\n```\n\n### 跳转\n- `break`：立即退出当前循环或 switch\n- `continue`：跳过本次循环剩余代码，进入下一次\n\n> 最佳实践：循环嵌套不超过3层，过深的嵌套会降低可读性。\n",
@@ -43,7 +49,13 @@ CONTENTS = {
             {"q_id": "q_c04_1", "type": "single_choice", "content": "以下哪个循环语句至少会执行一次循环体？", "options": [{"id": "A", "text": "for"}, {"id": "B", "text": "while"}, {"id": "C", "text": "do-while"}, {"id": "D", "text": "if"}], "correct_answer": "C", "explanation": "do-while 先执行循环体，再判断条件，因此至少执行一次。"},
             {"q_id": "q_c04_2", "type": "single_choice", "content": "在 switch 语句中，若省略 break，会发生什么？", "options": [{"id": "A", "text": "编译错误"}, {"id": "B", "text": "只执行匹配的 case"}, {"id": "C", "text": "继续执行后续所有 case（穿透）"}, {"id": "D", "text": "程序崩溃"}], "correct_answer": "C", "explanation": "C语言 switch 具有 fall-through 特性，省略 break 会依次执行后续 case。"}
         ]),
-        "mindmap": json.dumps({"root": "控制结构", "children": [{"name": "if-else"}, {"name": "switch"}, {"name": "for循环"}, {"name": "while循环"}, {"name": "do-while"}, {"name": "break/continue"}]}),
+        "mindmap": "# 控制结构
+## if-else
+## switch
+## for循环
+## while循环
+## do-while
+## break/continue",
     },
     "kp_c05": {
         "document": "## 数组与字符串\n\n数组是**相同类型数据的连续内存集合**。字符串在C语言中本质是以 `'\\0'` 结尾的字符数组。\n\n### 一维数组\n```c\nint nums[5] = {1, 2, 3, 4, 5};\nprintf(\"%d\", nums[0]);  // 访问第一个元素，输出 1\n```\n\n### 二维数组\n```c\nint matrix[2][3] = {\n    {1, 2, 3},\n    {4, 5, 6}\n};\n```\n\n### 字符串处理\n```c\nchar s1[20] = \"Hello\";\nchar s2[20] = \"World\";\nstrlen(s1);      // 求长度（不含\\0）\nstrcpy(s1, s2);  // 复制字符串\nstrcat(s1, s2);  // 拼接字符串\nstrcmp(s1, s2);  // 比较字符串\n```\n\n> 注意：C语言**不会检查数组越界**。访问 `nums[10]` 可能导致不可预知的错误，这是C语言高效但危险的代价。\n",
@@ -52,7 +64,12 @@ CONTENTS = {
             {"q_id": "q_c05_1", "type": "single_choice", "content": "定义数组 int arr[5]；合法访问最后一个元素的下标是？", "options": [{"id": "A", "text": "arr[5]"}, {"id": "B", "text": "arr[4]"}, {"id": "C", "text": "arr[0]"}, {"id": "D", "text": "以上都不对"}], "correct_answer": "B", "explanation": "C语言数组下标从0开始，长度为5的数组下标范围是 0~4。"},
             {"q_id": "q_c05_2", "type": "single_choice", "content": "字符串 \"Hello\\0World\" 调用 strlen 的结果是？", "options": [{"id": "A", "text": "11"}, {"id": "B", "text": "5"}, {"id": "C", "text": "6"}, {"id": "D", "text": "编译错误"}], "correct_answer": "B", "explanation": "strlen 计算到第一个 '\\0' 为止，'Hello' 长度为 5。"}
         ]),
-        "mindmap": json.dumps({"root": "数组与字符串", "children": [{"name": "一维数组"}, {"name": "二维数组"}, {"name": "数组初始化"}, {"name": "字符串本质"}, {"name": "string.h函数"}]}),
+        "mindmap": "# 数组与字符串
+## 一维数组
+## 二维数组
+## 数组初始化
+## 字符串本质
+## string.h函数",
     },
     "kp_c06": {
         "document": "## 函数\n\n函数是C语言模块化编程的基础，将复杂问题分解为可复用的代码块。\n\n### 函数定义\n```c\nint add(int a, int b) {\n    return a + b;\n}\n```\n\n### 参数传递\n- **值传递**：传递变量的副本，函数内部修改不影响外部\n- **地址传递**：传递指针，函数内部可修改外部变量\n\n### 递归函数\n函数调用自身的编程技巧，必须有明确的终止条件。\n```c\nint factorial(int n) {\n    if (n <= 1) return 1;\n    return n * factorial(n - 1);\n}\n```\n\n### 作用域\n- 局部变量：在函数/块内定义，离开即销毁\n- 全局变量：在所有函数外定义，整个文件可见\n- `static`：静态变量，生命周期贯穿程序运行，作用域不变\n\n> 建议：优先使用值传递保证数据安全；需要修改外部数据时使用指针显式传递地址。\n",
@@ -61,7 +78,13 @@ CONTENTS = {
             {"q_id": "q_c06_1", "type": "single_choice", "content": "C语言函数参数默认采用什么传递方式？", "options": [{"id": "A", "text": "引用传递"}, {"id": "B", "text": "值传递"}, {"id": "C", "text": "指针传递"}, {"id": "D", "text": "地址传递"}], "correct_answer": "B", "explanation": "C语言函数参数默认是值传递，传入的是实参的副本。"},
             {"q_id": "q_c06_2", "type": "single_choice", "content": "递归函数必须具备什么条件才能正确结束？", "options": [{"id": "A", "text": "返回值类型为 void"}, {"id": "B", "text": "必须有基线条件（终止条件）"}, {"id": "C", "text": "必须调用其他函数"}, {"id": "D", "text": "参数必须使用指针"}], "correct_answer": "B", "explanation": "递归必须有终止条件，否则会导致无限递归和栈溢出。"}
         ]),
-        "mindmap": json.dumps({"root": "函数", "children": [{"name": "函数定义"}, {"name": "参数传递"}, {"name": "返回值"}, {"name": "递归"}, {"name": "作用域"}, {"name": "static变量"}]}),
+        "mindmap": "# 函数
+## 函数定义
+## 参数传递
+## 返回值
+## 递归
+## 作用域
+## static变量",
     },
     "kp_c07": {
         "document": "## 指针\n\n指针是C语言的灵魂，也是最难掌握的概念。指针即**内存地址**。\n\n### 基本概念\n```c\nint a = 10;\nint *p = &a;   // p 存储 a 的地址\nprintf(\"%d\", *p);  // 解引用，输出 10\n```\n\n### 指针与数组\n数组名本质是首元素地址。\n```c\nint arr[3] = {10, 20, 30};\nint *p = arr;\nprintf(\"%d\", *(p + 1));  // 等价于 arr[1]，输出 20\n```\n\n### 指针与函数\n通过指针可以实现\"按引用传递\"，让函数修改外部变量。\n\n### 动态内存分配\n```c\nint *p = (int *)malloc(5 * sizeof(int));\nfree(p);  // 用完必须释放，防止内存泄漏\n```\n\n> 关键洞察：`*` 在声明中表示\"指针\"，在表达式中表示\"解引用\"；`&` 表示\"取地址\"。\n",
@@ -70,7 +93,12 @@ CONTENTS = {
             {"q_id": "q_c07_1", "type": "single_choice", "content": "若有 int a=5, *p=&a;，则 *p 的值是？", "options": [{"id": "A", "text": "a 的地址"}, {"id": "B", "text": "5"}, {"id": "C", "text": "p 的地址"}, {"id": "D", "text": "不确定"}], "correct_answer": "B", "explanation": "*p 是解引用操作，获取指针 p 所指向地址的值，即 a 的值 5。"},
             {"q_id": "q_c07_2", "type": "single_choice", "content": "使用 malloc 分配的内存，应该使用什么函数释放？", "options": [{"id": "A", "text": "delete"}, {"id": "B", "text": "free"}, {"id": "C", "text": "remove"}, {"id": "D", "text": "不需要释放"}], "correct_answer": "B", "explanation": "C语言中使用 malloc/calloc/realloc 分配的堆内存，必须使用 free 释放。"}
         ]),
-        "mindmap": json.dumps({"root": "指针", "children": [{"name": "地址与解引用"}, {"name": "指针与数组"}, {"name": "指针与函数"}, {"name": "动态内存"}, {"name": "指针运算"}]}),
+        "mindmap": "# 指针
+## 地址与解引用
+## 指针与数组
+## 指针与函数
+## 动态内存
+## 指针运算",
     },
     "kp_c08": {
         "document": "## 结构体与联合体\n\n结构体（struct）允许将不同类型的数据组合成一个整体，是面向对象思想的雏形。\n\n### 结构体定义与使用\n```c\nstruct Student {\n    char name[20];\n    int age;\n    float score;\n};\n\nstruct Student s1 = {\"Alice\", 20, 90.5};\nprintf(\"%s: %.1f\", s1.name, s1.score);\n```\n\n### typedef 简化\n```c\ntypedef struct Student {\n    char name[20];\n    int age;\n} Stu;\n\nStu s1;  // 无需再写 struct\n```\n\n### 联合体（union）\n所有成员共享同一块内存，大小等于最大成员的大小。\n```c\nunion Data {\n    int i;\n    float f;\n};\n```\n\n### 枚举（enum）\n```c\nenum Color { RED, GREEN, BLUE };\nenum Color c = RED;\n```\n\n> 应用场景：结构体用于描述实体记录（学生、商品）；联合体用于节省内存的互斥数据；枚举用于状态标识。\n",
@@ -79,7 +107,12 @@ CONTENTS = {
             {"q_id": "q_c08_1", "type": "single_choice", "content": "结构体 struct 的大小等于什么？", "options": [{"id": "A", "text": "最大成员的大小"}, {"id": "B", "text": "所有成员大小之和（考虑对齐）"}, {"id": "C", "text": "固定为 4 字节"}, {"id": "D", "text": "第一个成员的大小"}], "correct_answer": "B", "explanation": "结构体大小等于各成员大小之和，但由于内存对齐，实际大小可能大于简单相加。"},
             {"q_id": "q_c08_2", "type": "single_choice", "content": "union 联合体所有成员共享同一块内存，其大小等于？", "options": [{"id": "A", "text": "所有成员大小之和"}, {"id": "B", "text": "最大成员的大小"}, {"id": "C", "text": "最小成员的大小"}, {"id": "D", "text": "固定 8 字节"}], "correct_answer": "B", "explanation": "联合体的大小等于最大成员的大小，因为所有成员共享起始地址。"}
         ]),
-        "mindmap": json.dumps({"root": "结构体与联合体", "children": [{"name": "struct定义"}, {"name": "typedef"}, {"name": "嵌套结构体"}, {"name": "union共享内存"}, {"name": "enum枚举"}]}),
+        "mindmap": "# 结构体与联合体
+## struct定义
+## typedef
+## 嵌套结构体
+## union共享内存
+## enum枚举",
     },
     "kp_c09": {
         "document": "## 文件操作\n\nC语言通过标准库函数实现文件的读写，核心概念是**文件指针（FILE*）**。\n\n### 打开与关闭\n```c\nFILE *fp = fopen(\"data.txt\", \"r\");  // r读 w写 a追加\nif (fp == NULL) {\n    printf(\"打开失败\");\n    return 1;\n}\nfclose(fp);\n```\n\n### 读写方式\n| 函数 | 功能 | 示例 |\n|------|------|------|\n| `fscanf` / `fprintf` | 格式化读写 | 类似 scanf/printf |\n| `fgets` / `fputs` | 按行读写 | 读取一行字符串 |\n| `fread` / `fwrite` | 二进制块读写 | 读写结构体数组 |\n| `fgetc` / `fputc` | 字符读写 | 逐个字符处理 |\n\n### 文件定位\n```c\nfseek(fp, 0, SEEK_SET);  // 定位到文件开头\nftell(fp);               // 获取当前位置\nrewind(fp);              // 回到开头\n```\n\n> 注意：文件操作后必须 `fclose`，否则数据可能只留在缓冲区而未写入磁盘。\n",
@@ -88,7 +121,12 @@ CONTENTS = {
             {"q_id": "q_c09_1", "type": "single_choice", "content": "以追加模式打开文件应使用什么模式字符串？", "options": [{"id": "A", "text": "r"}, {"id": "B", "text": "w"}, {"id": "C", "text": "a"}, {"id": "D", "text": "wb"}], "correct_answer": "C", "explanation": "'a' 表示 append（追加），写入的数据会添加到文件末尾而不会覆盖原内容。"},
             {"q_id": "q_c09_2", "type": "single_choice", "content": "打开文件后必须调用的关闭函数是？", "options": [{"id": "A", "text": "close()"}, {"id": "B", "text": "fclose()"}, {"id": "C", "text": "exit()"}, {"id": "D", "text": "free()"}], "correct_answer": "B", "explanation": "C语言标准使用 fclose(fp) 关闭文件指针，确保缓冲区数据刷写到磁盘。"}
         ]),
-        "mindmap": json.dumps({"root": "文件操作", "children": [{"name": "打开关闭"}, {"name": "格式化读写"}, {"name": "二进制读写"}, {"name": "字符/行读写"}, {"name": "文件定位"}]}),
+        "mindmap": "# 文件操作
+## 打开关闭
+## 格式化读写
+## 二进制读写
+## 字符/行读写
+## 文件定位",
     },
     "kp_c10": {
         "document": "## 预处理与内存管理\n\n预处理指令在编译前由预处理器处理，内存管理则涉及堆空间的申请与释放。\n\n### 宏定义\n```c\n#define PI 3.14159\n#define MAX(a,b) ((a)>(b)?(a):(b))  // 带参数的宏，注意括号\n```\n\n### 条件编译\n```c\n#ifdef DEBUG\n    printf(\"调试信息\");\n#endif\n```\n\n### 动态内存管理\n| 函数 | 功能 |\n|------|------|\n| `malloc(n)` | 分配 n 字节，不初始化 |\n| `calloc(n,size)` | 分配 n*size 字节，初始化为 0 |\n| `realloc(ptr,new_size)` | 重新分配内存大小 |\n| `free(ptr)` | 释放 malloc 申请的内存 |\n\n### 常见错误\n- **内存泄漏**：malloc 后未 free\n- **野指针**：free 后未置 NULL，再次使用\n- **越界访问**：写入超出分配范围的地址\n\n> 原则：谁申请谁释放；释放后置空；申请后检查返回值是否为 NULL。\n",
@@ -97,7 +135,13 @@ CONTENTS = {
             {"q_id": "q_c10_1", "type": "single_choice", "content": "malloc 与 calloc 的主要区别是什么？", "options": [{"id": "A", "text": "malloc 可以分配更大内存"}, {"id": "B", "text": "calloc 会初始化内存为0，malloc不会"}, {"id": "C", "text": "malloc 是标准函数，calloc不是"}, {"id": "D", "text": "没有区别"}], "correct_answer": "B", "explanation": "calloc 在分配内存后会将所有位初始化为 0，而 malloc 分配的内存值为未定义（垃圾值）。"},
             {"q_id": "q_c10_2", "type": "single_choice", "content": "以下哪种情况会导致内存泄漏？", "options": [{"id": "A", "text": "malloc 后调用了 free"}, {"id": "B", "text": "使用局部变量数组"}, {"id": "C", "text": "malloc 后未调用 free，且指针丢失"}, {"id": "D", "text": "使用 const 变量"}], "correct_answer": "C", "explanation": "内存泄漏指动态分配的内存不再被任何指针引用，且未被释放，导致系统内存浪费。"}
         ]),
-        "mindmap": json.dumps({"root": "预处理与内存管理", "children": [{"name": "宏定义"}, {"name": "条件编译"}, {"name": "头文件包含"}, {"name": "malloc/calloc"}, {"name": "realloc/free"}, {"name": "内存泄漏"}]}),
+        "mindmap": "# 预处理与内存管理
+## 宏定义
+## 条件编译
+## 头文件包含
+## malloc/calloc
+## realloc/free
+## 内存泄漏",
     },
 }
 

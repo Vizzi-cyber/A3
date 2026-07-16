@@ -555,10 +555,10 @@ const AlgorithmVisualizer: React.FC<AlgorithmVisualizerProps> = ({
         </Tag>
       </div>
 
-      {/* 可视化区域 + 伪代码 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* 可视化区域 + 伪代码（上下排列） */}
+      <div className="flex flex-col gap-4">
         {/* Canvas */}
-        <div className="lg:col-span-2">
+        <div>
           <div className="bg-white rounded-xl border border-slate-100 shadow-card p-3">
             <canvas
               ref={canvasRef}
@@ -575,10 +575,10 @@ const AlgorithmVisualizer: React.FC<AlgorithmVisualizerProps> = ({
         </div>
 
         {/* 伪代码 */}
-        <div className="lg:col-span-1">
-          <div className="bg-slate-900 rounded-xl p-4 h-full">
+        <div>
+          <div className="bg-slate-900 rounded-xl p-4">
             <div className="text-xs text-slate-400 mb-2 font-mono">伪代码</div>
-            <pre className="text-xs leading-6 font-mono">
+            <pre className="text-xs leading-6 font-mono whitespace-pre-wrap break-words overflow-auto">
               {pseudoCode.map((line, idx) => (
                 <div
                   key={idx}

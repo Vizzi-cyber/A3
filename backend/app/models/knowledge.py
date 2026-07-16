@@ -25,7 +25,7 @@ class KnowledgePointModel(Base):
     document = Column(Text, nullable=True)        # Markdown 图文讲义
     code_example = Column(Text, nullable=True)    # 代码示例
     questions = Column(JSON, nullable=True)       # 练习题列表
-    mindmap = Column(JSON, nullable=True)         # 思维导图 JSON
+    mindmap = Column(Text, nullable=True)          # 思维导图（JSON 或 markmap 缩进文本）
 
 
 class LearningRecordModel(Base):

@@ -57,7 +57,8 @@ import { ChatPanel } from "../components/ChatPanel";
 import { MarkdownViewer } from "../components/MarkdownViewer";
 import CodeEditor from "../components/CodeEditor";
 import AlgorithmVisualizer from "../components/AlgorithmVisualizer";
-import MindmapViewer from "../components/MindmapViewer";
+import MindmapView from "../components/MindmapView";
+import { kbApi } from "../services/knowledgeBaseApi";
 import "../styles/markdown-content.css";
 
 interface CourseMenuItem {
@@ -87,10 +88,7 @@ const ResourceCenter: React.FC = () => {
   );
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [quizSubmitting, _setQuizSubmitting] = useState(false);
-  const [mindmap, setMindmap] = useState<{
-    root: string;
-    children: { name: string }[];
-  }>({ root: "", children: [] });
+  const [mindmapContent, setMindmapContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [resLoading, setResLoading] = useState(false);
   const [bottomTab, setBottomTab] = useState("code");
@@ -429,12 +427,24 @@ const ResourceCenter: React.FC = () => {
           setQuizSubmitted({});
           setQuizScore(null);
           if (mapRes.data?.mindmap) {
-            setMindmap({
-              root: mapRes.data.mindmap.root || currentTopic,
-              children: (mapRes.data.mindmap.children || []) as {
-                name: string;
-              }[],
-            });
+            const raw = mapRes.data.mindmap;
+            if (typeof raw === "string") {
+              setMindmapContent(raw);
+            } else if ((raw as any).root || (raw as any).name) {
+              const toMarkmap = (data: any, depth = 0): string => {
+                const prefix = "#".repeat(Math.max(1, depth + 1));
+                const n = data.name || data.root || "";
+                let text = `${prefix} ${n}\n`;
+                if (data.children) {
+                  for (const c of data.children)
+                    text += toMarkmap(c, depth + 1);
+                }
+                return text;
+              };
+              setMindmapContent(toMarkmap(raw));
+            } else {
+              setMindmapContent("");
+            }
           }
         } else {
           // C语言 / 电路分析：原有逻辑
@@ -444,7 +454,19 @@ const ResourceCenter: React.FC = () => {
             kp_id: activeKey,
           });
           if (ignore) return;
-          if (docRes.data?.document) setDocContent(docRes.data.document);
+          if (docRes.data?.document) {
+            setDocContent(docRes.data.document);
+            // 自动保存到知识库
+            kbApi
+              .autoOrganize({
+                kp_id: activeKey,
+                title: currentTopic + " 学习笔记",
+                content: docRes.data.document.slice(0, 500),
+                subject: storeCurrentSubject,
+                action: "learn",
+              })
+              .catch(() => {});
+          }
 
           const [codeRes, qRes, mapRes] = await Promise.all([
             resourceApi.generateCode({
@@ -475,12 +497,24 @@ const ResourceCenter: React.FC = () => {
           setQuizSubmitted({});
           setQuizScore(null);
           if (mapRes.data?.mindmap) {
-            setMindmap({
-              root: mapRes.data.mindmap.root || currentTopic,
-              children: (mapRes.data.mindmap.children || []) as {
-                name: string;
-              }[],
-            });
+            const raw = mapRes.data.mindmap;
+            if (typeof raw === "string") {
+              setMindmapContent(raw);
+            } else if ((raw as any).root || (raw as any).name) {
+              const toMarkmap = (data: any, depth = 0): string => {
+                const prefix = "#".repeat(Math.max(1, depth + 1));
+                const n = data.name || data.root || "";
+                let text = `${prefix} ${n}\n`;
+                if (data.children) {
+                  for (const c of data.children)
+                    text += toMarkmap(c, depth + 1);
+                }
+                return text;
+              };
+              setMindmapContent(toMarkmap(raw));
+            } else {
+              setMindmapContent("");
+            }
           }
         }
       } catch (_e) {
@@ -712,6 +746,12 @@ const ResourceCenter: React.FC = () => {
     setImageLoading(true);
     try {
       const res = await imageApi.generate({ prompt: imagePrompt });
+      // 功能未配置
+      if (res.data?.status === "not_configured") {
+        message.warning(res.data?.message || "文生图功能未配置");
+        setImageLoading(false);
+        return;
+      }
       // 同步直接返回图片
       if (res.data?.image_urls && res.data.image_urls.length > 0) {
         setGeneratedImage(res.data.image_urls[0]);
@@ -1390,8 +1430,8 @@ const ResourceCenter: React.FC = () => {
                     </span>
                   ),
                   children: (
-                    <div className="rounded-xl bg-slate-50 border border-slate-100 p-2">
-                      <MindmapViewer data={mindmap} width={600} height={420} />
+                    <div className="rounded-xl bg-white border border-slate-100 p-2">
+                      <MindmapView content={mindmapContent} />
                     </div>
                   ),
                 },

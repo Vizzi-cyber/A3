@@ -8,8 +8,6 @@ import type {
   BacklinkItem,
 } from "../types/knowledgeBase";
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-
 interface KBState {
   folders: KBFolder[];
   notes: KBNoteListItem[];
@@ -167,14 +165,11 @@ export const useKBStore = create<KBState>((set, get) => ({
   },
 
   setContent: (content: string) => {
-    set({ currentContent: content, isDirty: true });
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      const { activeNoteId, currentContent } = get();
-      if (activeNoteId) {
-        get().updateNote(activeNoteId, { content: currentContent });
-      }
-    }, 500);
+    set({ currentContent: content });
+    const { activeNoteId } = get();
+    if (activeNoteId) {
+      get().updateNote(activeNoteId, { content });
+    }
   },
 
   setTitle: (title: string) => {
@@ -182,12 +177,9 @@ export const useKBStore = create<KBState>((set, get) => ({
     if (activeNote) {
       set({ activeNote: { ...activeNote, title } });
     }
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      if (activeNoteId) {
-        get().updateNote(activeNoteId, { title });
-      }
-    }, 500);
+    if (activeNoteId) {
+      get().updateNote(activeNoteId, { title });
+    }
   },
 
   search: async (query: string) => {

@@ -256,18 +256,28 @@ class ResourceGeneratorAgent(BaseAgent):
         graph_constraint = self._build_resource_constraint_prompt(topic)
 
         prompt = (
-            f"请为主题《{topic}》生成思维导图的结构化数据。\n"
-            "返回 JSON：{\"root\": \"主题\", \"children\": [{\"name\": \"...\", \"children\": [...]}]}"
+            f"请为主题《{topic}》生成思维导图的大纲。\n"
+            "只输出缩进格式文本，不要输出JSON，不要有任何额外说明。例如：\n"
+            "# 主题\n"
+            "## 分支1\n"
+            "### 子项1\n"
+            "### 子项2\n"
+            "## 分支2\n"
+            "### 子项3\n"
         )
         if graph_constraint:
             prompt += graph_constraint
 
         prompt = SafetyGuard.sanitize_prompt(prompt)
-        data = await self.llm.generate_json([
-            {"role": "system", "content": self.get_system_prompt()},
+        text = await self.llm.ainvoke([
+            {"role": "system", "content": "你只输出 markmap 兼容的缩进格式文本，不要输出JSON，不要输出任何说明。"},
             {"role": "user", "content": prompt},
-        ], temperature=0.4, max_tokens=4096)  # 增加 max_tokens 避免 JSON 截断
-        return {"status": "success", "task": "mindmap", "content": data}
+        ], temperature=0.3, max_tokens=4096)
+        # 清理可能的 JSON 包裹
+        cleaned = text.strip().strip("```").strip()
+        if cleaned.startswith("{"):
+            cleaned = f"# {topic}\n"
+        return {"status": "success", "task": "mindmap", "content": cleaned}
 
     async def _match_resources(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """根据路径节点匹配资源（用于 path_planner 后续步骤）"""

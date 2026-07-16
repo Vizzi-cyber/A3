@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
-from ..agents import ErrorCatcherAgent
+from ..agents import ErrorCatcherAgent, CourseDesignerAgent
 from ..core.logger import setup_logger
 from ..models.database import get_db
 from .auth import require_auth
@@ -135,3 +135,39 @@ async def validate_code(
     except Exception as e:
         logger.error(f"Code validation failed: {e}")
         raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
+
+
+# 全局课程设计师实例（编排错误诊断全流程）
+_designer_agent = CourseDesignerAgent()
+
+
+class FullDiagnosisRequest(BaseModel):
+    """全流程诊断请求"""
+    code: str
+    language: str = "C"
+    student_level: str = "beginner"
+    error_output: str = ""
+    error_type: str = "逻辑错误"
+    student_id: str
+
+
+@router.post("/full-diagnosis")
+async def full_diagnosis(
+    request: FullDiagnosisRequest,
+    _current: str = Depends(require_auth),
+):
+    """课程设计师Agent编排的全流程错误诊断"""
+    try:
+        result = await _designer_agent.process({
+            "task_type": "error_diagnosis",
+            "code": request.code,
+            "language": request.language,
+            "student_level": request.student_level,
+            "error_output": request.error_output,
+            "error_type": request.error_type,
+            "student_id": request.student_id,
+        })
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Full diagnosis failed: {e}")
+        raise HTTPException(status_code=500, detail="全流程诊断失败，请稍后重试")

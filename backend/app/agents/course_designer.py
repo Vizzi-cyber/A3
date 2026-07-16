@@ -12,6 +12,8 @@ from .profiler import ProfilerAgent
 from .resource_generator import ResourceGeneratorAgent
 from .path_planner import PathPlannerAgent
 from .tutor import TutorAgent
+from .error_catcher import ErrorCatcherAgent
+from .misconception_tracer import MisconceptionTracerAgent
 from ..services.llm_factory import BaseLLM, LLMFactory
 from ..core.safety import SafetyGuard, HallucinationGuard
 
@@ -39,6 +41,8 @@ class CourseDesignerAgent(BaseAgent):
         self.register_sub_agent("resource_generator", ResourceGeneratorAgent(self.llm))
         self.register_sub_agent("path_planner", PathPlannerAgent(self.llm))
         self.register_sub_agent("tutor", TutorAgent(self.llm))
+        self.register_sub_agent("error_catcher", ErrorCatcherAgent(self.llm))
+        self.register_sub_agent("misconception_tracer", MisconceptionTracerAgent(self.llm))
 
     def register_sub_agent(self, agent_id: str, agent: BaseAgent):
         """注册子智能体"""
@@ -65,6 +69,8 @@ class CourseDesignerAgent(BaseAgent):
 - resource_generator: 资源生成师，负责生成多模态学习资源
 - path_planner: 路径规划师，负责规划学习路径
 - tutor: 辅导助手，负责答疑和辅导
+- error_catcher: 错误捕捉师，负责分析代码中的语法、逻辑和思维错误
+- misconception_tracer: 思维溯源师，负责追溯错误根源并生成纠正策略
 
 【输出格式】
 所有输出必须是JSON格式，包含：
@@ -95,7 +101,7 @@ class CourseDesignerAgent(BaseAgent):
             requirements = self._parse_requirements(context, profile)
 
             # 3. 制定任务计划
-            task_plan = self._create_task_plan(task_type, requirements, profile)
+            task_plan = self._create_task_plan(task_type, requirements, profile, context)
 
             # 4. 执行子任务（并行或串行）
             results = await self._execute_sub_tasks(task_plan, context, profile)
@@ -175,9 +181,11 @@ class CourseDesignerAgent(BaseAgent):
         self,
         task_type: str,
         requirements: Dict[str, Any],
-        profile: Dict[str, Any]
+        profile: Dict[str, Any],
+        context: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """创建任务计划"""
+        context = context or {}
 
         if task_type == "resource_generation":
             return {
@@ -257,6 +265,46 @@ class CourseDesignerAgent(BaseAgent):
                         "params": {},
                         "dependencies": ["st_2"]
                     }
+                ]
+            }
+
+        elif task_type == "error_diagnosis":
+            return {
+                "task_type": "error_diagnosis",
+                "sub_tasks": [
+                    {
+                        "id": "st_1",
+                        "agent": "error_catcher",
+                        "task": "catch_error",
+                        "params": {
+                            "code": context.get("code", ""),
+                            "language": context.get("language", "C"),
+                            "student_level": context.get("student_level", "beginner"),
+                        },
+                        "dependencies": []
+                    },
+                    {
+                        "id": "st_2",
+                        "agent": "misconception_tracer",
+                        "task": "trace_error",
+                        "params": {
+                            "code": context.get("code", ""),
+                            "error_type": context.get("error_type", "逻辑错误"),
+                        },
+                        "dependencies": ["st_1"]
+                    },
+                    {
+                        "id": "st_3",
+                        "agent": "misconception_tracer",
+                        "task": "generate_correction",
+                        "params": {},
+                        "dependencies": ["st_1", "st_2"]
+                    }
+                ],
+                "parallel_groups": [
+                    ["st_1"],
+                    ["st_2"],
+                    ["st_3"]
                 ]
             }
 
@@ -360,6 +408,31 @@ class CourseDesignerAgent(BaseAgent):
                 "session_id": f"{context.get('student_id', 'anon')}_cd",
                 "question": params.get("question", context.get("user_request", "")),
                 "profile": profile,
+            }
+
+        # 对于 error_catcher 特殊处理
+        if agent_id == "error_catcher":
+            agent_context = {
+                "task": task,
+                "code": params.get("code", context.get("code", "")),
+                "language": params.get("language", context.get("language", "C")),
+                "student_level": params.get("student_level", context.get("student_level", "beginner")),
+                "error_output": context.get("error_output", ""),
+                "student_id": context.get("student_id"),
+            }
+
+        # 对于 misconception_tracer 特殊处理
+        if agent_id == "misconception_tracer":
+            # 前一步的错误分析结果注入
+            prev_error = previous_results.get("st_1", {})
+            agent_context = {
+                "task": task,
+                "code": params.get("code", context.get("code", "")),
+                "error_type": params.get("error_type", context.get("error_type", "逻辑错误")),
+                "error_description": prev_error.get("overall_assessment", context.get("error_description", "")),
+                "student_history": context.get("student_history", {}),
+                "profile": profile,
+                "student_id": context.get("student_id"),
             }
 
         return await agent.process(agent_context)

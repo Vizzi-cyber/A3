@@ -134,14 +134,13 @@ int main()
     }
     // b在此处不可访问
 
-    extern int g_val;  // 使用extern声明外部变量
-    printf("g_val = %d\n", g_val);
-    return 0;
-}
-"""
-
-KP_C01_QS = [
-    {"q_id": "q_c01_1", "type": "single_choice", "content": "C语言中，程序的执行从哪个函数开始？",
+    extern int g_val;  // 使�KP_C01_MM = "# C语言概述
+## 发展历史
+## 语言特点
+## Hello World
+## 开发环境
+## 编译过程
+## 调试技巧"中，程序的执行从哪个函数开始？",
      "options": [{"id": "A", "text": "start()"}, {"id": "B", "text": "main()"}, {"id": "C", "text": "begin()"}, {"id": "D", "text": "init()"}],
      "correct_answer": "B", "explanation": "main()函数是C程序的入口点，操作系统从main函数开始执行程序。"},
     {"q_id": "q_c01_2", "type": "single_choice", "content": "以下哪个是C语言的预处理指令？",
@@ -258,17 +257,13 @@ int main()
 
 // ========================================
 // 示例2：变量的定义和使用
-// ========================================
-#include <stdio.h>
-
-int main()
-{
-    int a = 10;
-    int b = 20;
-    int sum = a + b;
-    printf("%d + %d = %d\n", a, b, sum);
-
-    // 交换两个变量的值
+// ==================KP_C02_MM = "# 数据类型与变量
+## 基本数据类型
+## 变量定义
+## 常量
+## sizeof
+## 转义字符
+## 命名规则"交换两个变量的值
     int tmp = a;
     a = b;
     b = tmp;
@@ -398,13 +393,13 @@ int c = ++a;   // 前置：先a自增(7)，再使用 → c=7, a=7
 ```
 
 ## 六、位运算符
-
-| 运算符 | 含义 | 示例 |
-|--------|------|------|
-| `&` | 按位与 | 5 & 3 = 1 |
-| `\|` | 按位或 | 5 \| 3 = 7 |
-| `^` | 按位异或 | 5 ^ 3 = 6 |
-| `~` | 按位取反 | ~0 = -1 |
+KP_C03_MM = "# 运算符与表达式
+## 算术运算符
+## 关系运算符
+## 逻辑运算符
+## 位运算符
+## 赋值运算符
+## 优先级"` | 按位取反 | ~0 = -1 |
 | `<<` | 左移 | 1 << 3 = 8 |
 | `>>` | 右移 | 8 >> 2 = 2 |
 
@@ -524,13 +519,12 @@ KP_C03_MM = {"root": "运算符与表达式", "children": [
 # ============================================================
 KP_C04_DOC = r"""# 输入输出与顺序结构
 
-## 一、printf格式化输出
-
-### 格式符一览
-| 格式符 | 含义 | 示例 |
-|--------|------|------|
-| `%d` | 十进制整数 | printf("%d", 42) |
-| `%o` | 八进制 | printf("%o", 10) → 12 |
+## 一、printf格式化KP_C04_MM = "# 输入输出
+## printf格式化
+## scanf输入
+## getchar/putchar
+## 缓冲区处理
+## 顺序结构""%o", 10) → 12 |
 | `%x` | 十六进制 | printf("%x", 255) → ff |
 | `%f` | 浮点数（默认6位小数）| printf("%f", 3.14) |
 | `%c` | 字符 | printf("%c", 65) → A |
@@ -694,8 +688,12 @@ KP_C04_QS = [
     {"q_id": "q_c04_1", "type": "single_choice", "content": "scanf中，读取整数的正确写法是？",
      "options": [{"id": "A", "text": "scanf(\"%d\", a);"}, {"id": "B", "text": "scanf(\"%d\", &a);"}, {"id": "C", "text": "scanf(\"%d\", *a);"}, {"id": "D", "text": "scanf(\"%d\", a&)"}],
      "correct_answer": "B", "explanation": "scanf需要传入变量的地址，使用&取地址符。"},
-    {"q_id": "q_c04_2", "type": "single_choice", "content": "printf(\"%05d\", 42)的输出结果是？",
-     "options": [{"id": "A", "text": "42"}, {"id": "B", "text": "00042"}, {"id": "C", "text": "00420"}, {"id": "D", "text": "42000"}],
+    {"q_id": "q_c04_2", "type": "single_choice"KP_C05_MM = "# 选择结构
+## if语句
+## if-else
+## switch-case
+## 三目运算符
+## 嵌套选择"420"}, {"id": "D", "text": "42000"}],
      "correct_answer": "B", "explanation": "%05d表示宽度5，不足部分用0填充。"},
     {"q_id": "q_c04_3", "type": "single_choice", "content": "getchar()函数的返回值类型是？",
      "options": [{"id": "A", "text": "char"}, {"id": "B", "text": "int"}, {"id": "C", "text": "void"}, {"id": "D", "text": "float"}],
@@ -906,9 +904,13 @@ int main()
 KP_C05_QS = [
     {"q_id": "q_c05_1", "type": "single_choice", "content": "switch语句中，case后面可以是什么类型的常量？",
      "options": [{"id": "A", "text": "浮点数"}, {"id": "B", "text": "字符串"}, {"id": "C", "text": "整型常量"}, {"id": "D", "text": "任意类型"}],
-     "correct_answer": "C", "explanation": "case后必须是整型常量表达式，不能是变量、浮点数或字符串。"},
-    {"q_id": "q_c05_2", "type": "single_choice", "content": "switch中忘记break会导致什么？",
-     "options": [{"id": "A", "text": "编译错误"}, {"id": "B", "text": "程序崩溃"}, {"id": "C", "text": "穿透执行下一个case"}, {"id": "D", "text": "跳过整个switch"}],
+     "correct_answer": "C", "explanation": "case后必须是整型常量表达式，不能是�KP_C06_MM = "# 循环结构
+## while循环
+## for循环
+## do-while循环
+## break/continue
+## 嵌套循环
+## goto语句"��误"}, {"id": "B", "text": "程序崩溃"}, {"id": "C", "text": "穿透执行下一个case"}, {"id": "D", "text": "跳过整个switch"}],
      "correct_answer": "C", "explanation": "没有break时，程序会从匹配的case开始，依次执行后面所有case的语句（穿透）。"},
     {"q_id": "q_c05_3", "type": "single_choice", "content": "条件表达式 (a > b) ? a : b 的作用是？",
      "options": [{"id": "A", "text": "求a和b的和"}, {"id": "B", "text": "求a和b中的较大值"}, {"id": "C", "text": "判断a是否大于b"}, {"id": "D", "text": "交换a和b"}],
@@ -1079,12 +1081,13 @@ int main()
         scanf("%d", &guess);
         count++;
 
-        if (guess > secret)
-            printf("太大了！\n");
-        else if (guess < secret)
-            printf("太小了！\n");
-        else
-            printf("恭喜你猜对了！用了%d次\n", count);
+        if (gKP_C07_MM = "# 数组
+## 一维数组
+## 二维数组
+## 数组初始化
+## 数组越界
+## 数组传参
+## 常见算法"恭喜你猜对了！用了%d次\n", count);
     } while (guess != secret);
     return 0;
 }
@@ -1260,15 +1263,13 @@ int main()
     for (int i = 0; i < sz; i++)
         sum += arr[i];
 
-    printf("数组元素: ");
-    for (int i = 0; i < sz; i++)
-        printf("%d ", arr[i]);
-    printf("\n和为: %d\n", sum);
-    return 0;
-}
-
-// ========================================
-// 示例2：二维数组打印
+    printf("数组元素: "KP_C08_MM = "# 字符串
+## 字符数组
+## strlen
+## strcpy/strcat
+## strcmp
+## 字符串反转
+## 常见陷阱"�例2：二维数组打印
 // ========================================
 #include <stdio.h>
 
@@ -1438,14 +1439,13 @@ int my_strcmp(const char* s1, const char* s2)
 ```c
 // 错误：数组不能直接赋值
 char str[20];
-str = "hello";          // 编译错误！
-
-// 正确：使用strcpy
-strcpy(str, "hello");
-
-// 错误：scanf读取字符串遇空格停止
-char name[50];
-scanf("%s", name);      // 输入"hello world"只会读到"hello"
+str = "helloKP_C09_MM = "# 函数与递归
+## 函数定义
+## 传值传址
+## 嵌套调用
+## 递归思维
+## 阶乘与斐波那契
+## 回调函数";      // 输入"hello world"只会读到"hello"
 ```
 """
 
@@ -1616,18 +1616,13 @@ int Add(int x, int y);  // 声明放在main之前或头文件中
 
 ### 传值调用（无法修改实参）
 ```c
-void swap_wrong(int x, int y)
-{
-    int tmp = x;
-    x = y;
-    y = tmp;
-    // 只交换了形参，实参不变！
-}
-```
-
-### 传址调用（可以修改实参）
-```c
-void swap_right(int* x, int* y)
+void swap_wrong(KP_C10_MM = "# 指针基础
+## 内存地址
+## 指针变量
+## 解引用
+## 野指针
+## 指针运算
+## const指针"void swap_right(int* x, int* y)
 {
     int tmp = *x;
     *x = *y;
@@ -1820,8 +1815,12 @@ int main()
 KP_C09_QS = [
     {"q_id": "q_c09_1", "type": "single_choice", "content": "C语言中函数参数的传递方式是？",
      "options": [{"id": "A", "text": "传名调用"}, {"id": "B", "text": "传值调用"}, {"id": "C", "text": "传引用调用"}, {"id": "D", "text": "传址调用"}],
-     "correct_answer": "B", "explanation": "C语言默认是传值调用，传递的是实参的副本。要修改实参需要传递地址（传址调用）。"},
-    {"q_id": "q_c09_2", "type": "single_choice", "content": "递归必须具备的两个条件是？",
+     "correct_answer": "B", "explanation": "C语言默认是传值调用，传递的是实参的副本KP_C11_MM = "# 指针与数组
+## 数组名本质
+## 指针数组
+## 数组指针
+## 二维数组传参
+## 二级指针"�条件是？",
      "options": [{"id": "A", "text": "循环和判断"}, {"id": "B", "text": "终止条件和规模缩小"}, {"id": "C", "text": "返回值和参数"}, {"id": "D", "text": "头文件和源文件"}],
      "correct_answer": "B", "explanation": "递归必须有终止条件（防止无限递归）和每次递归问题规模缩小（最终达到终止条件）。"},
     {"q_id": "q_c09_3", "type": "single_choice", "content": "函数声明（原型）的作用是？",
@@ -2002,17 +2001,13 @@ int main()
 // ========================================
 #include <stdio.h>
 
-int my_strlen(const char* str)
-{
-    const char* start = str;
-    while (*str != '\0')
-        str++;
-    return str - start;
-}
-
-int main()
-{
-    printf("length of 'hello': %d\n", my_strlen("hello"));       // 5
+int my_stKP_C12_MM = "# 结构体与联合体
+## 结构体定义
+## typedef
+## 内存对齐
+## 位段
+## 枚举enum
+## 联合体union"%d\n", my_strlen("hello"));       // 5
     printf("length of '': %d\n", my_strlen(""));                 // 0
     printf("length of 'hello world': %d\n", my_strlen("hello world"));  // 11
     return 0;
@@ -2137,13 +2132,13 @@ int main()
     // 指针数组
     int a = 10, b = 20, c = 30;
     int* parr[3] = {&a, &b, &c};
-    for (int i = 0; i < 3; i++)
-        printf("parr[%d] = %d\n", i, *parr[i]);
-
-    // 数组指针
-    int arr[5] = {10, 20, 30, 40, 50};
-    int (*p)[5] = &arr;
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i KP_C13_MM = "# 文件操作
+## 文件指针
+## 打开模式
+## 字符读写
+## 字符串读写
+## 二进制读写
+## 文件定位"0; i < 5; i++)
         printf("(*p)[%d] = %d\n", i, (*p)[i]);
     return 0;
 }
@@ -2344,15 +2339,13 @@ printf("%zu\n", sizeof(union Data));  // 4（取最大成员的大小）
 // 用于判断大小端
 union Endian
 {
-    int i;
-    char c;
-};
-union Endian e = {1};
-printf("%s\n", e.c == 1 ? "小端" : "大端");
-```
-"""
-
-KP_C12_CODE = r"""// ========================================
+KP_C14_MM = "# 动态内存管理
+## malloc
+## calloc
+## realloc
+## free
+## 常见错误
+## 柔性数组"==
 // 示例1：结构体定义与使用
 // ========================================
 #include <stdio.h>
@@ -2507,11 +2500,13 @@ fclose(fp);  // 关闭文件
 | 模式 | 含义 | 文件不存在 |
 |------|------|-----------|
 | `"r"` | 只读 | 打开失败 |
-| `"w"` | 只写（清空） | 创建新文件 |
-| `"a"` | 追加 | 创建新文件 |
-| `"rb"` | 二进制只读 | 打开失败 |
-| `"wb"` | 二进制只写 | 创建新文件 |
-| `"r+"` | 读写 | 打开失败 |
+| `"w"` | 只写（清空） | �KP_C15_MM = "# 预处理指令
+## 预定义符号
+## #define宏
+## 宏函数
+## #和##
+## 条件编译
+## 文件包含" 打开失败 |
 | `"w+"` | 读写（清空） | 创建新文件 |
 
 ## 三、字符读写
@@ -2682,8 +2677,13 @@ KP_C13_QS = [
      "options": [{"id": "A", "text": "写入的内容"}, {"id": "B", "text": "写入成功的元素个数"}, {"id": "C", "text": "0或1"}, {"id": "D", "text": "文件大小"}],
      "correct_answer": "B", "explanation": "fwrite返回成功写入的完整元素个数，如果少于请求的数量则出错。"},
     {"q_id": "q_c13_3", "type": "single_choice", "content": "fseek(fp, 0, SEEK_END)的作用是？",
-     "options": [{"id": "A", "text": "回到文件开头"}, {"id": "B", "text": "移到文件末尾"}, {"id": "C", "text": "删除文件"}, {"id": "D", "text": "关闭文件"}],
-     "correct_answer": "B", "explanation": "SEEK_END表示以文件末尾为基准，偏移量为0就是移到文件末尾。"},
+     "options": [{"id": "A", "text": "回到文件开头"}, {"id": "B", "text": "移到文件末尾"}, {"KP_C16_MM = "# 位运算
+## 按位与/或
+## 按位异或
+## 移位运算
+## n&(n-1)技巧
+## 原码反码补码
+## 大小端"��0就是移到文件末尾。"},
 ]
 
 KP_C13_MM = {"root": "文件操作", "children": [

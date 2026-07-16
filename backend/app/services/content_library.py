@@ -43,7 +43,10 @@ def get_content(kp_id: str, db=None) -> Optional[Dict[str, Any]]:
             if kp.questions:
                 result["questions"] = kp.questions if isinstance(kp.questions, list) else json.loads(kp.questions)
             if kp.mindmap:
-                result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
+                if isinstance(kp.mindmap, str) and kp.mindmap.strip().startswith("#"):
+                    result["mindmap"] = kp.mindmap  # markmap 缩进格式
+                else:
+                    result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
             return result
         finally:
             if own_session:
@@ -79,7 +82,10 @@ def get_content_by_topic(topic: str, db=None) -> Optional[Dict[str, Any]]:
             if kp.questions:
                 result["questions"] = kp.questions if isinstance(kp.questions, list) else json.loads(kp.questions)
             if kp.mindmap:
-                result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
+                if isinstance(kp.mindmap, str) and kp.mindmap.strip().startswith("#"):
+                    result["mindmap"] = kp.mindmap  # markmap 缩进格式
+                else:
+                    result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
             return result
         finally:
             if own_session:

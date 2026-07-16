@@ -210,17 +210,9 @@ export interface MindmapGenerationRequest {
   kp_id?: string;
 }
 
-export interface MindmapNode {
-  name: string;
-  children?: MindmapNode[];
-}
-
 export interface MindmapGenerationResponse {
   status: string;
-  mindmap: {
-    root?: string;
-    children?: MindmapNode[];
-  };
+  mindmap: string | { root?: string; children?: any[] };
   format: string;
 }
 

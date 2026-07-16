@@ -719,41 +719,10 @@ const Tutor: React.FC = () => {
                   <ApartmentOutlined /> RAG
                 </Tag>
               </Tooltip>
-              <Tooltip title="切换大模型">
-                <Tag
-                  className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs cursor-pointer"
-                  onClick={() => {
-                    const providers: Array<
-                      | "bigmodel"
-                      | "deepseek"
-                      | "openai"
-                      | "spark"
-                      | "mimo"
-                      | "default"
-                    > = [
-                      "default",
-                      "bigmodel",
-                      "deepseek",
-                      "openai",
-                      "spark",
-                      "mimo",
-                    ];
-                    const idx = providers.indexOf(modelProvider);
-                    setModelProvider(providers[(idx + 1) % providers.length]);
-                  }}
-                >
+              <Tooltip title="当前使用讯飞星火">
+                <Tag className="rounded-full border-0 bg-blue-50 text-blue-600 text-xs cursor-default">
                   <FlagFilled className="mr-1" />
-                  {modelProvider === "bigmodel"
-                    ? "智谱AI"
-                    : modelProvider === "deepseek"
-                      ? "DeepSeek"
-                      : modelProvider === "openai"
-                        ? "OpenAI"
-                        : modelProvider === "spark"
-                          ? "讯飞星火"
-                          : modelProvider === "mimo"
-                            ? "小米MiMo"
-                            : "默认模型"}
+                  讯飞星火
                 </Tag>
               </Tooltip>
               <Tooltip

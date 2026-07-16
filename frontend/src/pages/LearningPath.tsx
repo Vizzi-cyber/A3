@@ -66,6 +66,7 @@ import { kbApi } from "../services/knowledgeBaseApi";
 import { StatusIcon } from "../components/StatusIcon";
 import AdjustmentLogPanel from "../components/AdjustmentLogPanel";
 import MarkdownViewer from "../components/MarkdownViewer";
+import MindmapView from "../components/MindmapView";
 import {
   // StatusTag,
   statusColors,
@@ -149,40 +150,55 @@ function parseMindmapNode(node: unknown, key: string): Record<string, unknown> {
   return { title: String(n.name || n.title || "?"), key, children };
 }
 
+/** 将旧 JSON 树格式转为 markmap 缩进文本 */
+function jsonToMarkmap(data: any, depth = 0): string {
+  if (!data) return "";
+  const prefix = "#".repeat(Math.max(1, depth + 1));
+  const name = data.name || data.root || "";
+  let text = `${prefix} ${name}\n`;
+  if (data.children && Array.isArray(data.children)) {
+    for (const child of data.children) {
+      text += jsonToMarkmap(child, depth + 1);
+    }
+  }
+  return text;
+}
+
 /** 资源内容渲染器：根据类型使用不同渲染方式 */
 const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
   type,
   content,
 }) => {
   if (type === "mindmap") {
-    try {
-      const data = JSON.parse(content);
-      const treeData = parseMindmapToTree(data);
+    // markmap 缩进文本格式
+    if (content.trim().startsWith("#")) {
       return (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-          <div className="flex items-center gap-2 mb-3">
-            <ApartmentOutlined className="text-blue-500" />
-            <span className="font-medium text-blue-700">思维导图</span>
-          </div>
-          <div className="bg-white rounded-lg p-3 max-h-96 overflow-auto overflow-x-hidden">
-            <Tree
-              treeData={treeData}
-              defaultExpandAll
-              autoExpandParent
-              showLine
-            />
-          </div>
-        </div>
-      );
-    } catch {
-      return (
-        <div className="bg-slate-50 p-4 rounded-xl">
-          <pre className="text-sm whitespace-pre-wrap max-h-96 overflow-auto">
-            {content}
-          </pre>
+        <div className="bg-white rounded-xl border border-slate-100 p-2">
+          <MindmapView content={content} style={{ height: 360 }} />
         </div>
       );
     }
+    // 旧的 JSON 树格式 → 转为 markmap
+    try {
+      const data = JSON.parse(content);
+      const mmContent = jsonToMarkmap(data);
+      if (mmContent.trim()) {
+        return (
+          <div className="bg-white rounded-xl border border-slate-100 p-2">
+            <MindmapView content={mmContent} style={{ height: 360 }} />
+          </div>
+        );
+      }
+    } catch {
+      // 非 JSON 也非 markmap：显示原始文本
+    }
+    return (
+      <div className="bg-slate-50 p-4 rounded-xl">
+        <pre className="text-sm whitespace-pre-wrap max-h-96 overflow-auto">
+          {content}
+        </pre>
+      </div>
+    );
   }
 
   if (type === "questions" || type === "quiz") {
@@ -221,14 +237,14 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
                         )}
                       </div>
                     )}
-                    {q.correct_answer && (
+                    {!!q.correct_answer && (
                       <div className="mt-3 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
                         <span className="text-emerald-600 font-medium text-sm">
                           ✓ 正确答案: {String(q.correct_answer)}
                         </span>
                       </div>
                     )}
-                    {q.explanation && (
+                    {!!q.explanation && (
                       <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
                         <span className="text-blue-600 text-sm">
                           💡 {String(q.explanation)}

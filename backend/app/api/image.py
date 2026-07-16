@@ -9,6 +9,8 @@ from typing import Optional
 from datetime import datetime, timezone
 import asyncio
 
+from ..core.config import settings
+
 from .auth import require_auth
 from ..core.logger import setup_logger
 from ..services.image_generation import (
@@ -101,25 +103,35 @@ async def generate_image(
 ):
     """提交文生图任务（方舟优先同步返回，OpenAPI 为异步）"""
 
-    # 优先尝试方舟同步调用
-    try:
-        urls = await generate_image_ark(
-            prompt=request.prompt,
-            width=request.width,
-            height=request.height,
-            seed=request.seed,
-            scale=request.scale,
-        )
+    # 检查文生图服务是否配置完整
+    if not settings.ARK_API_KEY and not settings.VOLC_ACCESS_KEY:
         return ImageGenerateResponse(
-            task_id="ark_sync",
-            status="done",
-            image_urls=urls,
-            message="Image generated via ARK",
+            task_id="",
+            status="not_configured",
+            image_urls=None,
+            message="文生图功能未配置（需要设置火山引擎 ARK_API_KEY 或 VOLC_ACCESS_KEY）",
         )
-    except ImageGenerationError:
-        pass  # 回退到 OpenAPI 异步
 
-    # OpenAPI 异步方式
+    # 优先尝试方舟同步调用（需要 endpoint ID，没有则跳过）
+    if settings.ARK_API_KEY and settings.ARK_IMAGE_ENDPOINT:
+        try:
+            urls = await generate_image_ark(
+                prompt=request.prompt,
+                width=request.width,
+                height=request.height,
+                seed=request.seed,
+                scale=request.scale,
+            )
+            return ImageGenerateResponse(
+                task_id="ark_sync",
+                status="done",
+                image_urls=urls,
+                message="Image generated via ARK",
+            )
+        except ImageGenerationError:
+            pass  # 回退到 OpenAPI 异步
+
+    # OpenAPI 异步方式（Visual Intelligence）
     try:
         task_id = await submit_image_task(
             prompt=request.prompt,
@@ -141,7 +153,8 @@ async def generate_image(
             message="Image generation task submitted (async)",
         )
     except ImageGenerationError as e:
-        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
+        logger.error(f"Image generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"文生图服务调用失败: {e}")
 
 
 @router.get("/result/{task_id}", response_model=ImageResultResponse)

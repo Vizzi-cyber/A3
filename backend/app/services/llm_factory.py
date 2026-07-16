@@ -1,6 +1,6 @@
 """
 统一大模型调用工厂
-当前仅使用智谱AI（BigModel / GLM-4.6v）
+当前使用讯飞星火
 为业务层提供一致的调用接口
 """
 import asyncio
@@ -246,17 +246,13 @@ class OpenAICompatibleLLM(BaseLLM):
 
 
 class LLMFactory:
-    """大模型工厂 — 统一支持 spark / deepseek / openai / bigmodel / mimo"""
+    """大模型工厂 — 当前使用讯飞星火"""
 
     _cache: Dict[str, BaseLLM] = {}
 
     # provider -> (settings_api_key, settings_base_url, settings_model)
     _PROVIDER_MAP: Dict[str, tuple] = {
-        "bigmodel":  ("BIGMODEL_API_KEY",  "BIGMODEL_BASE_URL",  "BIGMODEL_MODEL"),
-        "deepseek":  ("DEEPSEEK_API_KEY",  "DEEPSEEK_BASE_URL",  "DEEPSEEK_MODEL"),
-        "openai":    ("OPENAI_API_KEY",    "OPENAI_BASE_URL",    "OPENAI_MODEL"),
         "spark":     ("SPARK_API_KEY",     "SPARK_HTTP_BASE_URL", "SPARK_MODEL"),
-        "mimo":      ("MIMO_API_KEY",      "MIMO_BASE_URL",      "MIMO_MODEL"),
     }
 
     @classmethod

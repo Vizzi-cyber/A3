@@ -435,16 +435,16 @@ async def generate_questions(request: QuestionsGenerateRequest, _current: str = 
 
 @router.post("/mindmap/generate", response_model=MindmapGenerateResponse)
 async def generate_mindmap(request: MindmapGenerateRequest, _current: str = Depends(require_auth)):
-    """生成思维导图 —— 优先使用内容库，否则调用 ResourceGeneratorAgent"""
+    """生成思维导图 —— 优先使用内容库，否则调用 ResourceGeneratorAgent（markmap 缩进文本格式）"""
     mindmap, _ = await _generate_with_agent(
         task="generate_mindmap",
         topic=request.topic,
         lib_key="mindmap",
         kp_id=request.kp_id,
-        default_content={"root": request.topic, "children": []},
-        extract_content=lambda raw: raw if isinstance(raw, dict) and raw.get("root") else None,
+        default_content=f"# {request.topic}\n",
+        extract_content=lambda raw: raw if isinstance(raw, str) and raw.strip().startswith("#") else None,
     )
-    return {"status": "success", "mindmap": mindmap, "format": "json_tree"}
+    return {"status": "success", "mindmap": mindmap, "format": "markmap"}
 
 
 @router.post("/code/generate", response_model=CodeGenerateResponse)

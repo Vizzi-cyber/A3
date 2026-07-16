@@ -9,6 +9,7 @@ import type {
 } from "../types/knowledgeBase";
 
 export const kbApi = {
+  //
   // Folders
   listFolders: () =>
     api.get<{ status: string; data: KBFolder[] }>("/kb/folders"),

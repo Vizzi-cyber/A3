@@ -61,33 +61,13 @@ class Settings(BaseSettings):
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # 大模型提供商选择: spark / deepseek / openai / bigmodel
-    DEFAULT_LLM_PROVIDER: str = "bigmodel"
+    # 大模型提供商: spark
+    DEFAULT_LLM_PROVIDER: str = "spark"
 
     # 科大讯飞配置（支持 HTTP OpenAI 兼容接口）
     SPARK_API_KEY: Optional[str] = None
     SPARK_HTTP_BASE_URL: str = "https://spark-api-open.xf-yun.com/v1"
-    SPARK_MODEL: str = "generalv3.5"
-
-    # DeepSeek配置（可选）
-    DEEPSEEK_API_KEY: Optional[str] = None
-    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
-    DEEPSEEK_MODEL: str = "deepseek-chat"
-
-    # OpenAI配置（可选）
-    OPENAI_API_KEY: Optional[str] = None
-    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
-    OPENAI_MODEL: str = "gpt-4o"
-
-    # 智谱AI (BigModel) 配置（可选，支持 GLM-4V 等图文模型）
-    BIGMODEL_API_KEY: Optional[str] = None
-    BIGMODEL_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4/"
-    BIGMODEL_MODEL: str = "glm-4.6v"
-
-    # 小米 MiMo 配置（支持 OpenAI 兼容接口）
-    MIMO_API_KEY: Optional[str] = None
-    MIMO_BASE_URL: str = "https://api.xiaomimimo.com/v1"
-    MIMO_MODEL: str = "mimo-v2.5-pro"
+    SPARK_MODEL: str = "pro-128k"
 
     # 火山引擎视觉智能（文生图）配置
     VOLC_ACCESS_KEY: Optional[str] = None
@@ -100,6 +80,13 @@ class Settings(BaseSettings):
     ARK_API_KEY: Optional[str] = None
     ARK_IMAGE_ENDPOINT: str = ""
     ARK_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3/invoke"
+
+    # 火山引擎/方舟 文生图配置
+    ARK_API_KEY: Optional[str] = None
+    ARK_IMAGE_ENDPOINT: str = ""
+    ARK_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3/invoke"
+    VOLC_ACCESS_KEY: Optional[str] = None
+    VOLC_SECRET_KEY: Optional[str] = None
 
     # LangSmith配置（可选）
     LANGCHAIN_TRACING_V2: bool = False

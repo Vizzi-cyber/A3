@@ -387,7 +387,7 @@ const PersonalSpace: React.FC = () => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [reflections, setReflections] = useState<ReflectionEntry[]>([]);
   const [newReflection, setNewReflection] = useState("");
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]); // 保留状态但不再有UI入口
   const [learningHistory, setLearningHistory] = useState<HistoryItem[]>([]);
   const [focusData, setFocusData] = useState<FocusItem[]>([]);
   const [pomodoroStats, setPomodoroStats] = useState({
@@ -1476,60 +1476,6 @@ const PersonalSpace: React.FC = () => {
                     }}
                   />
                 </div>
-              </div>
-            ),
-          },
-          {
-            key: "favorites",
-            label: (
-              <span className="flex items-center gap-1.5">
-                <StarOutlined /> 资源库与收藏夹
-              </span>
-            ),
-            children: (
-              <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                <div className="font-semibold text-slate-800 mb-5">
-                  我的收藏
-                </div>
-                <Row gutter={[20, 20]}>
-                  {favorites.length ? (
-                    favorites.map((item, idx: number) => (
-                      <Col xs={24} sm={12} lg={8} key={item.id || idx}>
-                        <div
-                          className="p-5 rounded-xl bg-slate-50 hover:bg-white hover:shadow-card transition-all cursor-pointer border border-slate-100 hover:border-slate-200"
-                          onClick={() => handleFavoriteClick(item)}
-                        >
-                          <Space align="start">
-                            <div
-                              className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg shrink-0"
-                              style={{
-                                background:
-                                  typeMeta[item.resource_type]?.color ||
-                                  "#64748b",
-                              }}
-                            >
-                              {typeMeta[item.resource_type]?.icon || (
-                                <FileTextOutlined />
-                              )}
-                            </div>
-                            <div>
-                              <Typography.Text className="font-medium text-slate-800 block">
-                                {item.title}
-                              </Typography.Text>
-                              <span className="text-xs text-slate-400 mt-0.5 block">
-                                {item.resource_type}
-                              </span>
-                            </div>
-                          </Space>
-                        </div>
-                      </Col>
-                    ))
-                  ) : (
-                    <Col span={24}>
-                      <div className="text-slate-400 text-sm">暂无收藏资源</div>
-                    </Col>
-                  )}
-                </Row>
               </div>
             ),
           },

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Union
 
 
 class DocumentGenerateRequest(BaseModel):
@@ -37,8 +37,8 @@ class MindmapGenerateRequest(BaseModel):
 
 class MindmapGenerateResponse(BaseModel):
     status: str
-    mindmap: dict
-    format: str = "json_tree"
+    mindmap: Union[str, dict]
+    format: str = "markmap"
 
 
 class CodeGenerateRequest(BaseModel):

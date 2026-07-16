@@ -24,6 +24,7 @@ import {
 } from "@ant-design/icons";
 import { pptApi, resourceApi, teacherApi } from "../../services/api";
 import PPTGenerator from "../../components/PPTGenerator";
+import MindmapView from "../../components/MindmapView";
 
 interface Resource {
   resource_id: string;
@@ -43,10 +44,7 @@ const TeachingResources: React.FC = () => {
   const [mindmapOpen, setMindmapOpen] = useState(false);
   const [mindmapTopic, setMindmapTopic] = useState("");
   const [mindmapGenerating, setMindmapGenerating] = useState(false);
-  const [mindmapData, setMindmapData] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [mindmapContent, setMindmapContent] = useState<string>("");
 
   // 代码示例
   const [codeOpen, setCodeOpen] = useState(false);
@@ -85,7 +83,20 @@ const TeachingResources: React.FC = () => {
         topic: mindmapTopic,
       });
       if (res.data?.mindmap) {
-        setMindmapData(res.data.mindmap);
+        const mm = res.data.mindmap;
+        if (typeof mm === "string") {
+          setMindmapContent(mm);
+        } else if (mm.root) {
+          const toMarkmap = (data: any, depth = 0): string => {
+            const prefix = "#".repeat(Math.max(1, depth + 1));
+            const n = data.name || data.root || "";
+            let text = `${prefix} ${n}\n`;
+            if (data.children)
+              for (const c of data.children) text += toMarkmap(c, depth + 1);
+            return text;
+          };
+          setMindmapContent(toMarkmap(mm));
+        }
         message.success("思维导图生成成功");
       }
     } catch {
@@ -148,27 +159,6 @@ const TeachingResources: React.FC = () => {
       onClick: () => setMindmapOpen(true),
     },
   ];
-
-  const renderMindmapTree = (
-    node: Record<string, unknown>,
-    level = 0,
-  ): React.ReactNode => {
-    const name = (node.name || node.root || "") as string;
-    const children = (node.children || []) as Record<string, unknown>[];
-    return (
-      <div key={name + level} style={{ marginLeft: level * 20 }}>
-        <div
-          className={`py-1 px-2 rounded ${level === 0 ? "font-bold text-[#0052ff] text-base" : "text-slate-700 text-sm"}`}
-        >
-          {level > 0 && <span className="text-slate-300 mr-1">-</span>}
-          {name}
-        </div>
-        {children.map((child, idx) => (
-          <div key={idx}>{renderMindmapTree(child, level + 1)}</div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -266,7 +256,7 @@ const TeachingResources: React.FC = () => {
         open={mindmapOpen}
         onCancel={() => {
           setMindmapOpen(false);
-          setMindmapData(null);
+          setMindmapContent("");
           setMindmapTopic("");
         }}
         footer={null}
@@ -294,26 +284,9 @@ const TeachingResources: React.FC = () => {
             生成思维导图
           </Button>
 
-          {mindmapData && (
-            <div className="mt-4 p-4 bg-slate-50 rounded-xl max-h-96 overflow-auto">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-600">
-                  生成结果
-                </span>
-                <Button
-                  size="small"
-                  icon={<CopyOutlined />}
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      JSON.stringify(mindmapData, null, 2),
-                    );
-                    message.success("已复制到剪贴板");
-                  }}
-                >
-                  复制JSON
-                </Button>
-              </div>
-              {renderMindmapTree(mindmapData)}
+          {mindmapContent && (
+            <div className="mt-4 bg-white rounded-xl border border-slate-100 p-2">
+              <MindmapView content={mindmapContent} style={{ height: 360 }} />
             </div>
           )}
         </div>

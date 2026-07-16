@@ -382,9 +382,20 @@ async def auto_organize(request: AutoOrganizeRequest, db: Session = Depends(get_
     # 4. 查找或创建笔记
     note = _find_or_create_note(db, _current, request.title, folder_id)
 
-    # 5. 根据操作类型追加内容
+    # 5. 根据操作类型追加内容（自动检测关联笔记添加 WikiLink）
     from datetime import datetime, timezone
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+    # 自动检测关联笔记，添加 WikiLink
+    related_links = []
+    if request.content:
+        all_notes = db.query(KBNoteModel).filter(
+            KBNoteModel.student_id == _current,
+            KBNoteModel.note_id != note.note_id,
+        ).all()
+        for other in all_notes:
+            if other.title and other.title in request.content:
+                related_links.append(f"[[{other.title}]]")
 
     if request.action == "learn":
         section_title = "学习笔记"
@@ -398,6 +409,9 @@ async def auto_organize(request: AutoOrganizeRequest, db: Session = Depends(get_
     else:
         section_title = "学习记录"
         content = f"**时间**: {timestamp}\n\n{request.content}"
+
+    if related_links:
+        content += "\n\n**关联笔记**：" + "、".join(related_links[:5])
 
     _append_to_note(note, section_title, content, request.action)
 
