@@ -104,7 +104,7 @@ const faqItems = [
     label: "系统支持哪些大模型？",
     children: (
       <p className="text-slate-500 text-sm leading-relaxed">
-        目前支持讯飞星火、DeepSeek、OpenAI GPT-4 以及智谱 AI GLM-4
+        目前支持讯飞星火
         等多种大模型，可在后台一键切换，无需修改代码。系统采用统一接口封装，方便后续扩展更多模型。
       </p>
     ),
@@ -593,28 +593,6 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== Trusted By / Models ===== */}
-      <section className="py-10 border-y border-slate-100 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-xs text-slate-400 mb-6 tracking-wider uppercase">
-            兼容主流大模型，一键切换
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-14 opacity-60">
-            {["讯飞星火", "DeepSeek", "OpenAI", "智谱 AI", "火山引擎"].map(
-              (name) => (
-                <div
-                  key={name}
-                  className="flex items-center gap-2 text-slate-500 font-semibold text-sm"
-                >
-                  <ThunderboltOutlined className="text-primary" />
-                  {name}
-                </div>
-              ),
-            )}
           </div>
         </div>
       </section>
@@ -1245,9 +1223,6 @@ const LandingPage: React.FC = () => {
               </div>
               <div className="space-y-2 text-xs text-slate-500">
                 <div>讯飞星火</div>
-                <div>DeepSeek</div>
-                <div>OpenAI</div>
-                <div>智谱 AI</div>
               </div>
             </div>
           </div>
