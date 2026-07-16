@@ -1,7 +1,7 @@
 """
 知识库模型 - 笔记和文件夹
 """
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Index
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -37,6 +37,6 @@ class KBNoteModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     __table_args__ = (
-        Index("ix_kb_notes_student_title", "student_id", "title"),
+        UniqueConstraint("student_id", "title", name="uq_kb_notes_student_title"),
         Index("ix_kb_notes_student_folder", "student_id", "folder_id"),
     )

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Typography,
@@ -67,6 +67,40 @@ const ResourceDetail: React.FC = () => {
   // 代码
   const [codeContent, setCodeContent] = useState("");
   const [codeLanguage, setCodeLanguage] = useState<"Python" | "C">("C");
+
+  // 自动检测代码语言
+  const detectLanguage = useCallback(
+    (code: string): "Python" | "C" => {
+      if (!code) return codeLanguage;
+      const pythonPatterns = [
+        /print\s*\(/,
+        /f["']/,
+        /def\s+\w+\s*\(/,
+        /import\s+\w+/,
+        /class\s+\w+/,
+        /if\s+__name__/,
+        /\*\*\s*\d/,
+        /range\s*\(/,
+        /\.format\(/,
+        /elif\s/,
+      ];
+      const cPatterns = [
+        /#include/,
+        /int\s+main\s*\(/,
+        /printf\s*\(/,
+        /scanf\s*\(/,
+        /return\s+\d+\s*;/,
+        /void\s+\w+\s*\(/,
+        /\/\/|;$/,
+      ];
+      let pythonScore = 0,
+        cScore = 0;
+      for (const p of pythonPatterns) if (p.test(code)) pythonScore++;
+      for (const p of cPatterns) if (p.test(code)) cScore++;
+      return pythonScore > cScore ? "Python" : "C";
+    },
+    [codeLanguage],
+  );
   const [codeResult, setCodeResult] = useState("");
   const [codeRunning, setCodeRunning] = useState(false);
   const [codeExplanation, setCodeExplanation] = useState("");
@@ -191,6 +225,15 @@ const ResourceDetail: React.FC = () => {
       ignore = true;
     };
   }, [codeLanguage, kpId, studentId, kpName]);
+
+  // 代码内容变化时自动检测语言
+  useEffect(() => {
+    if (!codeContent) return;
+    const detected = detectLanguage(codeContent);
+    if (detected !== codeLanguage) {
+      setCodeLanguage(detected);
+    }
+  }, [codeContent]);
 
   // 自动滚动到聊天底部
   useEffect(() => {

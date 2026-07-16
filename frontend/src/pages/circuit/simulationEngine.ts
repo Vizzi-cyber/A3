@@ -39,15 +39,13 @@ function buildAdjacency(
       wireId: wire.id,
     };
     adj.get(keyA)?.push(conn);
-    adj
-      .get(keyB)
-      ?.push({
-        ...conn,
-        fromComponent: conn.toComponent,
-        fromPin: conn.toPin,
-        toComponent: conn.fromComponent,
-        toPin: conn.fromPin,
-      });
+    adj.get(keyB)?.push({
+      ...conn,
+      fromComponent: conn.toComponent,
+      fromPin: conn.toPin,
+      toComponent: conn.fromComponent,
+      toPin: conn.fromPin,
+    });
   }
   return adj;
 }
@@ -158,6 +156,18 @@ function parseCode(code: string): ParsedProgram {
         `P${match[1].toUpperCase()}${match[2]}`,
         match[3] === "Bit_SET" ? 1 : 0,
       );
+    }
+
+    // GPIO_WriteBit toggle pattern (BitAction)(1 - GPIO_ReadOutputDataBit(...))
+    // Treat as toggle: alternate between 0 and 1
+    const writeBitToggleRegex =
+      /GPIO_WriteBit\s*\(\s*GPIO([A-C])\s*,\s*GPIO_Pin_(\d+)\s*,\s*\(BitAction\)\(1\s*-\s*GPIO_ReadOutputDataBit/gis;
+    while ((match = writeBitToggleRegex.exec(code)) !== null) {
+      const pin = `P${match[1].toUpperCase()}${match[2]}`;
+      // Push both states so the sequence toggles
+      result.gpioWriteMap.set(pin, 1);
+      result.gpioSequence.push({ pin, value: 1 });
+      result.gpioSequence.push({ pin, value: 0 });
     }
 
     // GPIO_ReadInputDataBit
@@ -376,6 +386,8 @@ export class CircuitSimulator {
     // Loop — execute one GPIO step per tick for visible state changes
     const tickInterval = Math.max(this.parsedProgram.delayMs / 10, 16);
     this.loopTimer = setInterval(() => {
+      // Apply interactive component states to MCU read pins before step
+      this.applyInteractiveInputs();
       this.runStep();
       this.propagatePower();
       this.evaluateComponents();
@@ -407,6 +419,79 @@ export class CircuitSimulator {
       const mode = this.parsedProgram.pinModeMap.get(arduinoPin);
       if (mode) {
         mapping.mode = mode;
+      }
+    }
+  }
+
+  // ─── Interactive Inputs ───
+
+  /**
+   * Apply states of interactive components (button, ir_sensor) to MCU read pins.
+   * This lets the simulation respond to user clicks on interactive components
+   * without needing to execute conditional code branches.
+   */
+  private applyInteractiveInputs() {
+    if (!this.parsedProgram) return;
+    const prog = this.parsedProgram;
+
+    // Only applies to STM32 code with read targets
+    if (!prog.isSTM32 || prog.gpioReadTargets.size === 0) return;
+
+    const mcuComp = this.components.find((c) => {
+      const def = getComponentDef(c.type);
+      return def.category === "mcu";
+    });
+    if (!mcuComp) return;
+
+    for (const readPin of prog.gpioReadTargets) {
+      // Find the pin mapping for this read target
+      const mapping = this.pinMappings.find(
+        (m) => m.arduinoPin.toUpperCase() === readPin,
+      );
+      if (!mapping) continue;
+
+      // Trace through adjacency to find interactive components connected to this pin
+      const mcuPinKey = `${mcuComp.id}:${mapping.arduinoPin}`;
+      const connections = this.adjacency.get(mcuPinKey) || [];
+
+      for (const conn of connections) {
+        const neighborComp = this.components.find(
+          (c) => c.id === conn.toComponent,
+        );
+        if (!neighborComp) continue;
+
+        if (neighborComp.type === "button") {
+          // Button pressed = low (connected to GND), not pressed = high (pullup)
+          const pressed = neighborComp.props.pressed as boolean;
+          this.pinStates.set(mcuPinKey, {
+            voltage: pressed ? 0 : 3.3,
+            value: pressed ? 0 : 1,
+            analog: pressed ? 0 : 4095,
+            isHigh: !pressed,
+          });
+          // Also set the connected component side
+          this.setPinStateDirect(neighborComp.id, conn.toPin, {
+            voltage: pressed ? 0 : 3.3,
+            value: pressed ? 0 : 1,
+            analog: pressed ? 0 : 4095,
+            isHigh: !pressed,
+          });
+        } else if (neighborComp.type === "ir_sensor") {
+          // IR sensor: detected = OUT low (active low), not detected = OUT high
+          const detected = neighborComp.props.detected as boolean;
+          this.pinStates.set(mcuPinKey, {
+            voltage: detected ? 0 : 3.3,
+            value: detected ? 0 : 1,
+            analog: detected ? 0 : 4095,
+            isHigh: !detected,
+          });
+          this.setPinStateDirect(neighborComp.id, conn.toPin, {
+            voltage: detected ? 0 : 3.3,
+            value: detected ? 0 : 1,
+            analog: detected ? 0 : 4095,
+            isHigh: !detected,
+          });
+        }
       }
     }
   }
@@ -879,11 +964,31 @@ export class CircuitSimulator {
   private evaluateMPU6050(comp: CircuitComponent) {
     const vccState = this.getPinState(comp.id, "VCC");
     const powered = vccState.isHigh;
+
+    // Generate mock sensor data that changes over time when powered
+    let ax = (comp.props.ax as number) || 0;
+    let ay = (comp.props.ay as number) || 0;
+    let az = (comp.props.az as number) || 0;
+
+    if (powered && this.running) {
+      // Simulate realistic accelerometer readings with slow variation
+      const t = this.time / 1000;
+      ax = Math.round(Math.sin(t * 0.5) * 500 + Math.sin(t * 1.3) * 200);
+      ay = Math.round(Math.cos(t * 0.7) * 400 + Math.sin(t * 1.1) * 150);
+      az = Math.round(
+        16384 + Math.sin(t * 0.3) * 200 + Math.cos(t * 0.9) * 100,
+      );
+      // Update props so the rendered component shows the data
+      comp.props.ax = ax;
+      comp.props.ay = ay;
+      comp.props.az = az;
+    }
+
     this.componentStates.set(comp.id, {
       powered,
-      ax: (comp.props.ax as number) || 0,
-      ay: (comp.props.ay as number) || 0,
-      az: (comp.props.az as number) || 0,
+      ax,
+      ay,
+      az,
       address: (comp.props.address as string) || "0x68",
     });
   }
@@ -903,7 +1008,15 @@ export class CircuitSimulator {
     const clkState = this.getPinState(comp.id, "CLK");
     const dtState = this.getPinState(comp.id, "DT");
     const swState = this.getPinState(comp.id, "SW");
-    const position = (comp.props.position as number) || 0;
+
+    // Auto-increment position during simulation to simulate rotation
+    let position = (comp.props.position as number) || 0;
+    if (this.running && this.time % 2000 < 100) {
+      // Every 2 seconds, increment position
+      position++;
+      comp.props.position = position;
+    }
+
     this.componentStates.set(comp.id, {
       position,
       clkHigh: clkState.isHigh,

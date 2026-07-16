@@ -12,9 +12,9 @@ import { getComponentDef } from "./componentLibrary";
 // ─── Color Palette ───
 
 const COLORS = {
-  bg: "#fdf6ee",
-  grid: "#e8ddd0",
-  gridMajor: "#d4c5b0",
+  bg: "#ffffff",
+  grid: "#f0f0f0",
+  gridMajor: "#e0e0e0",
   component: "#1a1208",
   componentFill: "#ffffff",
   componentStroke: "#6b5e4f",

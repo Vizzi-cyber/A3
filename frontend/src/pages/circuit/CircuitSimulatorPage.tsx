@@ -254,6 +254,63 @@ export default function CircuitSimulatorPage() {
     // Check for component click
     const comp = findComponentAt(pos.x, pos.y);
     if (comp) {
+      // ─── Interactive component handling (during simulation) ───
+      if (isRunning) {
+        if (comp.type === "button") {
+          e.preventDefault();
+          const newPressed = !(comp.props.pressed as boolean);
+          handleUpdateComponent(comp.id, {
+            props: { ...comp.props, pressed: newPressed },
+          });
+          // Directly update the simulator pin state for responsive feedback
+          const mcuComp = components.find((c) => {
+            const def = getComponentDef(c.type);
+            return def.category === "mcu";
+          });
+          if (mcuComp) {
+            for (const wire of wires) {
+              if (
+                wire.from.componentId === comp.id ||
+                wire.to.componentId === comp.id
+              ) {
+                const mcuPinId =
+                  wire.from.componentId === mcuComp.id
+                    ? wire.from.pinId
+                    : wire.to.componentId === mcuComp.id
+                      ? wire.to.pinId
+                      : null;
+                if (mcuPinId) {
+                  const mcuKey = `${mcuComp.id}:${mcuPinId}`;
+                  simulator.setPinStateDirect(mcuComp.id, mcuPinId, {
+                    voltage: newPressed ? 0 : 3.3,
+                    value: newPressed ? 0 : 1,
+                    analog: newPressed ? 0 : 4095,
+                    isHigh: !newPressed,
+                  });
+                }
+              }
+            }
+          }
+          return;
+        }
+        if (comp.type === "ir_sensor") {
+          e.preventDefault();
+          const newDetected = !(comp.props.detected as boolean);
+          handleUpdateComponent(comp.id, {
+            props: { ...comp.props, detected: newDetected },
+          });
+          return;
+        }
+        if (comp.type === "rotary_encoder") {
+          e.preventDefault();
+          const newPos = ((comp.props.position as number) || 0) + 1;
+          handleUpdateComponent(comp.id, {
+            props: { ...comp.props, position: newPos },
+          });
+          return;
+        }
+      }
+
       if (e.ctrlKey || e.metaKey) {
         // Toggle selection
         setSelection((prev) => {

@@ -45,12 +45,173 @@ interface CircuitState {
   removeWire: (id: string) => void;
   simulate: () => void;
   clearAll: () => void;
+  loadPreset: (presetId: string) => void;
   undo: () => void;
   redo: () => void;
   saveToHistory: () => void;
 }
 
 const DIRECTION_CYCLE: Direction[] = ["right", "down", "left", "up"];
+
+// ─── Preset Circuit Definitions ───
+
+interface PresetComponent {
+  id: string;
+  type: ComponentType;
+  position: Point;
+  direction: Direction;
+  value: number;
+}
+
+interface PresetWire {
+  points: Point[];
+}
+
+interface PresetCircuit {
+  id: string;
+  name: string;
+  description: string;
+  components: PresetComponent[];
+  wires: PresetWire[];
+}
+
+const PRESET_CIRCUITS: PresetCircuit[] = [
+  {
+    id: "voltage-divider",
+    name: "分压电路",
+    description: "5V 电压源 + 1kΩ + 2kΩ 串联分压，可测中间节点电压",
+    components: [
+      {
+        id: "gnd1",
+        type: "ground",
+        position: { x: 1, y: 3 },
+        direction: "right",
+        value: 0,
+      },
+      {
+        id: "v1",
+        type: "voltage_source",
+        position: { x: 3, y: 3 },
+        direction: "left",
+        value: 5,
+      },
+      {
+        id: "r1",
+        type: "resistor",
+        position: { x: 7, y: 3 },
+        direction: "right",
+        value: 1000,
+      },
+      {
+        id: "r2",
+        type: "resistor",
+        position: { x: 11, y: 3 },
+        direction: "right",
+        value: 2000,
+      },
+    ],
+    wires: [
+      {
+        points: [
+          { x: 13, y: 3 },
+          { x: 13, y: 5 },
+          { x: 1, y: 5 },
+          { x: 1, y: 3 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "rc-circuit",
+    name: "RC 充电电路",
+    description: "5V 电压源 + 1kΩ 电阻 + 1μF 电容串联充电电路",
+    components: [
+      {
+        id: "gnd1",
+        type: "ground",
+        position: { x: 1, y: 7 },
+        direction: "right",
+        value: 0,
+      },
+      {
+        id: "v1",
+        type: "voltage_source",
+        position: { x: 3, y: 7 },
+        direction: "left",
+        value: 5,
+      },
+      {
+        id: "r1",
+        type: "resistor",
+        position: { x: 7, y: 7 },
+        direction: "right",
+        value: 1000,
+      },
+      {
+        id: "c1",
+        type: "capacitor",
+        position: { x: 11, y: 7 },
+        direction: "right",
+        value: 0.000001,
+      },
+    ],
+    wires: [
+      {
+        points: [
+          { x: 13, y: 7 },
+          { x: 13, y: 9 },
+          { x: 1, y: 9 },
+          { x: 1, y: 7 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "current-source-test",
+    name: "电流源电路",
+    description: "10mA 电流源驱动 100Ω + 200Ω 串联电阻，测量电压",
+    components: [
+      {
+        id: "gnd1",
+        type: "ground",
+        position: { x: 1, y: 11 },
+        direction: "right",
+        value: 0,
+      },
+      {
+        id: "i1",
+        type: "current_source",
+        position: { x: 3, y: 11 },
+        direction: "right",
+        value: 0.01,
+      },
+      {
+        id: "r1",
+        type: "resistor",
+        position: { x: 7, y: 11 },
+        direction: "right",
+        value: 100,
+      },
+      {
+        id: "r2",
+        type: "resistor",
+        position: { x: 11, y: 11 },
+        direction: "right",
+        value: 200,
+      },
+    ],
+    wires: [
+      {
+        points: [
+          { x: 13, y: 11 },
+          { x: 13, y: 13 },
+          { x: 1, y: 13 },
+          { x: 1, y: 11 },
+        ],
+      },
+    ],
+  },
+];
 
 function createTerminals(
   id: string,
@@ -202,7 +363,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         simulationResult: null,
       };
     });
-    // 注意：拖动过程中不保存历史，只在拖动结束时保存
+    // 拖动过程中不保存历史，只在拖动结束时保存
   },
 
   selectComponent: (id) => set({ selectedId: id }),
@@ -313,4 +474,34 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       simulationResult: null,
       wirePoints: [],
     }),
+
+  // ─── Preset Circuits ───
+
+  loadPreset: (presetId: string) => {
+    const preset = PRESET_CIRCUITS.find((p) => p.id === presetId);
+    if (!preset) return;
+    // Reset IDs to avoid collisions
+    nextId = 1000;
+    // Recreate components with fresh IDs
+    const newComponents: CircuitComponent[] = preset.components.map((c) => {
+      const newId = genId(c.type[0].toUpperCase());
+      return {
+        ...c,
+        id: newId,
+        terminals: createTerminals(newId, c.type, c.position, c.direction),
+      };
+    });
+    const newWires: Wire[] = preset.wires.map((w) => ({
+      id: genId("W"),
+      points: w.points.map((p) => ({ ...p })),
+    }));
+    set({
+      components: newComponents,
+      wires: newWires,
+      selectedId: null,
+      simulationResult: null,
+      wirePoints: [],
+    });
+    get().saveToHistory();
+  },
 }));

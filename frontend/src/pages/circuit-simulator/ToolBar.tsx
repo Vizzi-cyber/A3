@@ -23,6 +23,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ onAiAnalysis }) => {
     setMode,
     simulate,
     clearAll,
+    loadPreset,
     components,
     wires,
     undo,
@@ -86,6 +87,40 @@ const ToolBar: React.FC<ToolBarProps> = ({ onAiAnalysis }) => {
           AI 分析
         </Button>
       </Tooltip>
+
+      <Divider type="vertical" />
+
+      {/* Preset Circuits */}
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 mr-1">预设:</span>
+        <button
+          onClick={() => {
+            loadPreset("voltage-divider");
+            message.success("已加载：分压电路");
+          }}
+          className="px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+        >
+          分压电路
+        </button>
+        <button
+          onClick={() => {
+            loadPreset("rc-circuit");
+            message.success("已加载：RC 充电电路");
+          }}
+          className="px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+        >
+          RC 电路
+        </button>
+        <button
+          onClick={() => {
+            loadPreset("current-source-test");
+            message.success("已加载：电流源电路");
+          }}
+          className="px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+        >
+          电流源电路
+        </button>
+      </div>
 
       <Divider type="vertical" />
 

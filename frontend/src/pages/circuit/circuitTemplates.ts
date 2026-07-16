@@ -205,11 +205,13 @@ int main(void)
 
     while (1)
     {
+        // 检测按键是否按下 (点击画布上的按键元件可切换状态)
         if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)
         {
             Delay_ms(20);  // 消抖
             if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)
             {
+                // 切换 LED 状态
                 GPIO_WriteBit(GPIOA, GPIO_Pin_0,
                     (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_0)));
                 while (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0);
@@ -825,6 +827,8 @@ int main(void)
 
     while (1)
     {
+        // 点击画布上的传感器元件可切换 detected 状态
+        // 光照不足（detected=true）=> PA1=低电平 => 蜂鸣器响
         if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == 0)
             GPIO_SetBits(GPIOA, GPIO_Pin_2);    // 光照不足，蜂鸣器响
         else

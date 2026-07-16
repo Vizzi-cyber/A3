@@ -314,7 +314,9 @@ def _find_or_create_folder(db: Session, student_id: str, name: str, parent_id: O
 
 
 def _find_or_create_note(db: Session, student_id: str, title: str, folder_id: Optional[str] = None) -> KBNoteModel:
-    """查找或创建笔记，返回笔记对象"""
+    """查找或创建笔记，返回笔记对象（并发安全）"""
+    from sqlalchemy.exc import IntegrityError
+
     note = db.query(KBNoteModel).filter(
         KBNoteModel.student_id == student_id,
         KBNoteModel.title == title,
@@ -331,13 +333,41 @@ def _find_or_create_note(db: Session, student_id: str, title: str, folder_id: Op
         folder_id=folder_id,
     )
     db.add(note)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # 并发冲突：另一个请求已创建同名笔记，回退并返回已有记录
+        db.rollback()
+        note = db.query(KBNoteModel).filter(
+            KBNoteModel.student_id == student_id,
+            KBNoteModel.title == title,
+        ).first()
+        if note:
+            return note
+        # 极端情况：重试一次
+        note_id = f"kb_note_{student_id}_{int(time.time() * 1000)}_retry"
+        note = KBNoteModel(
+            note_id=note_id,
+            student_id=student_id,
+            title=title,
+            content="",
+            folder_id=folder_id,
+        )
+        db.add(note)
+        db.flush()
     return note
 
 
 def _append_to_note(note: KBNoteModel, section_title: str, content: str, action: str):
-    """向笔记追加内容"""
+    """向笔记追加内容（自动去重）"""
     existing = note.content or ""
+
+    # 去重检查：如果 content 已存在于笔记中，跳过追加
+    # 提取内容中的关键标识行作为去重依据（取前 3 行非空内容）
+    content_lines = [l for l in content.strip().split("\n") if l.strip()]
+    dedup_key = "\n".join(content_lines[:3]).strip()
+    if dedup_key and dedup_key in existing:
+        return
 
     # 检查是否已有该章节
     if f"## {section_title}" in existing:
