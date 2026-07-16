@@ -793,7 +793,7 @@ const ResourceCenter: React.FC = () => {
           }
           return poll(attempt - 1);
         };
-        await poll(15);
+        await poll(30);
       } else {
         message.info("图片生成中，请稍后查看");
       }
@@ -1432,57 +1432,6 @@ const ResourceCenter: React.FC = () => {
                   children: (
                     <div className="rounded-xl bg-white border border-slate-100 p-2">
                       <MindmapView content={mindmapContent} />
-                    </div>
-                  ),
-                },
-                {
-                  key: "image",
-                  label: (
-                    <span className="flex items-center gap-1.5 text-sm">
-                      <PictureOutlined /> AI 绘图
-                    </span>
-                  ),
-                  children: (
-                    <div className="space-y-3">
-                      <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-800 space-y-1">
-                        <div>
-                          <strong>AI 绘图：</strong>输入图片描述，AI
-                          将为你生成对应的学习插图或概念示意图。
-                        </div>
-                        <div className="text-xs text-indigo-600">
-                          提示：描述请使用中文；如需图中出现特定文字，请用双引号括起，如栈区、堆区。
-                        </div>
-                      </div>
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="例如：C语言内存模型示意图，展示栈区和堆区的区别，图中所有文字使用中文..."
-                        value={imagePrompt}
-                        onChange={(e) => setImagePrompt(e.target.value)}
-                        className="rounded-xl bg-slate-50 border-slate-200"
-                      />
-                      <Button
-                        type="primary"
-                        className="rounded-lg bg-primary"
-                        onClick={handleGenerateImage}
-                        loading={imageLoading}
-                      >
-                        <PictureOutlined /> 生成图片
-                      </Button>
-                      {generatedImage && (
-                        <div className="mt-3">
-                          <img
-                            src={generatedImage}
-                            alt="AI 生成图片"
-                            className="rounded-xl border border-slate-200 max-w-full"
-                            onError={() => {
-                              message.error(
-                                "图片加载失败，可能是链接已过期，请重新生成",
-                              );
-                              setGeneratedImage("");
-                            }}
-                          />
-                        </div>
-                      )}
                     </div>
                   ),
                 },

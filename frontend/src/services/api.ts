@@ -214,6 +214,10 @@ export const tutorApi = {
     qaId: string,
     data: { rating: "like" | "dislike"; comment?: string },
   ) => api.post<{ status: string }>(`/tutor/qa-feedback/${qaId}`, data),
+  deleteSession: (sessionId: string) =>
+    api.delete<{ status: string; deleted: number }>(
+      `/tutor/session/${sessionId}`,
+    ),
 };
 
 // ---------- 用户权限 ----------
@@ -273,7 +277,9 @@ export interface ImageResultResponse {
 
 export const imageApi = {
   generate: (data: ImageGenerateRequest) =>
-    api.post<ImageGenerateResponse>("/image/generate", data),
+    api.post<ImageGenerateResponse>("/image/generate", data, {
+      timeout: 120000,
+    }),
   getResult: (taskId: string) =>
     api.get<ImageResultResponse>(`/image/result/${taskId}`),
   listTasks: () =>

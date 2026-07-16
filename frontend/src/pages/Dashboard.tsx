@@ -43,6 +43,7 @@ import {
   gamificationApi,
   knowledgeApi,
   dailyQuizApi,
+  learningDataApi,
 } from "../services/api";
 import { calcLevel } from "../utils/level";
 import type {
@@ -743,6 +744,15 @@ const Dashboard: React.FC = () => {
                             </div>
                           )}
 
+                          {/* 正确答案 */}
+                          {showAnswer && (
+                            <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 mb-2">
+                              <span className="text-xs text-emerald-700 font-medium">
+                                正确答案：{q.correct_answer}
+                              </span>
+                            </div>
+                          )}
+
                           {/* 提示 */}
                           {showAnswer && q.hint && (
                             <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 mb-3">
@@ -761,7 +771,23 @@ const Dashboard: React.FC = () => {
                                 size="small"
                                 className="rounded-lg bg-[#0052ff]"
                                 disabled={!selectedAnswer}
-                                onClick={() => setShowAnswer(true)}
+                                onClick={() => {
+                                  setShowAnswer(true);
+                                  learningDataApi
+                                    .record({
+                                      student_id: studentId,
+                                      kp_id: "daily_quiz",
+                                      action: "quiz",
+                                      duration: 0,
+                                      progress: 0.1,
+                                      meta: {
+                                        quiz_question: q.content,
+                                        selected: selectedAnswer,
+                                        correct: q.correct_answer,
+                                      },
+                                    })
+                                    .catch(() => {});
+                                }}
                               >
                                 提交答案
                               </Button>

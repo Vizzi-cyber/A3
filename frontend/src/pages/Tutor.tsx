@@ -279,31 +279,52 @@ const Tutor: React.FC = () => {
 
   // 加载会话列表（只在初始加载时调用，不依赖 profile 避免循环重置）
   const loadConversations = useCallback(async () => {
-    // 如果正在加载中或已有消息（非欢迎消息），跳过避免覆盖流式输出
     if (conversationsLoading) return;
 
     setConversationsLoading(true);
     try {
+      // 从 QA 历史记录按 session 分组
       const res = await tutorApi.getHistory(`${studentId}_default`);
       const data = res.data as any;
-      // API 返回 messages 数组，需要转换为前端格式
       const msgs = data?.messages || [];
-      const convs = msgs.map((m: any, idx: number) => ({
-        id: `conv-${idx}`,
-        role: m.role === "assistant" ? "ai" : m.role,
-        content: m.content,
-        time: "",
-      }));
+
+      // 按 session_id 分组
+      const sessionMap = new Map<
+        string,
+        { first: string; last: string; count: number }
+      >();
+      for (const m of msgs) {
+        const sid = m.session_id || `${studentId}_default`;
+        if (!sessionMap.has(sid)) {
+          sessionMap.set(sid, { first: "", last: "", count: 0 });
+        }
+        const s = sessionMap.get(sid)!;
+        s.count++;
+        const content = m.content || m.question || "";
+        if (!s.first && content) s.first = content;
+        if (content) s.last = content;
+      }
+
+      const convs = Array.from(sessionMap.entries())
+        .filter(([_, s]) => s.count > 0)
+        .map(([sid, s]) => ({
+          conversation_id: sid,
+          first_message: s.first.slice(0, 60) || "新对话",
+          last_message_at: s.last ? new Date().toISOString() : "",
+        }));
       setConversations(convs);
 
-      // 只有在没有消息时才设置欢迎消息（避免覆盖正在进行的对话）
+      // 只有在没有消息时才设置欢迎消息
+      const hasHistory = msgs.length > 0;
       setMessages((prev) => {
-        // 如果已有用户消息，不重置
         if (prev.some((m) => m.role === "user")) return prev;
-
-        // 如果有历史消息，加载历史
-        if (convs.length > 0) {
-          return convs;
+        if (hasHistory) {
+          return msgs.map((m: any, idx: number) => ({
+            id: `msg-${idx}`,
+            role: m.role === "assistant" ? "ai" : m.role || "user",
+            content: m.content || m.question || "",
+            time: m.created_at || "",
+          }));
         }
 
         // 只有当没有会话 AND 画像未初始化时才显示引导欢迎
@@ -634,6 +655,7 @@ const Tutor: React.FC = () => {
       cancelText: "取消",
       onOk: async () => {
         try {
+          await tutorApi.deleteSession(conversationId);
           setConversations((prev) =>
             prev.filter((c) => c.conversation_id !== conversationId),
           );

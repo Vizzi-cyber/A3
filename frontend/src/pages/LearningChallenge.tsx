@@ -144,17 +144,19 @@ const ExploreMap: React.FC<{
       },
     );
 
-    gsap.fromTo(
-      nodeEls,
-      { scale: 0, opacity: 0 },
-      {
-        scale: 1,
-        opacity: 1,
-        duration: 0.4,
-        stagger: 0.08,
-        ease: "power2.out",
-      },
-    );
+    if (nodeEls.length > 0) {
+      gsap.fromTo(
+        nodeEls,
+        { scale: 0, opacity: 0 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.4,
+          stagger: 0.08,
+          ease: "power2.out",
+        },
+      );
+    }
   }, [nodes]);
 
   if (nodes.length === 0) return null;

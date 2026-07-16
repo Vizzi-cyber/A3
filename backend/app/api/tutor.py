@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..agents import TutorAgent
 from ..core.logger import setup_logger
@@ -455,3 +456,18 @@ async def submit_qa_feedback(
     qa.feedback = feedback
     db.commit()
     return {"status": "success", "message": "Feedback recorded"}
+
+
+@router.delete("/session/{session_id}")
+async def delete_session(session_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """删除指定会话的所有问答记录"""
+    try:
+        deleted = db.query(TutorQAModel).filter(
+            TutorQAModel.session_id == session_id,
+            TutorQAModel.student_id == _current,
+        ).delete()
+        db.commit()
+        return {"status": "success", "deleted": deleted}
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")

@@ -226,7 +226,7 @@ class TutorAgent(BaseAgent):
                 {"role": "user", "content": prompt},
             ]
 
-        answer = await llm.ainvoke(messages, temperature=0.8, max_tokens=1024)
+        answer = await llm.ainvoke(messages, temperature=0.8, max_tokens=3072)
         # 更新历史
         user_content = prefixed_content if isinstance(question, list) else prompt
         history.append({"role": "user", "content": user_content})
