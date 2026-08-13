@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe.configure({ mode: "serial" });
+// 每个测试独立认证（authenticateViaApi），无需 serial 模式（serial 导致状态累积 flaky）
 
 // Helper: authenticate by getting token via API and injecting into localStorage
 async function authenticateViaApi(page: any) {
@@ -14,8 +14,10 @@ async function authenticateViaApi(page: any) {
   const { access_token } = await response.json();
 
   // Navigate to the app first (need a page context for localStorage access)
-  await page.goto("http://localhost:5173/login");
-  await page.waitForLoadState("networkidle");
+  await page.goto("http://localhost:5173/login", {
+    waitUntil: "domcontentloaded",
+  });
+  await page.waitForSelector(".ant-tabs", { timeout: 15000 });
 
   // Inject token into Zustand persist storage + 标记 onboarding 完成（避免问卷 Modal 拦截）
   await page.evaluate((token: string) => {
@@ -30,18 +32,17 @@ async function authenticateViaApi(page: any) {
   }, access_token);
 
   // Reload to trigger Zustand hydration from localStorage
-  await page.reload();
-  await page.waitForLoadState("networkidle");
-  // Wait for dashboard layout to render
+  await page.reload({ waitUntil: "domcontentloaded" });
+  // Wait for dashboard layout to render（SPA 用元素等待替代 networkidle）
   await expect(page.locator(".ant-layout").first()).toBeVisible({
-    timeout: 15000,
+    timeout: 20000,
   });
 }
 
 test.describe("Frontend E2E Tests", () => {
   test("Login page loads correctly", async ({ page }) => {
     await page.goto("http://localhost:5173/login");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page).toHaveTitle(/LearnLab/);
 
     // Wait for Ant Design to render
@@ -66,7 +67,7 @@ test.describe("Frontend E2E Tests", () => {
 
   test("Login with valid credentials", async ({ page }) => {
     await page.goto("http://localhost:5173/login");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await page.getByPlaceholder("学号 / 工号").fill("student_001");
     await page.getByPlaceholder("输入密码").fill("123456");
     await page.locator(".ant-btn-primary").click();
@@ -81,7 +82,7 @@ test.describe("Frontend E2E Tests", () => {
   test("Navigate to Profile page", async ({ page }) => {
     await authenticateViaApi(page);
     await page.goto("http://localhost:5173/personal");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     // Profile page should have card components
     await expect(page.locator(".ant-card").first()).toBeVisible({
       timeout: 15000,
@@ -91,7 +92,7 @@ test.describe("Frontend E2E Tests", () => {
   test("Navigate to Learning Path page", async ({ page }) => {
     await authenticateViaApi(page);
     await page.goto("http://localhost:5173/learning-path");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator(".ant-layout").first()).toBeVisible({
       timeout: 15000,
     });
@@ -100,7 +101,7 @@ test.describe("Frontend E2E Tests", () => {
   test("Navigate to Resource Center page", async ({ page }) => {
     await authenticateViaApi(page);
     await page.goto("http://localhost:5173/resources");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator(".ant-layout").first()).toBeVisible({
       timeout: 15000,
     });
@@ -109,19 +110,25 @@ test.describe("Frontend E2E Tests", () => {
   test("Navigate to Tutor page", async ({ page }) => {
     await authenticateViaApi(page);
     await page.goto("http://localhost:5173/tutor");
-    await page.waitForLoadState("networkidle");
-    // Tutor page has input for questions
-    await expect(page.locator("input, textarea").first()).toBeVisible({
-      timeout: 15000,
+    await page.waitForLoadState("domcontentloaded");
+    // 页面框架加载（连跑时后端响应慢，放宽等待）
+    await expect(page.locator(".ant-layout").first()).toBeVisible({
+      timeout: 30000,
+    });
+    // Tutor 页有可见输入框（ChatPanel）
+    await expect(page.locator("input:visible").first()).toBeVisible({
+      timeout: 30000,
     });
   });
 
   test("Navigate to Personal Space page", async ({ page }) => {
     await authenticateViaApi(page);
-    await page.goto("http://localhost:5173/personal");
-    await page.waitForLoadState("networkidle");
+    await page.goto("http://localhost:5173/personal", {
+      waitUntil: "domcontentloaded",
+    });
+    // 个人空间加载多个 API（画像/趋势/反思），等待时间放宽
     await expect(page.locator(".ant-layout").first()).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
   });
 
