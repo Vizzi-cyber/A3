@@ -23,6 +23,7 @@ import {
   BookOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  ExperimentOutlined,
   ReadOutlined,
   ArrowRightOutlined,
   CopyOutlined,
@@ -58,6 +59,7 @@ import { MarkdownViewer } from "../components/MarkdownViewer";
 import CodeEditor from "../components/CodeEditor";
 import AlgorithmVisualizer from "../components/AlgorithmVisualizer";
 import MindmapView from "../components/MindmapView";
+import Stm32Experiments from "../components/Stm32Experiments";
 import { kbApi } from "../services/knowledgeBaseApi";
 import "../styles/markdown-content.css";
 
@@ -1582,6 +1584,15 @@ const ResourceCenter: React.FC = () => {
                             })()}
                           </div>
                         ),
+                      },
+                      {
+                        key: "experiments",
+                        label: (
+                          <span className="flex items-center gap-1.5 text-sm">
+                            <ExperimentOutlined /> 实验实训
+                          </span>
+                        ),
+                        children: <Stm32Experiments kpId={activeKey} />,
                       },
                     ]
                   : []),

@@ -120,6 +120,64 @@ class BaseAgent(ABC):
         """
         pass
 
+    def apply_guards(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """输出质量守卫（防幻觉第⑤⑥道防线，规则校验，零 LLM 成本）
+
+        - 结构校验：复用 agent 内部已产生的 _schema_check 结果
+        - 引用核查：教育内容输出鼓励标注来源（verify_citations）
+        - 结果合并：combine_guard_results 汇总到 result["_guards"]
+        """
+        from ..core.safety import HallucinationGuard, combine_guard_results
+
+        if not isinstance(result, dict):
+            return result
+
+        guard_results = []
+        if "_schema_check" in result and isinstance(result["_schema_check"], dict):
+            guard_results.append(result["_schema_check"])
+
+        text_fields = [
+            str(result.get(k, ""))
+            for k in ("message", "answer", "analysis", "explanation", "content")
+            if result.get(k)
+        ]
+        if text_fields:
+            text = "\n".join(text_fields)[:2000]
+            guard_results.append(HallucinationGuard.verify_citations(text))
+
+        if guard_results:
+            result["_guards"] = combine_guard_results(*guard_results)
+        return result
+
+    async def self_correct_output(self, context: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+        """LLM 事实核查自我修正（防幻觉第⑥道防线，仅低质量结果触发一次）"""
+        from ..core.safety import HallucinationGuard
+
+        if not isinstance(result, dict) or not hasattr(self, "llm") or not self.llm:
+            return result
+
+        text_fields = {
+            k: str(result.get(k, ""))
+            for k in ("message", "answer", "analysis", "explanation")
+            if result.get(k) and len(str(result.get(k))) > 80
+        }
+        if not text_fields:
+            return result
+        field = max(text_fields, key=lambda k: len(text_fields[k]))
+        original_text = text_fields[field]
+
+        try:
+            self.logger.info(f"Applying self-correction to field '{field}'")
+            corrected = await HallucinationGuard.self_correct(
+                self.llm, "", original_text,
+            )
+            if corrected and corrected.strip() and corrected.strip() != original_text.strip():
+                result[field] = corrected
+                result["_self_corrected"] = True
+        except Exception as e:
+            self.logger.warning(f"Self-correction failed: {e}")
+        return result
+
     async def cached_process(
         self,
         context: Dict[str, Any],
@@ -148,6 +206,7 @@ class BaseAgent(ABC):
         result = await self.process(context)
 
         if isinstance(result, dict) and result.get("status") == "success":
+            result = self.apply_guards(result)
             await prompt_cache.set(cache_key, result)
 
         return result
@@ -234,6 +293,11 @@ class BaseAgent(ABC):
         if best_result is None:
             best_result = {"status": "error", "message": "No iterations executed"}
         best_result["_total_iterations"] = iteration + 1
+
+        # 防幻觉挂接：规则守卫（引用核查/结果合并）+ 低质量自我纠错
+        best_result = self.apply_guards(best_result)
+        if best_score < quality_threshold and enable_llm_evaluation:
+            best_result = await self.self_correct_output(context, best_result)
         return best_result
 
     def _rule_based_evaluate(self, result: Dict[str, Any]) -> float:

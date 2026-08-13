@@ -34,12 +34,41 @@ class CircuitAnalysisRequest(BaseModel):
     expected_answer: Optional[str] = None
 
 
+def _degraded_response(request: CircuitAnalysisRequest, error: str) -> dict:
+    """LLM 不可用时的降级响应（返回 200，前端可正常展示引导信息）"""
+    logger.warning(f"Circuit analysis degraded (LLM unavailable): {error}")
+    if request.is_diagnosis:
+        hint = (
+            "AI 诊断服务暂时不可用（大模型接口异常）。\n\n"
+            "你可以先按以下思路自主排查：\n"
+            "1. **对比测量数据与理论值**：正常分压输出 = 电源电压 × R2/(R1+R2)，偏差过大说明存在故障；\n"
+            "2. **电流测量区分故障**：断路时回路无电流，短路时电流异常增大；\n"
+            "3. **逐点测电压定位**：从电源端到地逐节点测量，电压突变的点附近就是故障元件。\n\n"
+            "请稍后重试，AI 将给出详细解析。"
+        )
+    else:
+        hint = (
+            "AI 电路分析服务暂时不可用（大模型接口异常），请稍后重试。\n\n"
+            "电路仿真与测量功能不受影响，你仍可以：\n"
+            "1. 查看节点电压与支路电流的实时测量数据；\n"
+            "2. 通过修改元件参数观察电路变化；\n"
+            "3. 稍后点击「重新分析」再次调用 AI。"
+        )
+    return {
+        "status": "success",
+        "analysis": hint,
+        "circuit_description": "AI服务降级提示",
+        "mode": "diagnosis" if request.is_diagnosis else "analysis",
+        "degraded": True,
+    }
+
+
 @router.post("/analyze")
 async def analyze_circuit(
     request: CircuitAnalysisRequest,
     _current: str = Depends(require_auth),
 ):
-    """AI分析电路（支持故障实验诊断评估模式）"""
+    """AI分析电路（支持故障实验诊断评估模式，LLM 不可用时自动降级）"""
     try:
         llm = LLMFactory.get_default_llm()
 
@@ -118,4 +147,5 @@ async def analyze_circuit(
 
     except Exception as e:
         logger.error(f"Circuit analysis failed: {e}")
-        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
+        # 降级：LLM 不可用时返回引导提示，而非 500（保证前端可正常交互）
+        return _degraded_response(request, str(e))

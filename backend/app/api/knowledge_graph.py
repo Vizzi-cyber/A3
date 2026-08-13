@@ -87,16 +87,37 @@ async def build_knowledge_graph(
             timeout=120.0,
         )
     except asyncio.TimeoutError:
-        logger.error("Knowledge graph build timed out")
-        raise HTTPException(status_code=504, detail="Graph build timed out")
+        logger.error("Knowledge graph build timed out, using local fallback")
+        result = {"status": "fallback"}
     except Exception as e:
-        logger.error(f"Knowledge graph build failed: {e}")
-        raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
+        logger.error(f"Knowledge graph build failed: {e}, using local fallback")
+        result = {"status": "fallback"}
 
-    if result.get("status") != "success":
+    if result.get("status") == "fallback":
+        # 降级：基于数据库 prerequisites 构建结构化图谱（数据驱动，无需 LLM）
+        graph_data = {
+            "nodes": [
+                {
+                    "id": k["kp_id"],
+                    "name": k["name"],
+                    "difficulty": 1 if k["difficulty"] < 0.4 else 3 if k["difficulty"] < 0.6 else 5,
+                    "prerequisite": k["prerequisites"] or [],
+                    "question_types": ["选择题", "判断题"],
+                    "resource_types": ["document", "code", "questions"],
+                    "learning_objective": (k["description"] or f"掌握{k['name']}")[:200],
+                }
+                for k in kp_list
+            ],
+            "edges": [
+                {"source": p, "target": k["kp_id"]}
+                for k in kp_list
+                for p in (k["prerequisites"] or [])
+            ],
+        }
+    elif result.get("status") != "success":
         raise HTTPException(status_code=500, detail=result.get("error", "Build failed"))
-
-    graph_data = result["graph_data"]
+    else:
+        graph_data = result["graph_data"]
 
     # 存入数据库（更新或插入）
     kg_id = f"kg_{request.subject}"
@@ -121,8 +142,8 @@ async def build_knowledge_graph(
         "data": {
             "kg_id": kg_id,
             "name": request.graph_name,
-            "node_count": result["node_count"],
-            "edge_count": result["edge_count"],
+            "node_count": result.get("node_count", len(graph_data.get("nodes", []))),
+            "edge_count": result.get("edge_count", len(graph_data.get("edges", []))),
             "graph_data": graph_data,
         },
     }

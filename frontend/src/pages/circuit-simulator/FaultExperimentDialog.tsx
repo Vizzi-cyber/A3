@@ -5,6 +5,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   RobotOutlined,
+  DownloadOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import { useCircuitStore, PRESET_CIRCUITS } from "./store";
 import { FAULT_TEMPLATES, FaultTemplate } from "./fault-templates";
@@ -32,6 +34,7 @@ const FaultExperimentDialog: React.FC<FaultExperimentDialogProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [report, setReport] = useState("");
 
   // 选择实验并加载故障电路
   const handleSelect = (fault: FaultTemplate) => {
@@ -113,6 +116,73 @@ const FaultExperimentDialog: React.FC<FaultExperimentDialogProps> = ({
       setAiAnalysis(`解析出错: ${err.message || "网络错误"}`);
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  // 生成实验报告（Markdown）
+  const buildReport = (): string => {
+    if (!selected || !chosenOption) return "";
+    const date = new Date().toISOString().slice(0, 10);
+    const correctOption = selected.options.find((o) => o.correct);
+    const lines = [
+      "# 电路故障诊断实验报告",
+      "",
+      `**实验名称**：${selected.name}`,
+      `**实验日期**：${date}`,
+      `**难度等级**：${selected.difficulty}`,
+      "",
+      "## 一、实验任务",
+      selected.task,
+      "",
+      "## 二、故障现象观察",
+      selected.phenomenon,
+      "",
+      "## 三、正常电路参考",
+      selected.normalValues,
+      "",
+      "## 四、诊断结论",
+      `- 我的诊断：**${answer}**`,
+      `- 判定结果：${chosenOption.correct ? "✅ 诊断正确" : "❌ 诊断有误"}`,
+      `- 标准答案：${correctOption?.label || ""}`,
+      "",
+      "### 解析",
+      chosenOption.explanation,
+      "",
+    ];
+    if (aiAnalysis) {
+      lines.push("## 五、AI 评估", aiAnalysis, "");
+    }
+    lines.push("## 六、实验心得", "", "（请写下你在本实验中的收获与思考）", "");
+    return lines.join("\n");
+  };
+
+  const handleGenerateReport = () => {
+    const md = buildReport();
+    if (md) {
+      setReport(md);
+      message.success("实验报告已生成");
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (!report) return;
+    const blob = new Blob([report], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `故障实验报告_${selected?.id || "circuit"}_${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success("报告已下载");
+  };
+
+  const handleCopyReport = async () => {
+    if (!report) return;
+    try {
+      await navigator.clipboard.writeText(report);
+      message.success("报告已复制到剪贴板");
+    } catch {
+      message.warning("复制失败，请手动选择复制");
     }
   };
 
@@ -271,7 +341,44 @@ const FaultExperimentDialog: React.FC<FaultExperimentDialogProps> = ({
             >
               AI 详细解析
             </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleGenerateReport}
+              disabled={!submitted}
+            >
+              生成实验报告
+            </Button>
           </div>
+
+          {/* 实验报告预览 */}
+          {report && (
+            <div className="mt-3 bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">
+                  📄 实验报告预览
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={handleDownloadReport}
+                  >
+                    下载 .md
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={handleCopyReport}
+                  >
+                    复制
+                  </Button>
+                </div>
+              </div>
+              <pre className="text-xs text-gray-600 whitespace-pre-wrap bg-gray-50 rounded p-3 max-h-64 overflow-auto">
+                {report}
+              </pre>
+            </div>
+          )}
 
           {/* AI 解析 */}
           {aiLoading && (
