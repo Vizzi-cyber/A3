@@ -98,6 +98,21 @@
 | Playwright 存量（frontend.spec.ts） | ✅ 8/8（首次全绿） |
 | 前端构建 | ✅ TS零错误+build通过 |
 
+## 三·补充、功能串联验证（与原有功能无冲突）
+
+**全链路数据流验证 `verify_dataflow.py`（23/23）**：登录 → 学习行为上报 → 积分自动增长 → 测验 → 画像 knowledge_base/薄弱点实时更新 → 跨学科/DAG 路径生成 → 趋势分析 → 教师端试点报告/班级对比/薄弱点/预警 → 真实 LLM Agent 调用 → 前端 5173 代理
+
+**Agent/LLM 专项验证 `verify_agent_llm.py`（23/23）**：反思循环迭代修正、Agent 缓存命中、JSON 解析 5 种乱格式、FailoverLLM 降级链 3 场景、防幻觉守卫（结构/代码/引用）
+
+**Playwright**：AIC suite 6/6 + 存量 suite 8/8（分 suite 运行全绿；连跑偶发为 Windows 高负载时序问题，已加 retries=2）
+
+**与原有功能联动关系**（已验证无冲突）：
+- 学习记录/测验（原有）→ 画像/薄弱点（原有）→ 路径生成（原有+跨学科新模式叠加，兼容）
+- 游戏化积分（原有）↔ 学习行为上报（原有，新增实验行为并行写入独立表）
+- 教师端（原有 14 接口）↔ 新增（classes/class-comparison/pilot-report/feature-usage/experiment-stats）独立路由不冲突
+- 学科切换（原有）→ 跨学科视图/实验实训（新增，按当前学科展示）
+- api_monitor（原有）新增 student_id 字段（向后兼容，旧数据 NULL 不影响统计）
+
 ## 四、已发现问题的处理状态
 
 | 问题 | 状态 |
