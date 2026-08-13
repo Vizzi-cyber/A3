@@ -1,6 +1,7 @@
 @echo off
 chcp 65001 >nul
 cls
+setlocal enabledelayedexpansion
 
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
@@ -78,15 +79,15 @@ echo ==========================================
 echo.
 
 cd "%ROOT%\backend"
-start "LearnLab-Backend" cmd /k "call "%ROOT%\backend\venv\Scripts\activate.bat" && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+start "LearnLab-Backend" cmd /k "cd /d "%ROOT%\backend" && call venv\Scripts\activate.bat && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 cd "%ROOT%"
 
 REM 等待后端启动
 echo 等待后端服务就绪...
 set "BACKEND_READY="
 for /l %%i in (1,1,15) do (
-    >nul 2>&1 curl -s http://localhost:8000/docs && set "BACKEND_READY=1" && goto :backend_ok
-    >nul 2>&1 timeout /t 2 /nobreak
+    curl -s http://localhost:8000/health >nul 2>&1 && set "BACKEND_READY=1" && goto :backend_ok
+    timeout /t 2 /nobreak >nul
 )
 :backend_ok
 if defined BACKEND_READY (
