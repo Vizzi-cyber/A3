@@ -1636,10 +1636,9 @@ docker-compose up --build -d
 ### 测试框架
 
 - **Playwright** (v1.59.1)
-- 串行执行（`workers: 1`）
-- 超时60秒，重试1次（CI重试2次）
+- 串行执行（`workers: 1`），超时60秒，重试2次
 
-### 测试文件（4个，39个用例）
+### 前端 E2E 测试（6 个文件，53 个用例）
 
 | 文件 | 用例数 | 测试内容 |
 |------|--------|----------|
@@ -1647,12 +1646,36 @@ docker-compose up --build -d
 | `frontend.spec.ts` | 9 | 前端UI：登录、页面导航、侧边栏、登出 |
 | `knowledge-base.spec.ts` | 7 | 知识库：页面布局、笔记CRUD、编辑器、反向链接、图谱、搜索、文件树 |
 | `markdown-render.spec.ts` | 1 | Markdown渲染：中文内容、代码块、无错误 |
+| `aic-features.spec.ts` | 6 | AIC新功能：跨学科链路、故障诊断实验、STM32 AI分析、试点数据页、实验实训、实验报告 |
+| `full-audit.spec.ts` | 9 | 全功能审计 |
+
+### 后端验证脚本（backend/scripts/）
+
+| 脚本 | 范围 | 运行方式 |
+|------|------|----------|
+| `verify_aic_features.py` | TestClient 回归 29 项（新功能+核心接口，mock LLM） | 需服务启动 |
+| `verify_live.py` | 真实环境 HTTP 33 项（原有+新增功能） | 需服务启动（8000） |
+| `verify_all_routes.py` | 全路由冒烟（177 路由 0 崩溃） | 需服务启动 |
+| `verify_dataflow.py` | 全链路数据流 23 项（学习→画像→路径→测验→趋势→报告） | 需服务启动 |
+| `verify_agent_llm.py` | Agent/LLM 专项 23 项（反思循环/缓存/降级/防幻觉） | 无需服务 |
+| `seed_cross_discipline.py` | 跨学科数据注入（幂等） | 直接运行 |
+| `seed_classes.py` | 班级初始化（幂等） | 直接运行 |
 
 ### 运行测试
 
 ```bash
+# 前端 E2E（分 suite 运行）
 cd frontend
-npx playwright test e2e/api.spec.ts --reporter=list
+npx playwright test e2e/aic-features.spec.ts --reporter=list
+npx playwright test e2e/frontend.spec.ts --reporter=list
+
+# 后端验证（先启动后端：cd backend && venv/Scripts/python -m uvicorn app.main:app --port 8000）
+cd backend
+python scripts/verify_aic_features.py
+python scripts/verify_live.py
+python scripts/verify_all_routes.py
+python scripts/verify_dataflow.py
+python scripts/verify_agent_llm.py
 ```
 
 ---
