@@ -1297,7 +1297,7 @@ export const teacherApi = {
       weak_areas: Array<{ area: string; count: number }>;
     }>("/teacher/weak-points"),
 
-  getPilotReport: (days?: number) =>
+  getPilotReport: (days?: number, format?: string) =>
     api.get<{
       status: string;
       period_days: number;
@@ -1329,7 +1329,36 @@ export const teacherApi = {
         avg_score: number;
         max_score: number;
       }>;
-    }>("/teacher/pilot-report", { params: { days: days || 30 } }),
+      markdown?: string;
+    }>("/teacher/pilot-report", {
+      params: { days: days || 30, format: format || "json" },
+    }),
+
+  getClasses: () =>
+    api.get<{
+      status: string;
+      classes: Array<{
+        class_id: string;
+        student_count: number;
+        avg_score: number;
+        avg_points: number;
+        total_hours: number;
+      }>;
+    }>("/teacher/classes"),
+
+  getClassComparison: (days?: number) =>
+    api.get<{
+      status: string;
+      period_days: number;
+      classes: Array<{
+        class_id: string;
+        student_count: number;
+        avg_score: number;
+        total_hours: number;
+        avg_records_per_student: number;
+        completed_kps: number;
+      }>;
+    }>("/teacher/class-comparison", { params: { days: days || 30 } }),
 
   getExportRecords: () =>
     api.get<{

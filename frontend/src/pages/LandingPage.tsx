@@ -670,6 +670,108 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* ===== AI+学科交叉（AIC 定位） ===== */}
+      <section className="py-20 px-6 bg-gradient-to-b from-white to-indigo-50/40">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-block px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-600 text-xs font-medium mb-4">
+              AI + 学科交叉
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight">
+              新工科跨学科 AI 学习平台
+            </h2>
+            <p className="mt-4 text-slate-500 max-w-2xl mx-auto text-lg">
+              打通"编程思维 → 电路建模 → 嵌入式实现"的跨学科学习链路
+            </p>
+          </div>
+
+          {/* 三学科卡片 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {[
+              {
+                icon: "💻",
+                name: "C语言程序设计",
+                discipline: "计算机科学与技术",
+                color: "from-blue-500 to-blue-600",
+                desc: "指针、位运算、数组——嵌入式开发的直接编程基础",
+                kps: "16 个知识点",
+              },
+              {
+                icon: "⚡",
+                name: "电路分析基础",
+                discipline: "电子信息工程",
+                color: "from-orange-500 to-red-500",
+                desc: "分压采样、电压波形——外围电路设计的理论支撑",
+                kps: "5 个知识点 + MNA仿真",
+              },
+              {
+                icon: "🔧",
+                name: "STM32嵌入式开发",
+                discipline: "计算机 × 电子信息（交叉）",
+                color: "from-green-500 to-emerald-600",
+                desc: "GPIO/定时器/ADC/通信接口——综合应用两门基础学科",
+                kps: "14 个知识点 + 7 个实验",
+              },
+            ].map((c) => (
+              <div
+                key={c.name}
+                className="group rounded-2xl bg-white border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+              >
+                <div className={`h-2 bg-gradient-to-r ${c.color}`} />
+                <div className="p-6">
+                  <div className="text-3xl mb-3">{c.icon}</div>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {c.name}
+                  </h3>
+                  <div className="text-xs font-medium text-indigo-500 mt-1 mb-2">
+                    {c.discipline}
+                  </div>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    {c.desc}
+                  </p>
+                  <div className="mt-4 flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 text-xs">
+                      {c.kps}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 跨学科链路 */}
+          <div className="rounded-2xl bg-white border border-purple-100 p-6">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
+              {[
+                { step: "编程思维", desc: "C语言核心语法", icon: "💻" },
+                { step: "电路建模", desc: "仿真+AI诊断", icon: "⚡" },
+                { step: "嵌入式实现", desc: "STM32实战", icon: "🔧" },
+              ].map((s, i) => (
+                <React.Fragment key={s.step}>
+                  {i > 0 && (
+                    <div className="text-purple-400 text-xl font-bold hidden md:block">
+                      →
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{s.icon}</span>
+                    <div className="text-left">
+                      <div className="font-semibold text-slate-800">
+                        {s.step}
+                      </div>
+                      <div className="text-xs text-slate-400">{s.desc}</div>
+                    </div>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+            <p className="text-center text-sm text-slate-400 mt-4">
+              跨课程知识依赖自动关联 · AI 智能辅导贯穿全程 · 实验实训闭环验证
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ===== Product Showcase ===== */}
       <section
         id="showcase"

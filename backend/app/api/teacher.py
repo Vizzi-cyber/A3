@@ -45,12 +45,126 @@ async def get_all_students(
             "username": s.username,
             "email": s.email,
             "is_active": s.is_active,
+            "class_id": s.class_id,
             "created_at": s.created_at.isoformat() if s.created_at else None,
             "total_points": points.total_points if points else 0,
             "trend_state": trend.trend_state if trend else "unknown",
             "trend_factor": trend.trend_factor if trend else 0,
         })
     return {"status": "success", "students": result, "total": len(result)}
+
+
+@router.get("/classes")
+async def get_classes(db: Session = Depends(get_db), _current: str = Depends(require_teacher)):
+    """班级列表（含人数，试点分组/班级对比）"""
+    from ..models.knowledge import LearningRecordModel, QuizResultModel
+
+    rows = db.query(
+        UserModel.class_id,
+        func.count(UserModel.student_id).label("student_count"),
+    ).filter(
+        UserModel.role == "student",
+        UserModel.class_id.isnot(None),
+    ).group_by(UserModel.class_id).all()
+
+    classes = []
+    for r in rows:
+        # 班级聚合：平均分/平均积分/平均学习时长
+        students = db.query(UserModel.student_id).filter(
+            UserModel.role == "student",
+            UserModel.class_id == r.class_id,
+        ).all()
+        student_ids = [s[0] for s in students]
+
+        avg_score = 0.0
+        if student_ids:
+            score_row = db.query(func.avg(QuizResultModel.score)).filter(
+                QuizResultModel.student_id.in_(student_ids)
+            ).first()
+            avg_score = round(float(score_row[0] or 0), 1)
+
+        points_row = db.query(func.avg(PointsModel.total_points)).filter(
+            PointsModel.student_id.in_(student_ids)
+        ).first()
+        avg_points = round(float(points_row[0] or 0), 1)
+
+        hours_row = db.query(func.sum(LearningRecordModel.duration)).filter(
+            LearningRecordModel.student_id.in_(student_ids)
+        ).first()
+        total_hours = round(float(hours_row[0] or 0) / 3600, 1)
+
+        classes.append({
+            "class_id": r.class_id,
+            "student_count": r.student_count,
+            "avg_score": avg_score,
+            "avg_points": avg_points,
+            "total_hours": total_hours,
+        })
+    return {"status": "success", "classes": classes, "total": len(classes)}
+
+
+@router.get("/class-comparison")
+async def get_class_comparison(
+    days: int = Query(30, ge=1, le=90),
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_teacher),
+):
+    """班级间对比（试点"实验组 vs 对照组"数据源）"""
+    from ..models.knowledge import LearningRecordModel, QuizResultModel
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    rows = db.query(
+        UserModel.class_id,
+        func.count(func.distinct(UserModel.student_id)).label("student_count"),
+    ).filter(
+        UserModel.role == "student",
+        UserModel.class_id.isnot(None),
+    ).group_by(UserModel.class_id).all()
+
+    result = []
+    for r in rows:
+        students = db.query(UserModel.student_id).filter(
+            UserModel.role == "student",
+            UserModel.class_id == r.class_id,
+        ).all()
+        student_ids = [s[0] for s in students]
+
+        # 平均分
+        score_row = db.query(func.avg(QuizResultModel.score)).filter(
+            QuizResultModel.student_id.in_(student_ids),
+            QuizResultModel.created_at >= since,
+        ).first()
+        # 总时长
+        hours_row = db.query(func.sum(LearningRecordModel.duration)).filter(
+            LearningRecordModel.student_id.in_(student_ids),
+            LearningRecordModel.created_at >= since,
+        ).first()
+        # 人均记录
+        rec_row = db.query(
+            func.count(LearningRecordModel.record_id),
+            func.count(func.distinct(LearningRecordModel.student_id)),
+        ).filter(
+            LearningRecordModel.student_id.in_(student_ids),
+            LearningRecordModel.created_at >= since,
+        ).first()
+        # 完成知识点数
+        done_row = db.query(func.count(func.distinct(LearningRecordModel.kp_id))).filter(
+            LearningRecordModel.student_id.in_(student_ids),
+            LearningRecordModel.created_at >= since,
+            LearningRecordModel.progress >= 0.8,
+        ).first()
+
+        result.append({
+            "class_id": r.class_id,
+            "student_count": r.student_count,
+            "avg_score": round(float(score_row[0] or 0), 1),
+            "total_hours": round(float(hours_row[0] or 0) / 3600, 1),
+            "avg_records_per_student": round(float(rec_row[0] or 0) / max(int(rec_row[1] or 1), 1), 1),
+            "completed_kps": done_row[0] or 0,
+        })
+
+    result.sort(key=lambda c: -c["student_count"])
+    return {"status": "success", "period_days": days, "classes": result}
 
 
 @router.get("/overview")
@@ -711,19 +825,43 @@ async def get_learning_alerts(
 async def get_pilot_report(
     days: int = Query(30, ge=1, le=90),
     student_id: Optional[str] = Query(None, description="不传=全班汇总"),
+    class_id: Optional[str] = Query(None, description="按班级过滤（试点实验组/对照组）"),
+    format: str = Query("json", description="json 或 markdown（导出参赛文档素材）"),
     db: Session = Depends(get_db),
     _teacher: str = Depends(require_teacher),
 ):
     """试点数据分析报告（AIC"应用效果"评分项的验证数据源）
 
     聚合五个维度：学习行为 / 测验成绩 / 掌握度趋势 / 实验参与 / 功能使用
-    输出可直接用于参赛文档的效果验证章节。
+    支持按班级过滤（class_id），输出可直接用于参赛文档的效果验证章节。
     """
     from datetime import timedelta, timezone
     from ..models.experiment import ExperimentLogModel
+
+    # 班级过滤：取该班学生 id 列表
+    class_student_ids: Optional[List[str]] = None
+    if class_id:
+        class_student_ids = [
+            u.student_id
+            for u in db.query(UserModel).filter(
+                UserModel.role == "student",
+                UserModel.class_id == class_id,
+            ).all()
+        ]
+        if not class_student_ids:
+            return {"status": "success", "period_days": days, "scope": f"class:{class_id}",
+                    "summary": {"active_students": 0}, "students": []}
     from ..models.monitor import ApiMonitorModel
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    def _scope_filter(model):
+        """班级/学生作用域过滤条件"""
+        if student_id:
+            return model.student_id == student_id
+        if class_student_ids:
+            return model.student_id.in_(class_student_ids)
+        return None
 
     # ---------- 1. 学习行为（learning_records） ----------
     lq = db.query(
@@ -731,8 +869,9 @@ async def get_pilot_report(
         func.count().label("record_count"),
         func.coalesce(func.sum(LearningRecordModel.duration), 0).label("total_duration"),
     ).filter(LearningRecordModel.created_at >= since)
-    if student_id:
-        lq = lq.filter(LearningRecordModel.student_id == student_id)
+    _sf = _scope_filter(LearningRecordModel)
+    if _sf is not None:
+        lq = lq.filter(_sf)
     lq = lq.group_by(LearningRecordModel.student_id)
     learn_rows = lq.all()
 
@@ -744,8 +883,9 @@ async def get_pilot_report(
         LearningRecordModel.created_at >= since,
         LearningRecordModel.progress >= 0.8,
     )
-    if student_id:
-        cq = cq.filter(LearningRecordModel.student_id == student_id)
+    _sf = _scope_filter(LearningRecordModel)
+    if _sf is not None:
+        cq = cq.filter(_sf)
     cq = cq.group_by(LearningRecordModel.student_id)
     complete_map = {r.student_id: r.kp_count for r in cq.all()}
 
@@ -757,17 +897,20 @@ async def get_pilot_report(
         func.max(QuizResultModel.score).label("max_score"),
         func.min(QuizResultModel.score).label("min_score"),
     ).filter(QuizResultModel.created_at >= since)
-    if student_id:
-        zq = zq.filter(QuizResultModel.student_id == student_id)
+    _sf = _scope_filter(QuizResultModel)
+    if _sf is not None:
+        zq = zq.filter(_sf)
     zq = zq.group_by(QuizResultModel.student_id)
     quiz_map = {r.student_id: r for r in zq.all()}
 
-    # 前后测对比（全班）：前1/3 vs 后1/3 平均分
+    # 前后测对比（全班/班级）：前1/3 vs 后1/3 平均分
     pre_post = None
     if not student_id:
-        all_scores = db.query(QuizResultModel.score).filter(
-            QuizResultModel.created_at >= since
-        ).order_by(QuizResultModel.created_at.asc()).all()
+        pq = db.query(QuizResultModel.score).filter(QuizResultModel.created_at >= since)
+        _sf = _scope_filter(QuizResultModel)
+        if _sf is not None:
+            pq = pq.filter(_sf)
+        all_scores = pq.order_by(QuizResultModel.created_at.asc()).all()
         n = len(all_scores)
         if n >= 6:
             third = n // 3
@@ -782,8 +925,9 @@ async def get_pilot_report(
         TrendDataModel.trend_state,
         func.count().label("count"),
     ).filter(TrendDataModel.created_at >= since)
-    if student_id:
-        tq = tq.filter(TrendDataModel.student_id == student_id)
+    _sf = _scope_filter(TrendDataModel)
+    if _sf is not None:
+        tq = tq.filter(_sf)
     tq = tq.group_by(TrendDataModel.student_id, TrendDataModel.trend_state)
     trend_map: Dict[str, int] = {}
     for r in tq.all():
@@ -794,8 +938,9 @@ async def get_pilot_report(
         ExperimentLogModel.experiment_type,
         func.count().label("count"),
     ).filter(ExperimentLogModel.created_at >= since)
-    if student_id:
-        eq = eq.filter(ExperimentLogModel.student_id == student_id)
+    _sf = _scope_filter(ExperimentLogModel)
+    if _sf is not None:
+        eq = eq.filter(_sf)
     eq = eq.group_by(ExperimentLogModel.experiment_type)
     experiment_map = {r.experiment_type: r.count for r in eq.all()}
 
@@ -808,8 +953,9 @@ async def get_pilot_report(
         ApiMonitorModel.created_at >= since,
         ApiMonitorModel.student_id.isnot(None),
     )
-    if student_id:
-        fq = fq.filter(ApiMonitorModel.student_id == student_id)
+    _sf = _scope_filter(ApiMonitorModel)
+    if _sf is not None:
+        fq = fq.filter(_sf)
     fq = fq.group_by(ApiMonitorModel.endpoint).all()
     feature_map: Dict[str, int] = {}
     for r in fq:
@@ -838,7 +984,7 @@ async def get_pilot_report(
     report = {
         "status": "success",
         "period_days": days,
-        "scope": "class" if not student_id else student_id,
+        "scope": class_id or ("student" if student_id else "class"),
         "summary": {
             "active_students": len(students),
             "total_duration_hours": round(total_duration / 3600, 1),
@@ -855,4 +1001,67 @@ async def get_pilot_report(
         "top_features": [{"feature": k, "count": v} for k, v in top_features],
         "students": students,
     }
+
+    # ---------- Markdown 导出（参赛文档素材） ----------
+    if format == "markdown":
+        s = report["summary"]
+        lines = [
+            "# LearnLab 试点数据分析报告",
+            "",
+            f"- 统计周期：近 {days} 天",
+            f"- 统计范围：{report['scope']}",
+            f"- 生成时间：{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+            "",
+            "## 一、总体概览",
+            "",
+            "| 指标 | 数值 |",
+            "|---|---|",
+            f"| 活跃学生数 | {s['active_students']} |",
+            f"| 总学习时长 | {s['total_duration_hours']} 小时 |",
+            f"| 日均学习时长 | {s['avg_daily_hours']} 小时 |",
+            f"| 学习记录总数 | {s['total_records']} |",
+            f"| 测验总次数 | {s['total_quizzes']} |",
+            f"| 平均测验分 | {s['avg_score']} |",
+            f"| 实验参与次数 | {s['total_experiments']} |",
+            f"| 掌握知识点总数 | {s['completed_kps_total']} |",
+            "",
+        ]
+        if pre_post:
+            lines += [
+                "## 二、前后测成绩对比",
+                "",
+                f"- 前测平均分：{pre_post['pre_avg']}",
+                f"- 后测平均分：{pre_post['post_avg']}",
+                f"- 提升幅度：**+{pre_post['improvement']} 分**（样本 {pre_post['sample_size']} 次测验）",
+                "",
+            ]
+        if experiment_map:
+            lines += [
+                "## 三、实验参与分布",
+                "",
+                "| 实验类型 | 次数 |",
+                "|---|---|",
+            ]
+            labels = {"circuit_simulate": "模拟电路仿真", "circuit_fault": "故障诊断实验",
+                      "stm32_simulate": "STM32仿真", "stm32_experiment": "STM32实验实训"}
+            for k, v in experiment_map.items():
+                lines.append(f"| {labels.get(k, k)} | {v} |")
+            lines.append("")
+        if top_features:
+            lines += ["## 四、功能使用 Top", ""]
+            for f_name, f_count in top_features[:5]:
+                lines.append(f"- {f_name}：{f_count} 次")
+            lines.append("")
+        if trend_map:
+            labels_t = {"growth": "成长", "stable": "稳定", "decline": "下滑", "warning": "预警"}
+            lines += ["## 五、学习趋势分布", ""]
+            for k, v in trend_map.items():
+                lines.append(f"- {labels_t.get(k, k)}：{v}")
+            lines.append("")
+        if students:
+            lines += ["## 六、学生明细", "", "| 学生 | 记录数 | 时长(h) | 掌握知识点 | 测验 | 平均分 |", "|---|---|---|---|---|---|"]
+            for st in students:
+                lines.append(f"| {st['student_id']} | {st['record_count']} | {st['total_duration_hours']} | {st['completed_kps']} | {st['quiz_count']} | {st['avg_score']} |")
+            lines.append("")
+        report["markdown"] = "\n".join(lines)
     return report

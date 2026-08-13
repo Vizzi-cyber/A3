@@ -17,13 +17,16 @@ async function authenticateViaApi(page: any) {
   await page.goto("http://localhost:5173/login");
   await page.waitForLoadState("networkidle");
 
-  // Inject token into Zustand persist storage
+  // Inject token into Zustand persist storage + 标记 onboarding 完成（避免问卷 Modal 拦截）
   await page.evaluate((token: string) => {
     const state = {
       state: { token, studentId: "student_001" },
       version: 0,
     };
     localStorage.setItem("learnlab-storage", JSON.stringify(state));
+    localStorage.setItem("onboarding_completed_C语言", "true");
+    localStorage.setItem("onboarding_completed_电路分析", "true");
+    localStorage.setItem("onboarding_completed_STM32嵌入式", "true");
   }, access_token);
 
   // Reload to trigger Zustand hydration from localStorage
@@ -47,11 +50,11 @@ test.describe("Frontend E2E Tests", () => {
     // Check login tab is active
     await expect(page.locator(".ant-tabs-tab-active")).toBeVisible();
 
-    // Check form inputs by placeholder
-    await expect(page.getByPlaceholder("请输入学号")).toBeVisible({
+    // Check form inputs by placeholder（登录 Tab 默认激活）
+    await expect(page.getByPlaceholder("学号 / 工号")).toBeVisible({
       timeout: 10000,
     });
-    await expect(page.getByPlaceholder("请输入密码")).toBeVisible({
+    await expect(page.getByPlaceholder("输入密码")).toBeVisible({
       timeout: 10000,
     });
 
@@ -64,8 +67,8 @@ test.describe("Frontend E2E Tests", () => {
   test("Login with valid credentials", async ({ page }) => {
     await page.goto("http://localhost:5173/login");
     await page.waitForLoadState("networkidle");
-    await page.getByPlaceholder("请输入学号").fill("student_001");
-    await page.getByPlaceholder("请输入密码").fill("123456");
+    await page.getByPlaceholder("学号 / 工号").fill("student_001");
+    await page.getByPlaceholder("输入密码").fill("123456");
     await page.locator(".ant-btn-primary").click();
     // Wait for dashboard layout to appear
     await expect(page.locator(".ant-layout").first()).toBeVisible({
@@ -77,7 +80,7 @@ test.describe("Frontend E2E Tests", () => {
 
   test("Navigate to Profile page", async ({ page }) => {
     await authenticateViaApi(page);
-    await page.goto("http://localhost:5173/profile");
+    await page.goto("http://localhost:5173/personal");
     await page.waitForLoadState("networkidle");
     // Profile page should have card components
     await expect(page.locator(".ant-card").first()).toBeVisible({

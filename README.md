@@ -1270,13 +1270,16 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 
 | 表名 | 记录数 | 说明 |
 |------|--------|------|
-| `users` | 20+ | 学生+教师账号 |
-| `learning_records` | 79 | 学习记录 |
-| `quiz_results` | 46 | 测验结果 |
-| `game_points` | 17 | 游戏积分 |
-| `kb_notes` | 20 | 知识库笔记 |
-| `student_profiles` | 3 | 学生画像 |
-| `student_trends` | 3 | 趋势数据 |
+| `users` | 18 | 学生+教师账号（含班级字段 class_id） |
+| `knowledge_points` | 35 | 知识点（C语言16/电路5/STM32 14，含9条跨课程依赖） |
+| `learning_records` | 92 | 学习记录 |
+| `quiz_results` | 51 | 测验结果 |
+| `game_points` | 12 | 游戏积分 |
+| `kb_notes` | 33 | 知识库笔记 |
+| `student_profiles` | 12 | 学生画像 |
+| `student_trends` | 133 | 趋势数据 |
+| `experiment_logs` | 29 | 实验行为日志（AIC新增） |
+| `courses` | 3 | 学科课程元数据（AIC新增） |
 
 ### 核心数据流
 

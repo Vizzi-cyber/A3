@@ -1,7 +1,49 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Select, Tag, Spin, Empty, Card } from "antd";
+import {
+  Select,
+  Tag,
+  Spin,
+  Empty,
+  Card,
+  Checkbox,
+  Button,
+  message,
+} from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
-import { knowledgeApi, pathApi } from "../services/api";
+import { knowledgeApi, pathApi, learningDataApi } from "../services/api";
+import { useAppStore } from "../store";
+
+// 跨学科综合实战项目模板（编程思维→电路建模→嵌入式实现链路落地）
+const PROJECTS = [
+  {
+    id: "smart-fan",
+    title: "智能温控风扇",
+    description:
+      "用 C 语言编写温度采集逻辑，设计分压采样电路，在 STM32 上实现 PWM 调速——一个项目走通三大学科全链路。",
+    courses: ["C语言", "电路分析", "STM32嵌入式"],
+    tasks: [
+      "用 C 语言编写 ADC 采样与数据处理函数（指针传参）",
+      "在仿真器中搭建热敏电阻分压采样电路并验证",
+      "配置 STM32 定时器 PWM 输出控制风扇转速",
+      "结合温度阈值编写调速逻辑（位运算控制寄存器）",
+      "运行仿真验证：温度升高 → 占空比增大 → 转速提升",
+    ],
+  },
+  {
+    id: "led-breath",
+    title: "呼吸灯与按键交互",
+    description:
+      "从 LED 点亮到呼吸灯效果，再到按键切换模式——循序渐进掌握 GPIO、定时器与中断的联动。",
+    courses: ["C语言", "STM32嵌入式"],
+    tasks: [
+      "编写 GPIO 初始化代码（位运算配置寄存器）",
+      "实现 LED 闪烁（延时循环 + 位操作）",
+      "实现 PWM 呼吸灯效果（定时器比较值渐变）",
+      "添加按键输入检测与消抖（GPIO 输入 + 延时）",
+      "按键切换呼吸/闪烁双模式，验证完整交互",
+    ],
+  },
+];
 
 interface CourseMeta {
   course_id: string;
@@ -55,6 +97,36 @@ const CrossDisciplineView: React.FC = () => {
   const [target, setTarget] = useState<string>("kp_s05");
   const [chain, setChain] = useState<ChainResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({});
+  const [completedProjects, setCompletedProjects] = useState<
+    Record<string, boolean>
+  >({});
+  const studentId = useAppStore((s) => s.studentId);
+
+  const handleCompleteProject = (p: (typeof PROJECTS)[number]) => {
+    const allDone = p.tasks.every((_, i) => checkedTasks[`${p.id}_${i}`]);
+    if (!allDone) {
+      message.warning("请先完成全部实战任务再提交");
+      return;
+    }
+    setCompletedProjects((prev) => ({ ...prev, [p.id]: true }));
+    message.success(`已完成跨学科实战项目：${p.title}`);
+    // 完成度采集（试点数据分析）
+    if (studentId) {
+      learningDataApi
+        .submitExperiment({
+          student_id: studentId,
+          experiment_type: "cross_project",
+          action: "complete",
+          detail: {
+            project_id: p.id,
+            title: p.title,
+            courses: p.courses,
+          },
+        })
+        .catch(() => {});
+    }
+  };
 
   useEffect(() => {
     pathApi
@@ -340,6 +412,72 @@ const CrossDisciplineView: React.FC = () => {
             ③ STM32
             综合应用两门基础学科，构成"新工科计算机×电子信息"跨学科学习闭环。
           </p>
+        </div>
+      </Card>
+
+      {/* 跨学科综合实战项目（AIC 创新点：链路落地实践） */}
+      <Card size="small" title="🧭 跨学科综合实战项目">
+        <div className="space-y-4">
+          {PROJECTS.map((p) => {
+            const isDone = completedProjects[p.id];
+            return (
+              <div
+                key={p.id}
+                className={`rounded-lg border p-4 ${
+                  isDone ? "border-green-200 bg-green-50/40" : "border-gray-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium text-gray-800">{p.title}</div>
+                  <div className="flex gap-1">
+                    {p.courses.map((c) => (
+                      <Tag
+                        key={c}
+                        style={{ fontSize: 11 }}
+                        color={
+                          c === "C语言"
+                            ? "blue"
+                            : c === "电路分析"
+                              ? "orange"
+                              : "green"
+                        }
+                      >
+                        {c}
+                      </Tag>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">{p.description}</p>
+                <div className="space-y-1.5 mb-3">
+                  {p.tasks.map((t, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-gray-600 bg-white rounded-lg p-2 border border-gray-100"
+                    >
+                      <Checkbox
+                        checked={!!checkedTasks[`${p.id}_${i}`]}
+                        onChange={(e) =>
+                          setCheckedTasks((prev) => ({
+                            ...prev,
+                            [`${p.id}_${i}`]: e.target.checked,
+                          }))
+                        }
+                      />
+                      <span>{t}</span>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  size="small"
+                  type="primary"
+                  disabled={isDone}
+                  onClick={() => handleCompleteProject(p)}
+                >
+                  {isDone ? "已完成 ✓" : "完成实战项目"}
+                </Button>
+              </div>
+            );
+          })}
         </div>
       </Card>
     </div>

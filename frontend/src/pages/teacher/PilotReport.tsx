@@ -9,6 +9,8 @@ import {
   Segmented,
   Spin,
   Empty,
+  Button,
+  message,
 } from "antd";
 import {
   TeamOutlined,
@@ -16,6 +18,7 @@ import {
   ExperimentOutlined,
   BarChartOutlined,
   RiseOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import { teacherApi } from "../../services/api";
 
@@ -82,6 +85,28 @@ const PilotReport: React.FC = () => {
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [days]);
+
+  // 导出 Markdown 报告（参赛文档素材）
+  const handleExport = async () => {
+    try {
+      const res = await teacherApi.getPilotReport(days, "markdown");
+      const md = res.data.markdown;
+      if (!md) {
+        message.warning("暂无报告内容可导出");
+        return;
+      }
+      const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `LearnLab试点报告_${days}天_${new Date().toISOString().slice(0, 10)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      message.success("报告已导出（Markdown）");
+    } catch {
+      message.error("导出失败");
+    }
+  };
 
   if (loading) {
     return (
@@ -152,15 +177,20 @@ const PilotReport: React.FC = () => {
             AIC 应用效果验证数据源：学习行为 / 测验成绩 / 实验参与 / 功能使用
           </p>
         </div>
-        <Segmented
-          options={[
-            { label: "7天", value: 7 },
-            { label: "14天", value: 14 },
-            { label: "30天", value: 30 },
-          ]}
-          value={days}
-          onChange={(v) => setDays(v as number)}
-        />
+        <div className="flex items-center gap-3">
+          <Button icon={<DownloadOutlined />} onClick={handleExport}>
+            导出报告(Markdown)
+          </Button>
+          <Segmented
+            options={[
+              { label: "7天", value: 7 },
+              { label: "14天", value: 14 },
+              { label: "30天", value: 30 },
+            ]}
+            value={days}
+            onChange={(v) => setDays(v as number)}
+          />
+        </div>
       </div>
 
       {/* 统计卡片 */}

@@ -127,8 +127,26 @@ def main():
         if "{" in path:
             SKIP.append(f"{method} {path}")
             continue
-        # LLM 重依赖接口（真实调用会烧额度且慢；TestClient mock 层已单独验证）
-        if path in ("/api/v1/knowledge-graph/build",):
+        # LLM 重依赖接口（真实调用会烧额度且慢/不稳定；TestClient mock 层已单独验证）
+        LLM_DEPENDENT = (
+            "/api/v1/knowledge-graph/build",
+            "/api/v1/project-decomposer/decompose",
+            "/api/v1/role-matcher/match",
+            "/api/v1/role-matcher/recommend",
+            "/api/v1/collaboration-supervisor/report",
+            "/api/v1/result-evaluator/",
+            "/api/v1/error-catcher/analyze",
+            "/api/v1/error-catcher/catch-error",
+            "/api/v1/error-catcher/analyze-misconception",
+            "/api/v1/error-catcher/validate-code",
+            "/api/v1/misconception-tracer/",
+            "/api/v1/ppt/generate",
+            "/api/v1/image/generate",
+            "/api/v1/ocr/",
+            "/api/v1/tutor/ask",
+            "/api/v1/teaching-assist/",
+        )
+        if any(path.startswith(p) for p in LLM_DEPENDENT):
             SKIP.append(f"{method} {path}（LLM依赖，已单独验证）")
             continue
         if method == "GET":

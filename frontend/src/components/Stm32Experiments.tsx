@@ -8,11 +8,13 @@ import {
   Spin,
   Empty,
   Collapse,
+  Divider,
 } from "antd";
 import {
   ExperimentOutlined,
   CheckCircleOutlined,
   BulbOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import { stm32Api, learningDataApi } from "../services/api";
 import { useAppStore } from "../store";
@@ -57,10 +59,18 @@ const Stm32Experiments: React.FC<Stm32ExperimentsProps> = ({ kpId }) => {
         if (ignore) return;
         const data = res.data.data;
         const exps = (data.experiments || []) as unknown as Experiment[];
+        const allKps = (data.knowledge_points || []) as unknown as Array<{
+          id: number;
+          parent_id: number | null;
+        }>;
         // kp_id（kp_s02）→ 数字 id（knowledge_tree 中实验的 knowledge_id 为数字）
         const numId = parseInt(String(kpId).replace("kp_s", ""), 10);
+        // 当前知识点实验 + 子知识点实验（父级汇总展示）
+        const childIds = allKps
+          .filter((k) => k.parent_id === numId)
+          .map((k) => k.id);
         const related = exps.filter(
-          (e) => e.knowledge_id === numId || e.knowledge_id === numId - 0,
+          (e) => e.knowledge_id === numId || childIds.includes(e.knowledge_id),
         );
         setExperiments(related);
       })
@@ -99,6 +109,59 @@ const Stm32Experiments: React.FC<Stm32ExperimentsProps> = ({ kpId }) => {
         })
         .catch(() => {});
     }
+  };
+
+  // 生成实验报告（Markdown）
+  const handleGenerateReport = (exp: Experiment) => {
+    const date = new Date().toISOString().slice(0, 10);
+    const expSteps = exp.steps || [];
+    const lines = [
+      "# STM32 实验报告",
+      "",
+      `**实验名称**：${exp.title}`,
+      `**实验日期**：${date}`,
+      `**难度等级**：${exp.difficulty}`,
+      "",
+      "## 一、实验目标",
+      exp.objective,
+      "",
+    ];
+    if (exp.components && exp.components.length > 0) {
+      lines.push(
+        "## 二、所需元件",
+        "",
+        exp.components.map((c) => `- ${c}`).join("\n"),
+        "",
+      );
+    }
+    if (expSteps.length > 0) {
+      lines.push("## 三、实验步骤", "");
+      expSteps.forEach((s) => {
+        lines.push(`### ${s.step}. ${s.action}`);
+        if (s.detail) lines.push("", `\`${s.detail}\``);
+        lines.push("");
+      });
+    }
+    if (exp.principle) {
+      lines.push("## 四、实验原理", "", exp.principle, "");
+    }
+    lines.push(
+      "## 五、实验现象与结果",
+      "",
+      "（记录你观察到的现象与调试过程）",
+      "",
+    );
+    lines.push("## 六、实验心得", "", "（请写下你在本实验中的收获与思考）", "");
+    const md = lines.join("\n");
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `STM32实验报告_${exp.title}_${date}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success("实验报告已生成并下载");
   };
 
   if (loading) {
@@ -234,7 +297,7 @@ const Stm32Experiments: React.FC<Stm32ExperimentsProps> = ({ kpId }) => {
               />
             )}
 
-            {/* 提交完成 */}
+            {/* 提交完成 + 报告生成 */}
             <div className="flex items-center gap-2">
               <Button
                 size="small"
@@ -249,12 +312,28 @@ const Stm32Experiments: React.FC<Stm32ExperimentsProps> = ({ kpId }) => {
               >
                 {isDone ? "已完成 ✓" : allDone ? "提交实验完成" : "标记完成"}
               </Button>
+              <Button
+                size="small"
+                icon={<DownloadOutlined />}
+                onClick={() => handleGenerateReport(exp)}
+              >
+                生成实验报告
+              </Button>
               {expSteps.length > 0 && !allDone && !isDone && (
                 <span className="text-xs text-slate-400">
                   勾选全部步骤后可提交
                 </span>
               )}
             </div>
+            {isDone && (
+              <>
+                <Divider style={{ margin: "12px 0" }} />
+                <div className="text-xs text-slate-400">
+                  ✅
+                  实验已完成并记录，可点击「生成实验报告」导出实验记录用于课程提交。
+                </div>
+              </>
+            )}
           </Card>
         );
       })}

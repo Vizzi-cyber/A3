@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Card, Row, Col, Typography, Table, Tag, Empty, Spin } from "antd";
+import {
+  Card,
+  Row,
+  Col,
+  Typography,
+  Table,
+  Tag,
+  Empty,
+  Spin,
+  Statistic,
+  Segmented,
+} from "antd";
 import {
   BarChart,
   Bar,
@@ -10,133 +21,87 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { useAppStore } from "../../store";
 import { teacherApi } from "../../services/api";
 
-interface StudentSummary {
-  student_id: string;
-  username: string;
-  total_points: number;
-  trend_state: string;
-  trend_factor: number;
+interface ClassRow {
+  class_id: string;
+  student_count: number;
+  avg_score: number;
+  total_hours: number;
+  avg_records_per_student: number;
+  completed_kps: number;
 }
 
+interface ClassMeta {
+  class_id: string;
+  student_count: number;
+  avg_score: number;
+  avg_points: number;
+  total_hours: number;
+}
+
+/**
+ * 班级对比（AIC 试点"实验组 vs 对照组"数据源）
+ * 展示各班级的人数/平均分/学习时长/活跃度，支持时间范围切换
+ */
 const ClassComparison: React.FC = () => {
-  const [students, setStudents] = useState<StudentSummary[]>([]);
-  const [overview, setOverview] = useState<Record<string, any>>({});
+  const [days, setDays] = useState(30);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [meta, setMeta] = useState<ClassMeta[]>([]);
   const [loading, setLoading] = useState(false);
-  const userInfo = useAppStore((s) => s.userInfo);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [studentsRes, overviewRes] = await Promise.all([
-          teacherApi.getStudents().catch(() => null),
-          teacherApi.getOverview().catch(() => null),
-        ]);
-        if (studentsRes?.data?.students) {
-          setStudents(studentsRes.data.students);
-        }
-        if (overviewRes?.data?.overview) {
-          setOverview(overviewRes.data.overview);
-        }
-      } catch {
-        setStudents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (userInfo?.role === "teacher" || userInfo?.role === "admin") {
-      fetchData();
-    }
-  }, [userInfo]);
+    setLoading(true);
+    Promise.all([
+      teacherApi.getClassComparison(days).catch(() => null),
+      teacherApi.getClasses().catch(() => null),
+    ])
+      .then(([cmpRes, metaRes]) => {
+        setClasses(cmpRes?.data?.classes || []);
+        setMeta(metaRes?.data?.classes || []);
+      })
+      .finally(() => setLoading(false));
+  }, [days]);
 
-  // 基于真实学生数据生成对比图表
-  const chartData =
-    students.length > 0
-      ? [
-          {
-            name: "全部学生",
-            平均积分: Math.round(
-              students.reduce((s, st) => s + st.total_points, 0) /
-                students.length,
-            ),
-            学生人数: students.length,
-          },
-          {
-            name: "上升趋势",
-            平均积分: Math.round(
-              students
-                .filter((s) => s.trend_state === "growth")
-                .reduce((s, st) => s + st.total_points, 0) /
-                Math.max(
-                  1,
-                  students.filter((s) => s.trend_state === "growth").length,
-                ),
-            ),
-            学生人数: students.filter((s) => s.trend_state === "growth").length,
-          },
-          {
-            name: "预警状态",
-            平均积分: Math.round(
-              students
-                .filter((s) => s.trend_state === "warning")
-                .reduce((s, st) => s + st.total_points, 0) /
-                Math.max(
-                  1,
-                  students.filter((s) => s.trend_state === "warning").length,
-                ),
-            ),
-            学生人数: students.filter((s) => s.trend_state === "warning")
-              .length,
-          },
-        ]
-      : [];
+  // 图表数据：平均分 / 人均学习时长
+  const chartData = classes.map((c) => ({
+    name: c.class_id,
+    平均分: c.avg_score,
+    人均记录数: c.avg_records_per_student,
+  }));
 
   const columns = [
     {
-      title: "学生",
-      dataIndex: "username",
-      key: "username",
-      render: (name: string) => <span className="font-medium">{name}</span>,
-    },
-    {
-      title: "积分",
-      dataIndex: "total_points",
-      key: "total_points",
-      render: (points: number) => (
-        <Tag className="rounded-full border-0" color="blue">
-          {points}分
-        </Tag>
+      title: "班级",
+      dataIndex: "class_id",
+      key: "class_id",
+      render: (v: string) => (
+        <span className="font-medium text-indigo-600">{v}</span>
       ),
     },
+    { title: "学生人数", dataIndex: "student_count", key: "student_count" },
     {
-      title: "趋势",
-      dataIndex: "trend_state",
-      key: "trend_state",
-      render: (state: string) => (
-        <Tag
-          className="rounded-full border-0"
-          color={
-            state === "growth"
-              ? "success"
-              : state === "warning"
-                ? "warning"
-                : state === "decline"
-                  ? "error"
-                  : "default"
-          }
-        >
-          {state === "growth"
-            ? "上升"
-            : state === "warning"
-              ? "预警"
-              : state === "decline"
-                ? "下滑"
-                : "稳定"}
-        </Tag>
-      ),
+      title: "平均分",
+      dataIndex: "avg_score",
+      key: "avg_score",
+      render: (v: number) => <Tag color="blue">{v} 分</Tag>,
+    },
+    {
+      title: "学习时长(h)",
+      dataIndex: "total_hours",
+      key: "total_hours",
+      render: (v: number) => <span>{v.toFixed(1)}</span>,
+    },
+    {
+      title: "人均学习记录",
+      dataIndex: "avg_records_per_student",
+      key: "avg_records_per_student",
+    },
+    {
+      title: "完成知识点",
+      dataIndex: "completed_kps",
+      key: "completed_kps",
+      render: (v: number) => <Tag color="green">{v} 个</Tag>,
     },
   ];
 
@@ -151,98 +116,101 @@ const ClassComparison: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Typography.Title level={4} className="!m-0">
-          班级对比
-        </Typography.Title>
+        <div>
+          <Typography.Title level={4} className="!m-0">
+            班级对比
+          </Typography.Title>
+          <Typography.Text type="secondary" className="text-sm">
+            各班级学习表现对比（试点实验组/对照组数据源）
+          </Typography.Text>
+        </div>
+        <Segmented
+          options={[
+            { label: "7天", value: 7 },
+            { label: "30天", value: 30 },
+            { label: "90天", value: 90 },
+          ]}
+          value={days}
+          onChange={(v) => setDays(v as number)}
+        />
       </div>
 
-      {students.length === 0 ? (
-        <Card className="rounded-2xl border-0 shadow-sm">
-          <Empty description="暂无学生数据" />
-        </Card>
+      {classes.length === 0 ? (
+        <Empty description="暂无班级数据（请先在数据库中为学生分配班级）" />
       ) : (
         <>
-          <Row gutter={[20, 20]}>
-            <Col xs={24} lg={14}>
-              <Card
-                className="rounded-2xl border-0 shadow-sm"
-                title="学生趋势对比"
-              >
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fill: "#64748b" }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fill: "#64748b" }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: 12,
-                          border: "none",
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                        }}
-                      />
-                      <Legend />
-                      <Bar
-                        dataKey="平均积分"
-                        fill="#0052ff"
-                        radius={[8, 8, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="学生人数"
-                        fill="#10b981"
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            </Col>
-
-            <Col xs={24} lg={10}>
-              <Card className="rounded-2xl border-0 shadow-sm" title="学生列表">
-                <Table
-                  columns={columns}
-                  dataSource={students.slice(0, 10)}
-                  pagination={false}
-                  size="small"
-                  rowKey="student_id"
-                />
-              </Card>
-            </Col>
+          {/* 班级概览卡片 */}
+          <Row gutter={16}>
+            {meta.map((c) => (
+              <Col span={8} key={c.class_id}>
+                <Card size="small">
+                  <Statistic
+                    title={c.class_id}
+                    value={c.student_count}
+                    suffix="人"
+                  />
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div>
+                      <div className="text-gray-400">平均分</div>
+                      <div className="font-medium text-indigo-600">
+                        {c.avg_score}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">平均积分</div>
+                      <div className="font-medium">{c.avg_points}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">总时长(h)</div>
+                      <div className="font-medium">{c.total_hours}</div>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+            ))}
           </Row>
 
-          <Card className="rounded-2xl border-0 shadow-sm" title="班级分析">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                <div className="font-medium text-emerald-700 mb-2">
-                  总学生数
-                </div>
-                <div className="text-2xl font-bold text-emerald-600">
-                  {overview.total_students || students.length}
-                </div>
+          {/* 对比图表 */}
+          <Card size="small" title={`近 ${days} 天班级表现对比`}>
+            {chartData.length > 1 ? (
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} barSize={40}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar
+                      dataKey="平均分"
+                      fill="#6366f1"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="人均记录数"
+                      fill="#22c55e"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
-                <div className="font-medium text-amber-700 mb-2">平均分</div>
-                <div className="text-2xl font-bold text-amber-600">
-                  {overview.avg_score || "-"}
-                </div>
-              </div>
-              <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
-                <div className="font-medium text-blue-700 mb-2">活跃学生</div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {overview.active_students || 0}
-                </div>
-              </div>
-            </div>
+            ) : (
+              <Empty
+                description="至少需要 2 个班级才能对比"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
+          </Card>
+
+          {/* 明细表 */}
+          <Card size="small" title="班级明细">
+            <Table
+              dataSource={classes}
+              columns={columns}
+              rowKey="class_id"
+              size="small"
+              pagination={false}
+            />
           </Card>
         </>
       )}
