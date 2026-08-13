@@ -304,6 +304,7 @@ class DAGPathPlanner:
             "type": "adaptive",
             "topics": [k["name"] for k in kps],
             "kp_ids": [k["kp_id"] for k in kps],
+            "courses": list(dict.fromkeys(k.get("course", "") for k in kps if k.get("course"))),
             "hours": total_hours,
             "criteria": f"完成本阶段 {len(kps)} 个知识点的学习，预计耗时 {total_hours} 小时",
             "resources": unique_tags,
@@ -358,6 +359,7 @@ class DAGPathPlanner:
             kp_costs.append({
                 "kp_id": kp_id,
                 "name": kp.get("name", kp_id),
+                "course": kp.get("course", ""),
                 "hours": round(cost, 1),
                 "difficulty": kp.get("difficulty", 3),
                 "tags": kp.get("tags", []),

@@ -87,3 +87,7 @@ frontend/.pytest_cache/
 
 screenshots/
 *.zip
+
+# Playwright local config & AIC test screenshots
+frontend/playwright.config.local.ts
+frontend/test-screenshots/

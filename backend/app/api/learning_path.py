@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel, LearningRecordModel
 from ..models.student import StudentProfileModel
+from ..models.course import CourseModel
 from ..algorithms import DAGPathPlanner
 from ..agents import PathPlannerAgent
 from .auth import get_current_student_id, require_auth
@@ -432,3 +433,118 @@ async def get_dependency_chain(target_kp_id: str, db: Session = Depends(get_db),
         "dependency_chain": chain,
         "chain_length": len(chain),
     }
+
+
+# ---------- 跨学科学习链路（AIC 算法创新赛 · AI+学科交叉） ----------
+
+@router.get("/courses")
+async def list_courses(db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """学科课程元数据列表（含跨课程知识关联统计，支撑学科交叉定位）"""
+    courses = db.query(CourseModel).all()
+    kps = db.query(KnowledgePointModel).all()
+
+    # 跨课程关联统计：目标课程内有多少知识点引用了其他课程的前置
+    cross_stats: Dict[str, dict] = {}
+    for kp in kps:
+        prereqs = kp.prerequisites or []
+        cross = [p for p in prereqs if p[:3] == "kp_" and p[3] != kp.kp_id[3]]
+        if cross:
+            stat = cross_stats.setdefault(kp.course, {"cross_count": 0, "cross_links": []})
+            stat["cross_count"] += len(cross)
+            stat["cross_links"].append({"kp_id": kp.kp_id, "name": kp.name, "prerequisites": cross})
+
+    result = []
+    for c in courses:
+        stat = cross_stats.get(c.course_id, {"cross_count": 0, "cross_links": []})
+        result.append({
+            "course_id": c.course_id,
+            "name": c.name,
+            "discipline": c.discipline,
+            "core_phases": c.core_phases or [],
+            "description": c.description,
+            "icon": c.icon,
+            "color": c.color,
+            "linked_courses": c.linked_courses or [],
+            "cross_count": stat["cross_count"],
+            "cross_links": stat["cross_links"],
+        })
+    return {"status": "success", "data": result}
+
+
+class CrossDisciplinePathRequest(BaseModel):
+    """跨学科综合路径请求"""
+    student_id: str
+    target_kp_id: str          # 跨学科目标知识点（如 kp_s05 定时器与PWM）
+    mastery_map: Optional[Dict[str, float]] = None
+
+
+@router.post("/cross-discipline")
+async def generate_cross_discipline_path(
+    request: CrossDisciplinePathRequest,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
+    """跨学科综合学习路径：基于跨课程知识关联 DAG 生成路径
+
+    核心价值：目标知识点（如 STM32 定时器PWM）的前置依赖链可跨越
+    C语言（位运算/指针）与电路分析（电压波形）两门课程，
+    体现"编程思维 → 电路建模 → 嵌入式实现"的跨学科学习链路。
+    """
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot generate path for other student")
+
+    kps = db.query(KnowledgePointModel).all()
+    if not kps:
+        raise HTTPException(status_code=400, detail="No knowledge points available")
+
+    planner = DAGPathPlanner()
+    planner.build_graph([
+        {
+            "kp_id": k.kp_id,
+            "name": k.name,
+            "subject": k.subject,
+            "course": k.course,
+            "difficulty": k.difficulty,
+            "prerequisites": k.prerequisites or [],
+            "description": k.description,
+            "tags": k.tags,
+        }
+        for k in kps
+    ])
+
+    cycles = planner.detect_cycles()
+    if cycles:
+        raise HTTPException(status_code=400, detail=f"Knowledge graph contains cycles: {cycles}")
+
+    profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
+    profile_dict = {
+        "weak_areas": profile.weak_areas or [] if profile else [],
+        "learning_tempo": profile.learning_tempo or {} if profile else {},
+        "preference": getattr(profile, "preference", None) or "balanced",
+    }
+
+    result = planner.plan_path(
+        student_id=request.student_id,
+        target_kp_id=request.target_kp_id,
+        mastery_map=request.mastery_map or {},
+        profile=profile_dict,
+    )
+    if result.get("status") != "success":
+        raise HTTPException(status_code=400, detail=result.get("message", "路径生成失败"))
+
+    # 跨学科统计：按课程统计路径中的知识点分布
+    course_stats: Dict[str, int] = {}
+    for stage in result.get("stages", []):
+        for kp_id in stage.get("kp_ids", []):
+            kp = next((k for k in kps if k.kp_id == kp_id), None)
+            if kp:
+                course_stats[kp.course] = course_stats.get(kp.course, 0) + 1
+
+    target = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == request.target_kp_id).first()
+    result["cross_discipline"] = {
+        "target_course": target.course if target else None,
+        "course_stats": course_stats,
+        "cross_courses": sorted(course_stats.keys()),
+        "is_cross_discipline": len(course_stats) > 1,
+    }
+    return {"status": "success", "data": result}

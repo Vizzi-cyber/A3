@@ -112,13 +112,14 @@ _DEFAULT_TIMEOUT = 60.0  # 秒
 
 
 class OpenAICompatibleLLM(BaseLLM):
-    """OpenAI 兼容接口（智谱AI 等）"""
+    """OpenAI 兼容接口（智谱AI/DeepSeek/讯飞星火 等）"""
 
     def __init__(
         self,
         api_key: str,
         base_url: str,
         model: str,
+        provider: str = "openai",
         timeout: float = _DEFAULT_TIMEOUT,
     ):
         if AsyncOpenAI is None:
@@ -127,6 +128,7 @@ class OpenAICompatibleLLM(BaseLLM):
             raise ValueError(f"API key is required for model {model}")
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
         self.model = model
+        self.provider = provider
         self._is_bigmodel = "bigmodel" in self.client.base_url.host
 
     def _log_llm_call(self, provider: str, model: str, prompt_tokens: int, completion_tokens: int,
@@ -171,7 +173,7 @@ class OpenAICompatibleLLM(BaseLLM):
                 duration_ms = (time.time() - start) * 1000
                 usage = getattr(response, 'usage', None)
                 asyncio.create_task(asyncio.to_thread(
-                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    self._log_llm_call, self.provider, self.model,
                     getattr(usage, 'prompt_tokens', 0) if usage else 0,
                     getattr(usage, 'completion_tokens', 0) if usage else 0,
                     duration_ms, True,
@@ -188,7 +190,7 @@ class OpenAICompatibleLLM(BaseLLM):
                     await asyncio.sleep(wait)
                     continue
                 asyncio.create_task(asyncio.to_thread(
-                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    self._log_llm_call, self.provider, self.model,
                     0, 0, duration_ms, False, str(e)[:500],
                 ))
                 raise
@@ -223,7 +225,7 @@ class OpenAICompatibleLLM(BaseLLM):
                         yield content
                 duration_ms = (time.time() - start) * 1000
                 asyncio.create_task(asyncio.to_thread(
-                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    self._log_llm_call, self.provider, self.model,
                     0, 0, duration_ms, True,
                 ))
                 return
@@ -238,26 +240,83 @@ class OpenAICompatibleLLM(BaseLLM):
                     await asyncio.sleep(wait)
                     continue
                 asyncio.create_task(asyncio.to_thread(
-                    self._log_llm_call, "bigmodel" if self._is_bigmodel else "openai", self.model,
+                    self._log_llm_call, self.provider, self.model,
                     0, 0, duration_ms, False, str(e)[:500],
                 ))
                 raise
         raise last_exception
 
 
+class FailoverLLM(BaseLLM):
+    """多提供商自动降级包装器：主提供商调用失败后，自动切换到备用提供商重试。
+
+    使用场景：单一 LLM 服务商故障/限流/Key 失效时，系统不中断，自动降级到备用模型。
+    每个提供商内部仍有指数退避重试，降级链只在其彻底失败后触发。
+    """
+
+    def __init__(self, primary: BaseLLM, fallbacks: List[BaseLLM]):
+        self._providers = [primary] + fallbacks
+
+    @property
+    def model(self) -> str:
+        return self._providers[0].model
+
+    @property
+    def provider(self) -> str:
+        return self._providers[0].provider
+
+    def __repr__(self):
+        chain = " -> ".join(f"{llm.provider}({llm.model})" for llm in self._providers)
+        return f"FailoverLLM[{chain}]"
+
+    async def ainvoke(self, messages, temperature=0.7, max_tokens=1024, thinking: bool = False) -> str:
+        last_error = None
+        for llm in self._providers:
+            try:
+                return await llm.ainvoke(messages, temperature, max_tokens, thinking)
+            except Exception as e:
+                last_error = e
+                logger.warning(f"LLM provider {llm.provider}({llm.model}) 调用失败，自动降级: {str(e)[:200]}")
+        raise last_error
+
+    async def astream(self, messages, temperature=0.7, max_tokens=1024, thinking: bool = False) -> AsyncIterator[str]:
+        last_error = None
+        for llm in self._providers:
+            try:
+                async for chunk in llm.astream(messages, temperature, max_tokens, thinking):
+                    yield chunk
+                return
+            except Exception as e:
+                last_error = e
+                logger.warning(f"LLM provider {llm.provider}({llm.model}) 流式调用失败，自动降级: {str(e)[:200]}")
+        raise last_error
+
+
 class LLMFactory:
-    """大模型工厂 — 当前使用讯飞星火"""
+    """大模型工厂 — 支持多家提供商注册与自动降级"""
 
     _cache: Dict[str, BaseLLM] = {}
 
     # provider -> (settings_api_key, settings_base_url, settings_model)
     _PROVIDER_MAP: Dict[str, tuple] = {
         "spark":     ("SPARK_API_KEY",     "SPARK_HTTP_BASE_URL", "SPARK_MODEL"),
+        "deepseek":  ("DEEPSEEK_API_KEY",  "DEEPSEEK_BASE_URL",  "DEEPSEEK_MODEL"),
+        "bigmodel":  ("BIGMODEL_API_KEY",  "BIGMODEL_BASE_URL",  "BIGMODEL_MODEL"),
+        "openai":    ("OPENAI_API_KEY",    "OPENAI_BASE_URL",    "OPENAI_MODEL"),
+        "mimo":      ("MIMO_API_KEY",      "MIMO_BASE_URL",      "MIMO_MODEL"),
     }
 
     @classmethod
+    def is_configured(cls, provider: str) -> bool:
+        """该提供商是否已配置 API Key（未配置的不会进入降级链）"""
+        mapping = cls._PROVIDER_MAP.get(provider)
+        if not mapping:
+            return False
+        return bool(getattr(settings, mapping[0], None))
+
+    @classmethod
     def get_llm(cls, provider: Optional[str] = None) -> BaseLLM:
-        """获取指定提供商的 LLM 实例"""
+        """获取指定提供商的 LLM 实例（不做降级，显式指定提供商时使用）"""
         provider = (provider or settings.DEFAULT_LLM_PROVIDER).lower().strip()
 
         if provider in cls._cache:
@@ -276,6 +335,7 @@ class LLMFactory:
             api_key=api_key,
             base_url=getattr(settings, base_url_attr),
             model=getattr(settings, model_attr),
+            provider=provider,
         )
 
         cls._cache[provider] = llm
@@ -284,7 +344,50 @@ class LLMFactory:
 
     @classmethod
     def get_default_llm(cls) -> BaseLLM:
-        return cls.get_llm(settings.DEFAULT_LLM_PROVIDER)
+        """获取默认 LLM 实例（自动降级链：主提供商 + 所有已配置 Key 的备用提供商）"""
+        primary_name = (settings.DEFAULT_LLM_PROVIDER or "spark").lower().strip()
+        if primary_name not in cls._PROVIDER_MAP:
+            logger.warning(f"DEFAULT_LLM_PROVIDER={primary_name} 未注册，回退到 spark")
+            primary_name = "spark"
+
+        if not cls.is_configured(primary_name):
+            # 主提供商未配置 Key 时，自动选择第一个已配置的提供商
+            configured = [n for n in cls._PROVIDER_MAP if cls.is_configured(n)]
+            if not configured:
+                raise ValueError(
+                    "未配置任何 LLM API Key。请在 .env 中至少配置一项："
+                    "SPARK_API_KEY / DEEPSEEK_API_KEY / BIGMODEL_API_KEY / OPENAI_API_KEY / MIMO_API_KEY"
+                )
+            logger.warning(f"主提供商 {primary_name} 未配置 API Key，自动切换为 {configured[0]}")
+            primary_name = configured[0]
+
+        cache_key = f"failover:{primary_name}"
+        if cache_key in cls._cache:
+            return cls._cache[cache_key]
+
+        primary = cls.get_llm(primary_name)
+        fallbacks: List[BaseLLM] = []
+        for name in cls._PROVIDER_MAP:
+            if name == primary_name:
+                continue
+            if not cls.is_configured(name):
+                logger.info(f"LLM 备用提供商 {name} 未配置 API Key，跳过降级链")
+                continue
+            try:
+                fallbacks.append(cls.get_llm(name))
+            except Exception as e:
+                logger.warning(f"备用提供商 {name} 初始化失败: {e}")
+
+        llm: BaseLLM
+        if fallbacks:
+            llm = FailoverLLM(primary, fallbacks)
+            logger.info(f"LLM 降级链就绪: {llm}")
+        else:
+            llm = primary
+            logger.info(f"LLM 单提供商模式（无备用）: {primary_name}({primary.model})")
+
+        cls._cache[cache_key] = llm
+        return llm
 
     @classmethod
     def clear_cache(cls):
@@ -292,4 +395,4 @@ class LLMFactory:
 
 
 # 便捷导出
-__all__ = ["BaseLLM", "LLMFactory", "OpenAICompatibleLLM"]
+__all__ = ["BaseLLM", "LLMFactory", "OpenAICompatibleLLM", "FailoverLLM"]

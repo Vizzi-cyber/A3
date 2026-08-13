@@ -46,6 +46,7 @@ interface CircuitState {
   simulate: () => void;
   clearAll: () => void;
   loadPreset: (presetId: string) => void;
+  loadFault: (presetId: string, overrides: Record<string, number>) => void;
   undo: () => void;
   redo: () => void;
   saveToHistory: () => void;
@@ -55,7 +56,7 @@ const DIRECTION_CYCLE: Direction[] = ["right", "down", "left", "up"];
 
 // ─── Preset Circuit Definitions ───
 
-interface PresetComponent {
+export interface PresetComponent {
   id: string;
   type: ComponentType;
   position: Point;
@@ -63,11 +64,11 @@ interface PresetComponent {
   value: number;
 }
 
-interface PresetWire {
+export interface PresetWire {
   points: Point[];
 }
 
-interface PresetCircuit {
+export interface PresetCircuit {
   id: string;
   name: string;
   description: string;
@@ -75,7 +76,7 @@ interface PresetCircuit {
   wires: PresetWire[];
 }
 
-const PRESET_CIRCUITS: PresetCircuit[] = [
+export const PRESET_CIRCUITS: PresetCircuit[] = [
   {
     id: "voltage-divider",
     name: "分压电路",
@@ -488,6 +489,39 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       return {
         ...c,
         id: newId,
+        terminals: createTerminals(newId, c.type, c.position, c.direction),
+      };
+    });
+    const newWires: Wire[] = preset.wires.map((w) => ({
+      id: genId("W"),
+      points: w.points.map((p) => ({ ...p })),
+    }));
+    set({
+      components: newComponents,
+      wires: newWires,
+      selectedId: null,
+      simulationResult: null,
+      wirePoints: [],
+    });
+    get().saveToHistory();
+  },
+
+  // ─── Fault Experiment (故障实验) ───
+  // 加载故障电路：基于预设电路，用 overrides 覆盖指定元件的值模拟故障
+  // 例：loadFault("voltage-divider", { r2: 1e9 }) 将 r2 改为 1GΩ 模拟断路
+
+  loadFault: (presetId: string, overrides: Record<string, number>) => {
+    const preset = PRESET_CIRCUITS.find((p) => p.id === presetId);
+    if (!preset) return;
+    nextId = 1000;
+    const newComponents: CircuitComponent[] = preset.components.map((c) => {
+      const newId = genId(c.type[0].toUpperCase());
+      // 用原始 id 作为 override 键（r1/r2/v1/c1），在重命名前取值
+      const overrideValue = overrides[c.id];
+      return {
+        ...c,
+        id: newId,
+        value: overrideValue !== undefined ? overrideValue : c.value,
         terminals: createTerminals(newId, c.type, c.position, c.direction),
       };
     });

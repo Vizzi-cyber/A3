@@ -10,10 +10,12 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel, ResourceFeedbackModel
 from ..models.student import StudentProfileModel
 from ..models.gamification import PointsModel, AchievementModel, LeaderboardModel
+from ..models.experiment import ExperimentLogModel
 from ..services.gamification_service import award_points, maybe_unlock_achievement
 from ..services.path_adjustment_engine import maybe_check_path_adjustment
 from .auth import require_auth
@@ -29,6 +31,14 @@ class LearningRecordRequest(BaseModel):
     progress: float = Field(0.0, ge=0.0, le=1.0)
     score: Optional[float] = Field(None, ge=0.0, le=100.0)
     meta: Dict[str, Any] = {}
+
+
+class ExperimentLogRequest(BaseModel):
+    student_id: str
+    experiment_type: str = Field(..., max_length=64)  # circuit_simulate / circuit_fault / stm32_simulate
+    action: str = Field("run", max_length=64)          # run / diagnose / submit / complete
+    detail: Dict[str, Any] = {}
+    duration: int = Field(0, ge=0, le=86400)
 
 
 class QuizResultRequest(BaseModel):
@@ -256,3 +266,80 @@ async def submit_feedback(request: ResourceFeedbackRequest, db: Session = Depend
         ))
     db.commit()
     return {"status": "success"}
+
+
+# ---------- 实验行为日志（AIC 试点数据分析：实验参与度） ----------
+
+@router.post("/experiment")
+async def record_experiment(
+    request: ExperimentLogRequest,
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
+    """上报实验行为（电路仿真/故障诊断/STM32仿真）
+
+    experiment_type: circuit_simulate / circuit_fault / stm32_simulate
+    action: run（运行仿真）/ diagnose（故障诊断提交）/ complete（实验完成）
+    """
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot modify other student's data")
+    db.add(ExperimentLogModel(
+        student_id=request.student_id,
+        experiment_type=request.experiment_type,
+        action=request.action,
+        detail=request.detail,
+        duration=request.duration,
+    ))
+    db.commit()
+    return {"status": "success"}
+
+
+@router.get("/experiment-stats")
+async def get_experiment_stats(
+    student_id: Optional[str] = Query(None),
+    days: int = Query(7, ge=1, le=90),
+    db: Session = Depends(get_db),
+    _current: str = Depends(require_auth),
+):
+    """实验行为统计（试点数据分析：实验参与度）
+
+    - 不传 student_id：全班实验参与汇总（教师权限）
+    - 传 student_id：单个学生的实验参与明细（学生只能查自己）
+    """
+    # 权限：全班汇总或查看其他学生需教师权限
+    if not student_id or student_id != _current:
+        from ..models.user import UserModel
+        user = db.query(UserModel).filter(UserModel.student_id == _current).first()
+        if not user or user.role not in ("teacher", "admin"):
+            raise HTTPException(status_code=403, detail="教师权限不足")
+
+    from datetime import timedelta
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    q = db.query(
+        ExperimentLogModel.experiment_type,
+        ExperimentLogModel.action,
+        func.count().label("count"),
+    ).filter(ExperimentLogModel.created_at >= since)
+    if student_id:
+        q = q.filter(ExperimentLogModel.student_id == student_id)
+    rows = q.group_by(
+        ExperimentLogModel.experiment_type,
+        ExperimentLogModel.action,
+    ).all()
+
+    # 聚合为 类型 -> {action: count}
+    result: Dict[str, Any] = {}
+    total = 0
+    for r in rows:
+        entry = result.setdefault(r.experiment_type, {"total": 0, "actions": {}})
+        entry["actions"][r.action] = r.count
+        entry["total"] += r.count
+        total += r.count
+
+    return {
+        "status": "success",
+        "days": days,
+        "student_id": student_id,
+        "total_experiments": total,
+        "data": result,
+    }

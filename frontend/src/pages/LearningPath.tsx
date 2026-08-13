@@ -26,6 +26,7 @@ import {
   Modal,
   Tree,
   Pagination,
+  Collapse,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -67,6 +68,7 @@ import { StatusIcon } from "../components/StatusIcon";
 import AdjustmentLogPanel from "../components/AdjustmentLogPanel";
 import MarkdownViewer from "../components/MarkdownViewer";
 import MindmapView from "../components/MindmapView";
+import CrossDisciplineView from "../components/CrossDisciplineView";
 import {
   // StatusTag,
   statusColors,
@@ -307,6 +309,7 @@ const ResourceContentRenderer: React.FC<{ type: string; content: string }> = ({
 const LearningPathPage: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<PathNode | null>(null);
+  const [showCrossDiscipline, setShowCrossDiscipline] = useState(false);
   const [pathData, setPathData] = useState<Record<string, unknown> | null>(
     null,
   );
@@ -1101,6 +1104,31 @@ const LearningPathPage: React.FC = () => {
             strokeLinecap="round"
           />
         </div>
+      </Card>
+
+      {/* 跨学科学习链路（AIC AI+学科交叉） */}
+      <Card
+        className="rounded-2xl border border-purple-100"
+        styles={{ body: { padding: "12px 16px" } }}
+      >
+        <button
+          type="button"
+          className="w-full flex items-center gap-2 text-left text-slate-700 hover:text-purple-600 transition-colors cursor-pointer"
+          onClick={() => setShowCrossDiscipline(!showCrossDiscipline)}
+        >
+          <ApartmentOutlined className="text-purple-500" />
+          <span className="text-sm font-medium">
+            跨学科学习链路（编程思维 → 电路建模 → 嵌入式实现）
+          </span>
+          <span className="ml-auto text-xs text-gray-400">
+            {showCrossDiscipline ? "收起 ▲" : "展开 ▼"}
+          </span>
+        </button>
+        {showCrossDiscipline && (
+          <div className="mt-3">
+            <CrossDisciplineView />
+          </div>
+        )}
       </Card>
 
       {/* 艾宾浩斯复习提醒 */}

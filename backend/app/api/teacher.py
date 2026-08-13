@@ -2,9 +2,10 @@
 教师端API
 提供全班数据概览、学生管理、成绩分析等功能
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -702,3 +703,156 @@ async def get_learning_alerts(
         "high_risk": sum(1 for a in alerts if a["level"] == "high"),
         "medium_risk": sum(1 for a in alerts if a["level"] == "medium"),
     }
+
+
+# ---------- 试点数据分析报告（AIC 应用效果验证） ----------
+
+@router.get("/pilot-report")
+async def get_pilot_report(
+    days: int = Query(30, ge=1, le=90),
+    student_id: Optional[str] = Query(None, description="不传=全班汇总"),
+    db: Session = Depends(get_db),
+    _teacher: str = Depends(require_teacher),
+):
+    """试点数据分析报告（AIC"应用效果"评分项的验证数据源）
+
+    聚合五个维度：学习行为 / 测验成绩 / 掌握度趋势 / 实验参与 / 功能使用
+    输出可直接用于参赛文档的效果验证章节。
+    """
+    from datetime import timedelta, timezone
+    from ..models.experiment import ExperimentLogModel
+    from ..models.monitor import ApiMonitorModel
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # ---------- 1. 学习行为（learning_records） ----------
+    lq = db.query(
+        LearningRecordModel.student_id,
+        func.count().label("record_count"),
+        func.coalesce(func.sum(LearningRecordModel.duration), 0).label("total_duration"),
+    ).filter(LearningRecordModel.created_at >= since)
+    if student_id:
+        lq = lq.filter(LearningRecordModel.student_id == student_id)
+    lq = lq.group_by(LearningRecordModel.student_id)
+    learn_rows = lq.all()
+
+    # 知识点完成度
+    cq = db.query(
+        LearningRecordModel.student_id,
+        func.count(func.distinct(LearningRecordModel.kp_id)).label("kp_count"),
+    ).filter(
+        LearningRecordModel.created_at >= since,
+        LearningRecordModel.progress >= 0.8,
+    )
+    if student_id:
+        cq = cq.filter(LearningRecordModel.student_id == student_id)
+    cq = cq.group_by(LearningRecordModel.student_id)
+    complete_map = {r.student_id: r.kp_count for r in cq.all()}
+
+    # ---------- 2. 测验成绩（quiz_results） ----------
+    zq = db.query(
+        QuizResultModel.student_id,
+        func.count().label("quiz_count"),
+        func.avg(QuizResultModel.score).label("avg_score"),
+        func.max(QuizResultModel.score).label("max_score"),
+        func.min(QuizResultModel.score).label("min_score"),
+    ).filter(QuizResultModel.created_at >= since)
+    if student_id:
+        zq = zq.filter(QuizResultModel.student_id == student_id)
+    zq = zq.group_by(QuizResultModel.student_id)
+    quiz_map = {r.student_id: r for r in zq.all()}
+
+    # 前后测对比（全班）：前1/3 vs 后1/3 平均分
+    pre_post = None
+    if not student_id:
+        all_scores = db.query(QuizResultModel.score).filter(
+            QuizResultModel.created_at >= since
+        ).order_by(QuizResultModel.created_at.asc()).all()
+        n = len(all_scores)
+        if n >= 6:
+            third = n // 3
+            pre = sum(s[0] for s in all_scores[:third]) / third
+            post = sum(s[0] for s in all_scores[-third:]) / third
+            pre_post = {"pre_avg": round(pre, 1), "post_avg": round(post, 1),
+                        "improvement": round(post - pre, 1), "sample_size": n}
+
+    # ---------- 3. 掌握度趋势（student_trends） ----------
+    tq = db.query(
+        TrendDataModel.student_id,
+        TrendDataModel.trend_state,
+        func.count().label("count"),
+    ).filter(TrendDataModel.created_at >= since)
+    if student_id:
+        tq = tq.filter(TrendDataModel.student_id == student_id)
+    tq = tq.group_by(TrendDataModel.student_id, TrendDataModel.trend_state)
+    trend_map: Dict[str, int] = {}
+    for r in tq.all():
+        trend_map[r.trend_state] = trend_map.get(r.trend_state, 0) + r.count
+
+    # ---------- 4. 实验参与（experiment_logs） ----------
+    eq = db.query(
+        ExperimentLogModel.experiment_type,
+        func.count().label("count"),
+    ).filter(ExperimentLogModel.created_at >= since)
+    if student_id:
+        eq = eq.filter(ExperimentLogModel.student_id == student_id)
+    eq = eq.group_by(ExperimentLogModel.experiment_type)
+    experiment_map = {r.experiment_type: r.count for r in eq.all()}
+
+    # ---------- 5. 功能使用（api_monitor，仅登录用户行为） ----------
+    from .monitoring import _map_feature
+    fq = db.query(
+        ApiMonitorModel.endpoint,
+        func.count().label("count"),
+    ).filter(
+        ApiMonitorModel.created_at >= since,
+        ApiMonitorModel.student_id.isnot(None),
+    )
+    if student_id:
+        fq = fq.filter(ApiMonitorModel.student_id == student_id)
+    fq = fq.group_by(ApiMonitorModel.endpoint).all()
+    feature_map: Dict[str, int] = {}
+    for r in fq:
+        fname = _map_feature(r.endpoint)
+        feature_map[fname] = feature_map.get(fname, 0) + r.count
+    top_features = sorted(feature_map.items(), key=lambda x: -x[1])[:10]
+
+    # ---------- 汇总 ----------
+    students = []
+    for r in learn_rows:
+        q = quiz_map.get(r.student_id)
+        students.append({
+            "student_id": r.student_id,
+            "record_count": r.record_count,
+            "total_duration_sec": r.total_duration,
+            "total_duration_hours": round(r.total_duration / 3600, 1),
+            "completed_kps": complete_map.get(r.student_id, 0),
+            "quiz_count": q.quiz_count if q else 0,
+            "avg_score": round(q.avg_score, 1) if q and q.avg_score else 0,
+            "max_score": q.max_score if q else 0,
+        })
+    students.sort(key=lambda s: -s["total_duration_sec"])
+
+    total_duration = sum(s["total_duration_sec"] for s in students)
+    total_quiz = sum(s["quiz_count"] for s in students)
+    report = {
+        "status": "success",
+        "period_days": days,
+        "scope": "class" if not student_id else student_id,
+        "summary": {
+            "active_students": len(students),
+            "total_duration_hours": round(total_duration / 3600, 1),
+            "avg_daily_hours": round(total_duration / 3600 / max(days, 1), 2),
+            "total_records": sum(s["record_count"] for s in students),
+            "total_quizzes": total_quiz,
+            "avg_score": round(sum(s["avg_score"] for s in students) / max(len(students), 1), 1),
+            "total_experiments": sum(experiment_map.values()),
+            "completed_kps_total": sum(s["completed_kps"] for s in students),
+        },
+        "quiz_pre_post": pre_post,
+        "trend_distribution": trend_map,
+        "experiments": experiment_map,
+        "top_features": [{"feature": k, "count": v} for k, v in top_features],
+        "students": students,
+    }
+    return report

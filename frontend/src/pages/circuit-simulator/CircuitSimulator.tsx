@@ -5,9 +5,11 @@ import PropertiesPanel from "./PropertiesPanel";
 import ToolBar from "./ToolBar";
 import MeasurementOverlay from "./MeasurementOverlay";
 import AiAnalysisDialog from "./AiAnalysisDialog";
+import FaultExperimentDialog from "./FaultExperimentDialog";
 
 const CircuitSimulator: React.FC = () => {
   const [aiOpen, setAiOpen] = useState(false);
+  const [faultOpen, setFaultOpen] = useState(false);
 
   return (
     <div className="space-y-4 pb-8">
@@ -39,7 +41,10 @@ const CircuitSimulator: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <ToolBar onAiAnalysis={() => setAiOpen(true)} />
+      <ToolBar
+        onAiAnalysis={() => setAiOpen(true)}
+        onFaultExperiment={() => setFaultOpen(true)}
+      />
 
       {/* Main content */}
       <div
@@ -65,6 +70,12 @@ const CircuitSimulator: React.FC = () => {
 
       {/* AI Analysis Dialog */}
       <AiAnalysisDialog open={aiOpen} onClose={() => setAiOpen(false)} />
+
+      {/* Fault Experiment Dialog */}
+      <FaultExperimentDialog
+        open={faultOpen}
+        onClose={() => setFaultOpen(false)}
+      />
     </div>
   );
 };

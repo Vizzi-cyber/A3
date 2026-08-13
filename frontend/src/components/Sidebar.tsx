@@ -68,6 +68,11 @@ const teacherMenuItems = [
     label: "班级对比",
   },
   { key: "/teacher/reports", icon: <FileExcelOutlined />, label: "报告导出" },
+  {
+    key: "/teacher/pilot-report",
+    icon: <BarChartOutlined />,
+    label: "试点数据分析",
+  },
   { type: "divider" as const },
   { key: "/teacher/lesson-plan", icon: <BulbOutlined />, label: "AI智能备课" },
   {

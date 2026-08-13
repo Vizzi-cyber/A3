@@ -62,6 +62,7 @@ const LearningInsights = React.lazy(
   () => import("./pages/teacher/LearningInsights"),
 );
 const SmartQuiz = React.lazy(() => import("./pages/teacher/SmartQuiz"));
+const PilotReport = React.lazy(() => import("./pages/teacher/PilotReport"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -271,6 +272,14 @@ const PrivateLayout: React.FC = () => {
                   element={
                     <PageWrapper>
                       <ReportExport />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="/teacher/pilot-report"
+                  element={
+                    <PageWrapper>
+                      <PilotReport />
                     </PageWrapper>
                   }
                 />

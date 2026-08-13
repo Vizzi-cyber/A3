@@ -69,6 +69,26 @@ class Settings(BaseSettings):
     SPARK_HTTP_BASE_URL: str = "https://spark-api-open.xf-yun.com/v1"
     SPARK_MODEL: str = "pro-128k"
 
+    # DeepSeek 配置（OpenAI 兼容接口）
+    DEEPSEEK_API_KEY: Optional[str] = None
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+
+    # 智谱 GLM 配置（OpenAI 兼容接口）
+    BIGMODEL_API_KEY: Optional[str] = None
+    BIGMODEL_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4/"
+    BIGMODEL_MODEL: str = "glm-4.6v"
+
+    # OpenAI GPT 配置
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_MODEL: str = "gpt-4o"
+
+    # 小米 MiMo 配置（OpenAI 兼容接口）
+    MIMO_API_KEY: Optional[str] = None
+    MIMO_BASE_URL: str = "https://api.xiaomimimo.com/v1"
+    MIMO_MODEL: str = "mimo-v2.5"
+
     # 火山引擎视觉智能（文生图）配置
     VOLC_ACCESS_KEY: Optional[str] = None
     VOLC_SECRET_KEY: Optional[str] = None

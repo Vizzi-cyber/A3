@@ -203,6 +203,36 @@ export const pathApi = {
       "/learning-path/dag/generate",
       data,
     ),
+  getCourses: () =>
+    api.get<{
+      status: string;
+      data: Array<{
+        course_id: string;
+        name: string;
+        discipline: string;
+        core_phases: string[];
+        icon: string;
+        color: string;
+        cross_count: number;
+        linked_courses: { course: string; link: string }[];
+      }>;
+    }>("/learning-path/courses"),
+  crossDiscipline: (target_kp_id: string) =>
+    api.post<{
+      status: string;
+      data: {
+        dependency_chain: string[];
+        cross_discipline: {
+          target_course: string;
+          course_stats: Record<string, number>;
+          cross_courses: string[];
+          is_cross_discipline: boolean;
+        };
+      };
+    }>("/learning-path/cross-discipline", {
+      student_id: useAppStore.getState().studentId,
+      target_kp_id,
+    }),
 };
 
 // ---------- 智能辅导 ----------
@@ -727,6 +757,19 @@ export const learningDataApi = {
       quiz_id?: string;
       points_awarded?: number;
     }>("/learning-data/quiz", data),
+  submitExperiment: (data: {
+    student_id: string;
+    experiment_type: string;
+    action?: string;
+    detail?: Record<string, unknown>;
+    duration?: number;
+  }) => api.post<{ status: string }>("/learning-data/experiment", data),
+  getExperimentStats: (params: { student_id?: string; days?: number }) =>
+    api.get<{
+      status: string;
+      total_experiments: number;
+      data: Record<string, unknown>;
+    }>("/learning-data/experiment-stats", { params }),
 };
 
 // ---------- 反思与日志 ----------
@@ -847,6 +890,7 @@ export const knowledgeApi = {
         kp_id: string;
         name: string;
         subject: string;
+        course: string;
         difficulty: number;
         prerequisites: string[];
         tags: string[];
@@ -1253,6 +1297,40 @@ export const teacherApi = {
       weak_areas: Array<{ area: string; count: number }>;
     }>("/teacher/weak-points"),
 
+  getPilotReport: (days?: number) =>
+    api.get<{
+      status: string;
+      period_days: number;
+      summary: {
+        active_students: number;
+        total_duration_hours: number;
+        avg_daily_hours: number;
+        total_records: number;
+        total_quizzes: number;
+        avg_score: number;
+        total_experiments: number;
+        completed_kps_total: number;
+      };
+      quiz_pre_post: {
+        pre_avg: number;
+        post_avg: number;
+        improvement: number;
+        sample_size: number;
+      } | null;
+      trend_distribution: Record<string, number>;
+      experiments: Record<string, number>;
+      top_features: { feature: string; count: number }[];
+      students: Array<{
+        student_id: string;
+        record_count: number;
+        total_duration_hours: number;
+        completed_kps: number;
+        quiz_count: number;
+        avg_score: number;
+        max_score: number;
+      }>;
+    }>("/teacher/pilot-report", { params: { days: days || 30 } }),
+
   getExportRecords: () =>
     api.get<{
       status: string;
@@ -1499,11 +1577,16 @@ export const circuitApi = {
     branch_currents?: Record<string, number>;
     student_question?: string;
     student_level?: string;
+    is_diagnosis?: boolean;
+    fault_description?: string;
+    student_answer?: string;
+    expected_answer?: string;
   }) =>
     api.post<{
       status: string;
       analysis?: string;
       circuit_description?: string;
+      mode?: string;
     }>("/circuit-analysis/analyze", data),
 };
 

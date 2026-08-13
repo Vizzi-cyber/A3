@@ -13,7 +13,9 @@ import {
   Play,
   Square,
   Settings,
+  Bot,
 } from "lucide-react";
+import { Modal, Spin, message } from "antd";
 import ComponentPalette from "./ComponentPalette";
 import PropertyInspector from "./PropertyInspector";
 import CodeEditor from "./CodeEditor";
@@ -21,6 +23,8 @@ import { CircuitCanvasRenderer } from "./canvasRenderer";
 import { simulator } from "./simulationEngine";
 import { getComponentDef } from "./componentLibrary";
 import { circuitTemplates } from "./circuitTemplates";
+import { circuitApi, learningDataApi } from "../../services/api";
+import { useAppStore } from "../../store";
 import type {
   CircuitComponent,
   Wire,
@@ -75,6 +79,9 @@ export default function CircuitSimulatorPage() {
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [showLeftPanel, setShowLeftPanel] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiResult, setAiResult] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     if (showTemplates) {
@@ -173,6 +180,21 @@ export default function CircuitSimulatorPage() {
     simulator.setCode(code, pinMappings);
     simulator.start();
     setIsRunning(true);
+    // 实验行为埋点（试点数据分析）
+    const sid = useAppStore.getState().studentId;
+    if (sid) {
+      learningDataApi
+        .submitExperiment({
+          student_id: sid,
+          experiment_type: "stm32_simulate",
+          action: "run",
+          detail: {
+            component_count: components.length,
+            code_length: code.length,
+          },
+        })
+        .catch(() => {});
+    }
   }, [components, wires, code, pinMappings]);
 
   const handleStop = useCallback(() => {
@@ -180,6 +202,85 @@ export default function CircuitSimulatorPage() {
     setIsRunning(false);
     setSimState(null);
   }, []);
+
+  // ─── AI Analysis（STM32 电路智能分析）───
+  const handleAiAnalyze = async () => {
+    if (components.length === 0) {
+      message.warning("请先添加电路元件");
+      return;
+    }
+    setAiOpen(true);
+    setAiLoading(true);
+    setAiResult("");
+
+    try {
+      // 收集电路信息：元件清单 + 引脚状态 + 仿真日志
+      const componentList = components.map((c) => {
+        const def = getComponentDef(c.type);
+        const props = Object.entries(c.props)
+          .filter(([, v]) => v !== undefined && v !== "")
+          .map(([k, v]) => `${k}=${v}`)
+          .join(", ");
+        return `${def.label}(${c.type})${props ? ` [${props}]` : ""}`;
+      });
+
+      const pinStates = simState?.pinStates || {};
+      const activePins = Object.entries(pinStates)
+        .filter(([, v]) => v && (v.isHigh === true || v.value > 0))
+        .slice(0, 40)
+        .map(
+          ([k, v]) =>
+            `${k}:${v.value > 0 ? "HIGH" : "LOW"}(v=${v.voltage.toFixed(2)})`,
+        );
+
+      const description = [
+        "元件清单：",
+        componentList.join("；") || "（空）",
+        "引脚状态：",
+        activePins.join("、") || "（未运行仿真）",
+        "仿真日志：",
+        (simState?.logs || []).slice(-20).join(" | ") || "（无）",
+        simState?.errors?.length ? `错误：${simState.errors.join("；")}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      // 后端复用 circuit-analysis 常规分析模式
+      const res = await circuitApi.analyze({
+        netlist: components.map((c, i) => ({
+          name: `${getComponentDef(c.type).label}${i + 1}`,
+          type: c.type,
+          node1: i,
+          node2: i + 1,
+          value: typeof c.props.value === "number" ? c.props.value : 0,
+        })),
+        node_voltages: Object.fromEntries(
+          Object.entries(pinStates)
+            .slice(0, 40)
+            .map(([k, v]) => [k, v.voltage]),
+        ),
+        student_question: `这是一个STM32嵌入式电路仿真。请分析：
+${description}
+
+请说明：
+1. 电路的功能与工作原理
+2. 各元件的作用
+3. 仿真结果是否合理（对照日志）
+4. 如果电路设计有不合理之处，给出改进建议`,
+        student_level: "intermediate",
+      });
+
+      if (res.data.status === "success") {
+        setAiResult(res.data.analysis || "分析完成");
+      } else {
+        setAiResult("分析失败，请重试");
+      }
+    } catch (err: any) {
+      setAiResult(`分析出错: ${err.message || "网络错误"}`);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // ─── Mouse Events ───
 
@@ -976,6 +1077,16 @@ export default function CircuitSimulatorPage() {
           </button>
         )}
 
+        {/* AI 分析 */}
+        <button
+          onClick={handleAiAnalyze}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/40 bg-accent-light text-accent text-[12px] font-medium hover:bg-accent/10 transition-colors cursor-pointer"
+          title="AI 分析电路功能与仿真结果"
+        >
+          <Bot size={13} />
+          AI 分析
+        </button>
+
         <div className="w-px h-5 bg-border mx-1" />
 
         {/* Clear */}
@@ -1117,6 +1228,40 @@ export default function CircuitSimulatorPage() {
           />
         </div>
       </div>
+
+      {/* AI 分析弹窗 */}
+      <Modal
+        title={
+          <span className="flex items-center gap-2">
+            <Bot size={16} className="text-accent" />
+            AI 电路分析
+          </span>
+        }
+        open={aiOpen}
+        onCancel={() => setAiOpen(false)}
+        footer={null}
+        width={680}
+        styles={{ body: { maxHeight: "60vh", overflowY: "auto" } }}
+      >
+        {aiLoading && (
+          <div className="flex items-center justify-center py-10">
+            <Spin tip="AI 正在分析电路...">
+              <div style={{ padding: 40 }} />
+            </Spin>
+          </div>
+        )}
+        {!aiLoading && aiResult && (
+          <div className="text-sm text-ink leading-relaxed whitespace-pre-wrap">
+            {aiResult}
+          </div>
+        )}
+        {!aiLoading && !aiResult && (
+          <div className="text-center py-8 text-ink-faint">
+            <Bot size={32} className="mx-auto mb-2" />
+            <div>点击"AI 分析"分析电路功能与仿真结果</div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

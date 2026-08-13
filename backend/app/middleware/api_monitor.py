@@ -1,6 +1,7 @@
 """
 API 性能监控中间件
 使用内存缓冲 + 定期批量写入，减少 DB 压力
+同时采集功能使用频率数据（按学生），支撑试点效果分析
 """
 import asyncio
 import time
@@ -9,8 +10,25 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from ..core.logger import setup_logger
+from ..core.config import settings
 
 logger = setup_logger()
+
+
+def _extract_student_id(request: Request):
+    """从 Authorization Bearer Token 中提取 student_id（失败返回 None，不阻塞请求）"""
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return None
+    token = auth[7:].strip()
+    if not token:
+        return None
+    try:
+        from jose import jwt, JWTError
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        return payload.get("sub")
+    except Exception:
+        return None
 
 
 class APIMonitorMiddleware(BaseHTTPMiddleware):
@@ -19,6 +37,7 @@ class APIMonitorMiddleware(BaseHTTPMiddleware):
     - 请求记录先写入内存缓冲区
     - 每 5 秒或缓冲满 50 条时批量写入数据库
     - 避免每个请求都开 DB session
+    - 自动提取 student_id 用于功能使用频率统计（试点数据分析）
     """
 
     _buffer: deque = deque(maxlen=500)
@@ -29,6 +48,7 @@ class APIMonitorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.time()
         status_code = 500
+        student_id = _extract_student_id(request)
         try:
             response = await call_next(request)
             status_code = response.status_code
@@ -43,6 +63,7 @@ class APIMonitorMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "status_code": status_code,
                 "duration_ms": round(duration_ms, 2),
+                "student_id": student_id,
             })
             # 缓冲满时触发刷新
             if len(self._buffer) >= self._batch_size:

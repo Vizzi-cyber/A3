@@ -27,6 +27,11 @@ class CircuitAnalysisRequest(BaseModel):
     branch_currents: Optional[dict] = None
     student_question: Optional[str] = None
     student_level: str = "beginner"
+    # 故障实验诊断模式
+    is_diagnosis: bool = False
+    fault_description: Optional[str] = None
+    student_answer: Optional[str] = None
+    expected_answer: Optional[str] = None
 
 
 @router.post("/analyze")
@@ -34,7 +39,7 @@ async def analyze_circuit(
     request: CircuitAnalysisRequest,
     _current: str = Depends(require_auth),
 ):
-    """AI分析电路"""
+    """AI分析电路（支持故障实验诊断评估模式）"""
     try:
         llm = LLMFactory.get_default_llm()
 
@@ -44,6 +49,40 @@ async def analyze_circuit(
             for el in request.netlist
         )
 
+        # ---------- 故障实验诊断模式 ----------
+        if request.is_diagnosis:
+            prompt = f"""你是一位电路实验课教师，正在批改学生的故障诊断实验报告。请评估学生的诊断。
+
+电路网表：
+{netlist_str}
+
+节点电压：{request.node_voltages}
+支路电流：{request.branch_currents}
+
+实验现象描述（故障表现）：
+{request.fault_description or '（未提供）'}
+
+学生给出的故障判断：
+{request.student_answer or '（未作答）'}
+
+标准答案：
+{request.expected_answer or '（未提供）'}
+
+请提供（用Markdown格式）：
+1. 判断：学生答案是否正确（先说"✅ 诊断正确"或"❌ 诊断有误"，再说明理由）
+2. 故障原理讲解：这个故障为什么会导致上述现象（从电路理论解释，学生水平为{request.student_level}）
+3. 排查方法：如果学生答错，给出正确的排查思路（如何用万用表/测量定位故障）
+4. 知识要点：该实验考察的核心知识点"""
+            messages = [{"role": "user", "content": prompt}]
+            result = await llm.ainvoke(messages, temperature=0.3, max_tokens=2048)
+            return {
+                "status": "success",
+                "analysis": result,
+                "circuit_description": "故障诊断实验评估",
+                "mode": "diagnosis",
+            }
+
+        # ---------- 常规电路分析模式 ----------
         prompt = f"""你是一位电路分析教学专家。请分析以下电路：
 
 网表：

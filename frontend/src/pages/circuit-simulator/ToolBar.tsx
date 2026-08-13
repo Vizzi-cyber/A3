@@ -9,15 +9,22 @@ import {
   RobotOutlined,
   UndoOutlined,
   RedoOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 import { useCircuitStore } from "./store";
+import { learningDataApi } from "../../services/api";
+import { useAppStore } from "../../store";
 import type { Mode } from "./types";
 
 interface ToolBarProps {
   onAiAnalysis: () => void;
+  onFaultExperiment: () => void;
 }
 
-const ToolBar: React.FC<ToolBarProps> = ({ onAiAnalysis }) => {
+const ToolBar: React.FC<ToolBarProps> = ({
+  onAiAnalysis,
+  onFaultExperiment,
+}) => {
   const {
     mode,
     setMode,
@@ -31,6 +38,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ onAiAnalysis }) => {
     history,
     historyIndex,
   } = useCircuitStore();
+  const studentId = useAppStore((s) => s.studentId);
 
   const modes: { key: Mode; icon: React.ReactNode; label: string }[] = [
     { key: "select", icon: <AimOutlined />, label: "选择" },
@@ -45,6 +53,17 @@ const ToolBar: React.FC<ToolBarProps> = ({ onAiAnalysis }) => {
     }
     simulate();
     message.success("仿真完成");
+    // 实验行为埋点（试点数据分析）
+    if (studentId) {
+      learningDataApi
+        .submitExperiment({
+          student_id: studentId,
+          experiment_type: "circuit_simulate",
+          action: "run",
+          detail: { component_count: components.length },
+        })
+        .catch(() => {});
+    }
   };
 
   return (
@@ -85,6 +104,17 @@ const ToolBar: React.FC<ToolBarProps> = ({ onAiAnalysis }) => {
       <Tooltip title="AI 分析电路">
         <Button icon={<RobotOutlined />} onClick={onAiAnalysis}>
           AI 分析
+        </Button>
+      </Tooltip>
+
+      {/* Fault Experiment */}
+      <Tooltip title="故障诊断实验（观察异常→诊断原因→AI评估）">
+        <Button
+          icon={<ExperimentOutlined />}
+          onClick={onFaultExperiment}
+          className="!text-orange-500 !border-orange-300"
+        >
+          故障实验
         </Button>
       </Tooltip>
 
