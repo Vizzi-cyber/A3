@@ -18,6 +18,12 @@ async function pressClick(
 }
 
 async function studentLogin(page: import("@playwright/test").Page) {
+  // 预标记 onboarding 完成，避免问卷 Modal 遮罩拦截点击
+  await page.addInitScript(() => {
+    localStorage.setItem("onboarding_completed_C语言", "true");
+    localStorage.setItem("onboarding_completed_电路分析", "true");
+    localStorage.setItem("onboarding_completed_STM32嵌入式", "true");
+  });
   await page.goto(`${BASE}/login`);
   await page.getByPlaceholder("学号 / 工号").fill("student_001");
   await page.getByPlaceholder("输入密码").fill("123456");
@@ -142,6 +148,74 @@ test.describe("AIC 新功能验证", () => {
     await page.screenshot({
       path: "test-screenshots/aic-pilot-report.png",
       fullPage: true,
+    });
+  });
+});
+
+test.describe("AIC 补漏功能验证", () => {
+  test("STM32 学习中心实验实训 Tab 正常渲染", async ({ page }) => {
+    await studentLogin(page);
+    // 学习中心 → 切换 STM32 学科
+    await page.goto(`${BASE}/resources`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(3000);
+    const stm32Pill = page.getByRole("button", { name: "STM32嵌入式" }).first();
+    if (await stm32Pill.isVisible().catch(() => false)) {
+      await pressClick(page, stm32Pill);
+      await page.waitForTimeout(2500);
+    }
+    // 关闭可能的 onboarding 问卷 Modal（遮罩会拦截点击）
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+    // 实验实训 Tab（antd tab 是 role=tab 元素，直接 click）
+    const expTab = page.getByRole("tab", { name: "实验实训" }).first();
+    await expTab.waitFor({ state: "visible", timeout: 10000 });
+    await expTab.click();
+    // 实验卡片渲染（LED闪烁实验 等）
+    await expect(page.getByText("实验目标").first()).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByText("实验步骤").first()).toBeVisible({
+      timeout: 8000,
+    });
+    await page.screenshot({
+      path: "test-screenshots/aic-stm32-experiments.png",
+      fullPage: false,
+    });
+  });
+
+  test("故障实验报告生成与下载", async ({ page }) => {
+    await studentLogin(page);
+    await page.goto(`${BASE}/error-diagnosis`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForTimeout(2500);
+    const circuitPill = page.getByRole("button", { name: "电路分析" }).first();
+    if (await circuitPill.isVisible().catch(() => false)) {
+      await pressClick(page, circuitPill);
+      await page.waitForTimeout(2000);
+    }
+    // 打开故障实验 → 选实验 → 提交 → 生成报告
+    await pressClick(
+      page,
+      page.getByRole("button", { name: /故障实验/ }).first(),
+    );
+    await expect(page.getByText("故障诊断实验")).toBeVisible({ timeout: 8000 });
+    await page.getByText("分压电路 · R2 断路").first().click();
+    await expect(page.getByText(/请选择故障原因/)).toBeVisible({
+      timeout: 8000,
+    });
+    await page.getByText("A. R2 断路", { exact: true }).click();
+    await pressClick(page, page.getByRole("button", { name: /提交诊断/ }));
+    await expect(page.getByText("诊断正确")).toBeVisible({ timeout: 5000 });
+    // 生成实验报告
+    await pressClick(page, page.getByRole("button", { name: /生成实验报告/ }));
+    await expect(page.getByText("实验报告预览")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("电路故障诊断实验报告")).toBeVisible({
+      timeout: 5000,
+    });
+    await page.screenshot({
+      path: "test-screenshots/aic-report-preview.png",
+      fullPage: false,
     });
   });
 });
