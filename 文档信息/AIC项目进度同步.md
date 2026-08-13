@@ -1,7 +1,7 @@
 # AIC 算法创新赛 · 项目进度同步
 
 > 实时同步 LearnLab 备战第八届 AIC"算法创新赛"· AI+学科交叉赛道的项目进度
-> 最后更新：2026-08-13（晚）
+> 最后更新：2026-08-13（深夜）
 > 提交截止：2026-09-10（剩余约 4 周）
 
 ---
@@ -76,6 +76,27 @@
 | 14 | 总结展望结合政策趋势 | 教育数字化+AI趋势+三阶段推广 |
 
 ---
+
+### ✅ 优化批次（8/13 深夜完成，commit `ebc8ec8`，13文件+898行）
+
+| # | 优化项 | 说明 |
+|---|---|---|
+| 1 | **班级维度+班级对比** | users加class_id（seed_classes.py幂等迁移）、/teacher/classes、/teacher/class-comparison、试点报告按班级过滤（实验组vs对照组） |
+| 2 | **试点报告Markdown导出** | pilot-report?format=markdown，前端"导出报告"按钮，参赛文档素材一键生成 |
+| 3 | **STM32实验报告** | 实验实训卡片加"生成实验报告"（目标/元件/步骤/原理→下载.md） |
+| 4 | **存量E2E测试修复** | frontend.spec.ts 8/8全过（登录placeholder、/profile→/personal路由、onboarding Modal拦截） |
+| 5 | **LandingPage学科交叉展示** | 三学科卡片（计算机/电子信息/交叉）+跨学科链路图 |
+| 6 | **README数据修正** | 数据库状态表与DB对齐（含新表courses/experiment_logs） |
+| 7 | **A5跨学科综合实战项目** | 智能温控风扇/呼吸灯2个实战项目（任务勾选+完成上报cross_project） |
+
+### 测试回归（优化批次后）
+
+| 测试 | 结果 |
+|---|---|
+| TestClient（verify_aic_features.py） | ✅ 29/29 |
+| Playwright AIC（aic-features.spec.ts） | ✅ 6/6 |
+| Playwright 存量（frontend.spec.ts） | ✅ 8/8（首次全绿） |
+| 前端构建 | ✅ TS零错误+build通过 |
 
 ## 四、已发现问题的处理状态
 
