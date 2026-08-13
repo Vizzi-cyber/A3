@@ -129,7 +129,8 @@ class BaseAgent(ABC):
         """
         from ..core.safety import HallucinationGuard, combine_guard_results
 
-        if not isinstance(result, dict):
+        # 守卫仅对成功输出生效（错误结果无需质量校验）
+        if not isinstance(result, dict) or result.get("status") != "success":
             return result
 
         guard_results = []
@@ -158,7 +159,7 @@ class BaseAgent(ABC):
 
         text_fields = {
             k: str(result.get(k, ""))
-            for k in ("message", "answer", "analysis", "explanation")
+            for k in ("content", "message", "answer", "analysis", "explanation")
             if result.get(k) and len(str(result.get(k))) > 80
         }
         if not text_fields:
