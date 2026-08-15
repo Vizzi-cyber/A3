@@ -32,7 +32,9 @@ import { dashboardApi } from "../services/api";
 const { Sider } = Layout;
 
 const studentMenuItems = [
-  { key: "/", icon: <DashboardOutlined />, label: "学习仪表盘" },
+  { key: "/", icon: <DashboardOutlined />, label: "知识空间" },
+
+
   { key: "/tutor", icon: <RobotOutlined />, label: "智能辅导" },
   { key: "/learning-path", icon: <NodeIndexOutlined />, label: "学习路径" },
   { key: "/resources", icon: <ReadOutlined />, label: "学习中心" },

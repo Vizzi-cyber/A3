@@ -27,6 +27,12 @@ class DAGPathPlanner:
         self.kp_meta: Dict[str, Dict[str, Any]] = {}
         self.in_degree: Dict[str, int] = {}
         self._criticality_cache: Optional[Dict[str, int]] = None
+        self._bkt_engine = None                        # 可选：完整 BKT 引擎（pyBKT）
+
+    def set_bkt_engine(self, engine) -> None:
+        """注入完整贝叶斯知识追踪引擎（pyBKT），掌握度预测由"简化 BKT 概率合并"
+        升级为带 EM 参数估计的完整 BKT（Corbett & Anderson, 1995）。"""
+        self._bkt_engine = engine
 
     def build_graph(self, knowledge_points: List[Dict[str, Any]]):
         """从知识点列表构建 DAG"""
@@ -322,6 +328,20 @@ class DAGPathPlanner:
         """
         if target_kp_id not in self.kp_graph:
             return {"status": "error", "message": f"目标知识点 {target_kp_id} 不存在"}
+
+        # 0. BKT 增强：注入完整 BKT 引擎时，用参数化估计的掌握度
+        #    覆盖画像快照掌握度（预测概率 > 0 才覆盖，保持向后兼容）
+        if getattr(self, "_bkt_engine", None) is not None:
+            try:
+                bkt_map = self._bkt_engine.estimate_mastery_map(
+                    student_id,
+                    list(mastery_map.keys()) + [target_kp_id],
+                )
+                for kp, prob in bkt_map.items():
+                    if prob > 0:
+                        mastery_map[kp] = prob
+            except Exception:
+                pass  # BKT 不可用时回退画像掌握度
 
         # 1. 获取完整依赖链
         dependency_chain = self._get_dependency_chain(target_kp_id)

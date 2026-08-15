@@ -40,6 +40,45 @@ async def lifespan(app: FastAPI):
     # 启动监控定期刷新
     flush_task = asyncio.create_task(APIMonitorMiddleware.start_periodic_flush())
 
+    # AIC 算法增强：后台自动拟合 BKT 知识追踪模型（用现有 quiz_results 数据，
+    # 静默注入共享注册表，学习路径/学情评估开箱即用；失败不影响启动）
+    async def _auto_fit_bkt():
+        try:
+            from .models.database import SessionLocal
+            from .services.algorithm_registry import set_bkt_engine
+            from .algorithms.bkt_engine import BKTEngine
+            from .models.knowledge import QuizResultModel
+
+            db = SessionLocal()
+            try:
+                rows = db.query(QuizResultModel).all()
+                records = [
+                    {
+                        "student_id": r.student_id,
+                        "kp_id": r.kp_id,
+                        "answers": r.answers or [],
+                        "score": r.score,
+                        "created_at": r.created_at.isoformat() if r.created_at else None,
+                    }
+                    for r in rows
+                ]
+                engine = BKTEngine()
+                result = engine.fit(records)
+                if result["status"] == "success":
+                    set_bkt_engine(engine)
+                    logger.info(
+                        f"AIC 算法: 启动自动拟合 BKT 完成 (AUC={result.get('auc')}, "
+                        f"知识点={len(result.get('skills', []))})"
+                    )
+                else:
+                    logger.info(f"AIC 算法: BKT 启动拟合跳过（{result.get('message')}）")
+            finally:
+                db.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"AIC 算法: BKT 启动拟合异常（{exc}）")
+
+    asyncio.create_task(_auto_fit_bkt())
+
     yield
 
     # 关闭时执行

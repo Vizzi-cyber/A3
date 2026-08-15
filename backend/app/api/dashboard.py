@@ -14,6 +14,7 @@ from ..models.gamification import PointsModel, AchievementModel, TaskModel
 from ..models.favorites import FavoriteModel
 from ..models.trend import TrendDataModel
 from ..algorithms.effect_evaluation import LearningEffectEvaluator
+from ..services.algorithm_registry import build_memory_status
 from ..algorithms.trend_analysis import MultiFactorTrendAnalyzer
 from .auth import require_auth, verify_student_ownership
 from ..utils import calculate_streak
@@ -216,11 +217,14 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
     }
 
     effect_evaluator = LearningEffectEvaluator()
+    # AIC 算法增强：FSRS 记忆状态（到期复习队列 + 记忆保持预警）
+    memory_status = build_memory_status(db, student_id)
     effect_result = effect_evaluator.evaluate(
         student_id=student_id,
         quiz_history=quiz_history,
         learning_records=learning_records_raw,
         weak_areas=weak_areas,
+        memory_status=memory_status,
     )
 
     trend_analyzer = MultiFactorTrendAnalyzer()

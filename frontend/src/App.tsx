@@ -15,6 +15,13 @@ import OnboardingQuestionnaire, {
 } from "./components/OnboardingQuestionnaire";
 import "./App.css";
 
+const SpacePortal = React.lazy(() => import("./pages/SpacePortal"));
+const HorizonHome = React.lazy(() => import("./pages/HorizonHome"));
+const ConstellationHome = React.lazy(() => import("./pages/ConstellationHome"));
+const OverviewHome = React.lazy(() => import("./pages/OverviewHome"));
+const HoloHome = React.lazy(() => import("./pages/HoloHome"));
+const FragmentsHome = React.lazy(() => import("./pages/FragmentsHome"));
+const NeoHome = React.lazy(() => import("./pages/NeoHome"));
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const LearningPath = React.lazy(() => import("./pages/LearningPath"));
 const ResourceCenter = React.lazy(() => import("./pages/ResourceCenter"));
@@ -85,13 +92,15 @@ const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     window.scrollTo(0, 0);
     const el = ref.current;
     if (!el) return;
+    // 页面切换过渡：淡入 + 上浮 + 轻微缩放（0.35s）
     el.style.opacity = "0";
-    el.style.transform = "translateY(6px)";
-    el.style.transition = "opacity 0.15s ease-out, transform 0.15s ease-out";
+    el.style.transform = "translateY(20px) scale(0.99)";
+    el.style.transition =
+      "opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1), transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)";
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.style.opacity = "1";
-        el.style.transform = "translateY(0)";
+        el.style.transform = "translateY(0) scale(1)";
       });
     });
   }, []);
@@ -130,7 +139,15 @@ const PrivateLayout: React.FC = () => {
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/" element={<HomeRoute />} />
+                <Route
+                  path="/"
+                  element={
+                    <PageWrapper>
+                      <NeoHome />
+                    </PageWrapper>
+                  }
+                />
+
                 <Route
                   path="/learning-path"
                   element={

@@ -140,8 +140,25 @@ C 语言代码粘贴自动捕获语法 / 逻辑 / 思维错误
 
 ## AIC 算法创新赛新增功能（2026-08）
 
-> 面向第八届 AIC"算法创新赛"· AI+学科交叉赛道的功能增强，
-> 核心定位：**新工科"计算机 × 电子信息"跨学科 AI 学习平台**
+### AI 算法增强引擎（`/api/v1/algorithms/*`，四大算法模块）
+
+> 全部基于成熟开源轮子（不重复造轮子），为 AIC"算法创新赛"提供算法含金量：
+> **完整 BKT 知识追踪 + IRT 认知诊断 + FSRS 间隔重复 + Thompson Sampling 自适应选题**
+
+| 引擎 | 算法 | 轮子 | 论文/出处 | 接口 |
+|------|------|------|-----------|------|
+| BKT 知识追踪 | 完整贝叶斯知识追踪（EM 参数估计：先验/学习率/猜测/失误） | `pyBKT` | Corbett & Anderson 1995；pyBKT EDM 2021 | `POST /algorithms/bkt/fit`、`GET /algorithms/bkt/mastery/{student_id}` |
+| IRT 认知诊断 | 1PL/2PL 项目反应理论（MAP 联合估计：能力 θ / 难度 b / 区分度 a） | 自研（scipy） | Rasch 1960；Baker & Kim 2004 | `POST /algorithms/irt/fit`、`GET /algorithms/irt/ability/{student_id}`、`GET /algorithms/irt/difficulty` |
+| FSRS 记忆调度 | 间隔重复（难度 D / 稳定性 S / 可提取性 R，Anki 现行算法） | `fsrs` | Ye et al. KDD 2022；Liu et al. TKDE 2023 | `POST /algorithms/memory/review`、`GET /algorithms/memory/due/{student_id}` |
+| MAB 自适应选题 | Thompson Sampling（探索-利用权衡） | `mabwiser` | Thompson 1933；ZPDES RCT 2024 | `POST /algorithms/bandit/select`、`POST /algorithms/bandit/update` |
+
+**升级亮点**：
+- **ADPP 掌握度升级**：`DAGPathPlanner.set_bkt_engine()` 注入完整 BKT 引擎后，路径规划使用带 EM 参数估计的掌握度（替代"简化 BKT"概率合并公式）
+- **效果评估升级**：`evaluate(memory_status=...)` 输出真实 FSRS 复习队列与记忆保持预警（替代"增加间隔重复练习频次"字符串提示）
+- **FSRS 持久化**：记忆卡片状态存 `memory_cards` 表，重启不丢失
+- **验证**：`python scripts/verify_ai_algorithms.py`（23 项断言全部通过）
+
+
 
 ### 跨学科学习链路（学习路径页 · 折叠卡片）
 
@@ -1055,7 +1072,11 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 | `path_planning_dag.py` | `DAGPathPlanner` | 自适应DAG学习路径规划（ADPP）：关键路径分析 + 贝叶斯知识追踪 + 加权拓扑排序 + 自适应阶段划分 |
 | `trend_analysis.py` | `MultiFactorTrendAnalyzer` | 多因素趋势分析：6维度加权（掌握度35%+速度15%+效率15%+薄弱点15%+稳定性5%+完成率15%） |
 | `weighted_matching.py` | `MultiDimWeightedMatcher` | 多维度加权匹配：资源匹配（5因子）+ 路径匹配（5因子） |
-| `effect_evaluation.py` | `LearningEffectEvaluator` | 学习效果评估：正确率/掌握度/提升速率/薄弱集中度/预测/干预 |
+| `effect_evaluation.py` | `LearningEffectEvaluator` | 学习效果评估：正确率/掌握度/提升速率/薄弱集中度/预测/干预（可输出 FSRS 记忆小节） |
+| `bkt_engine.py` | `BKTEngine` | 完整贝叶斯知识追踪（pyBKT）：EM 参数估计 + AUC 验证 + Roster 掌握度预测 |
+| `irt_diagnoser.py` | `IRTDiagnoser` | IRT 认知诊断（1PL/2PL MAP）：能力 θ / 难度 b / 区分度 a |
+| `memory_scheduler.py` | `FSRSMemoryScheduler` | FSRS 间隔重复记忆调度（fsrs）：D/S/R 三变量 + 到期队列 + JSON 序列化 |
+| `bandit_selector.py` | `ThompsonSamplingSelector` | Thompson Sampling 自适应选题（mabwiser）：探索-利用 + 期望收益 |
 
 ### 服务层 (`app/services/`)
 

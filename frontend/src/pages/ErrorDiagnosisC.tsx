@@ -31,6 +31,7 @@ import {
   DeleteOutlined,
   ClockCircleOutlined,
   FileTextOutlined,
+  ScanOutlined,
 } from "@ant-design/icons";
 import {
   RadarChart,
@@ -122,6 +123,8 @@ const ErrorDiagnosis: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<DiagnosisRecord[]>([]);
 
+  const [staticIssues, setStaticIssues] = useState<{ line: number; severity: string; desc: string; detail?: string }[]>([]);
+  const [staticLoading, setStaticLoading] = useState(false);
   const [errorAnalysis, setErrorAnalysis] = useState<ErrorAnalysis | null>(
     null,
   );
@@ -180,6 +183,30 @@ const ErrorDiagnosis: React.FC = () => {
     setShowHistory(false);
     message.success("已恢复诊断记录");
   }, []);
+
+  const handleStaticAnalysis = async () => {
+    if (!code.trim()) {
+      message.warning("请输入代码");
+      return;
+    }
+    setStaticLoading(true);
+    try {
+      const { data } = await api.post("/error-catcher/static-analysis", { code });
+      if (data.status === "success") {
+        setStaticIssues(data.data.issues ?? []);
+        const n = data.data.total ?? 0;
+        if (n === 0) {
+          message.success("静态分析通过：未发现常见语法模式问题");
+        } else {
+          message.warning(`静态分析发现 ${n} 个潜在问题（${data.data.high_count} 个高危）`);
+        }
+      }
+    } catch {
+      message.error("静态分析失败");
+    } finally {
+      setStaticLoading(false);
+    }
+  };
 
   const handleCatchError = async () => {
     if (!code.trim()) {
@@ -562,7 +589,36 @@ const ErrorDiagnosis: React.FC = () => {
             />
           </div>
 
+          {staticIssues.length > 0 && (
+            <div className="mt-3 rounded-lg border p-3 space-y-1.5" style={{ borderColor: "#fee2e2", background: "#fff7f7" }}>
+              <div className="text-xs font-semibold text-red-500 flex items-center justify-between">
+                <span>AST 静态分析：发现 {staticIssues.length} 个潜在问题</span>
+                <button onClick={() => setStaticIssues([])} className="text-slate-400 hover:text-slate-600">✕</button>
+              </div>
+              {staticIssues.slice(0, 6).map((it, i) => (
+                <div key={i} className="text-[11px] flex items-start gap-2">
+                  <span className={"mt-0.5 px-1.5 rounded text-white text-[9px] " + (it.severity === "high" ? "bg-red-500" : "bg-amber-500")}>
+                    {it.severity === "high" ? "高危" : "中危"}
+                  </span>
+                  <span className="text-slate-600 flex-1">
+                    第 {it.line} 行 · <b>{it.desc}</b>
+                    {it.detail ? <span className="text-slate-400">（{it.detail}）</span> : null}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-3 mt-auto">
+            <Button
+              icon={<ScanOutlined />}
+              onClick={handleStaticAnalysis}
+              loading={staticLoading}
+              size="large"
+              className="flex-1 h-10"
+            >
+              静态分析
+            </Button>
             <Button
               type="primary"
               icon={<SearchOutlined />}

@@ -12,6 +12,7 @@ from .kb_note import KBFolderModel, KBNoteModel
 from .path_adjustment_log import PathAdjustmentLogModel
 from .course import CourseModel
 from .experiment import ExperimentLogModel
+from .memory import MemoryCardModel
 
 __all__ = [
     "Base", "engine", "get_db",
@@ -27,4 +28,5 @@ __all__ = [
     "PathAdjustmentLogModel",
     "CourseModel",
     "ExperimentLogModel",
+    "MemoryCardModel",
 ]

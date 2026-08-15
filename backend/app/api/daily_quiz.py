@@ -12,13 +12,43 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from ..models.database import get_db
-from ..models.knowledge import KnowledgePointModel, LearningRecordModel
+from ..models.knowledge import KnowledgePointModel, LearningRecordModel, QuizResultModel
 from ..models.student import StudentProfileModel
+from ..algorithms.bandit_selector import ThompsonSamplingSelector
 from ..core.logger import setup_logger
 from .auth import require_auth, get_current_student_id
 
 logger = setup_logger()
 router = APIRouter()
+
+# AIC 算法增强：Thompson Sampling 选题器（按学生维度，进程内维护）
+_bandit_selectors: Dict[str, ThompsonSamplingSelector] = {}
+
+
+def _get_selector(student_id: str, arms: List[str]) -> ThompsonSamplingSelector:
+    """获取（或新建）该学生的 MAB 选题器；知识点集合变化时重建。"""
+    sel = _bandit_selectors.get(student_id)
+    if sel is None or sel.arms != arms:
+        sel = ThompsonSamplingSelector(arms)
+        _bandit_selectors[student_id] = sel
+    return sel
+
+
+def _feedback_last_quiz(db: Session, student_id: str) -> None:
+    """反馈闭环：把该生最近一次测验得分作为上一轮选题的收益，更新 MAB。"""
+    try:
+        last = (
+            db.query(QuizResultModel)
+            .filter(QuizResultModel.student_id == student_id)
+            .order_by(QuizResultModel.created_at.desc())
+            .first()
+        )
+        if last is not None and last.kp_id:
+            selector = _bandit_selectors.get(student_id)
+            if selector is not None:
+                selector.update(last.kp_id, (last.score or 0) / 100.0)
+    except Exception:
+        pass  # 反馈失败不影响选题主流程
 
 
 class DailyQuizResponse(BaseModel):
@@ -87,8 +117,13 @@ def _select_questions(
     target_difficulty: int,
     count: int = 5,
     focus_kp_ids: Optional[List[str]] = None,
+    preferred_kps: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
-    """根据难度和薄弱点选择题目"""
+    """根据难度和薄弱点选择题目
+
+    :param preferred_kps: AIC 算法增强——MAB（Thompson Sampling）推荐的
+        优先知识点，优先从中选题，剩余名额再走原随机逻辑。
+    """
     if not all_questions:
         return []
 
@@ -99,6 +134,12 @@ def _select_questions(
         by_difficulty.setdefault(d, []).append(q)
 
     selected = []
+
+    # MAB 优先：从推荐知识点中选题（探索-利用的结果）
+    if preferred_kps:
+        pref_qs = [q for q in all_questions if q.get("_kp_id") in preferred_kps]
+        if pref_qs:
+            selected.extend(random.sample(pref_qs, min(len(pref_qs), count)))
 
     # 优先选择匹配难度的题目
     target_qs = by_difficulty.get(target_difficulty, [])
@@ -192,15 +233,27 @@ async def get_daily_quiz(
             },
         }
 
-    # 选择题目：60% 来自薄弱点，40% 随机
+    # AIC 算法增强：Thompson Sampling 选题（探索-利用权衡）
+    # 反馈闭环：先更新上一轮选题收益（最近一次测验得分），再选本轮的优先知识点
+    preferred_kps: List[str] = []
+    try:
+        all_kps = list({q.get("_kp_id") for q in all_questions if q.get("_kp_id")})
+        if len(all_kps) >= 2:
+            selector = _get_selector(student_id, all_kps)
+            _feedback_last_quiz(db, student_id)
+            preferred_kps = selector.select(k=2)
+    except Exception:
+        preferred_kps = []  # MAB 异常时回退原随机逻辑
+
+    # 选择题目：60% 来自薄弱点，40% 随机（均优先 MAB 推荐知识点）
     weak_questions = [q for q in all_questions if q.get("_kp_id") in weak_kp_ids]
     other_questions = [q for q in all_questions if q.get("_kp_id") not in weak_kp_ids]
 
     weak_count = min(int(count * 0.6), len(weak_questions))
     other_count = count - weak_count
 
-    selected_weak = _select_questions(weak_questions, target_difficulty, weak_count)
-    selected_other = _select_questions(other_questions, target_difficulty, other_count)
+    selected_weak = _select_questions(weak_questions, target_difficulty, weak_count, preferred_kps=preferred_kps)
+    selected_other = _select_questions(other_questions, target_difficulty, other_count, preferred_kps=preferred_kps)
 
     daily_questions = selected_weak + selected_other
     random.shuffle(daily_questions)

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..agents import ErrorCatcherAgent, CourseDesignerAgent
 from ..core.logger import setup_logger
+from ..services.static_analyzer import analyze_c
 from ..models.database import get_db
 from .auth import require_auth
 
@@ -113,6 +114,24 @@ async def analyze_misconception(
     except Exception as e:
         logger.error(f"Misconception analysis failed: {e}")
         raise HTTPException(status_code=500, detail="服务器内部错误，请稍后重试")
+
+
+@router.post("/static-analysis")
+async def static_analysis(request: dict, _auth: str = Depends(require_auth)):
+    """C 代码 AST 静态分析：tree-sitter 解析 + 规则引擎扫描常见 bug（越界/野指针/未初始化/除零/内存泄漏）。"""
+    code = (request or {}).get("code") or ""
+    if not code.strip():
+        return {"status": "error", "message": "代码为空"}
+    issues = analyze_c(code)
+    return {
+        "status": "success",
+        "data": {
+            "issues": issues,
+            "total": len(issues),
+            "high_count": sum(1 for i in issues if i["severity"] == "high"),
+            "note": "静态分析（AST 规则引擎）结果，供 AI 深度诊断参考",
+        },
+    }
 
 
 @router.post("/validate-code")

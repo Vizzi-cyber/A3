@@ -39,6 +39,8 @@ from .path_adjustment_log_api import router as adjustment_log_router
 from .circuit_analysis import router as circuit_analysis_router
 from .stm32_content import router as stm32_content_router
 from .teaching_assist import router as teaching_assist_router
+from .ai_algorithms import router as ai_algorithms_router
+from .analytics import router as analytics_router
 
 router = APIRouter()
 
@@ -78,3 +80,5 @@ router.include_router(adjustment_log_router, prefix="/path-adjustment", tags=["�
 router.include_router(circuit_analysis_router, prefix="/circuit-analysis", tags=["电路分析"])
 router.include_router(stm32_content_router, prefix="/stm32", tags=["STM32课程内容"])
 router.include_router(teaching_assist_router, prefix="/teaching-assist", tags=["AI教研助手"])
+router.include_router(ai_algorithms_router, prefix="/algorithms", tags=["AI算法增强"])
+router.include_router(analytics_router, prefix="/analytics", tags=["学情分析大屏"])

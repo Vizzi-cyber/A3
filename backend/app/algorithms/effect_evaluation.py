@@ -39,8 +39,15 @@ class LearningEffectEvaluator:
         quiz_history: List[Dict[str, Any]],
         learning_records: List[Dict[str, Any]],
         weak_areas: List[str],
+        memory_status: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """综合评估入口"""
+        """综合评估入口
+
+        :param memory_status: 可选，FSRS 记忆调度状态
+            {"due_kps": [kp_id, ...], "cards": {kp_id: {stability, difficulty, due}},
+             "scheduler": "FSRS"}
+            提供时输出真实记忆小节（替代"增加间隔重复练习频次"字符串提示）。
+        """
         accuracy = self._calc_accuracy(quiz_history)
         mastery = self._calc_mastery(quiz_history)
         improvement_rate = self._calc_improvement_rate(quiz_history)
@@ -71,11 +78,45 @@ class LearningEffectEvaluator:
                 "efficiency_trend": efficiency_trend,
             },
             "intervention": intervention,
+            "memory": self._build_memory_section(memory_status),
             "dashboard": {
                 "score_history": [_safe_float(q.get("score")) for q in quiz_history],
                 "weak_area_distribution": self._weak_area_distribution(quiz_history),
             },
         }
+
+    def _build_memory_section(self, memory_status: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """基于 FSRS 记忆调度状态生成记忆小节（真实复习计划，替代字符串提示）。"""
+        if not memory_status:
+            return None
+        due_kps = list(memory_status.get("due_kps") or [])
+        cards = memory_status.get("cards") or {}
+        section: Dict[str, Any] = {
+            "scheduler": memory_status.get("scheduler", "FSRS"),
+            "due_count": len(due_kps),
+            "due_kps": due_kps,
+            "cards": cards,
+            "strategies": [],
+        }
+        if due_kps:
+            section["strategies"].append(
+                {"type": "间隔重复复习",
+                 "action": f"FSRS 已调度 {len(due_kps)} 个知识点到期复习（{', '.join(due_kps[:5])}），请优先完成复习队列"}
+            )
+        # 记忆保持预警：可提取性低于阈值的卡片
+        low_retention = [
+            kp for kp, c in cards.items() if c.get("retrievability", 1.0) < 0.8
+        ]
+        if low_retention:
+            section["strategies"].append(
+                {"type": "记忆保持预警",
+                 "action": f"以下知识点记忆可提取性低于 0.8，建议加入今日复习：{', '.join(low_retention[:5])}"}
+            )
+        if not section["strategies"]:
+            section["strategies"].append(
+                {"type": "记忆状态良好", "action": "暂无到期复习，按 FSRS 计划继续学习"}
+            )
+        return section
 
     def _calc_accuracy(self, quiz_history: List[Dict[str, Any]]) -> float:
         """正确率"""

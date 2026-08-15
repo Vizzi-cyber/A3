@@ -39,6 +39,12 @@ export const kbApi = {
     api.get<{ status: string; data: KBNoteListItem[] }>("/kb/notes/search", {
       params: { q },
     }),
+  /** RAG 语义检索（BM25 + jieba，返回相关度与命中片段） */
+  ragSearch: (q: string, topK = 8) =>
+    api.get<{ status: string; data: { results: any[]; total_notes: number } }>(
+      "/kb/rag/search",
+      { params: { q, top_k: topK } },
+    ),
 
   // Wikilink
   getBacklinks: (noteId: string) =>

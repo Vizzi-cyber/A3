@@ -20,6 +20,7 @@ from ..models.knowledge import KnowledgePointModel, LearningRecordModel
 from ..models.student import StudentProfileModel
 from ..models.course import CourseModel
 from ..algorithms import DAGPathPlanner
+from ..services.algorithm_registry import get_bkt_engine
 from ..agents import PathPlannerAgent
 from .auth import get_current_student_id, require_auth
 
@@ -138,6 +139,11 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                 .all()
             )
             mastery_map = {row.kp_id: row.max_progress or 0.0 for row in mastery_rows}
+            # AIC 算法增强：若完整 BKT 已拟合，注入 BKT 引擎（掌握度用 EM 参数化预测，
+            # 替代画像快照；未拟合时保持原逻辑，向后兼容）
+            bkt_engine = get_bkt_engine()
+            if bkt_engine is not None and bkt_engine.is_fitted:
+                planner.set_bkt_engine(bkt_engine)
             dag_result = planner.plan_path(
                 student_id=request.student_id,
                 target_kp_id=target_kp_id,

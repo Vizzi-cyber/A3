@@ -12,6 +12,7 @@ from sqlalchemy import or_
 from ..models.database import get_db
 from ..models.kb_note import KBFolderModel, KBNoteModel
 from ..models.knowledge import KnowledgePointModel
+from ..services.rag_search import RAGSearchEngine
 from .auth import require_auth
 
 router = APIRouter()
@@ -169,6 +170,30 @@ async def search_notes(q: str = Query(...), db: Session = Depends(get_db), _curr
         }
         for n in notes
     ]}
+
+
+@router.get("/rag/search")
+async def rag_search_notes(q: str = Query(...), top_k: int = Query(8), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """RAG 语义检索：BM25 概率检索模型 + jieba 中文分词，按相关度排序并返回命中片段。"""
+    notes = (
+        db.query(KBNoteModel)
+        .filter(KBNoteModel.student_id == _current)
+        .order_by(KBNoteModel.updated_at.desc())
+        .all()
+    )
+    engine = RAGSearchEngine()
+    engine.build([
+        {
+            "note_id": n.note_id,
+            "title": n.title,
+            "content": n.content or "",
+            "folder_id": n.folder_id,
+            "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+        }
+        for n in notes
+    ])
+    results = engine.search(q, top_k=top_k)
+    return {"status": "success", "data": {"query": q, "results": results, "total_notes": len(notes)}}
 
 
 @router.get("/notes/{note_id}")

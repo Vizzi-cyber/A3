@@ -13,6 +13,7 @@ from ..models.knowledge import QuizResultModel, LearningRecordModel
 from ..models.student import StudentProfileModel
 from ..models.trend import TrendDataModel
 from ..algorithms import MultiFactorTrendAnalyzer, LearningEffectEvaluator
+from ..services.algorithm_registry import build_memory_status
 from .auth import require_auth
 
 router = APIRouter()
@@ -134,11 +135,14 @@ async def get_eval_report(student_id: str, db: Session = Depends(get_db), _curre
     ]
 
     evaluator = LearningEffectEvaluator()
+    # AIC 算法增强：FSRS 记忆状态（到期复习队列 + 记忆保持预警）
+    memory_status = build_memory_status(db, student_id)
     report = evaluator.evaluate(
         student_id=student_id,
         quiz_history=quiz_history,
         learning_records=learning_history,
         weak_areas=weak_areas,
+        memory_status=memory_status,
     )
     return {"status": "success", "data": report}
 

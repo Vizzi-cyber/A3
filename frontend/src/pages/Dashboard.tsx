@@ -36,6 +36,8 @@ import {
   CalendarOutlined,
   DownOutlined,
 } from "@ant-design/icons";
+import CountUp from "../components/animations/CountUp";
+import AnimatedRing from "../components/animations/AnimatedRing";
 import { useAppStore } from "../store";
 import {
   dashboardApi,
@@ -373,7 +375,10 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 relative">
+      {/* 顶部氛围光晕（知识空间风格） */}
+      <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/50 blur-3xl pointer-events-none" />
+      <div className="absolute top-40 -left-16 w-64 h-64 rounded-full bg-sky-100/50 blur-3xl pointer-events-none" />
       {/* ===== 顶部标题区 ===== */}
       <div className="flex items-center justify-between">
         <Typography.Title
@@ -414,22 +419,27 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ===== 学习进度横幅 ===== */}
-      <div className="bg-gray-900 rounded-2xl p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 text-white">
+      {/* ===== 学习进度横幅（浅色科技风，与全站统一） ===== */}
+      <div className="relative overflow-hidden bg-white rounded-2xl p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 border border-slate-100 shadow-card">
+        {/* 装饰光晕 */}
+        <div className="absolute -right-16 -top-24 w-72 h-72 rounded-full bg-indigo-100/70 blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-24 w-64 h-64 rounded-full bg-sky-100/70 blur-3xl pointer-events-none" />
+        <div className="absolute right-1/3 top-1/3 w-40 h-40 rounded-full bg-violet-100/50 blur-3xl pointer-events-none" />
         {/* 左侧 */}
-        <div className="flex-1 flex flex-col justify-center min-w-[240px]">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 w-fit mb-4">
+        <div className="flex-1 flex flex-col justify-center min-w-[240px] relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 w-fit mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-gray-300">
+            <span className="text-xs text-indigo-500">
               欢迎回来，{displayName}
             </span>
           </div>
-          <div className="text-2xl lg:text-[2rem] font-bold mb-6 leading-tight">
+          <div className="text-2xl lg:text-[2rem] font-bold mb-6 leading-tight text-slate-800">
             你本周已完成{" "}
-            <span className="text-white font-bold">{completedCount}</span> 节课!
+            <span className="text-[#0052ff] font-bold">{completedCount}</span> 节课!
           </div>
           <Button
-            className="w-fit rounded-full bg-white text-[#1e1b4b] border-0 font-semibold hover:bg-[#e8f0fe] hover:shadow-lg hover:shadow-[#003ecc]/20 transition-all px-6"
+            type="primary"
+            className="w-fit rounded-full font-semibold px-6 shadow-glow"
             onClick={() => navigate("/learning-path")}
           >
             查看全部 <ArrowRightOutlined />
@@ -529,6 +539,25 @@ const Dashboard: React.FC = () => {
                 数据统计
               </Typography.Title>
             </div>
+            {/* AIC 炫酷：总掌握度环形进度 */}
+            <div className="flex items-center gap-6 mb-6 p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 to-emerald-50/60 border border-indigo-100/50">
+              <AnimatedRing percent={stats.mastered_kps > 0 ? Math.min(100, Math.round((stats.mastered_kps / 20) * 100)) : 0} size={96} strokeWidth={9} color="#0052ff">
+                <div className="text-center">
+                  <div className="text-xl font-bold text-slate-800">
+                    <CountUp value={stats.mastered_kps} duration={1.6} />
+                  </div>
+                  <div className="text-[10px] text-slate-400">已掌握/20</div>
+                </div>
+              </AnimatedRing>
+              <div>
+                <div className="font-semibold text-slate-800">知识掌握进度</div>
+                <div className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  基于学习记录实时统计，掌握知识点越多，圆环越完整。
+                  <br />
+                  持续学习，解锁更多学科知识点！
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {statCards.map((stat, idx) => {
                 // 使用后端趋势数据生成 sparkline
@@ -548,10 +577,13 @@ const Dashboard: React.FC = () => {
                 return (
                   <div
                     key={idx}
-                    className="bg-white rounded-2xl p-5 border border-slate-100 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group"
+                    className="relative overflow-hidden bg-white rounded-2xl p-5 border border-slate-100 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group"
                     onClick={() => navigate(stat.path)}
                   >
-                    <div className="flex items-center justify-between mb-3">
+                    {/* 彩色顶部 accent 条 + 光晕（与知识空间风格统一） */}
+                    <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${stat.color}, transparent)` }} />
+                    <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full opacity-15 blur-2xl pointer-events-none transition-opacity group-hover:opacity-30" style={{ background: stat.color }} />
+                    <div className="flex items-center justify-between mb-3 relative">
                       <div
                         className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm shrink-0 shadow-sm"
                         style={{ background: stat.color }}
@@ -594,7 +626,7 @@ const Dashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-2xl font-bold text-slate-800 mb-0.5 group-hover:text-[#0052ff] transition-colors">
-                      {stat.value}
+                      <CountUp value={Number(stat.value) || 0} duration={1.4} />
                       <span className="text-sm font-medium text-slate-400 ml-1">
                         {stat.suffix}
                       </span>
