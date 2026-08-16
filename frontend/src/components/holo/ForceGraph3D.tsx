@@ -9,7 +9,7 @@
  */
 import React, { useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { GraphNode } from "./useHoloData";
 
@@ -68,50 +68,31 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
     "STM32嵌入式": [3.2, 0.2],
   };
   const simNodes = useMemo<SimNode[]>(() => {
-    const list: SimNode[] = nodes.map((n) => {
-      const base = courseBase[n.course] ?? [0, 0];
+    // 斐波那契球面均匀分布（Fibonacci sphere）：
+    // 35 个节点均匀铺满球壳——四面八方都有（上/下/左/右/前/后/斜角），对称均匀
+    const N = nodes.length;
+    const R = 7.2;                                  // 球壳半径
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+    const list: SimNode[] = nodes.map((n, i) => {
+      const y = 1 - (i / (N - 1)) * 2;               // -1 → 1
+      const r = Math.sqrt(Math.max(0, 1 - y * y));   // 水平半径
+      const theta = GOLDEN_ANGLE * i;                // 黄金角
       return {
         ...n,
         pos: new THREE.Vector3(
-          base[0] + (Math.random() - 0.5) * 0.8,
-          base[1] + (Math.random() - 0.5) * 0.8,
-          (Math.random() - 0.5) * 0.8,
+          Math.cos(theta) * r * R,
+          y * R * 0.85,
+          Math.sin(theta) * r * R,
         ),
         vel: new THREE.Vector3(),
       };
     });
-    // 预计算力导向收敛（220 次迭代，进页面即呈现最终布局，无需等待散开）
-    const idx = new Map<string, number>();
-    list.forEach((n, i) => idx.set(n.kp_id, i));
-    for (let it = 0; it < 220; it++) {
-      for (let i = 0; i < list.length; i++) {
-        const a = list[i];
-        const force = new THREE.Vector3();
-        force.addScaledVector(a.pos.clone().multiplyScalar(-1), 0.02);
-        for (let j = 0; j < list.length; j++) {
-          if (i === j) continue;
-          const b = list[j];
-          const d = a.pos.distanceTo(b.pos) + 1e-4;
-          force.addScaledVector(a.pos.clone().sub(b.pos).normalize(), (0.9 / (d * d)) * 0.12);
-        }
-        a.vel.addScaledVector(force, 1.0);
-      }
-      edges.forEach(([aId, bId]) => {
-        const ai = idx.get(aId), bi = idx.get(bId);
-        if (ai == null || bi == null) return;
-        const a = list[ai], b = list[bi];
-        const dir = b.pos.clone().sub(a.pos);
-        const d = dir.length() + 1e-4;
-        const f = (d - 2.2) * 0.012;
-        const norm = dir.normalize();
-        a.vel.addScaledVector(norm, f * 0.5);
-        b.vel.addScaledVector(norm, -f * 0.5);
-      });
-      for (const n of list) {
-        n.vel.multiplyScalar(0.9);
-        n.pos.addScaledVector(n.vel, 0.4);
-      }
-    }
+    // 调试：暴露布局坐标供验证（对称性检查）
+    try {
+      (window as any).__graphLayout = list.map((n) => ({
+        name: n.name, x: +n.pos.x.toFixed(2), y: +n.pos.y.toFixed(2), z: +n.pos.z.toFixed(2),
+      }));
+    } catch { /* SSR/测试环境忽略 */ }
     return list;
   }, [nodes, edges]);
 
@@ -140,6 +121,10 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
 
   const edgeLineRefs = useRef<THREE.Line[]>([]);
   const flowRefs = useRef<THREE.Mesh[]>([]);
+  const nodeRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const nodeSizes = useRef<number[]>([]);
+  const nodeGroupRefs = useRef<(THREE.Group | null)[]>([]);
+  const spawnStartRef = useRef(0);
   const convergedRef = useRef(0);
 
   // 力导向迭代 + 数据流粒子沿边流动
@@ -148,18 +133,40 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
     const N = simNodes.length;
     const t = state.clock.elapsedTime;
 
+    // 爆炸入场动画：节点从中心扩散到球面目标位置（错峰 + easeOutBack 回弹）
+    if (!spawnStartRef.current) spawnStartRef.current = t;
+    const spawnT = t - spawnStartRef.current;
+    nodeGroupRefs.current.forEach((grp, i) => {
+      if (!grp || !simNodes[i]) return;
+      // 每节点错峰 0.03s，总时长 1.3s，easeOutBack 过冲回弹
+      const p = Math.min(1, Math.max(0, (spawnT - i * 0.03) / 1.3));
+      const c1 = 1.70158, c3 = c1 + 1;
+      const ease = 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
+      const target = simNodes[i].pos;
+      grp.position.set(target.x * ease, target.y * ease, target.z * ease);
+    });
+
+    // 节点呼吸动画（发光脉冲，增加活力）
+    nodeRefs.current.forEach((mesh, i) => {
+      if (mesh && nodeSizes.current[i]) {
+        const pulse = 1 + Math.sin(t * 1.8 + i * 0.9) * 0.12;
+        mesh.scale.setScalar(nodeSizes.current[i] * pulse);
+      }
+    });
+
     // 力导向已预计算收敛（useMemo），此处只更新边线端点 + 数据流
 
-    // 更新边线端点
+    // 更新边线端点（drei Line2）+ 数据流粒子沿边流动
     edgeLines.forEach((e, i) => {
       const line = edgeLineRefs.current[i];
-      if (!line) return;
-      const pos = line.geometry.attributes.position as THREE.BufferAttribute;
-      const arr = pos.array as Float32Array;
-      arr[0] = simNodes[e.a].pos.x; arr[1] = simNodes[e.a].pos.y; arr[2] = simNodes[e.a].pos.z;
-      arr[3] = simNodes[e.b].pos.x; arr[4] = simNodes[e.b].pos.y; arr[5] = simNodes[e.b].pos.z;
-      pos.needsUpdate = true;
-      // 数据流粒子：沿边 a→b 流动
+      if (line) {
+        const src = simNodes[e.a].pos;
+        const dst = simNodes[e.b].pos;
+        (line as any).geometry.setPositions([
+          src.x, src.y, src.z,
+          dst.x, dst.y, dst.z,
+        ]);
+      }
       const flow = flowRefs.current[i];
       if (flow) {
         const u = (t * 0.4 + i * 0.13) % 1;
@@ -190,16 +197,18 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
         const color = COURSE_COLORS[simNodes[e.a].course] ?? "#94a3b8";
         return (
           <group key={`edge${i}`}>
-            <line ref={(el) => { edgeLineRefs.current[i] = el as unknown as THREE.Line; }}>
-              <bufferGeometry>
-                <bufferAttribute attach="attributes-position" args={[new Float32Array(6), 3]} />
-              </bufferGeometry>
-              <lineBasicMaterial color={color} transparent opacity={0.55} />
-            </line>
+            <Line
+              ref={(el: any) => { edgeLineRefs.current[i] = el; }}
+              points={[new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.01, 0, 0.01)]}
+              color={color}
+              lineWidth={2.2}
+              transparent
+              opacity={0.75}
+            />
             {/* 流动光点 */}
             <mesh ref={(el) => { flowRefs.current[i] = el as THREE.Mesh; }}>
-              <sphereGeometry args={[0.035, 8, 8]} />
-              <meshBasicMaterial color={color} transparent opacity={0.9} />
+              <sphereGeometry args={[0.05, 8, 8]} />
+              <meshBasicMaterial color={color} transparent opacity={1} />
             </mesh>
           </group>
         );
@@ -224,6 +233,10 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
           <group
             key={n.kp_id}
             position={[n.pos.x, n.pos.y, n.pos.z]}
+            ref={(el) => {
+              const idx = simNodes.indexOf(n);
+              nodeGroupRefs.current[idx] = el;
+            }}
             onClick={(e) => { e.stopPropagation(); setSelected(n); }}
             onPointerOver={(e) => { e.stopPropagation(); hoverIn(n.kp_id); }}
             onPointerOut={() => scheduleHoverOut()}
@@ -243,7 +256,13 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
               />
             </mesh>
             {/* 核心节点 */}
-            <mesh>
+            <mesh
+              ref={(el) => {
+                const idx = simNodes.indexOf(n);
+                nodeRefs.current[idx] = el;
+                nodeSizes.current[idx] = size;
+              }}
+            >
               <sphereGeometry args={[size, 16, 16]} />
               <meshStandardMaterial
                 color={isWeak ? "#ef4444" : baseColor}

@@ -5,6 +5,7 @@
 import React from "react";
 import NeoConsole from "../components/holo/NeoConsole";
 import FloatingTools from "../components/holo/FloatingTools";
+import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import { useHoloData } from "../components/holo/useHoloData";
 
 const NeoHome: React.FC = () => {
@@ -13,6 +14,10 @@ const NeoHome: React.FC = () => {
     <div className="relative">
       <NeoConsole data={data} />
       <FloatingTools data={data} />
+      {/* AI 引擎状态条（左下角） */}
+      <div className="fixed bottom-4 left-4" style={{ zIndex: 9000 }}>
+        <AlgorithmStatusBar />
+      </div>
     </div>
   );
 };

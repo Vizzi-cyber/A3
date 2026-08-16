@@ -1,3 +1,4 @@
+import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Typography,
@@ -57,6 +58,7 @@ import type {
   // DashboardStats,
   Achievement,
 } from "../types";
+import api from "../services/api";
 import { useAppStore } from "../store";
 
 interface FavoriteItem {
@@ -379,6 +381,24 @@ const PersonalSpace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [profileData, setProfileData] = useState(buildRadarData(null));
+  const [irtAbility, setIrtAbility] = useState<number | null>(null);
+
+  // AIC 算法增强：IRT 认知诊断能力值（重试等后端自动 fit 完成）
+  useEffect(() => {
+    let tries = 0;
+    let alive = true;
+    const tryLoad = () => {
+      const sid = useAppStore.getState().studentId;
+      if (!sid || !alive) return;
+      api.get(`/algorithms/irt/ability/${sid}`)
+        .then((r) => { if (alive) setIrtAbility(r.data?.data?.ability_theta ?? null); })
+        .catch(() => {
+          if (alive && tries < 5) { tries += 1; setTimeout(tryLoad, 1200); }
+        });
+    };
+    tryLoad();
+    return () => { alive = false; };
+  }, []);
   const [dashboardStats, setDashboardStats] = useState<Record<
     string,
     unknown
@@ -1183,7 +1203,14 @@ const PersonalSpace: React.FC = () => {
   }, [focusData]);
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      {/* 背景光晕（知识空间风格） */}
+      <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
+      {/* AI 引擎状态徽章 */}
+      <div className="absolute top-0 right-0 z-10">
+        <AlgorithmStatusBar />
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
         {statCardsData.map((stat, idx) => (
           <StatCard
@@ -1709,6 +1736,16 @@ const PersonalSpace: React.FC = () => {
                     >
                       六维画像雷达
                     </Typography.Title>
+                    <div className="flex items-center gap-1.5">
+                      {irtAbility != null && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "#22d3ee1c", color: "#0891b2", border: "1px solid #22d3ee33" }}>
+                          IRT 能力 θ = {irtAbility.toFixed(2)}
+                        </span>
+                      )}
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "#6366f11c", color: "#6366f1", border: "1px solid #6366f133" }}>
+                        🧠 认知诊断
+                      </span>
+                    </div>
                   </div>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">

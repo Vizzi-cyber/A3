@@ -388,3 +388,33 @@ code {
   stroke-dasharray: 1200;
   stroke-dashoffset: 1200;
 }
+
+/* 鼠标粒子轨迹 */
+.cursor-trail-dot {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 99999;
+  animation: trail-fade 1.5s ease-out forwards;
+}
+@keyframes trail-fade {
+  0%   { transform: scale(1) translate(0, 0); opacity: 0.9; }
+  100% { transform: scale(0.15) translate(0, -14px); opacity: 0; }
+}
+
+/* 答题反馈动画 */
+@keyframes feedback-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.45); background: rgba(52,211,153,0.08); }
+  100% { box-shadow: 0 0 0 14px rgba(52, 211, 153, 0); background: rgba(52,211,153,0.14); }
+}
+.feedback-correct { animation: feedback-pulse 0.9s ease-out forwards; }
+@keyframes feedback-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.feedback-wrong { animation: feedback-shake 0.45s ease; background: rgba(248,113,113,0.08); }

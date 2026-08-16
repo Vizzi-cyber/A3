@@ -11,7 +11,7 @@
  *   - Bloom 柔和辉光后处理 + 拖拽旋转（OrbitControls）
  * 技术：react-three-fiber + drei + @react-three/postprocessing
  */
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, Grid, Html, Line, OrbitControls, Sparkles } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
@@ -459,14 +459,24 @@ function NeoPanels({ data, onNavigate }: { data: HoloData; onNavigate: (r: strin
 /* ================= 主组件 ================= */
 const NeoConsole: React.FC<{ data: HoloData }> = ({ data }) => {
   const navigate = useNavigate();
+  const [showHint, setShowHint] = useState(() => !localStorage.getItem("hint_seen"));
+  useEffect(() => {
+    if (!showHint) return;
+    const t = setTimeout(() => {
+      setShowHint(false);
+      localStorage.setItem("hint_seen", "1");
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [showHint]);
   const masteryPercent = Math.min(100, Math.round((data.masteredKps / 20) * 100));
   const waveIntensity = Math.min(1, Math.max(0.2, data.weeklyHours / 8));
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden border border-slate-700/50"
       style={{ height: "calc(100vh - 140px)", minHeight: 600, background: "#eef2fb" }}>
-      {/* 左上角操作提示 */}
-      <div className="absolute top-3 left-4 z-20 pointer-events-none">
+      {/* 左上角操作提示（首次显示 6 秒后自动隐藏） */}
+      {showHint && (
+      <div className="absolute top-3 left-4 z-20 pointer-events-none" style={{ transition: "opacity 0.5s" }}>
         <div
           className="flex items-center gap-3 px-4 py-1.5 rounded-full text-[11px]"
           style={{
@@ -486,8 +496,9 @@ const NeoConsole: React.FC<{ data: HoloData }> = ({ data }) => {
           <span>点击卡片 / 节点查看</span>
         </div>
       </div>
+      )}
 
-      <Canvas camera={{ position: [0, 0.2, 10.5], fov: 50 }} dpr={[1, 2]} gl={{ antialias: true }}>
+      <Canvas camera={{ position: [0, 0.1, 13.5], fov: 44 }} dpr={[1, 2]} gl={{ antialias: true }}>
         {/* 背景：深蓝黑 */}
         <color attach="background" args={["#eef2fb"]} />
         <fog attach="fog" args={["#eef2fb", 10, 26]} />
@@ -505,8 +516,8 @@ const NeoConsole: React.FC<{ data: HoloData }> = ({ data }) => {
         {/* 细腻粒子 */}
         <Sparkles count={80} scale={[14, 7, 10]} size={1.6} speed={0.25} color="#818cf8" opacity={0.45} />
 
-        {/* 中央数据可视化（真实数据驱动，图谱 z 前移→始终在卡片环前面） */}
-        <group position={[0, 0.7, 1.6]}>
+        {/* 中央数据可视化（图谱几何中心与卡片环正中心对齐 (0,-0.7,0)） */}
+        <group position={[0, -0.7, 0]}>
           <MasteryArc percent={masteryPercent} />
           {/* 3D 力导向知识图谱（35 个真实知识点 + 前置依赖，Fruchterman-Reingold 算法） */}
           {data.graphNodes.length >= 2 && (
@@ -524,7 +535,7 @@ const NeoConsole: React.FC<{ data: HoloData }> = ({ data }) => {
           enableZoom={true}
           zoomSpeed={0.9}
           minDistance={5}
-          maxDistance={18}
+          maxDistance={22}
           minPolarAngle={Math.PI / 3}
           maxPolarAngle={Math.PI / 1.15}
           target={[0, 0.2, 0]}

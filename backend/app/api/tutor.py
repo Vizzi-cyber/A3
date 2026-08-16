@@ -88,6 +88,46 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
             logger.warning(f"获取画像失败: {e}")
             profile_for_prompt = {}
 
+        # AIC 算法增强：注入 BKT 掌握度 + FSRS 记忆状态（辅导个性化，算法驱动全流程）
+        try:
+            from ..services.algorithm_registry import get_bkt_engine
+            from ..algorithms.memory_scheduler import FSRSMemoryScheduler
+            from ..models.memory import MemoryCardModel
+
+            ai_engine: Dict[str, Any] = {}
+            # BKT：该生薄弱知识点（掌握度 < 0.5）
+            bkt = get_bkt_engine()
+            if bkt and bkt.is_fitted:
+                from ..models.knowledge import KnowledgePointModel
+                kp_ids = [k.kp_id for k in db.query(KnowledgePointModel).all()]
+                mastery = bkt.estimate_mastery_map(request.student_id, kp_ids)
+                weak = sorted(
+                    [(k, v) for k, v in mastery.items() if v < 0.5],
+                    key=lambda x: x[1],
+                )[:3]
+                ai_engine["bkt"] = {
+                    "weak_points": [{"kp": k, "mastery": round(v, 2)} for k, v in weak],
+                    "note": "BKT 贝叶斯知识追踪实时掌握度",
+                }
+            # FSRS：待复习 + 低记忆保持知识点
+            scheduler = FSRSMemoryScheduler()
+            rows = db.query(MemoryCardModel).filter(
+                MemoryCardModel.student_id == request.student_id
+            ).all()
+            for r in rows:
+                scheduler.restore_card(r.student_id, r.kp_id, r.card_json)
+            if scheduler.card_count:
+                due = scheduler.get_due_cards(request.student_id)
+                ai_engine["fsrs"] = {
+                    "due_count": len(due),
+                    "due_kps": [d["kp_id"] for d in due[:3]],
+                    "note": "FSRS 间隔重复记忆调度（到期复习）",
+                }
+            if ai_engine:
+                profile_for_prompt["ai_engine"] = ai_engine
+        except Exception as e:
+            logger.warning(f"获取算法上下文失败: {e}")
+
     result: Optional[Dict[str, Any]] = None
     try:
         result = await asyncio.wait_for(

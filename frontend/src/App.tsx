@@ -10,6 +10,7 @@ import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import { useAppStore } from "./store";
 import { authApi, profileApi } from "./services/api";
+import CursorTrail from "./components/animations/CursorTrail";
 import OnboardingQuestionnaire, {
   isOnboardingCompleted,
 } from "./components/OnboardingQuestionnaire";
@@ -135,6 +136,7 @@ const PrivateLayout: React.FC = () => {
         style={{ marginLeft: sidebarCollapsed ? 80 : 240 }}
       >
         <AppHeader />
+        <CursorTrail />
         <Content className="p-6 md:p-8 min-h-[280px]">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>

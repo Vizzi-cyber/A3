@@ -42,6 +42,48 @@ async def lifespan(app: FastAPI):
 
     # AIC 算法增强：后台自动拟合 BKT 知识追踪模型（用现有 quiz_results 数据，
     # 静默注入共享注册表，学习路径/学情评估开箱即用；失败不影响启动）
+    async def _auto_fit_irt():
+        """启动时后台自动拟合 IRT 认知诊断（用现有 quiz_results，供画像/辅导能力值）。"""
+        try:
+            from .models.database import SessionLocal
+            from .services.algorithm_registry import set_irt_diagnoser
+            from .algorithms.irt_diagnoser import IRTDiagnoser
+            from .models.knowledge import QuizResultModel
+
+            db = SessionLocal()
+            try:
+                rows = db.query(QuizResultModel).all()
+                item_records = []
+                for r in rows:
+                    answers = r.answers or []
+                    if answers:
+                        for a in answers:
+                            item_records.append({
+                                "student_id": r.student_id,
+                                "item_id": f"{r.kp_id}:{a.get('q_id', 'q')}",
+                                "correct": bool(a.get("correct", False)),
+                            })
+                    else:
+                        item_records.append({
+                            "student_id": r.student_id,
+                            "item_id": r.kp_id,
+                            "correct": (r.score or 0) >= 60,
+                        })
+                diagnoser = IRTDiagnoser(model="2pl")
+                result = diagnoser.fit(item_records)
+                if result["status"] == "success":
+                    set_irt_diagnoser(diagnoser)
+                    logger.info(
+                        f"AIC 算法: 启动自动拟合 IRT 完成 (学生={len(result.get('ability', {}))}, "
+                        f"题目={len(result.get('difficulty', {}))})"
+                    )
+                else:
+                    logger.info(f"AIC 算法: IRT 启动拟合跳过（{result.get('message')}）")
+            finally:
+                db.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"AIC 算法: IRT 启动拟合异常（{exc}）")
+
     async def _auto_fit_bkt():
         try:
             from .models.database import SessionLocal
@@ -78,6 +120,7 @@ async def lifespan(app: FastAPI):
             logger.warning(f"AIC 算法: BKT 启动拟合异常（{exc}）")
 
     asyncio.create_task(_auto_fit_bkt())
+    asyncio.create_task(_auto_fit_irt())
 
     yield
 

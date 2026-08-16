@@ -1,3 +1,4 @@
+import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import React, { useEffect, useState, useRef } from "react";
 import { Tag, Progress, Button, Row, Col, message } from "antd";
 import {
@@ -432,7 +433,13 @@ const LearningChallenge: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6 animate-pulse">
+      <div className="relative max-w-6xl mx-auto space-y-6 animate-pulse">
+        {/* 背景光晕（知识空间风格） */}
+        <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/3 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 z-10">
+          <AlgorithmStatusBar />
+        </div>
         {/* 骨架屏：标题区 */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="h-8 bg-slate-100 rounded w-48 mb-3" />
@@ -469,7 +476,14 @@ const LearningChallenge: React.FC = () => {
   }
 
   return (
-    <div ref={pageRef} className="max-w-6xl mx-auto space-y-5">
+    <div ref={pageRef} className="relative max-w-6xl mx-auto space-y-5">
+      {/* 背景光晕（知识空间风格） */}
+      <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
+      {/* AI 引擎状态徽章 */}
+      <div className="absolute top-0 right-0 z-10">
+        <AlgorithmStatusBar />
+      </div>
       {/* 世界观标题 */}
       <div className="anim-item">
         <div className="bg-white rounded-lg border border-gray-200 p-6">

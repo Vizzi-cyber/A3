@@ -1,3 +1,4 @@
+import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import React, {
   useEffect,
   useLayoutEffect,
@@ -64,6 +65,7 @@ import {
   resourceApi,
   apiGet,
 } from "../services/api";
+import api from "../services/api";
 import { kbApi } from "../services/knowledgeBaseApi";
 // import { buildRadarData } from "../utils/profile";
 import { StatusIcon } from "../components/StatusIcon";
@@ -342,6 +344,14 @@ const LearningPathPage: React.FC = () => {
   const [changedNodeIds, setChangedNodeIds] = useState<Set<number>>(new Set());
   const prevNodesRef = useRef<PathNode[]>([]);
   const studentId = useAppStore((s) => s.studentId);
+  const [bktMastery, setBktMastery] = useState<Record<string, number>>({});
+
+  // AIC 算法增强：拉取 BKT 实时掌握度（节点显示掌握度徽章）
+  useEffect(() => {
+    api.get(`/algorithms/bkt/mastery/${studentId}`)
+      .then((r) => setBktMastery(r.data?.data?.mastery_map ?? {}))
+      .catch(() => {});
+  }, [studentId]);
   // ===== 资源生成相关状态 =====
   const [genSubject, setGenSubject] = useState("C语言");
   const [genTarget, setGenTarget] = useState<"weak" | "goal" | "custom">(
@@ -1068,7 +1078,14 @@ const LearningPathPage: React.FC = () => {
     : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5">
+      {/* 背景光晕（知识空间风格） */}
+      <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
+      {/* AI 引擎状态徽章 */}
+      <div className="absolute top-0 right-0 z-10">
+        <AlgorithmStatusBar />
+      </div>
       {/* 顶部控制栏 */}
       <Card
         className="border border-slate-100 rounded-2xl"
@@ -1166,17 +1183,32 @@ const LearningPathPage: React.FC = () => {
         )}
       </Card>
 
-      {/* 艾宾浩斯复习提醒 */}
+      {/* FSRS 记忆调度提醒（算法玻璃卡，知识空间风格） */}
       {showReviewAlert && weakReviewTopics.length > 0 && (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
-          <ExclamationCircleOutlined className="text-amber-500 text-lg" />
-          <div className="flex-1">
-            <div className="text-sm font-medium text-amber-800">
-              遗忘曲线提醒：有 {weakReviewTopics.length} 个知识点需要今日复习
+        <div className="relative overflow-hidden rounded-2xl p-4 flex items-center gap-3"
+          style={{
+            background: "rgba(255,255,255,0.92)",
+            border: "1px solid rgba(245,158,11,0.3)",
+            boxShadow: "0 8px 28px rgba(245,158,11,0.12)",
+            backdropFilter: "blur(10px)",
+          }}>
+          {/* 装饰光晕 */}
+          <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-amber-200/40 blur-2xl pointer-events-none" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: "#f59e0b1c", color: "#d97706", boxShadow: "0 0 12px rgba(245,158,11,0.25)" }}>
+              <ExclamationCircleOutlined />
             </div>
-            <div className="text-xs text-amber-600">
+          </div>
+          <div className="flex-1 relative">
+            <div className="text-sm font-medium text-amber-800 flex items-center gap-2">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "#f59e0b1c", color: "#d97706", border: "1px solid #f59e0b33" }}>
+                🧠 FSRS 记忆调度
+              </span>
+              有 {weakReviewTopics.length} 个知识点到期复习
+            </div>
+            <div className="text-xs text-amber-600 mt-0.5">
               {weakReviewTopics.slice(0, 3).join("、")} —
-              基于画像薄弱点与艾宾浩斯遗忘曲线计算
+              基于 FSRS 间隔重复记忆模型（可提取性衰减）计算
             </div>
           </div>
           <Button
@@ -1295,6 +1327,15 @@ const LearningPathPage: React.FC = () => {
                         } ${idx < visibleCount ? "opacity-100" : "hidden"}`}
                         onClick={() => openNodeDetail(node)}
                       >
+                        {/* 状态色 accent 竖条（知识空间风格） */}
+                        <div
+                          className="absolute left-0 top-2 bottom-2 w-1 rounded-full"
+                          style={{
+                            background: statusColors[node.status],
+                            boxShadow: `0 0 6px ${statusColors[node.status]}66`,
+                            opacity: 0.8,
+                          }}
+                        />
                         {/* 状态圆点（当前节点呼吸光晕） */}
                         <div
                           className={`absolute left-[6px] top-3 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md z-10 ring-2 ring-white ${
@@ -1319,6 +1360,21 @@ const LearningPathPage: React.FC = () => {
                             >
                               {node.title}
                             </span>
+                            {/* BKT 掌握度徽章（算法可视化） */}
+                            {node.kp_id && bktMastery[node.kp_id] != null && (
+                              <span
+                                className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0 font-semibold"
+                                style={{
+                                  background:
+                                    bktMastery[node.kp_id!] > 0.8 ? "#ecfdf5" : bktMastery[node.kp_id!] > 0.5 ? "#fefce8" : "#fef2f2",
+                                  color:
+                                    bktMastery[node.kp_id!] > 0.8 ? "#059669" : bktMastery[node.kp_id!] > 0.5 ? "#d97706" : "#dc2626",
+                                }}
+                                title="BKT 贝叶斯知识追踪预测掌握度"
+                              >
+                                🧠 {(bktMastery[node.kp_id!] * 100).toFixed(0)}%
+                              </span>
+                            )}
                             {isMilestone && (
                               <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-[9px] px-1 py-0 !leading-3 shrink-0">
                                 <FlagOutlined /> W{weekNum}

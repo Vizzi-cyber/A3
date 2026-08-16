@@ -24,6 +24,8 @@ from ..algorithms.bkt_engine import BKTEngine
 from ..algorithms.irt_diagnoser import IRTDiagnoser
 from ..algorithms.memory_scheduler import FSRSMemoryScheduler
 from ..algorithms.bandit_selector import ThompsonSamplingSelector
+from ..algorithms.gkt_engine import GKTEngine
+from ..algorithms.ncd_diagnoser import NCDDiagnoser
 from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel, QuizResultModel
 from ..models.memory import MemoryCardModel
@@ -40,6 +42,7 @@ router = APIRouter()
 # 进程内算法实例（BKT/IRT 存共享注册表，MAB 按学生维度）
 # ---------------------------------------------------------------------------
 _bandit_selectors: Dict[str, ThompsonSamplingSelector] = {}
+_ncd_diagnoser: Optional[NCDDiagnoser] = None
 
 
 def _load_quiz_records(db: Session) -> List[Dict[str, Any]]:
@@ -145,6 +148,98 @@ async def bkt_mastery(
             "mastery_map": mastery,
             "params": _bkt_engine.get_params(),
             "auc": _bkt_engine.evaluate_auc(),
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# GKT 图知识追踪（图卷积传播掌握度）
+# ---------------------------------------------------------------------------
+@router.get("/gkt/mastery/{student_id}")
+async def gkt_mastery(
+    student_id: str,
+    db: Session = Depends(get_db),
+    _auth: str = Depends(require_auth),
+):
+    """GKT 图感知掌握度：BKT 预测 + 图卷积在知识点依赖图上传播。"""
+    bkt = get_bkt_engine()
+    if bkt is None or not bkt.is_fitted:
+        raise HTTPException(status_code=409, detail="请先拟合 BKT（POST /algorithms/bkt/fit）")
+    kps = db.query(KnowledgePointModel).all()
+    kp_ids = [k.kp_id for k in kps]
+    # 前置依赖边
+    edges = []
+    for k in kps:
+        for pre in (k.prerequisites or []):
+            edges.append((pre, k.kp_id))
+    bkt_mastery = bkt.estimate_mastery_map(student_id, kp_ids)
+    gkt = GKTEngine(alpha=0.6, hops=2)
+    gkt.build_graph(kp_ids, edges)
+    gkt_mastery_map = gkt.propagate(bkt_mastery)
+    return {
+        "status": "success",
+        "data": {
+            "student_id": student_id,
+            "bkt_mastery": bkt_mastery,
+            "gkt_mastery": gkt_mastery_map,
+            "alpha": 0.6,
+            "hops": 2,
+            "note": "GKT 图卷积传播（拉普拉斯归一化，2 跳）——邻居知识点掌握度影响当前",
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# NCD 神经认知诊断
+# ---------------------------------------------------------------------------
+@router.post("/ncd/fit")
+async def ncd_fit(
+    db: Session = Depends(get_db),
+    _auth: str = Depends(require_auth),
+):
+    """训练 NCD 神经认知诊断（numpy，单调约束）。"""
+    global _ncd_diagnoser
+    records = _load_quiz_records(db)
+    item_records = []
+    for r in records:
+        answers = r.get("answers") or []
+        if answers:
+            for a in answers:
+                item_records.append({
+                    "student_id": r["student_id"],
+                    "item_id": f"{r['kp_id']}:{a.get('q_id', 'q')}",
+                    "correct": bool(a.get("correct", False)),
+                })
+        else:
+            item_records.append({
+                "student_id": r["student_id"],
+                "item_id": r["kp_id"],
+                "correct": (r.get("score") or 0) >= 60,
+            })
+    diagnoser = NCDDiagnoser()
+    result = diagnoser.fit(item_records)
+    if result["status"] == "success":
+        _ncd_diagnoser = diagnoser
+    return {"status": result["status"], "data": result}
+
+
+@router.get("/ncd/ability/{student_id}")
+async def ncd_ability(
+    student_id: str,
+    _auth: str = Depends(require_auth),
+):
+    """NCD 能力诊断（神经认知诊断，替代/互补 IRT）。"""
+    if _ncd_diagnoser is None or not _ncd_diagnoser.is_fitted:
+        raise HTTPException(status_code=409, detail="NCD 尚未训练，请先 POST /algorithms/ncd/fit")
+    ability = _ncd_diagnoser.estimate_ability(student_id)
+    if ability is None:
+        raise HTTPException(status_code=404, detail=f"未找到学生 {student_id}")
+    return {
+        "status": "success",
+        "data": {
+            "student_id": student_id,
+            "ncd_ability": ability,
+            "note": "NCD 神经网络认知诊断（单调约束，可解释）",
         },
     }
 

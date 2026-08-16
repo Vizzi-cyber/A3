@@ -180,9 +180,24 @@ class TutorAgent(BaseAgent):
             self.logger.error(f"TutorAgent error: {e}")
             return {"status": "failed", "error": str(e)}
 
+    def _format_ai_engine(self, ai_engine: Dict[str, Any]) -> str:
+        """把 BKT/FSRS 算法状态格式化为 prompt 上下文（辅导个性化依据）。"""
+        if not ai_engine:
+            return ""
+        parts = []
+        bkt = ai_engine.get("bkt") or {}
+        if bkt.get("weak_points"):
+            wp = "、".join(f"{w['kp']}(掌握{w['mastery']})" for w in bkt["weak_points"])
+            parts.append(f"【BKT 算法感知】学生薄弱知识点：{wp}——讲解时优先针对这些，避免泛泛而谈")
+        fsrs = ai_engine.get("fsrs") or {}
+        if fsrs.get("due_count"):
+            parts.append(f"【FSRS 记忆调度】有 {fsrs['due_count']} 个知识点到期复习（{fsrs.get('due_kps', [])}）——可提醒学生先复习再学新内容")
+        return chr(10).join(parts) + chr(10) if parts else ""
+
     async def _socratic_answer(self, question: Union[str, List[Dict[str, Any]]], history: List[Dict[str, Any]], profile: Dict[str, Any], llm: Optional[BaseLLM] = None, mode: str = "socratic") -> Dict[str, Any]:
         weak_areas = profile.get("weak_areas", [])
         style = profile.get("cognitive_style", {}).get("primary", "visual")
+        ai_engine = profile.get("ai_engine", {})
         llm = llm or self.llm
 
         # 学习状态检测
@@ -202,6 +217,8 @@ class TutorAgent(BaseAgent):
                 f"认知风格：{style}\n"
                 f"学习状态：{learning_state['state']}\n"
                 f"{'教学建议：' + learning_state['hint'] if learning_state['hint'] else ''}\n"
+                f"{self._format_ai_engine(ai_engine)}"
+                f"{self._format_ai_engine(ai_engine)}"
                 f"{instruction}"
             )
             prefixed_content: List[Dict[str, Any]] = [{"type": "text", "text": prefix_text}] + question
