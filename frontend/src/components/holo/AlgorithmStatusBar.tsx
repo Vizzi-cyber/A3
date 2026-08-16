@@ -5,6 +5,8 @@
  * 发光芯片式，固定页面角落。数据来自 /algorithms/* 接口。
  */
 import React, { useEffect, useState } from "react";
+import { Popover } from "antd";
+import { ThunderboltOutlined } from "@ant-design/icons";
 import api from "../../services/api";
 
 interface EngineStatus {
@@ -16,7 +18,6 @@ interface EngineStatus {
 
 const AlgorithmStatusBar: React.FC<{ className?: string }> = ({ className = "" }) => {
   const [status, setStatus] = useState<EngineStatus>({ bktMastery: null, fsrsDue: null, irtTheta: null, loading: true });
-  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -57,50 +58,41 @@ const AlgorithmStatusBar: React.FC<{ className?: string }> = ({ className = "" }
   ];
 
   return (
-    <div className={`select-none ${className}`} style={{ zIndex: 9000 }}>
-      {/* 默认折叠小胶囊：不挡页面内容，悬浮/点击展开算法数据 */}
-      <div
-        className="flex items-center gap-1.5 rounded-full px-2.5 py-1 cursor-pointer transition-all"
-        style={{
-          background: "rgba(255,255,255,0.92)",
-          border: "1px solid rgba(99,102,241,0.28)",
-          boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
-          backdropFilter: "blur(8px)",
-        }}
-        onMouseEnter={() => setExpanded(true)}
-        onMouseLeave={() => setExpanded(false)}
-        onClick={() => setExpanded((e) => !e)}
+    <Popover
+      content={
+        <div className="flex items-center gap-2 py-1">
+          {chips.map((c) => (
+            <span
+              key={c.label}
+              className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold"
+              style={{
+                background: `${c.color}12`,
+                color: c.color,
+                border: `1px solid ${c.color}26`,
+              }}
+              title={c.label}
+            >
+              <span>{c.icon}</span>
+              <span>{c.label.split(" ")[0]}</span>
+              <span>{c.value}</span>
+            </span>
+          ))}
+        </div>
+      }
+      placement="bottomRight"
+      trigger="click"
+      arrow
+    >
+      <button
+        className="relative w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary transition-all"
+        title="AI 引擎状态"
       >
-        <span className="relative flex w-1.5 h-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-70" />
-          <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-indigo-500" />
+        <ThunderboltOutlined className="text-lg" />
+        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500">
+          <span className="absolute inset-0 rounded-full bg-indigo-400 animate-ping opacity-70" />
         </span>
-        <span className="text-[10px] font-semibold whitespace-nowrap" style={{ color: "#4f46e5" }}>
-          ⚡ AI 引擎
-        </span>
-        {expanded && (
-          <>
-            <span className="w-px h-3 mx-0.5" style={{ background: "#e2e8f0" }} />
-            {chips.map((c) => (
-              <span
-                key={c.label}
-                className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap"
-                style={{
-                  background: `${c.color}14`,
-                  color: c.color,
-                  border: `1px solid ${c.color}22`,
-                }}
-                title={c.label}
-              >
-                <span>{c.icon}</span>
-                <span>{c.label.split(" ")[0]}</span>
-                <span>{c.value}</span>
-              </span>
-            ))}
-          </>
-        )}
-      </div>
-    </div>
+      </button>
+    </Popover>
   );
 };
 
