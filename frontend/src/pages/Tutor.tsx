@@ -1,4 +1,3 @@
-import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Typography,
@@ -681,10 +680,6 @@ const Tutor: React.FC = () => {
       {/* 背景光晕（知识空间风格） */}
       <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
-      {/* AI 引擎状态徽章（算法驱动辅导） */}
-      <div className="absolute top-0 right-0 z-10">
-        <AlgorithmStatusBar />
-      </div>
       {/* 左侧主聊天区 */}
       <div className="flex-1 flex flex-col">
         <Card

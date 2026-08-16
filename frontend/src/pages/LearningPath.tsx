@@ -1,4 +1,3 @@
-import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import React, {
   useEffect,
   useLayoutEffect,
@@ -1082,10 +1081,6 @@ const LearningPathPage: React.FC = () => {
       {/* 背景光晕（知识空间风格） */}
       <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
-      {/* AI 引擎状态徽章 */}
-      <div className="absolute top-0 right-0 z-10">
-        <AlgorithmStatusBar />
-      </div>
       {/* 顶部控制栏 */}
       <Card
         className="border border-slate-100 rounded-2xl"

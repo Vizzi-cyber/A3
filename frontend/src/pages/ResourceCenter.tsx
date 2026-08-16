@@ -1,4 +1,3 @@
-import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -813,10 +812,6 @@ const ResourceCenter: React.FC = () => {
       {/* 背景光晕（知识空间风格） */}
       <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
-      {/* AI 引擎状态徽章 */}
-      <div className="absolute top-0 right-0 z-10">
-        <AlgorithmStatusBar />
-      </div>
       {/* FSRS 记忆调度提醒（玻璃卡） */}
       {showReviewBanner && weakReviewTopics.length > 0 && (
         <div className="relative overflow-hidden rounded-2xl px-5 py-3 flex items-center gap-3"
