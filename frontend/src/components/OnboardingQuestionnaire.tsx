@@ -549,7 +549,17 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
       centered
       className="onboarding-modal"
     >
-      <div className="py-4">
+      <div className="py-4 relative">
+        {/* 跳过引导（右上角） */}
+        <button
+          onClick={() => {
+            markOnboardingCompleted(subject);
+            onComplete();
+          }}
+          className="absolute top-1 right-0 text-xs text-slate-400 hover:text-primary transition-colors"
+        >
+          跳过引导 →
+        </button>
         {/* 进度条 */}
         <div className="mb-6">
           <div className="flex justify-between mb-2">
