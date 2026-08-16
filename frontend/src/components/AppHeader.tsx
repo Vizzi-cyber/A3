@@ -332,8 +332,8 @@ const AppHeader: React.FC = () => {
                 </button>
               </Badge>
             </Popover>
-            {/* AI 引擎状态（算法实时数据，悬浮展开） */}
-            <div className="hidden lg:block mr-1">
+            {/* AI 引擎状态（算法实时数据） */}
+            <div className="hidden lg:block">
               <AlgorithmStatusBar />
             </div>
             <button
