@@ -16,6 +16,7 @@ interface EngineStatus {
 
 const AlgorithmStatusBar: React.FC<{ className?: string }> = ({ className = "" }) => {
   const [status, setStatus] = useState<EngineStatus>({ bktMastery: null, fsrsDue: null, irtTheta: null, loading: true });
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -56,38 +57,48 @@ const AlgorithmStatusBar: React.FC<{ className?: string }> = ({ className = "" }
   ];
 
   return (
-    <div
-      className={`pointer-events-none select-none ${className}`}
-      style={{ zIndex: 9000 }}
-    >
-      <div className="flex items-center gap-2 rounded-full px-3 py-1.5"
+    <div className={`select-none ${className}`} style={{ zIndex: 9000 }}>
+      {/* 默认折叠小胶囊：不挡页面内容，悬浮/点击展开算法数据 */}
+      <div
+        className="flex items-center gap-1.5 rounded-full px-2.5 py-1 cursor-pointer transition-all"
         style={{
-          background: "rgba(255,255,255,0.88)",
-          border: "1px solid rgba(99,102,241,0.2)",
-          boxShadow: "0 4px 14px rgba(15,23,42,0.1)",
+          background: "rgba(255,255,255,0.92)",
+          border: "1px solid rgba(99,102,241,0.28)",
+          boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
           backdropFilter: "blur(8px)",
         }}
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
+        onClick={() => setExpanded((e) => !e)}
       >
-        <span className="text-[10px] font-semibold mr-0.5" style={{ color: "#64748b" }}>
+        <span className="relative flex w-1.5 h-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-70" />
+          <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-indigo-500" />
+        </span>
+        <span className="text-[10px] font-semibold whitespace-nowrap" style={{ color: "#4f46e5" }}>
           ⚡ AI 引擎
         </span>
-        {chips.map((c) => (
-          <span
-            key={c.label}
-            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-            style={{
-              background: `${c.color}14`,
-              color: c.color,
-              border: `1px solid ${c.color}33`,
-              boxShadow: `0 0 8px ${c.color}22`,
-            }}
-            title={c.label}
-          >
-            <span>{c.icon}</span>
-            <span>{c.label.split(" ")[0]}</span>
-            <span>{c.value}</span>
-          </span>
-        ))}
+        {expanded && (
+          <>
+            <span className="w-px h-3 mx-0.5" style={{ background: "#e2e8f0" }} />
+            {chips.map((c) => (
+              <span
+                key={c.label}
+                className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap"
+                style={{
+                  background: `${c.color}14`,
+                  color: c.color,
+                  border: `1px solid ${c.color}22`,
+                }}
+                title={c.label}
+              >
+                <span>{c.icon}</span>
+                <span>{c.label.split(" ")[0]}</span>
+                <span>{c.value}</span>
+              </span>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

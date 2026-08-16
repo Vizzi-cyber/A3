@@ -108,11 +108,11 @@ const FloatingTools: React.FC<FloatingToolsProps> = ({ data }) => {
     { key: "quiz", icon: <EditOutlined />, label: "每日练习", color: "#f97316" },
     { key: "tasks", icon: <UnorderedListOutlined />, label: "今日任务", color: "#0ea5e9" },
     { key: "courses", icon: <BarChartOutlined />, label: "课程进度", color: "#38bdf8" },
+    { key: "algorithms", icon: <ExperimentOutlined />, label: "算法中心", color: "#8b5cf6" },
   ];
   const moreTools = [
     { key: "rank", icon: <TrophyOutlined />, label: "排行榜", color: "#f59e0b" },
     { key: "honor", icon: <StarOutlined />, label: "成就积分", color: "#fbbf24" },
-    { key: "algorithms", icon: <ExperimentOutlined />, label: "算法中心", color: "#8b5cf6" },
     { key: "legend", icon: <QuestionCircleOutlined />, label: "图谱图例", color: "#94a3b8" },
   ];
 
