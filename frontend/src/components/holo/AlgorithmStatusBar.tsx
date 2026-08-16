@@ -9,6 +9,10 @@ import { Popover } from "antd";
 import { ThunderboltOutlined } from "@ant-design/icons";
 import api from "../../services/api";
 
+// 模块级缓存：5 分钟内不重复请求（页面切换/挂载不重复拉接口）
+let _cache: { data: EngineStatus; at: number } | null = null;
+const CACHE_TTL = 5 * 60 * 1000;
+
 interface EngineStatus {
   bktMastery: number | null;   // 平均掌握度 %
   fsrsDue: number | null;      // 待复习数
@@ -22,6 +26,11 @@ const AlgorithmStatusBar: React.FC<{ className?: string }> = ({ className = "" }
   useEffect(() => {
     let alive = true;
     const load = async () => {
+      // 命中缓存直接复用（页面切换不再重复拉取）
+      if (_cache && Date.now() - _cache.at < CACHE_TTL) {
+        if (alive) setStatus(_cache.data);
+        return;
+      }
       try {
         const [mastery, due, ability] = await Promise.allSettled([
           api.get("/algorithms/bkt/mastery/student_001"),
@@ -35,12 +44,14 @@ const AlgorithmStatusBar: React.FC<{ className?: string }> = ({ className = "" }
         if (!alive) return;
         const masteryMap = m?.mastery_map ?? {};
         const values = Object.values(masteryMap).filter((v) => typeof v === "number");
-        setStatus({
+        const data: EngineStatus = {
           bktMastery: values.length ? Math.round((values.reduce((s: number, v: any) => s + v, 0) / values.length) * 100) : null,
           fsrsDue: d?.due_cards?.length ?? null,
           irtTheta: a?.ability_theta ?? null,
           loading: false,
-        });
+        };
+        _cache = { data, at: Date.now() };
+        if (alive) setStatus(data);
       } catch {
         if (alive) setStatus((s) => ({ ...s, loading: false }));
       }
