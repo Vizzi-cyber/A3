@@ -21,7 +21,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(venv/Scripts/python.exe scripts/verify_ai_algorithms.py)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(cmd //c \"chcp 65001 >nul && venv\\\\\\\\Scripts\\\\\\\\python.exe scripts\\\\\\\\verify_ai_algorithms.py\")",
+      "Bash(PYTHONUTF8=1 venv/Scripts/python.exe scripts/verify_ai_algorithms.py)",
+      "Bash(pandoc --track-changes=all \"文档信息/AIC算法创新赛_LearnLab改造差距分析与修改建议.docx\" -t plain)"
     ]
   }
 }

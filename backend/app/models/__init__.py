@@ -11,7 +11,12 @@ from .tutor_qa import TutorQAModel
 from .kb_note import KBFolderModel, KBNoteModel
 from .path_adjustment_log import PathAdjustmentLogModel
 from .course import CourseModel
-from .experiment import ExperimentLogModel
+from .experiment import (
+    ExperimentLogModel,
+    ExperimentBatchModel,
+    ExperimentAssignmentModel,
+    ExperimentFeedbackModel,
+)
 from .memory import MemoryCardModel
 
 __all__ = [
@@ -27,6 +32,6 @@ __all__ = [
     "KBFolderModel", "KBNoteModel",
     "PathAdjustmentLogModel",
     "CourseModel",
-    "ExperimentLogModel",
+    "ExperimentLogModel", "ExperimentBatchModel", "ExperimentAssignmentModel", "ExperimentFeedbackModel",
     "MemoryCardModel",
 ]

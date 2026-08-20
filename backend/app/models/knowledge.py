@@ -61,11 +61,15 @@ class QuizResultModel(Base):
     weak_tags = Column(JSON, default=list)
     time_spent = Column(Integer, default=0)  # 用时（秒）
     answers = Column(JSON, default=list)
+    experiment_id = Column(String(64), nullable=True, index=True)
+    assessment_phase = Column(String(16), nullable=True)  # pre / post
+    assessment_version = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         Index("ix_quiz_results_created_at", "created_at"),
         Index("ix_quiz_results_student_created", "student_id", "created_at"),
+        Index("ix_quiz_results_experiment_phase", "experiment_id", "assessment_phase"),
     )
 
 

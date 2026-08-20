@@ -15,7 +15,11 @@ from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel, ResourceFeedbackModel
 from ..models.student import StudentProfileModel
 from ..models.gamification import PointsModel, AchievementModel, LeaderboardModel
-from ..models.experiment import ExperimentLogModel
+from ..models.experiment import (
+    ExperimentLogModel,
+    ExperimentBatchModel,
+    ExperimentAssignmentModel,
+)
 from ..services.gamification_service import award_points, maybe_unlock_achievement
 from ..services.path_adjustment_engine import maybe_check_path_adjustment
 from .auth import require_auth
@@ -35,6 +39,7 @@ class LearningRecordRequest(BaseModel):
 
 class ExperimentLogRequest(BaseModel):
     student_id: str
+    experiment_id: Optional[str] = None
     experiment_type: str = Field(..., max_length=64)  # circuit_simulate / circuit_fault / stm32_simulate
     action: str = Field("run", max_length=64)          # run / diagnose / submit / complete
     detail: Dict[str, Any] = {}
@@ -50,6 +55,9 @@ class QuizResultRequest(BaseModel):
     weak_tags: List[str] = []
     time_spent: int = Field(0, ge=0, le=7200)
     answers: List[Dict[str, Any]] = []
+    experiment_id: Optional[str] = None
+    assessment_phase: Optional[str] = Field(None, pattern="^(pre|post)$")
+    assessment_version: Optional[str] = Field(None, max_length=64)
 
 
 def _generate_id(prefix: str) -> str:
@@ -105,6 +113,30 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
     """上报测验结果"""
     if request.student_id != _current:
         raise HTTPException(status_code=403, detail="Cannot modify other student's data")
+    if request.experiment_id:
+        if not request.assessment_phase:
+            raise HTTPException(status_code=422, detail="正式测评必须指定 assessment_phase")
+        batch = db.query(ExperimentBatchModel).filter(
+            ExperimentBatchModel.experiment_id == request.experiment_id
+        ).first()
+        assignment = db.query(ExperimentAssignmentModel).filter(
+            ExperimentAssignmentModel.experiment_id == request.experiment_id,
+            ExperimentAssignmentModel.student_id == request.student_id,
+        ).first()
+        if not batch or not assignment or batch.status != "active":
+            raise HTTPException(status_code=409, detail="正式实验批次或学生分组不可用")
+        config = batch.config or {}
+        expected_version = config.get(f"{request.assessment_phase}_assessment_version")
+        if expected_version and request.assessment_version != expected_version:
+            raise HTTPException(status_code=422, detail="assessment_version 与实验配置不一致")
+        duplicate = db.query(QuizResultModel).filter(
+            QuizResultModel.experiment_id == request.experiment_id,
+            QuizResultModel.student_id == request.student_id,
+            QuizResultModel.assessment_phase == request.assessment_phase,
+        ).first()
+        if duplicate:
+            raise HTTPException(status_code=409, detail="该阶段正式测评已提交")
+
     quiz_id = _generate_id("qz")
     quiz = QuizResultModel(
         quiz_id=quiz_id,
@@ -116,6 +148,9 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
         weak_tags=request.weak_tags,
         time_spent=request.time_spent,
         answers=request.answers,
+        experiment_id=request.experiment_id,
+        assessment_phase=request.assessment_phase,
+        assessment_version=request.assessment_version,
     )
     db.add(quiz)
 
@@ -283,8 +318,19 @@ async def record_experiment(
     """
     if request.student_id != _current:
         raise HTTPException(status_code=403, detail="Cannot modify other student's data")
+    if request.experiment_id:
+        batch = db.query(ExperimentBatchModel).filter(
+            ExperimentBatchModel.experiment_id == request.experiment_id
+        ).first()
+        assignment = db.query(ExperimentAssignmentModel).filter(
+            ExperimentAssignmentModel.experiment_id == request.experiment_id,
+            ExperimentAssignmentModel.student_id == request.student_id,
+        ).first()
+        if not batch or not assignment or batch.status != "active":
+            raise HTTPException(status_code=409, detail="正式实验批次或学生分组不可用")
     db.add(ExperimentLogModel(
         student_id=request.student_id,
+        experiment_id=request.experiment_id,
         experiment_type=request.experiment_type,
         action=request.action,
         detail=request.detail,

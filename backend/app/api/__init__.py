@@ -41,6 +41,7 @@ from .stm32_content import router as stm32_content_router
 from .teaching_assist import router as teaching_assist_router
 from .ai_algorithms import router as ai_algorithms_router
 from .analytics import router as analytics_router
+from .experiments import router as experiments_router
 
 router = APIRouter()
 
@@ -82,3 +83,4 @@ router.include_router(stm32_content_router, prefix="/stm32", tags=["STM32课程�
 router.include_router(teaching_assist_router, prefix="/teaching-assist", tags=["AI教研助手"])
 router.include_router(ai_algorithms_router, prefix="/algorithms", tags=["AI算法增强"])
 router.include_router(analytics_router, prefix="/analytics", tags=["学情分析大屏"])
+router.include_router(experiments_router, prefix="/experiments", tags=["正式教学实验"])
