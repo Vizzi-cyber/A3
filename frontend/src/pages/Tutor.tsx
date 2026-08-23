@@ -676,11 +676,13 @@ const Tutor: React.FC = () => {
   const tagColors = ["red", "orange", "gold", "green", "cyan"];
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-140px)]">
+    <div className="relative flex gap-4 h-[calc(100vh-140px)] pb-2">
+      <div className="pointer-events-none absolute -top-10 right-0 h-64 w-64 rounded-full bg-indigo-100/45 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 rounded-full bg-sky-100/35 blur-3xl" />
       {/* 左侧主聊天区 */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         <Card
-          className="flex-1 flex flex-col"
+          className="h-full flex-1 flex flex-col border border-slate-100 rounded-2xl shadow-card relative z-10"
           bordered={false}
           title={
             <div className="flex items-center gap-3">
@@ -787,7 +789,7 @@ const Tutor: React.FC = () => {
                       background:
                         m.role === "user"
                           ? "#E5E6EB"
-                          : "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                          : "linear-gradient(135deg, #0052ff, #38bdf8)",
                       color: m.role === "user" ? "#4E5969" : "#fff",
                       flexShrink: 0,
                     }}
@@ -934,7 +936,7 @@ const Tutor: React.FC = () => {
                     size={32}
                     icon={<RobotOutlined />}
                     style={{
-                      background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                      background: "linear-gradient(135deg, #0052ff, #38bdf8)",
                       color: "#fff",
                       flexShrink: 0,
                     }}
@@ -1010,7 +1012,7 @@ const Tutor: React.FC = () => {
       </div>
 
       {/* 右侧信息栏 */}
-      <div className="w-72 flex-shrink-0 flex flex-col gap-4">
+      <div className="w-72 flex-shrink-0 flex flex-col gap-4 h-full overflow-y-auto pr-1">
         {/* 新对话按钮 */}
         <Button
           type="primary"
@@ -1027,7 +1029,7 @@ const Tutor: React.FC = () => {
           title={<span className="font-semibold text-sm">历史会话</span>}
           size="small"
           bordered={false}
-          className="rounded-2xl"
+          className="rounded-2xl border border-slate-100 shadow-card relative z-10"
           styles={{ body: { padding: 8, maxHeight: 200, overflowY: "auto" } }}
           loading={conversationsLoading}
         >
@@ -1073,7 +1075,7 @@ const Tutor: React.FC = () => {
           title={<span className="font-semibold text-sm">学情雷达</span>}
           size="small"
           bordered={false}
-          className="rounded-2xl"
+          className="rounded-2xl border border-slate-100 shadow-card relative z-10"
         >
           <div className="h-48">
             {radarData.length > 0 ? (
@@ -1098,8 +1100,8 @@ const Tutor: React.FC = () => {
                   <Radar
                     name="当前能力"
                     dataKey="A"
-                    stroke="#4f46e5"
-                    fill="#4f46e5"
+                    stroke="#0052ff"
+                    fill="#0052ff"
                     fillOpacity={0.2}
                     strokeWidth={2}
                   />
@@ -1118,7 +1120,7 @@ const Tutor: React.FC = () => {
           title={<span className="font-semibold text-sm">薄弱知识点</span>}
           size="small"
           bordered={false}
-          className="rounded-2xl"
+          className="rounded-2xl border border-slate-100 shadow-card relative z-10"
         >
           <div className="flex flex-wrap gap-1.5">
             {weakPoints.length > 0 ? (
@@ -1142,7 +1144,7 @@ const Tutor: React.FC = () => {
           title={<span className="font-semibold text-sm">资源偏好</span>}
           size="small"
           bordered={false}
-          className="rounded-2xl"
+          className="rounded-2xl border border-slate-100 shadow-card relative z-10"
         >
           {Object.keys(resourcePref).length > 0 ? (
             (() => {

@@ -858,14 +858,16 @@ const KnowledgeTree: React.FC = () => {
   };
 
   return (
-    <div ref={containerRef} className="space-y-5">
+    <div ref={containerRef} className="relative space-y-5 pb-8">
+      <div className="pointer-events-none absolute -top-12 right-0 h-72 w-72 rounded-full bg-indigo-100/45 blur-3xl" />
+      <div className="pointer-events-none absolute top-72 -left-16 h-64 w-64 rounded-full bg-sky-100/35 blur-3xl" />
       {/* 等级进度 */}
       <div className="anim-card">
         <LevelProgress level={data.level} totalPoints={data.total_points} />
       </div>
 
       {/* 页面标题 */}
-      <div className="anim-card flex items-center gap-3 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-100 rounded-xl px-5 py-3">
+      <div className="anim-card flex items-center gap-3 bg-white border border-slate-100 rounded-2xl shadow-card px-5 py-3 relative z-10">
         <span className="text-2xl">{stateEmoji[data.tree_state] || "🌱"}</span>
         <div className="flex-1 min-w-0">
           <span className="text-base font-bold text-slate-800">知识树</span>

@@ -107,6 +107,11 @@ const Sidebar: React.FC = () => {
       .catch(() => {});
   }, [studentId]);
 
+  const handleNavigate = (path: string) => {
+    if (location.pathname === path) return;
+    navigate(path);
+  };
+
   const navMenuItems = React.useMemo(
     () =>
       menuItems
@@ -121,9 +126,9 @@ const Sidebar: React.FC = () => {
           ) : (
             item.label
           ),
-          onClick: () => navigate(item.key!),
+          onClick: () => handleNavigate(item.key!),
         })),
-    [collapsed, navigate],
+    [collapsed, navigate, location.pathname],
   );
 
   return (

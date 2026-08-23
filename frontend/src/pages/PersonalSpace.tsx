@@ -317,7 +317,7 @@ const PomodoroTimer: React.FC = () => {
   }, [pomodoroTime, isPomodoroRunning, isBreak, pomodoroCount]);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-6">
+    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <ClockCircleOutlined className="text-primary text-lg" />
@@ -1183,7 +1183,9 @@ const PersonalSpace: React.FC = () => {
   }, [focusData]);
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6 pb-8">
+      <div className="pointer-events-none absolute -top-12 right-0 h-72 w-72 rounded-full bg-indigo-100/45 blur-3xl" />
+      <div className="pointer-events-none absolute top-80 -left-16 h-64 w-64 rounded-full bg-sky-100/40 blur-3xl" />
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
         {statCardsData.map((stat, idx) => (
           <StatCard
@@ -1228,7 +1230,7 @@ const PersonalSpace: React.FC = () => {
               <div className="space-y-5">
                 <Row gutter={[20, 20]}>
                   <Col xs={24} lg={12}>
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                       <div className="flex items-center gap-2 mb-4">
                         <LineChartOutlined className="text-primary" />
                         <span className="font-semibold text-slate-800">
@@ -1281,7 +1283,7 @@ const PersonalSpace: React.FC = () => {
                     </div>
                   </Col>
                   <Col xs={24} lg={12}>
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                       <div className="flex items-center gap-2 mb-4">
                         <BarChartOutlined className="text-secondary" />
                         <span className="font-semibold text-slate-800">
@@ -1347,7 +1349,7 @@ const PersonalSpace: React.FC = () => {
                   </Col>
                 </Row>
 
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="font-semibold text-slate-800 mb-4">
                     最近学习记录
                   </div>
@@ -1487,7 +1489,7 @@ const PersonalSpace: React.FC = () => {
               </span>
             ),
             children: (
-              <div className="bg-white rounded-2xl border border-slate-100 p-6">
+              <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                 <GrowthTimeline />
               </div>
             ),
@@ -1502,7 +1504,7 @@ const PersonalSpace: React.FC = () => {
             children: (
               <div className="space-y-5">
                 {/* 康奈尔笔记 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="font-semibold text-slate-800 mb-4">
                     康奈尔笔记法
                   </div>
@@ -1569,7 +1571,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 费曼练习 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="font-semibold text-slate-800 mb-4">
                     费曼学习法
                   </div>
@@ -1594,7 +1596,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 自由反思 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="font-semibold text-slate-800 mb-4">
                     写今日反思
                   </div>
@@ -1701,7 +1703,7 @@ const PersonalSpace: React.FC = () => {
             children: (
               <div className="space-y-5">
                 {/* 画像摘要雷达图 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="flex items-center justify-between mb-4">
                     <Typography.Title
                       level={5}
@@ -1753,7 +1755,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 维度详情 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <Typography.Title
                     level={5}
                     className="!m-0 mb-4 font-semibold text-slate-800"
@@ -1793,7 +1795,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 画像数据解读 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <Typography.Title
                     level={5}
                     className="mb-5 font-semibold text-slate-800"
@@ -1953,7 +1955,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 遗忘曲线 · 知识点衰减 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="flex items-center justify-between mb-4">
                     <Typography.Title
                       level={5}
@@ -2092,7 +2094,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 画像历史变化 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="flex items-center justify-between mb-4">
                     <Typography.Title
                       level={5}
@@ -2156,7 +2158,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 排行榜 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="font-semibold text-slate-800 mb-4">
                     <TrophyOutlined className="mr-2 text-amber-500" />
                     排行榜
@@ -2165,7 +2167,7 @@ const PersonalSpace: React.FC = () => {
                 </div>
 
                 {/* 成就徽章 */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-card relative z-10">
                   <div className="flex items-center justify-between mb-6">
                     <div className="font-semibold text-slate-800">我的成就</div>
                     <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">

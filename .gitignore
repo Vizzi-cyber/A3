@@ -75,6 +75,7 @@ image_tasks.json
 .claude-task.log
 claude-log.js
 notify.js
+.claude/worktrees/
 
 # Root node_modules (only husky needed)
 /node_modules/

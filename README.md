@@ -4,6 +4,20 @@
 
 ---
 
+## 文档导航
+
+项目文档已集中整理到 [`文档信息/`](文档信息/README.md)：
+
+- [项目总览](文档信息/01_项目总览.md)
+- [AIC 技术方案摘要](文档信息/02_技术方案_AIC.md)
+- [功能与验证报告](文档信息/03_功能与验证报告.md)
+- [比赛材料准备清单](文档信息/04_比赛材料准备清单.md)
+- [运行与交付说明](文档信息/05_运行与交付说明.md)
+
+原始 DOCX、PPT、PDF 和历史版本也统一保存在该目录，根目录只保留项目入口文件和代码目录。
+
+---
+
 ## 目录
 
 - [项目背景](#项目背景)
@@ -1533,11 +1547,10 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 
 ## 前端页面结构
 
-### 学生端菜单（10项）
+### 学生端菜单（9项）
 | 路由 | 页面 | 图标 |
 |------|------|------|
 | `/` | 学习仪表盘 | DashboardOutlined |
-| `/profile` | 对话画像 | PieChartOutlined |
 | `/learning-path` | 学习路径 | NodeIndexOutlined |
 | `/resources` | 学习中心 | ReadOutlined |
 | `/challenges` | 知识冒险 | ThunderboltOutlined |
@@ -1546,6 +1559,8 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 | `/project-collaboration` | 项目协作 | ProjectOutlined |
 | `/personal` | 个人空间 | UserOutlined |
 | `/knowledge-base` | 知识库 | BookOutlined |
+
+> 欢迎页的 3D 知识空间是登录前展示模块，不是登录后的侧边栏一级菜单；知识树主要嵌入知识冒险页面。
 
 ### 教师端菜单（10项）
 | 路由 | 页面 | 图标 |
@@ -1588,25 +1603,19 @@ copy backend\.env.example backend\.env
 
 ### 3. 启动服务
 
-**Windows（一键启动）：**
+**Windows（推荐手动启动，确保端口明确）：**
 ```bash
-start.bat
-```
-
-**手动启动：**
-```bash
-# 后端
+# 后端（新终端）
 cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 # 前端（新终端）
 cd frontend
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
+
+也可以尝试仓库中的 `start.bat`，但若端口被占用，请优先使用上面的手动命令。
 
 ### 4. 访问应用
 
@@ -1627,28 +1636,9 @@ npm run dev
 
 ## Docker部署
 
-```bash
-# 1. 配置环境变量
-copy backend\.env.example backend\.env
-# 编辑 backend\.env 填写 API 密钥
+当前仓库包含 `Dockerfile` 和 `nginx.conf`，但根目录没有 `docker-compose.yml`，因此不提供未经验证的 Compose 一键启动命令。推荐先使用本地前后端启动方式。
 
-# 2. 构建并启动
-docker-compose up --build -d
-
-# 3. 访问应用
-# 前端: http://localhost
-# 后端API: http://localhost:8000
-# API文档: http://localhost:8000/docs
-```
-
-### Docker配置说明
-
-| 文件 | 说明 |
-|------|------|
-| `Dockerfile` | 多阶段构建：backend(python:3.11-slim) + frontend-build(node:18-alpine) + frontend(nginx:alpine) |
-| `docker-compose.yml` | 两个服务：backend(端口8000) + frontend(端口80)，含健康检查、数据持久化 |
-| `nginx.conf` | SPA路由支持、静态资源缓存(1年)、API反向代理、WebSocket 24小时超时 |
-| `.dockerignore` | 排除.git/node_modules/dist/venv/.env/*.db |
+如需 Docker 部署，请先根据实际部署环境补充 Compose 编排、环境变量注入、数据库持久化和健康检查配置，再更新本节。
 
 ---
 
@@ -1674,9 +1664,10 @@ docker-compose up --build -d
 
 | 脚本 | 范围 | 运行方式 |
 |------|------|----------|
-| `verify_aic_features.py` | TestClient 回归 29 项（新功能+核心接口，mock LLM） | 需服务启动 |
-| `verify_live.py` | 真实环境 HTTP 33 项（原有+新增功能） | 需服务启动（8000） |
-| `verify_all_routes.py` | 全路由冒烟（177 路由 0 崩溃） | 需服务启动 |
+| `verify_ai_algorithms.py` | 四类算法专项验证 23 项（BKT/IRT/FSRS/MAB） | 无需服务 |
+| `verify_aic_features.py` | TestClient 回归 29 项（新功能+核心接口，mock LLM） | 需服务启动或按脚本配置 |
+| `verify_live.py` | 真实环境 HTTP 验证 | 需服务启动（8000） |
+| `verify_all_routes.py` | 全路由冒烟 | 需服务启动 |
 | `verify_dataflow.py` | 全链路数据流 23 项（学习→画像→路径→测验→趋势→报告） | 需服务启动 |
 | `verify_agent_llm.py` | Agent/LLM 专项 23 项（反思循环/缓存/降级/防幻觉） | 无需服务 |
 | `seed_cross_discipline.py` | 跨学科数据注入（幂等） | 直接运行 |
@@ -1698,6 +1689,16 @@ python scripts/verify_all_routes.py
 python scripts/verify_dataflow.py
 python scripts/verify_agent_llm.py
 ```
+
+---
+
+## 当前已知限制与待办
+
+- 真实学生试点（实验组/对照组、前后测、问卷）尚未在当前环境完成。
+- 团队成员的专业、年级与最终分工仍需确认。
+- DeepSeek、智谱、OpenAI、MiMo 等 Provider 是否可调用取决于对应 API Key；未配置时由降级链跳过。
+- AIC 技术方案最终稿、经济可行性、推广路径、参考文献、最终 PPT 和演示视频仍需补齐。
+- 当前仓库没有 `docker-compose.yml`，README 不提供未经验证的 Compose 启动命令。
 
 ---
 
@@ -1810,17 +1811,17 @@ A3_项目框架/
 
 ### 验证结果
 
+以下结果为本次在当前环境实际执行的验证：
+
 | 检查项 | 状态 | 说明 |
 |--------|------|------|
-| TypeScript编译 | ✅ 通过 | 前端代码无编译错误 |
-| API端点 | ✅ 通过 | 167+个API端点，36个模块 |
-| 学生端API | ✅ 通过 | 30个核心端点全部正常 |
-| 教师端API | ✅ 通过 | 10个核心端点全部正常 |
-| 数据互通 | ✅ 通过 | 学生数据实时同步到教师端 |
-| Agent功能 | ✅ 通过 | 12个智能体测试通过 |
-| PPT生成 | ✅ 通过 | 异步任务+轮询状态 |
-| E2E测试 | ✅ 通过 | 39个测试用例全部通过 |
-| 前端构建 | ✅ 通过 | 无TypeScript错误 |
+| AI 算法专项 | ✅ 通过 | `verify_ai_algorithms.py`：23/23 |
+| AIC 功能回归 | ✅ 通过 | `verify_aic_features.py`：29/29 |
+| 全链路数据流 | ✅ 通过 | `verify_dataflow.py`：23/23 |
+| Agent/LLM 专项 | ✅ 通过 | `verify_agent_llm.py`：23/23 |
+| 前端构建 | ✅ 通过 | `npm run build` |
+
+> 以上后端脚本在 Windows 下建议使用 `python -X utf8`，避免终端 GBK 编码无法输出勾选符号。真实试点数据、最终比赛材料和未配置 API Key 的模型不计入“已实际完成”。
 
 ### 已实现功能清单（55项）
 

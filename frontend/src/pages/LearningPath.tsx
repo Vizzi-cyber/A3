@@ -1033,10 +1033,12 @@ const LearningPathPage: React.FC = () => {
     : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5 pb-8">
+      <div className="pointer-events-none absolute -top-16 right-0 h-72 w-72 rounded-full bg-indigo-100/45 blur-3xl" />
+      <div className="pointer-events-none absolute top-72 -left-20 h-64 w-64 rounded-full bg-sky-100/40 blur-3xl" />
       {/* 顶部控制栏 */}
       <Card
-        className="border border-slate-100 rounded-2xl"
+        className="border border-slate-100 rounded-2xl shadow-card relative z-10"
         styles={{ body: { padding: "16px 20px" } }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1097,7 +1099,7 @@ const LearningPathPage: React.FC = () => {
           </div>
           <Progress
             percent={progress}
-            strokeColor={{ from: "#4f46e5", to: "#0ea5e9" }}
+            strokeColor={{ from: "#0052ff", to: "#38bdf8" }}
             trailColor="#f1f5f9"
             size="small"
             showInfo={false}
@@ -1853,7 +1855,7 @@ const LearningPathPage: React.FC = () => {
               <div className="mt-3">
                 <Progress
                   percent={progress}
-                  strokeColor={{ from: "#4f46e5", to: "#0ea5e9" }}
+                  strokeColor={{ from: "#0052ff", to: "#38bdf8" }}
                   trailColor="#f1f5f9"
                   size="small"
                   showInfo={false}

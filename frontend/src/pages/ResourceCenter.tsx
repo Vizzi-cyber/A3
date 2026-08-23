@@ -808,7 +808,9 @@ const ResourceCenter: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5 pb-8">
+      <div className="pointer-events-none absolute -top-12 right-0 h-72 w-72 rounded-full bg-indigo-100/40 blur-3xl" />
+      <div className="pointer-events-none absolute top-96 -left-20 h-64 w-64 rounded-full bg-sky-100/35 blur-3xl" />
       {/* 艾宾浩斯复习提醒 */}
       {showReviewBanner && weakReviewTopics.length > 0 && (
         <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex items-center gap-3">
@@ -841,7 +843,7 @@ const ResourceCenter: React.FC = () => {
 
       {/* 顶部标题栏 */}
       <Card
-        className="border border-slate-100 rounded-2xl"
+        className="border border-blue-100/70 rounded-2xl shadow-card relative z-10"
         styles={{ body: { padding: "20px 24px" } }}
       >
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1030,7 +1032,7 @@ const ResourceCenter: React.FC = () => {
         <div className="flex-1 min-w-0 space-y-5">
           {/* 图文讲义 */}
           <Card
-            className="border border-slate-100 rounded-2xl"
+            className="border border-blue-100/70 rounded-2xl shadow-card relative z-10"
             title={
               <Space>
                 <FileTextOutlined className="text-primary" />
@@ -1136,7 +1138,7 @@ const ResourceCenter: React.FC = () => {
 
           {/* 下方辅助功能区 */}
           <Card
-            className="border border-slate-100 rounded-2xl"
+            className="border border-blue-100/70 rounded-2xl shadow-card relative z-10"
             styles={{ body: { padding: "20px 24px" } }}
           >
             <Tabs
