@@ -15,7 +15,7 @@ interface KBState {
   activeNote: KBNote | null;
   currentFolderId: string | null;
   searchQuery: string;
-  searchResults: (KBNoteListItem & { score?: number; snippet?: string })[];
+  searchResults: KBNoteListItem[];
   backlinks: BacklinkItem[];
   isDirty: boolean;
   currentContent: string;
@@ -189,13 +189,9 @@ export const useKBStore = create<KBState>((set, get) => ({
       return;
     }
     try {
-      // AIC RAG 升级：BM25 语义检索（相关度排序 + 命中片段）
-      const res = await kbApi.ragSearch(query);
-      const data = res.data?.data;
+      const res = await kbApi.searchNotes(query);
       if (res.data?.status === "success") {
-        set({
-          searchResults: Array.isArray(data) ? data : (data?.results ?? []),
-        });
+        set({ searchResults: res.data.data });
       }
     } catch {
       message.error("搜索笔记失败");

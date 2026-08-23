@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Button, Collapse } from "antd";
-import AnimatedText from "../components/animations/AnimatedText";
-import CourseCarousel3D from "../components/animations/CourseCarousel3D";
 import {
   RobotOutlined,
   CompassOutlined,
@@ -28,39 +26,9 @@ import {
   BugOutlined,
   DownOutlined,
 } from "@ant-design/icons";
+import SpaceShowcase from "../components/SpaceShowcase";
 
 gsap.registerPlugin(ScrollTrigger);
-
-/** 打字机效果：逐字打出 + 光标闪烁 */
-const TypeWriter: React.FC<{ text: string; startDelay?: number; speed?: number; className?: string }> = ({
-  text,
-  startDelay = 1.0,
-  speed = 55,
-  className = "",
-}) => {
-  const [count, setCount] = React.useState(0);
-  React.useEffect(() => {
-    const start = setTimeout(() => {
-      const timer = setInterval(() => {
-        setCount((c) => {
-          if (c >= text.length) {
-            clearInterval(timer);
-            return c;
-          }
-          return c + 1;
-        });
-      }, speed);
-      return () => clearInterval(timer);
-    }, startDelay * 1000);
-    return () => clearTimeout(start);
-  }, [text, startDelay, speed]);
-  return (
-    <span className={className}>
-      {text.slice(0, count)}
-      {count < text.length && <span className="typing-caret" />}
-    </span>
-  );
-};
 
 const navLinks = [
   { label: "功能", href: "#features" },
@@ -233,41 +201,13 @@ const LandingPage: React.FC = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // hero 3D 视差：鼠标移动时 hero 内容轻微倾斜跟随
-  useEffect(() => {
-    const hero = heroRef.current;
-    if (!hero) return;
-    const onMove = (e: MouseEvent) => {
-      const rect = hero.getBoundingClientRect();
-      const px = (e.clientX - rect.left) / rect.width - 0.5;
-      const py = (e.clientY - rect.top) / rect.height - 0.5;
-      gsap.to(hero.querySelector(".hero-inner"), {
-        rotateY: px * 3,
-        rotateX: -py * 3,
-        transformPerspective: 900,
-        duration: 0.6,
-        ease: "power2.out",
-      });
-    };
-    const onLeave = () => {
-      gsap.to(hero.querySelector(".hero-inner"), {
-        rotateY: 0,
-        rotateX: 0,
-        duration: 0.8,
-        ease: "power3.out",
-      });
-    };
-    hero.addEventListener("mousemove", onMove);
-    hero.addEventListener("mouseleave", onLeave);
-    return () => {
-      hero.removeEventListener("mousemove", onMove);
-      hero.removeEventListener("mouseleave", onLeave);
-    };
-  }, []);
-
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // hero 标题由 AnimatedText 组件逐字错峰入场接管（保留容器动画会冲突）
+      gsap.fromTo(
+        ".hero-title",
+        { y: 40, autoAlpha: 0 },
+        { y: 0, autoAlpha: 1, duration: 1, ease: "power3.out", delay: 0.2 },
+      );
       gsap.fromTo(
         ".hero-sub",
         { y: 30, autoAlpha: 0 },
@@ -287,21 +227,6 @@ const LandingPage: React.FC = () => {
           duration: 1.2,
           ease: "power3.out",
           delay: 0.6,
-        },
-      );
-
-      // 跨学科链路：卡片滚动入场（stagger）+ 箭头流动
-      gsap.fromTo(
-        ".course-link-card",
-        { y: 40, autoAlpha: 0, scale: 0.94 },
-        {
-          y: 0, autoAlpha: 1, scale: 1,
-          duration: 0.7, stagger: 0.18, ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".course-link-card",
-            start: "top 90%",
-            toggleActions: "play none none none",
-          },
         },
       );
 
@@ -486,17 +411,11 @@ const LandingPage: React.FC = () => {
         ref={heroRef}
         className="relative pt-32 pb-20 md:pt-44 md:pb-32 px-6 overflow-hidden"
       >
-        {/* AIC 炫酷：hero 流光光斑背景 */}
-        <div className="hero-aurora">
-          <span className="aurora-1" />
-          <span className="aurora-2" />
-          <span className="aurora-3" />
-        </div>
         <div className="absolute inset-0 bg-mesh pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-50 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="hero-inner grid lg:grid-cols-2 gap-12 items-center" style={{ transformStyle: "preserve-3d" }}>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="hero-title">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs text-primary font-medium mb-6">
@@ -504,25 +423,20 @@ const LandingPage: React.FC = () => {
                   第十五届中国软件杯 A3 赛题作品
                 </div>
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tighter text-slate-900">
-                  <AnimatedText text="让 AI 为你" delay={0.15} />
+                  让 AI 为你
                   <br />
-                  <AnimatedText
-                    text="定制专属学习路径"
-                    delay={0.55}
-                    stagger={0.05}
-                    className="text-primary"
-                  />
+                  <span className="text-primary">定制专属学习路径</span>
                 </h1>
               </div>
               <p className="hero-sub mt-6 text-lg text-slate-500 max-w-lg leading-relaxed">
-                <TypeWriter text="基于大模型的多智能体协同系统，融合知识图谱、苏格拉底式辅导与游戏化激励" startDelay={1.1} speed={40} />
+                基于大模型的多智能体协同系统，融合知识图谱、苏格拉底式辅导与游戏化激励，打造真正懂你的个性化学习平台。
               </p>
               <div className="hero-cta mt-8 flex flex-wrap gap-4">
                 <Button
                   type="primary"
                   size="large"
                   onClick={() => navigate("/login")}
-                  className="btn-shine rounded-full bg-primary px-7 h-11 font-semibold hover:bg-primary-700 shadow-glow"
+                  className="rounded-full bg-primary px-7 h-11 font-semibold hover:bg-primary-700 shadow-glow"
                 >
                   <span className="flex items-center gap-2">
                     开始学习
@@ -684,6 +598,9 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* ===== 3D 立体化学习空间（可切换展示区） ===== */}
+      <SpaceShowcase />
+
       {/* ===== Features Bento Grid ===== */}
       <section
         id="features"
@@ -772,9 +689,9 @@ const LandingPage: React.FC = () => {
             </p>
           </div>
 
-          {/* 三学科卡片 —— 3D 环形轮播（AIC 学科交叉展示） */}
-          <CourseCarousel3D
-            items={[
+          {/* 三学科卡片 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {[
               {
                 icon: "💻",
                 name: "C语言程序设计",
@@ -799,33 +716,54 @@ const LandingPage: React.FC = () => {
                 desc: "GPIO/定时器/ADC/通信接口——综合应用两门基础学科",
                 kps: "14 个知识点 + 7 个实验",
               },
-            ]}
-          />
+            ].map((c) => (
+              <div
+                key={c.name}
+                className="group rounded-2xl bg-white border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+              >
+                <div className={`h-2 bg-gradient-to-r ${c.color}`} />
+                <div className="p-6">
+                  <div className="text-3xl mb-3">{c.icon}</div>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {c.name}
+                  </h3>
+                  <div className="text-xs font-medium text-indigo-500 mt-1 mb-2">
+                    {c.discipline}
+                  </div>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    {c.desc}
+                  </p>
+                  <div className="mt-4 flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 text-xs">
+                      {c.kps}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-          {/* 跨学科链路（滚动驱动 · 渐变大色块卡片 + 流动箭头） */}
+          {/* 跨学科链路 */}
           <div className="rounded-2xl bg-white border border-purple-100 p-6">
-            <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-5 text-center">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
               {[
-                { step: "编程思维", desc: "C语言核心语法", icon: "💻", bg: "from-blue-500 to-indigo-600", glow: "rgba(59,130,246,0.35)" },
-                { step: "电路建模", desc: "仿真+AI诊断", icon: "⚡", bg: "from-orange-500 to-red-500", glow: "rgba(249,115,22,0.35)" },
-                { step: "嵌入式实现", desc: "STM32实战", icon: "🔧", bg: "from-green-500 to-emerald-600", glow: "rgba(34,197,94,0.35)" },
+                { step: "编程思维", desc: "C语言核心语法", icon: "💻" },
+                { step: "电路建模", desc: "仿真+AI诊断", icon: "⚡" },
+                { step: "嵌入式实现", desc: "STM32实战", icon: "🔧" },
               ].map((s, i) => (
                 <React.Fragment key={s.step}>
                   {i > 0 && (
-                    <div className="link-arrow hidden md:flex text-purple-400 text-2xl font-bold items-center">
-                      <span className="link-arrow-symbol animate-pulse">→</span>
+                    <div className="text-purple-400 text-xl font-bold hidden md:block">
+                      →
                     </div>
                   )}
-                  {/* 渐变大色块卡片（图片感 + 滚动入场） */}
-                  <div
-                    className={`course-link-card w-full md:w-auto min-w-[190px] rounded-2xl bg-gradient-to-br ${s.bg} p-5 text-white shadow-card relative overflow-hidden`}
-                  >
-                    <div className="absolute -right-5 -top-5 w-20 h-20 rounded-full opacity-25 blur-2xl" style={{ background: "#fff" }} />
-                    <div className="text-4xl mb-2 drop-shadow">{s.icon}</div>
-                    <div className="font-bold text-base">{s.step}</div>
-                    <div className="text-xs opacity-80 mt-0.5">{s.desc}</div>
-                    <div className="mt-2 text-[9px] tracking-widest uppercase opacity-60">
-                      {["01", "02", "03"][i]}
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{s.icon}</span>
+                    <div className="text-left">
+                      <div className="font-semibold text-slate-800">
+                        {s.step}
+                      </div>
+                      <div className="text-xs text-slate-400">{s.desc}</div>
                     </div>
                   </div>
                 </React.Fragment>

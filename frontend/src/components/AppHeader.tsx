@@ -1,4 +1,3 @@
-import AlgorithmStatusBar from "../components/holo/AlgorithmStatusBar";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Layout,
@@ -332,10 +331,6 @@ const AppHeader: React.FC = () => {
                 </button>
               </Badge>
             </Popover>
-            {/* AI 引擎状态（算法实时数据） */}
-            <div className="hidden lg:block">
-              <AlgorithmStatusBar />
-            </div>
             <button
               className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary transition-all"
               onClick={() => setHelpOpen(true)}

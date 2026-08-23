@@ -65,23 +65,12 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onNoteClick }) => {
               >
                 <div className="flex items-center gap-2">
                   <FileTextOutlined className="text-slate-400" />
-                  <div className="text-sm font-medium text-slate-700 truncate flex-1">
+                  <div className="text-sm font-medium text-slate-700 truncate">
                     {note.title}
                   </div>
-                  {note.score != null && (
-                    <span
-                      className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0"
-                      style={{
-                        background: (note.score ?? 0) > 2 ? "#ecfdf5" : "#eef2ff",
-                        color: (note.score ?? 0) > 2 ? "#059669" : "#6366f1",
-                      }}
-                    >
-                      {(Math.min((note.score ?? 0) / 3, 1) * 100).toFixed(0)}% 相关
-                    </span>
-                  )}
                 </div>
                 <div className="text-xs text-slate-400 mt-1 line-clamp-2 ml-5">
-                  {note.snippet ?? note.content_preview}
+                  {note.content_preview}
                 </div>
               </div>
             ))}

@@ -808,28 +808,14 @@ const ResourceCenter: React.FC = () => {
   };
 
   return (
-    <div className="relative space-y-5">
-      {/* 背景光晕（知识空间风格） */}
-      <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 -left-16 w-64 h-64 rounded-full bg-sky-100/60 blur-3xl pointer-events-none" />
-      {/* FSRS 记忆调度提醒（玻璃卡） */}
+    <div className="space-y-5">
+      {/* 艾宾浩斯复习提醒 */}
       {showReviewBanner && weakReviewTopics.length > 0 && (
-        <div className="relative overflow-hidden rounded-2xl px-5 py-3 flex items-center gap-3"
-          style={{
-            background: "rgba(255,255,255,0.92)",
-            border: "1px solid rgba(245,158,11,0.3)",
-            boxShadow: "0 8px 28px rgba(245,158,11,0.12)",
-            backdropFilter: "blur(10px)",
-          }}>
-          <div className="relative w-9 h-9 rounded-xl flex items-center justify-center text-base" style={{ background: "#f59e0b1c", color: "#d97706" }}>
-            <ReloadOutlined />
-          </div>
-          <div className="flex-1 relative">
-            <div className="text-sm font-medium text-amber-800 flex items-center gap-2">
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "#f59e0b1c", color: "#d97706", border: "1px solid #f59e0b33" }}>
-                🧠 FSRS 记忆调度
-              </span>
-              有 {weakReviewTopics.length} 个知识点到期复习
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex items-center gap-3">
+          <ReloadOutlined className="text-amber-500 text-lg" />
+          <div className="flex-1">
+            <div className="text-sm font-medium text-amber-800">
+              遗忘曲线提醒：{weakReviewTopics.length} 个知识点需要复习
             </div>
             <div className="text-xs text-amber-600 mt-0.5">
               {weakReviewTopics.join("、")}
