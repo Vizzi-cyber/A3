@@ -74,14 +74,26 @@ const ParticleNetwork: React.FC<ParticleNetworkProps> = ({
     const dt = Math.min(delta, 0.05);
 
     // ---- 流场运动：粒子沿 3D 伪噪声场的轨迹流动（有机曲线，非直线） ----
-    const scale = 0.24;      // 噪声空间尺度
-    const speed = 1.5;       // 流动速度
+    const scale = 0.24; // 噪声空间尺度
+    const speed = 1.5; // 流动速度
     for (let i = 0; i < count; i++) {
-      const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+      const x = pos[i * 3],
+        y = pos[i * 3 + 1],
+        z = pos[i * 3 + 2];
       // 三个噪声维度 → 速度方向（轨迹随时间和位置连续变化）
-      const n1 = pseudoNoise3(x * scale + t * 0.16, y * scale, z * scale + t * 0.1) + phases[i];
-      const n2 = pseudoNoise3(x * scale, y * scale + t * 0.13, z * scale + t * 0.18);
-      const n3 = pseudoNoise3(x * scale + t * 0.1, y * scale + t * 0.06, z * scale);
+      const n1 =
+        pseudoNoise3(x * scale + t * 0.16, y * scale, z * scale + t * 0.1) +
+        phases[i];
+      const n2 = pseudoNoise3(
+        x * scale,
+        y * scale + t * 0.13,
+        z * scale + t * 0.18,
+      );
+      const n3 = pseudoNoise3(
+        x * scale + t * 0.1,
+        y * scale + t * 0.06,
+        z * scale,
+      );
       const vx = Math.sin(n1 * Math.PI) * speed * dt;
       const vy = Math.cos(n2 * Math.PI) * speed * dt * 0.8;
       const vz = Math.sin(n3 * Math.PI) * speed * dt;
@@ -140,12 +152,16 @@ const ParticleNetwork: React.FC<ParticleNetworkProps> = ({
       }
     }
     linkCountRef.current = linkCount;
-    (lines.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    (lines.geometry.attributes.position as THREE.BufferAttribute).needsUpdate =
+      true;
     lines.geometry.setDrawRange(0, linkCount * 2);
   });
 
   // 鼠标 3D 投影（z=0 平面）
-  const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), []);
+  const plane = useMemo(
+    () => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0),
+    [],
+  );
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
 
   const onPointerMove = (e: any) => {
@@ -163,7 +179,9 @@ const ParticleNetwork: React.FC<ParticleNetworkProps> = ({
       mouseActive.current = true;
     }
   };
-  const onPointerLeave = () => { mouseActive.current = false; };
+  const onPointerLeave = () => {
+    mouseActive.current = false;
+  };
 
   return (
     <group onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
@@ -173,18 +191,26 @@ const ParticleNetwork: React.FC<ParticleNetworkProps> = ({
         </bufferGeometry>
         <pointsMaterial
           color={particleColor}
-          size={0.05}
+          size={0.04}
           transparent
-          opacity={0.75}
+          opacity={0.58}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
       </points>
       <lineSegments ref={linesRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[linePositions, 3]} />
+          <bufferAttribute
+            attach="attributes-position"
+            args={[linePositions, 3]}
+          />
         </bufferGeometry>
-        <lineBasicMaterial color={linkColor} transparent opacity={0.45} depthWrite={false} />
+        <lineBasicMaterial
+          color={linkColor}
+          transparent
+          opacity={0.28}
+          depthWrite={false}
+        />
       </lineSegments>
     </group>
   );

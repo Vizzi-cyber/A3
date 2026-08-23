@@ -14,14 +14,22 @@ import * as THREE from "three";
 import { GraphNode } from "./useHoloData";
 
 const COURSE_COLORS: Record<string, string> = {
-  "C语言": "#3b82f6",
-  "电路分析": "#f97316",
-  "STM32嵌入式": "#22c55e",
+  C语言: "#3b82f6",
+  电路分析: "#f97316",
+  STM32嵌入式: "#22c55e",
 };
 
-const STATUS_STYLE: Record<string, { emissive: number; opacity: number; scaleMul: number; color: string }> = {
+const STATUS_STYLE: Record<
+  string,
+  { emissive: number; opacity: number; scaleMul: number; color: string }
+> = {
   completed: { emissive: 1.6, opacity: 0.95, scaleMul: 1.0, color: "#e2e8f0" },
-  "in-progress": { emissive: 2.2, opacity: 0.95, scaleMul: 1.15, color: "#ffffff" },
+  "in-progress": {
+    emissive: 2.2,
+    opacity: 0.95,
+    scaleMul: 1.15,
+    color: "#ffffff",
+  },
   pending: { emissive: 0.6, opacity: 0.75, scaleMul: 0.9, color: "#94a3b8" },
   locked: { emissive: 0.2, opacity: 0.45, scaleMul: 0.8, color: "#475569" },
   unknown: { emissive: 0.7, opacity: 0.7, scaleMul: 0.9, color: "#94a3b8" },
@@ -63,20 +71,20 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
 
   // 初始位置：按课程分簇（C 语言左 / 电路中间 / STM32 右），力导向自然形成三团
   const courseBase: Record<string, [number, number]> = {
-    "C语言": [-3.2, 0.2],
-    "电路分析": [0, 0.6],
-    "STM32嵌入式": [3.2, 0.2],
+    C语言: [-3.2, 0.2],
+    电路分析: [0, 0.6],
+    STM32嵌入式: [3.2, 0.2],
   };
   const simNodes = useMemo<SimNode[]>(() => {
     // 斐波那契球面均匀分布（Fibonacci sphere）：
     // 35 个节点均匀铺满球壳——四面八方都有（上/下/左/右/前/后/斜角），对称均匀
     const N = nodes.length;
-    const R = 7.2;                                  // 球壳半径
+    const R = 7.2; // 球壳半径
     const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
     const list: SimNode[] = nodes.map((n, i) => {
-      const y = 1 - (i / (N - 1)) * 2;               // -1 → 1
-      const r = Math.sqrt(Math.max(0, 1 - y * y));   // 水平半径
-      const theta = GOLDEN_ANGLE * i;                // 黄金角
+      const y = 1 - (i / (N - 1)) * 2; // -1 → 1
+      const r = Math.sqrt(Math.max(0, 1 - y * y)); // 水平半径
+      const theta = GOLDEN_ANGLE * i; // 黄金角
       return {
         ...n,
         pos: new THREE.Vector3(
@@ -90,9 +98,14 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
     // 调试：暴露布局坐标供验证（对称性检查）
     try {
       (window as any).__graphLayout = list.map((n) => ({
-        name: n.name, x: +n.pos.x.toFixed(2), y: +n.pos.y.toFixed(2), z: +n.pos.z.toFixed(2),
+        name: n.name,
+        x: +n.pos.x.toFixed(2),
+        y: +n.pos.y.toFixed(2),
+        z: +n.pos.z.toFixed(2),
       }));
-    } catch { /* SSR/测试环境忽略 */ }
+    } catch {
+      /* SSR/测试环境忽略 */
+    }
     return list;
   }, [nodes, edges]);
 
@@ -105,7 +118,9 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
   // 邻居集合（hover 高亮用）
   const neighbors = useMemo(() => {
     const adj: Record<string, Set<string>> = {};
-    simNodes.forEach((n) => { adj[n.kp_id] = new Set(); });
+    simNodes.forEach((n) => {
+      adj[n.kp_id] = new Set();
+    });
     edges.forEach(([a, b]) => {
       if (adj[a]) adj[a].add(b);
       if (adj[b]) adj[b].add(a);
@@ -120,7 +135,7 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
   }, [edges, nodeIndex]);
 
   const edgeLineRefs = useRef<THREE.Line[]>([]);
-  const flowRefs = useRef<THREE.Mesh[]>([]);
+  const flowRefs = useRef<THREE.Mesh[][]>([]);
   const nodeRefs = useRef<(THREE.Mesh | null)[]>([]);
   const nodeSizes = useRef<number[]>([]);
   const nodeGroupRefs = useRef<(THREE.Group | null)[]>([]);
@@ -140,7 +155,8 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
       if (!grp || !simNodes[i]) return;
       // 每节点错峰 0.03s，总时长 1.3s，easeOutBack 过冲回弹
       const p = Math.min(1, Math.max(0, (spawnT - i * 0.03) / 1.3));
-      const c1 = 1.70158, c3 = c1 + 1;
+      const c1 = 1.70158,
+        c3 = c1 + 1;
       const ease = 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
       const target = simNodes[i].pos;
       grp.position.set(target.x * ease, target.y * ease, target.z * ease);
@@ -163,20 +179,26 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
         const src = simNodes[e.a].pos;
         const dst = simNodes[e.b].pos;
         (line as any).geometry.setPositions([
-          src.x, src.y, src.z,
-          dst.x, dst.y, dst.z,
+          src.x,
+          src.y,
+          src.z,
+          dst.x,
+          dst.y,
+          dst.z,
         ]);
       }
-      const flow = flowRefs.current[i];
-      if (flow) {
-        const u = (t * 0.4 + i * 0.13) % 1;
+      const flows = flowRefs.current[i];
+      if (flows?.length) {
         const src = simNodes[e.a].pos;
         const dst = simNodes[e.b].pos;
-        flow.position.set(
-          src.x + (dst.x - src.x) * u,
-          src.y + (dst.y - src.y) * u,
-          src.z + (dst.z - src.z) * u,
-        );
+        flows.forEach((flow, j) => {
+          const u = (t * (0.5 + j * 0.045) + i * 0.13 + j * 0.33) % 1;
+          flow.position.set(
+            src.x + (dst.x - src.x) * u,
+            src.y + (dst.y - src.y) * u,
+            src.z + (dst.z - src.z) * u,
+          );
+        });
       }
     });
 
@@ -188,28 +210,72 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
   });
 
   return (
-    <group
-      ref={group}
-      onPointerLeave={() => scheduleHoverOut()}
-    >
+    <group ref={group} onPointerLeave={() => scheduleHoverOut()}>
       {/* 边线 + 数据流粒子 */}
       {edgeLines.map((e, i) => {
         const color = COURSE_COLORS[simNodes[e.a].course] ?? "#94a3b8";
         return (
           <group key={`edge${i}`}>
             <Line
-              ref={(el: any) => { edgeLineRefs.current[i] = el; }}
-              points={[new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.01, 0, 0.01)]}
+              ref={(el: any) => {
+                edgeLineRefs.current[i] = el;
+              }}
+              points={[
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0.01, 0, 0.01),
+              ]}
               color={color}
               lineWidth={2.2}
               transparent
               opacity={0.75}
             />
-            {/* 流动光点 */}
-            <mesh ref={(el) => { flowRefs.current[i] = el as THREE.Mesh; }}>
-              <sphereGeometry args={[0.05, 8, 8]} />
-              <meshBasicMaterial color={color} transparent opacity={1} />
+            {/* 连线底层：柔和雾化光晕 */}
+            <Line
+              points={[
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0.01, 0, 0.01),
+              ]}
+              color={color}
+              lineWidth={9}
+              transparent
+              opacity={0.2}
+            />
+            {/* 连线主体：渐亮的知识依赖光纤 */}
+            <Line
+              ref={(el: any) => {
+                edgeLineRefs.current[i] = el;
+              }}
+              points={[
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0.01, 0, 0.01),
+              ]}
+              color={color}
+              lineWidth={3.2}
+              transparent
+              opacity={1}
+            />
+            {/* 连线中点脉冲光晕 */}
+            <mesh position={[0, 0, 0]}>
+              <sphereGeometry args={[0.115, 10, 10]} />
+              <meshBasicMaterial color={color} transparent opacity={0.42} />
             </mesh>
+            {/* 多个流动光点：形成连续数据流 */}
+            {[0, 1, 2].map((j) => (
+              <mesh
+                key={j}
+                ref={(el) => {
+                  if (!flowRefs.current[i]) flowRefs.current[i] = [];
+                  if (el) flowRefs.current[i][j] = el;
+                }}
+              >
+                <sphereGeometry args={[j === 0 ? 0.085 : 0.055, 10, 10]} />
+                <meshBasicMaterial
+                  color={color}
+                  transparent
+                  opacity={j === 0 ? 0.9 : 0.7}
+                />
+              </mesh>
+            ))}
           </group>
         );
       })}
@@ -221,12 +287,19 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
         const isHover = hovered === n.kp_id;
         const isSelected = selected?.kp_id === n.kp_id;
         const isNeighbor = hovered ? neighbors[hovered]?.has(n.kp_id) : false;
-        const isWeak = n.mastery != null && n.mastery < 0.5 && n.status !== "completed";
+        const isWeak =
+          n.mastery != null && n.mastery < 0.5 && n.status !== "completed";
         const size = (0.17 + (n.difficulty ?? 0.5) * 0.1) * st.scaleMul;
 
         // 邻居高亮：hover 时非邻居变暗
         const dimmed = hovered && !isHover && !isNeighbor && !isSelected;
-        const emissiveIntensity = dimmed ? 0.15 : isSelected ? 3 : isHover ? 2.8 : st.emissive;
+        const emissiveIntensity = dimmed
+          ? 0.15
+          : isSelected
+            ? 3
+            : isHover
+              ? 2.8
+              : st.emissive;
         const opacity = dimmed ? 0.25 : st.opacity;
 
         return (
@@ -237,8 +310,14 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
               const idx = simNodes.indexOf(n);
               nodeGroupRefs.current[idx] = el;
             }}
-            onClick={(e) => { e.stopPropagation(); setSelected(n); }}
-            onPointerOver={(e) => { e.stopPropagation(); hoverIn(n.kp_id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(n);
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              hoverIn(n.kp_id);
+            }}
             onPointerOut={() => scheduleHoverOut()}
           >
             {/* 扩大命中区（不可见球）：节点微动时 hover 稳定 */}
@@ -278,7 +357,12 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
             {n.status === "in-progress" && !dimmed && (
               <mesh>
                 <ringGeometry args={[size * 1.6, size * 1.9, 24]} />
-                <meshBasicMaterial color={baseColor} transparent opacity={0.5} side={THREE.DoubleSide} />
+                <meshBasicMaterial
+                  color={baseColor}
+                  transparent
+                  opacity={0.5}
+                  side={THREE.DoubleSide}
+                />
               </mesh>
             )}
             {/* 薄弱点警示环 */}
@@ -289,11 +373,18 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
               </mesh>
             )}
             {/* 常显名称标签（小字淡色，zIndex 压低不盖悬浮面板） */}
-            <Html center distanceFactor={11} pointerEvents="none" zIndexRange={[3, 0]}>
+            <Html
+              center
+              distanceFactor={11}
+              pointerEvents="none"
+              zIndexRange={[3, 0]}
+            >
               <div
                 className={`whitespace-nowrap rounded-md transition-all duration-150 ${isHover ? "px-2.5 py-1 text-[11px]" : "px-1.5 py-0.5 text-[9px]"}`}
                 style={{
-                  background: isHover ? "rgba(10,14,32,0.92)" : "rgba(10,14,32,0.55)",
+                  background: isHover
+                    ? "rgba(10,14,32,0.92)"
+                    : "rgba(10,14,32,0.55)",
                   border: `1px solid ${isHover ? `${baseColor}88` : `${baseColor}44`}`,
                   color: isHover ? "#ffffff" : st.color,
                   boxShadow: isHover ? `0 0 14px ${baseColor}44` : "none",
@@ -305,8 +396,13 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
                 {n.name}
                 {isHover && (
                   <>
-                    <span style={{ color: st.color }}> · {STATUS_LABEL[n.status]}</span>
-                    {isWeak && <span style={{ color: "#f87171" }}> · 薄弱</span>}
+                    <span style={{ color: st.color }}>
+                      {" "}
+                      · {STATUS_LABEL[n.status]}
+                    </span>
+                    {isWeak && (
+                      <span style={{ color: "#f87171" }}> · 薄弱</span>
+                    )}
                   </>
                 )}
               </div>
@@ -317,18 +413,27 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
 
       {/* 点击选中的详情卡（固定屏幕右上角区域） */}
       {selected && (
-        <Html position={[2.6, 2.3, 0]} center distanceFactor={10} pointerEvents="auto" zIndexRange={[12, 0]}>
+        <Html
+          position={[2.6, 2.3, 0]}
+          center
+          distanceFactor={10}
+          pointerEvents="auto"
+          zIndexRange={[12, 0]}
+        >
           <div
             className="w-60 rounded-xl p-3.5"
             style={{
               background: "rgba(10,14,32,0.92)",
               border: `1px solid ${COURSE_COLORS[selected.course] ?? "#64748b"}66`,
-              boxShadow: "0 16px 50px rgba(2,6,23,0.6), 0 0 24px rgba(99,102,241,0.2)",
+              boxShadow:
+                "0 16px 50px rgba(2,6,23,0.6), 0 0 24px rgba(99,102,241,0.2)",
               backdropFilter: "blur(12px)",
             }}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-white">{selected.name}</span>
+              <span className="text-sm font-semibold text-white">
+                {selected.name}
+              </span>
               <button
                 onClick={() => setSelected(null)}
                 className="text-slate-400 hover:text-white text-xs px-1"
@@ -337,11 +442,41 @@ const ForceGraph3D: React.FC<ForceGraph3DProps> = ({ nodes, edges }) => {
               </button>
             </div>
             <div className="space-y-1 text-[11px]" style={{ color: "#94a3b8" }}>
-              <div>课程：<span style={{ color: COURSE_COLORS[selected.course] ?? "#cbd5e1" }}>{selected.course}</span></div>
-              <div>难度：{"★".repeat(Math.max(1, Math.round((selected.difficulty ?? 0.5) * 5))).padEnd(5, "☆")}</div>
-              <div>状态：<span style={{ color: (STATUS_STYLE[selected.status] ?? STATUS_STYLE.unknown).color }}>{STATUS_LABEL[selected.status] ?? selected.status}</span></div>
+              <div>
+                课程：
+                <span
+                  style={{ color: COURSE_COLORS[selected.course] ?? "#cbd5e1" }}
+                >
+                  {selected.course}
+                </span>
+              </div>
+              <div>
+                难度：
+                {"★"
+                  .repeat(
+                    Math.max(1, Math.round((selected.difficulty ?? 0.5) * 5)),
+                  )
+                  .padEnd(5, "☆")}
+              </div>
+              <div>
+                状态：
+                <span
+                  style={{
+                    color: (
+                      STATUS_STYLE[selected.status] ?? STATUS_STYLE.unknown
+                    ).color,
+                  }}
+                >
+                  {STATUS_LABEL[selected.status] ?? selected.status}
+                </span>
+              </div>
               {selected.mastery != null && (
-                <div>掌握度：<span className="text-white">{Math.round(selected.mastery * 100)}%</span></div>
+                <div>
+                  掌握度：
+                  <span className="text-white">
+                    {Math.round(selected.mastery * 100)}%
+                  </span>
+                </div>
               )}
               {selected.mastery != null && selected.mastery < 0.5 && (
                 <div className="text-[#f87171]">⚠ 薄弱知识点，建议优先复习</div>

@@ -174,9 +174,7 @@ const AppHeader: React.FC = () => {
     } else if (key === "logout") {
       logout();
       message.success("已退出登录");
-      setTimeout(() => {
-        navigate("/login");
-      }, 300);
+      navigate("/login", { replace: true });
     }
   };
 

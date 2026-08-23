@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AnimatedText from "../components/animations/AnimatedText";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Button, Collapse } from "antd";
+import NeoConsole from "../components/holo/NeoConsole";
+import type { HoloData } from "../components/holo/useHoloData";
 import {
   RobotOutlined,
   CompassOutlined,
@@ -26,9 +29,39 @@ import {
   BugOutlined,
   DownOutlined,
 } from "@ant-design/icons";
-import SpaceShowcase from "../components/SpaceShowcase";
 
 gsap.registerPlugin(ScrollTrigger);
+
+/** 打字机效果：逐字打出 + 光标闪烁 */
+const TypeWriter: React.FC<{
+  text: string;
+  startDelay?: number;
+  speed?: number;
+  className?: string;
+}> = ({ text, startDelay = 1.0, speed = 55, className = "" }) => {
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
+    const start = setTimeout(() => {
+      const timer = setInterval(() => {
+        setCount((c) => {
+          if (c >= text.length) {
+            clearInterval(timer);
+            return c;
+          }
+          return c + 1;
+        });
+      }, speed);
+      return () => clearInterval(timer);
+    }, startDelay * 1000);
+    return () => clearTimeout(start);
+  }, [text, startDelay, speed]);
+  return (
+    <span className={className}>
+      {text.slice(0, count)}
+      {count < text.length && <span className="typing-caret" />}
+    </span>
+  );
+};
 
 const navLinks = [
   { label: "功能", href: "#features" },
@@ -183,6 +216,195 @@ const BrowserMockup: React.FC<{
   </div>
 );
 
+const KNOWLEDGE_SPACE_DEMO_DATA: HoloData = {
+  weeklyHours: 6.5,
+  totalHours: 128,
+  masteredKps: 9,
+  achievements: 7,
+  favorites: 12,
+  streakDays: 5,
+  todayMin: 45,
+  pathProgress: 42,
+  pathNodes: 35,
+  quizTotal: 120,
+  quizCovered: 14,
+  points: 2860,
+  level: 12,
+  topRankers: [
+    { name: "林同学", score: 3240 },
+    { name: "张同学", score: 2980 },
+    { name: "陈同学", score: 2710 },
+  ],
+  tasks: [
+    { title: "完成「指针」专项练习", type: "practice" },
+    { title: "复习「基尔霍夫定律」", type: "review" },
+    { title: "STM32 GPIO 实验", type: "experiment" },
+  ],
+  trend: [],
+  graphNodes: [
+    {
+      kp_id: "c-basics",
+      name: "C语言基础",
+      course: "C语言",
+      difficulty: 1,
+      status: "completed",
+      mastery: 0.92,
+    },
+    {
+      kp_id: "c-variable",
+      name: "变量与数据类型",
+      course: "C语言",
+      difficulty: 1,
+      status: "completed",
+      mastery: 0.86,
+    },
+    {
+      kp_id: "c-pointer",
+      name: "指针",
+      course: "C语言",
+      difficulty: 3,
+      status: "in-progress",
+      mastery: 0.58,
+    },
+    {
+      kp_id: "c-array",
+      name: "数组与字符串",
+      course: "C语言",
+      difficulty: 2,
+      status: "completed",
+      mastery: 0.78,
+    },
+    {
+      kp_id: "c-struct",
+      name: "结构体",
+      course: "C语言",
+      difficulty: 2,
+      status: "pending",
+      mastery: 0.35,
+    },
+    {
+      kp_id: "c-function",
+      name: "函数与模块化",
+      course: "C语言",
+      difficulty: 2,
+      status: "pending",
+      mastery: 0.42,
+    },
+    {
+      kp_id: "c-circuit",
+      name: "电路基础",
+      course: "电路分析",
+      difficulty: 1,
+      status: "completed",
+      mastery: 0.8,
+    },
+    {
+      kp_id: "c-kcl",
+      name: "基尔霍夫定律",
+      course: "电路分析",
+      difficulty: 2,
+      status: "in-progress",
+      mastery: 0.55,
+    },
+    {
+      kp_id: "c-mna",
+      name: "MNA矩阵分析",
+      course: "电路分析",
+      difficulty: 3,
+      status: "pending",
+      mastery: 0.3,
+    },
+    {
+      kp_id: "s-gpio",
+      name: "GPIO控制",
+      course: "STM32嵌入式",
+      difficulty: 2,
+      status: "pending",
+      mastery: 0.25,
+    },
+    {
+      kp_id: "s-timer",
+      name: "定时器与中断",
+      course: "STM32嵌入式",
+      difficulty: 3,
+      status: "locked",
+      mastery: 0.1,
+    },
+    {
+      kp_id: "s-adc",
+      name: "ADC采样",
+      course: "STM32嵌入式",
+      difficulty: 3,
+      status: "locked",
+      mastery: 0.08,
+    },
+    {
+      kp_id: "s-uart",
+      name: "串口通信",
+      course: "STM32嵌入式",
+      difficulty: 2,
+      status: "pending",
+      mastery: 0.22,
+    },
+    {
+      kp_id: "s-pwm",
+      name: "PWM输出",
+      course: "STM32嵌入式",
+      difficulty: 2,
+      status: "locked",
+      mastery: 0.12,
+    },
+    {
+      kp_id: "c-ohm",
+      name: "欧姆定律",
+      course: "电路分析",
+      difficulty: 1,
+      status: "completed",
+      mastery: 0.88,
+    },
+    {
+      kp_id: "c-voltage",
+      name: "电压与分压",
+      course: "电路分析",
+      difficulty: 2,
+      status: "pending",
+      mastery: 0.4,
+    },
+    {
+      kp_id: "c-debug",
+      name: "调试与测量",
+      course: "电路分析",
+      difficulty: 3,
+      status: "locked",
+      mastery: 0.18,
+    },
+  ],
+  graphEdges: [
+    ["c-basics", "c-variable"],
+    ["c-variable", "c-pointer"],
+    ["c-variable", "c-array"],
+    ["c-pointer", "c-struct"],
+    ["c-array", "c-struct"],
+    ["c-basics", "c-function"],
+    ["c-circuit", "c-kcl"],
+    ["c-kcl", "c-mna"],
+    ["c-pointer", "s-gpio"],
+    ["c-function", "s-gpio"],
+    ["s-gpio", "s-timer"],
+    ["s-timer", "s-adc"],
+    ["c-kcl", "s-adc"],
+    ["s-adc", "s-uart"],
+    ["s-gpio", "s-pwm"],
+    ["c-circuit", "c-ohm"],
+    ["c-ohm", "c-voltage"],
+    ["c-mna", "c-debug"],
+  ],
+};
+
+const KnowledgeSpacePreview: React.FC = () => (
+  <NeoConsole data={KNOWLEDGE_SPACE_DEMO_DATA} />
+);
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -201,13 +423,41 @@ const LandingPage: React.FC = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // hero 3D 视差：鼠标移动时 hero 内容轻微倾斜跟随
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+    const onMove = (e: MouseEvent) => {
+      const rect = hero.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      gsap.to(hero.querySelector(".hero-inner"), {
+        rotateY: px * 3,
+        rotateX: -py * 3,
+        transformPerspective: 900,
+        duration: 0.6,
+        ease: "power2.out",
+      });
+    };
+    const onLeave = () => {
+      gsap.to(hero.querySelector(".hero-inner"), {
+        rotateY: 0,
+        rotateX: 0,
+        duration: 0.8,
+        ease: "power3.out",
+      });
+    };
+    hero.addEventListener("mousemove", onMove);
+    hero.addEventListener("mouseleave", onLeave);
+    return () => {
+      hero.removeEventListener("mousemove", onMove);
+      hero.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
+
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ".hero-title",
-        { y: 40, autoAlpha: 0 },
-        { y: 0, autoAlpha: 1, duration: 1, ease: "power3.out", delay: 0.2 },
-      );
+      // hero 标题由 AnimatedText 组件逐字错峰入场接管（保留容器动画会冲突）
       gsap.fromTo(
         ".hero-sub",
         { y: 30, autoAlpha: 0 },
@@ -411,11 +661,20 @@ const LandingPage: React.FC = () => {
         ref={heroRef}
         className="relative pt-32 pb-20 md:pt-44 md:pb-32 px-6 overflow-hidden"
       >
+        {/* AIC 炫酷：hero 流光光斑背景 */}
+        <div className="hero-aurora">
+          <span className="aurora-1" />
+          <span className="aurora-2" />
+          <span className="aurora-3" />
+        </div>
         <div className="absolute inset-0 bg-mesh pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-50 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div
+            className="hero-inner grid lg:grid-cols-2 gap-12 items-center"
+            style={{ transformStyle: "preserve-3d" }}
+          >
             <div>
               <div className="hero-title">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs text-primary font-medium mb-6">
@@ -423,20 +682,29 @@ const LandingPage: React.FC = () => {
                   第十五届中国软件杯 A3 赛题作品
                 </div>
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tighter text-slate-900">
-                  让 AI 为你
+                  <AnimatedText text="让 AI 为你" delay={0.15} />
                   <br />
-                  <span className="text-primary">定制专属学习路径</span>
+                  <AnimatedText
+                    text="定制专属学习路径"
+                    delay={0.55}
+                    stagger={0.05}
+                    className="text-primary"
+                  />
                 </h1>
               </div>
               <p className="hero-sub mt-6 text-lg text-slate-500 max-w-lg leading-relaxed">
-                基于大模型的多智能体协同系统，融合知识图谱、苏格拉底式辅导与游戏化激励，打造真正懂你的个性化学习平台。
+                <TypeWriter
+                  text="基于大模型的多智能体协同系统，融合知识图谱、苏格拉底式辅导与游戏化激励"
+                  startDelay={1.1}
+                  speed={40}
+                />
               </p>
               <div className="hero-cta mt-8 flex flex-wrap gap-4">
                 <Button
                   type="primary"
                   size="large"
                   onClick={() => navigate("/login")}
-                  className="rounded-full bg-primary px-7 h-11 font-semibold hover:bg-primary-700 shadow-glow"
+                  className="btn-shine rounded-full bg-primary px-7 h-11 font-semibold hover:bg-primary-700 shadow-glow"
                 >
                   <span className="flex items-center gap-2">
                     开始学习
@@ -598,9 +866,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ===== 3D 立体化学习空间（可切换展示区） ===== */}
-      <SpaceShowcase />
-
       {/* ===== Features Bento Grid ===== */}
       <section
         id="features"
@@ -674,105 +939,21 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ===== AI+学科交叉（AIC 定位） ===== */}
-      <section className="py-20 px-6 bg-gradient-to-b from-white to-indigo-50/40">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="inline-block px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-600 text-xs font-medium mb-4">
-              AI + 学科交叉
-            </div>
-            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight">
-              新工科跨学科 AI 学习平台
-            </h2>
-            <p className="mt-4 text-slate-500 max-w-2xl mx-auto text-lg">
-              打通"编程思维 → 电路建模 → 嵌入式实现"的跨学科学习链路
-            </p>
+      {/* ===== 知识空间展示 ===== */}
+      <section className="relative p-0 bg-slate-950 overflow-hidden">
+        <div className="absolute top-8 left-0 right-0 z-30 pointer-events-none text-center">
+          <div className="inline-block px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-600 text-xs font-medium mb-4">
+            沉浸式知识空间
           </div>
-
-          {/* 三学科卡片 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {[
-              {
-                icon: "💻",
-                name: "C语言程序设计",
-                discipline: "计算机科学与技术",
-                color: "from-blue-500 to-blue-600",
-                desc: "指针、位运算、数组——嵌入式开发的直接编程基础",
-                kps: "16 个知识点",
-              },
-              {
-                icon: "⚡",
-                name: "电路分析基础",
-                discipline: "电子信息工程",
-                color: "from-orange-500 to-red-500",
-                desc: "分压采样、电压波形——外围电路设计的理论支撑",
-                kps: "5 个知识点 + MNA仿真",
-              },
-              {
-                icon: "🔧",
-                name: "STM32嵌入式开发",
-                discipline: "计算机 × 电子信息（交叉）",
-                color: "from-green-500 to-emerald-600",
-                desc: "GPIO/定时器/ADC/通信接口——综合应用两门基础学科",
-                kps: "14 个知识点 + 7 个实验",
-              },
-            ].map((c) => (
-              <div
-                key={c.name}
-                className="group rounded-2xl bg-white border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 overflow-hidden"
-              >
-                <div className={`h-2 bg-gradient-to-r ${c.color}`} />
-                <div className="p-6">
-                  <div className="text-3xl mb-3">{c.icon}</div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {c.name}
-                  </h3>
-                  <div className="text-xs font-medium text-indigo-500 mt-1 mb-2">
-                    {c.discipline}
-                  </div>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    {c.desc}
-                  </p>
-                  <div className="mt-4 flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 text-xs">
-                      {c.kps}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 跨学科链路 */}
-          <div className="rounded-2xl bg-white border border-purple-100 p-6">
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
-              {[
-                { step: "编程思维", desc: "C语言核心语法", icon: "💻" },
-                { step: "电路建模", desc: "仿真+AI诊断", icon: "⚡" },
-                { step: "嵌入式实现", desc: "STM32实战", icon: "🔧" },
-              ].map((s, i) => (
-                <React.Fragment key={s.step}>
-                  {i > 0 && (
-                    <div className="text-purple-400 text-xl font-bold hidden md:block">
-                      →
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{s.icon}</span>
-                    <div className="text-left">
-                      <div className="font-semibold text-slate-800">
-                        {s.step}
-                      </div>
-                      <div className="text-xs text-slate-400">{s.desc}</div>
-                    </div>
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-            <p className="text-center text-sm text-slate-400 mt-4">
-              跨课程知识依赖自动关联 · AI 智能辅导贯穿全程 · 实验实训闭环验证
-            </p>
-          </div>
+          <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight">
+            让知识点连接成你的学习地图
+          </h2>
+          <p className="mt-4 text-slate-500 max-w-2xl mx-auto text-lg">
+            拖动旋转视角，探索知识点之间的前置依赖与学习路径
+          </p>
+        </div>
+        <div className="w-full">
+          <KnowledgeSpacePreview />
         </div>
       </section>
 
