@@ -946,12 +946,14 @@ const Dashboard: React.FC = () => {
                 .calendar-active-dates .ant-picker-cell-in-view .ant-picker-cell-inner {
                   border-radius: 8px;
                 }
-                .calendar-active-dates .active-date .ant-picker-cell-inner {
+                .calendar-active-dates .ant-picker-cell:has(.active-date) > .ant-picker-cell-inner {
                   background: #28a745 !important;
-                  color: #fff !important;
                   border-radius: 8px;
                 }
-                .calendar-active-dates .active-date:hover .ant-picker-cell-inner {
+                .calendar-active-dates .ant-picker-cell:has(.active-date) .ant-picker-calendar-date-value {
+                  color: #fff !important;
+                }
+                .calendar-active-dates .ant-picker-cell:has(.active-date):hover > .ant-picker-cell-inner {
                   background: #218838 !important;
                 }
                 .calendar-active-dates .ant-picker-calendar-header {

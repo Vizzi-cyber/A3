@@ -5,8 +5,6 @@ import {
   StarOutlined,
   FireOutlined,
   RiseOutlined,
-  ClockCircleOutlined,
-  BookOutlined,
   ThunderboltOutlined,
   HeartOutlined,
   ExperimentOutlined,
@@ -749,7 +747,9 @@ export const LevelProgress: React.FC<{
 };
 
 // ==================== 知识树主页面 ====================
-const KnowledgeTree: React.FC = () => {
+const KnowledgeTree: React.FC<{ mapSlot?: React.ReactNode }> = ({
+  mapSlot,
+}) => {
   const studentId = useAppStore((s) => s.studentId);
   const [data, setData] = useState<KnowledgeTreeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -943,79 +943,7 @@ const KnowledgeTree: React.FC = () => {
 
         {/* 右侧：数据面板 */}
         <div className="lg:col-span-2 space-y-4">
-          {/* 统计卡片 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<FireOutlined />}
-                label="连续学习"
-                value={`${data.streak_days}天`}
-                color="#ef4444"
-              />
-            </div>
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<BookOutlined />}
-                label="掌握知识点"
-                value={data.completed_kps}
-                color="#6366f1"
-                sub={`/ ${data.touched_kps} 已学习`}
-              />
-            </div>
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<RiseOutlined />}
-                label="掌握率"
-                value={`${data.mastery_rate}%`}
-                color="#10b981"
-              />
-            </div>
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<ClockCircleOutlined />}
-                label="学习时长"
-                value={`${data.total_hours}h`}
-                color="#0ea5e9"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<TrophyOutlined />}
-                label="测验次数"
-                value={data.total_quizzes}
-                color="#f59e0b"
-                sub={`均分 ${data.avg_score}`}
-              />
-            </div>
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<StarOutlined />}
-                label="解锁成就"
-                value={data.achievements}
-                color="#8b5cf6"
-              />
-            </div>
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<ThunderboltOutlined />}
-                label="总积分"
-                value={data.total_points}
-                color="#f97316"
-              />
-            </div>
-            <div className="anim-card h-full">
-              <StatCard
-                icon={<RiseOutlined />}
-                label="趋势因子"
-                value={data.trend_factor.toFixed(2)}
-                color={data.trend_factor >= 0 ? "#10b981" : "#ef4444"}
-                sub={data.trend_factor >= 0 ? "上升趋势" : "需要关注"}
-              />
-            </div>
-          </div>
+          {mapSlot}
 
           {/* AI成长评语 */}
           <div className="anim-card">

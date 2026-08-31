@@ -11,7 +11,6 @@ import {
   StarOutlined,
   CheckCircleFilled,
   LockFilled,
-  RocketOutlined,
   CodeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -432,7 +431,7 @@ const LearningChallenge: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6 animate-pulse">
+      <div className="space-y-6 animate-pulse">
         {/* 骨架屏：标题区 */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="h-8 bg-slate-100 rounded w-48 mb-3" />
@@ -455,21 +454,12 @@ const LearningChallenge: React.FC = () => {
         </div>
         {/* 骨架屏：地图区 */}
         <div className="bg-gray-50 rounded-lg border border-gray-200 h-72" />
-        {/* 骨架屏：挑战卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl border border-slate-100 p-5 h-32"
-            />
-          ))}
-        </div>
       </div>
     );
   }
 
   return (
-    <div ref={pageRef} className="max-w-6xl mx-auto space-y-5">
+    <div ref={pageRef} className="space-y-5">
       {/* 世界观标题 */}
       <div className="anim-item">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -508,105 +498,29 @@ const LearningChallenge: React.FC = () => {
         </div>
       </div>
 
-      {/* 知识树（包含等级进度、树可视化、统计卡片、AI评语、趋势图、成长日志） */}
-      <KnowledgeTree />
-
-      {/* 探索地图 */}
-      <div className="anim-item">
-        <div className="flex items-center gap-2 mb-3">
-          <CompassOutlined className="text-indigo-500" />
-          <span className="text-sm font-bold text-slate-700">探索地图</span>
-          <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs ml-auto">
-            {Math.round((summary.completed / Math.max(summary.total, 1)) * 100)}
-            % 已探索
-          </Tag>
-        </div>
-        <ExploreMap
-          nodes={mapNodes}
-          activeIdx={activeNodeIdx}
-          onSelect={setActiveNodeIdx}
-          challenges={challenges}
-        />
-      </div>
-
-      {/* 全部挑战 */}
-      <div className="anim-item">
-        <div className="flex items-center gap-2 mb-3">
-          <RocketOutlined className="text-indigo-500" />
-          <span className="text-sm font-bold text-slate-700">全部挑战</span>
-          <Tag className="rounded-full border-0 bg-slate-50 text-slate-500 text-xs">
-            {summary.total - summary.completed} 个可挑战
-          </Tag>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {challenges.map((ch, idx) => {
-            const region = WORLD_LORE.regions[idx % WORLD_LORE.regions.length];
-            const color = DIFFICULTY_COLOR[ch.difficulty] || "#6366f1";
-            const isActive = idx === activeNodeIdx;
-            return (
-              <div
-                key={ch.id}
-                role="button"
-                tabIndex={0}
-                aria-label={`挑战: ${ch.name}`}
-                className={`cursor-pointer rounded-xl border p-3 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
-                  ch.completed
-                    ? "bg-emerald-50/50 border-emerald-200"
-                    : isActive
-                      ? "bg-white border-indigo-300 shadow-card ring-2 ring-indigo-100"
-                      : "bg-white border-slate-100 hover:shadow-card hover:border-slate-200"
-                }`}
-                onClick={() => setActiveNodeIdx(idx)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setActiveNodeIdx(idx);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm shrink-0"
-                    style={{ background: ch.completed ? "#10b981" : color }}
-                  >
-                    {ch.completed ? (
-                      <CheckCircleFilled />
-                    ) : (
-                      ICON_MAP[ch.icon] || <StarOutlined />
-                    )}
-                  </div>
-                  <span className="font-semibold text-gray-800 text-sm truncate">
-                    {ch.name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-2">
-                  <span>{region.icon}</span>
-                  <span>{region.name}</span>
-                  <Tag color={color} className="text-[10px] ml-auto">
-                    {DIFFICULTY_LABEL[ch.difficulty]}
-                  </Tag>
-                </div>
-                <Progress
-                  percent={ch.progress_pct}
-                  showInfo={false}
-                  strokeColor={ch.completed ? "#10b981" : color}
-                  trailColor="#f1f5f9"
-                  size="small"
-                  className="!m-0"
-                />
-                <div className="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
-                  <span>
-                    {ch.progress}/{ch.target}
-                  </span>
-                  <span className="text-emerald-500 font-medium">
-                    +{ch.reward}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* 知识树（包含等级进度、树可视化、探索地图、AI评语、趋势图、成长日志） */}
+      <KnowledgeTree
+        mapSlot={
+          <div className="anim-card space-y-3">
+            <div className="flex items-center gap-2">
+              <CompassOutlined className="text-indigo-500" />
+              <span className="text-sm font-bold text-slate-700">探索地图</span>
+              <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs ml-auto">
+                {Math.round(
+                  (summary.completed / Math.max(summary.total, 1)) * 100,
+                )}
+                % 已探索
+              </Tag>
+            </div>
+            <ExploreMap
+              nodes={mapNodes}
+              activeIdx={activeNodeIdx}
+              onSelect={setActiveNodeIdx}
+              challenges={challenges}
+            />
+          </div>
+        }
+      />
 
       {/* 成就徽章 */}
       <div className="anim-item">
