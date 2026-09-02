@@ -29,7 +29,7 @@ class LearningLogModel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        Index("ix_learning_logs_student_date", "student_id", "date"),
+        Index("ix_learning_logs_student_date", "student_id", "date", unique=True),
     )
 
 

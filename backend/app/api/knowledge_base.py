@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from ..models.database import get_db
 from ..models.kb_note import KBFolderModel, KBNoteModel
@@ -123,7 +124,11 @@ async def create_note(request: NoteCreate, db: Session = Depends(get_db), _curre
         folder_id=request.folder_id,
     )
     db.add(note)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="该学生已有同名笔记")
     db.refresh(note)
     return {"status": "success", "data": {
         "note_id": note.note_id,

@@ -42,8 +42,13 @@ class APIMonitorMiddleware(BaseHTTPMiddleware):
 
     _buffer: deque = deque(maxlen=500)
     _flush_task: asyncio.Task | None = None
-    _flush_interval: float = 5.0
     _batch_size: int = 50
+    _flush_interval: float = 5.0
+    _instance = None
+
+    def __init__(self, app):
+        super().__init__(app)
+        type(self)._instance = self
 
     async def dispatch(self, request: Request, call_next):
         start = time.time()
@@ -78,29 +83,29 @@ class APIMonitorMiddleware(BaseHTTPMiddleware):
                 pass  # 事件循环未启动
 
     async def _flush_buffer(self):
-        """批量写入数据库"""
-        if not self._buffer:
-            return
-        batch = []
-        while self._buffer and len(batch) < 100:
-            batch.append(self._buffer.popleft())
-        if not batch:
-            return
-        try:
-            from ..models.database import SessionLocal
-            from ..models.monitor import ApiMonitorModel
+        """批量写入数据库，持续排空缓冲区。"""
+        while self._buffer:
+            batch = []
+            while self._buffer and len(batch) < 100:
+                batch.append(self._buffer.popleft())
+            try:
+                from ..models.database import SessionLocal
+                from ..models.monitor import ApiMonitorModel
 
-            def _write():
-                db = SessionLocal()
-                try:
-                    db.bulk_insert_mappings(ApiMonitorModel, batch)
-                    db.commit()
-                finally:
-                    db.close()
+                def _write():
+                    db = SessionLocal()
+                    try:
+                        db.bulk_insert_mappings(ApiMonitorModel, batch)
+                        db.commit()
+                    finally:
+                        db.close()
 
-            await asyncio.to_thread(_write)
-        except Exception as e:
-            logger.warning(f"API监控批量写入失败: {e}")
+                await asyncio.to_thread(_write)
+            except Exception as e:
+                for item in reversed(batch):
+                    self._buffer.appendleft(item)
+                logger.warning(f"API监控批量写入失败: {e}")
+                return
 
     @classmethod
     async def start_periodic_flush(cls):

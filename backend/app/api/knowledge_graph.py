@@ -195,8 +195,22 @@ async def get_graph_node(
 
     node = nodes[kp_id]
     # 找出直接前置和直接后继
-    predecessors = [e["from"] for e in edges if e["to"] == kp_id]
-    successors = [e["to"] for e in edges if e["from"] == kp_id]
+    # 图谱数据可能来自不同版本，兼容 from/to 与 source/target 两种边格式。
+    def _edge_endpoints(edge):
+        if not isinstance(edge, dict):
+            return None, None
+        source = edge.get("from", edge.get("source"))
+        target = edge.get("to", edge.get("target"))
+        return source, target
+
+    predecessors = []
+    successors = []
+    for edge in edges:
+        source, target = _edge_endpoints(edge)
+        if target == kp_id and source:
+            predecessors.append(source)
+        if source == kp_id and target:
+            successors.append(target)
 
     return {
         "status": "success",

@@ -33,7 +33,7 @@ from ..core.logger import setup_logger
 from ..services.algorithm_registry import (
     get_bkt_engine, set_bkt_engine, get_irt_diagnoser, set_irt_diagnoser,
 )
-from .auth import require_auth
+from .auth import require_auth, require_teacher, verify_student_access
 
 logger = setup_logger()
 router = APIRouter()
@@ -114,7 +114,7 @@ class IRTFitRequest(BaseModel):
 @router.post("/bkt/fit")
 async def bkt_fit(
     db: Session = Depends(get_db),
-    _auth: str = Depends(require_auth),
+    _auth: str = Depends(require_teacher),
 ):
     """拟合完整 BKT 模型（EM 参数估计），返回参数与 AUC。"""
     records = _load_quiz_records(db)
@@ -136,6 +136,7 @@ async def bkt_mastery(
     _auth: str = Depends(require_auth),
 ):
     """查询学生各知识点掌握度（BKT 后验概率）。"""
+    verify_student_access(student_id, _auth, db)
     _bkt_engine = get_bkt_engine()
     if _bkt_engine is None or not _bkt_engine.is_fitted:
         raise HTTPException(status_code=409, detail="BKT 模型尚未拟合，请先 POST /algorithms/bkt/fit")
@@ -162,6 +163,7 @@ async def gkt_mastery(
     _auth: str = Depends(require_auth),
 ):
     """GKT 图感知掌握度：BKT 预测 + 图卷积在知识点依赖图上传播。"""
+    verify_student_access(student_id, _auth, db)
     bkt = get_bkt_engine()
     if bkt is None or not bkt.is_fitted:
         raise HTTPException(status_code=409, detail="请先拟合 BKT（POST /algorithms/bkt/fit）")
@@ -195,7 +197,7 @@ async def gkt_mastery(
 @router.post("/ncd/fit")
 async def ncd_fit(
     db: Session = Depends(get_db),
-    _auth: str = Depends(require_auth),
+    _auth: str = Depends(require_teacher),
 ):
     """训练 NCD 神经认知诊断（numpy，单调约束）。"""
     global _ncd_diagnoser
@@ -226,9 +228,11 @@ async def ncd_fit(
 @router.get("/ncd/ability/{student_id}")
 async def ncd_ability(
     student_id: str,
+    db: Session = Depends(get_db),
     _auth: str = Depends(require_auth),
 ):
     """NCD 能力诊断（神经认知诊断，替代/互补 IRT）。"""
+    verify_student_access(student_id, _auth, db)
     if _ncd_diagnoser is None or not _ncd_diagnoser.is_fitted:
         raise HTTPException(status_code=409, detail="NCD 尚未训练，请先 POST /algorithms/ncd/fit")
     ability = _ncd_diagnoser.estimate_ability(student_id)
@@ -251,7 +255,7 @@ async def ncd_ability(
 async def irt_fit(
     request: IRTFitRequest,
     db: Session = Depends(get_db),
-    _auth: str = Depends(require_auth),
+    _auth: str = Depends(require_teacher),
 ):
     """拟合 IRT 模型（1PL/2PL MAP 估计），返回学生能力与题目难度。"""
     records = _load_quiz_records(db)
@@ -282,9 +286,11 @@ async def irt_fit(
 @router.get("/irt/ability/{student_id}")
 async def irt_ability(
     student_id: str,
+    db: Session = Depends(get_db),
     _auth: str = Depends(require_auth),
 ):
     """查询学生 IRT 能力值 θ（替代加权平均分）。"""
+    verify_student_access(student_id, _auth, db)
     _irt_diagnoser = get_irt_diagnoser()
     if _irt_diagnoser is None or not _irt_diagnoser.is_fitted:
         raise HTTPException(status_code=409, detail="IRT 模型尚未拟合，请先 POST /algorithms/irt/fit")
@@ -304,7 +310,7 @@ async def irt_ability(
 
 @router.get("/irt/difficulty")
 async def irt_difficulty(
-    _auth: str = Depends(require_auth),
+    _auth: str = Depends(require_teacher),
 ):
     """查询题目/知识点难度标定（IRT b 值，替代人工难度 1-5）。"""
     _irt_diagnoser = get_irt_diagnoser()
@@ -352,6 +358,7 @@ async def memory_card(
     _auth: str = Depends(require_auth),
 ):
     """查询记忆卡片状态（难度/稳定性/可提取性/下次复习）。"""
+    verify_student_access(student_id, _auth, db)
     scheduler = _load_memory_scheduler(db, student_id)
     card = scheduler.get_card(student_id, kp_id)
     if card is None:
@@ -366,6 +373,7 @@ async def memory_due(
     _auth: str = Depends(require_auth),
 ):
     """查询到期复习队列（FSRS 计算的最优复习时刻）。"""
+    verify_student_access(student_id, _auth, db)
     scheduler = _load_memory_scheduler(db, student_id)
     due = scheduler.get_due_cards(student_id)
     return {"status": "success", "data": {"student_id": student_id, "due_cards": due, "count": len(due)}}
@@ -377,7 +385,7 @@ async def memory_due(
 @router.post("/bandit/select")
 async def bandit_select(
     request: BanditSelectRequest,
-    _auth: str = Depends(require_auth),
+    _auth: str = Depends(require_teacher),
 ):
     """按 Thompson Sampling 选择 k 个候选（题目/资源）。"""
     selector = _bandit_selectors.setdefault(
@@ -397,7 +405,7 @@ async def bandit_select(
 @router.post("/bandit/update")
 async def bandit_update(
     request: BanditUpdateRequest,
-    _auth: str = Depends(require_auth),
+    _auth: str = Depends(require_teacher),
 ):
     """反馈被选臂的收益，更新 MAB 策略。"""
     selector = _bandit_selectors.setdefault(
@@ -417,7 +425,7 @@ async def bandit_update(
 
 @router.get("/status")
 async def ai_algorithms_status(
-    _auth: str = Depends(require_auth),
+    _auth: str = Depends(require_teacher),
 ):
     """算法模块状态总览。"""
     return {

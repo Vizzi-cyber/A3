@@ -37,6 +37,19 @@ export const api = axios.create({
 
 // 请求去重：相同 key 的并发请求只保留最新一个
 const pendingControllers = new Map<string, AbortController>();
+const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
+
+export async function withCache<T>(
+  key: string,
+  ttlMs: number,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const cached = responseCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+  const value = await fn();
+  responseCache.set(key, { expiresAt: Date.now() + ttlMs, value });
+  return value;
+}
 
 /**
  * 创建带去重的请求函数

@@ -49,15 +49,25 @@ def req(method, path, body=None, token=None, timeout=30):
     except Exception as e:
         return -1, str(e).encode()[:200]
 
+def _service_available() -> bool:
+    try:
+        with urllib.request.urlopen(BASE + "/health", timeout=3) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
 
 def main():
     from app.main import app
     from app.api.auth import _create_access_token
     from fastapi.routing import APIRoute
 
+    if not _service_available():
+        print(f"后端服务不可用：{BASE}，请先启动 uvicorn")
+        return 2
+
     student_token = _create_access_token({"sub": "student_001"})
     teacher_token = _create_access_token({"sub": "T001"})
-    tokens = {"student": student_token, "teacher": teacher_token}
 
     # 收集所有路由
     routes = []
@@ -125,8 +135,18 @@ def main():
     for method, path in routes:
         # 跳过带路径参数的 GET（无法穷举参数值）
         if "{" in path:
-            SKIP.append(f"{method} {path}")
-            continue
+            # 使用固定演示参数覆盖常见动态路径，减少无意义跳过
+            fixtures = {
+                "student_id": "student_001", "kp_id": "kp_c01",
+                "experiment_id": "exp_aic_demo", "folder_id": "f1",
+            }
+            concrete = path
+            for name, value in fixtures.items():
+                concrete = concrete.replace("{" + name + "}", value)
+            if "{" in concrete:
+                SKIP.append(f"{method} {path}")
+                continue
+            path = concrete
         # LLM 重依赖接口（真实调用会烧额度且慢/不稳定；TestClient mock 层已单独验证）
         LLM_DEPENDENT = (
             "/api/v1/knowledge-graph/build",

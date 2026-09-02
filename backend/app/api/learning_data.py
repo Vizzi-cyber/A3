@@ -5,8 +5,8 @@
 import secrets
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -22,15 +22,17 @@ from ..models.experiment import (
 )
 from ..services.gamification_service import award_points, maybe_unlock_achievement
 from ..services.path_adjustment_engine import maybe_check_path_adjustment
+from ..core.logger import setup_logger
 from .auth import require_auth
 
 router = APIRouter()
+logger = setup_logger()
 
 
 class LearningRecordRequest(BaseModel):
     student_id: str
     kp_id: str
-    action: str = Field(..., max_length=64)  # watch / read / practice / review / complete
+    action: Literal["watch", "read", "practice", "review", "complete"] = Field(...)
     duration: int = Field(0, ge=0, le=86400)
     progress: float = Field(0.0, ge=0.0, le=1.0)
     score: Optional[float] = Field(None, ge=0.0, le=100.0)
@@ -39,9 +41,9 @@ class LearningRecordRequest(BaseModel):
 
 class ExperimentLogRequest(BaseModel):
     student_id: str
-    experiment_id: Optional[str] = None
-    experiment_type: str = Field(..., max_length=64)  # circuit_simulate / circuit_fault / stm32_simulate
-    action: str = Field("run", max_length=64)          # run / diagnose / submit / complete
+    experiment_id: Optional[str] = Field(None, max_length=64)
+    experiment_type: Literal["circuit_simulate", "circuit_fault", "stm32_simulate"]
+    action: Literal["run", "diagnose", "submit", "complete"] = "run"
     detail: Dict[str, Any] = {}
     duration: int = Field(0, ge=0, le=86400)
 
@@ -58,7 +60,22 @@ class QuizResultRequest(BaseModel):
     experiment_id: Optional[str] = None
     assessment_phase: Optional[str] = Field(None, pattern="^(pre|post)$")
     assessment_version: Optional[str] = Field(None, max_length=64)
+    @field_validator("correct_count")
+    @classmethod
+    def validate_correct_count(cls, value: int, info):
+        total = info.data.get("total_questions")
+        if total is not None and value > total:
+            raise ValueError("correct_count 不能大于 total_questions")
+        return value
 
+    @field_validator("score")
+    @classmethod
+    def validate_score_consistency(cls, value: float, info):
+        total = info.data.get("total_questions")
+        correct = info.data.get("correct_count")
+        if total and correct is not None and abs(value - (correct / total * 100)) > 0.01:
+            raise ValueError("score 必须与答对题数一致")
+        return value
 
 def _generate_id(prefix: str) -> str:
     """生成带时间戳和随机熵的 ID，降低并发冲突概率"""

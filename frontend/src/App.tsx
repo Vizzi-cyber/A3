@@ -15,6 +15,20 @@ import OnboardingQuestionnaire, {
 } from "./components/OnboardingQuestionnaire";
 import "./App.css";
 
+const routePreloads: Record<string, () => Promise<unknown>> = {
+  "/": () => import("./pages/Dashboard"),
+  "/tutor": () => import("./pages/Tutor"),
+  "/learning-path": () => import("./pages/LearningPath"),
+  "/resources": () => import("./pages/ResourceCenter"),
+  "/challenges": () => import("./pages/LearningChallenge"),
+  "/personal": () => import("./pages/PersonalSpace"),
+  "/knowledge-base": () => import("./pages/KnowledgeBase"),
+};
+
+export const preloadRoute = (path: string) => {
+  routePreloads[path]?.();
+};
+
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const LearningPath = React.lazy(() => import("./pages/LearningPath"));
 const ResourceCenter = React.lazy(() => import("./pages/ResourceCenter"));

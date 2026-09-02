@@ -32,7 +32,7 @@ class AchievementModel(Base):
     unlocked_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        Index("ix_achievements_student_achievement", "student_id", "achievement_id"),
+        Index("ix_achievements_student_achievement", "student_id", "achievement_id", unique=True),
     )
 
 
@@ -54,7 +54,7 @@ class TaskModel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        Index("ix_tasks_student_task", "student_id", "task_id"),
+        Index("ix_tasks_student_task", "student_id", "task_id", unique=True),
     )
 
 

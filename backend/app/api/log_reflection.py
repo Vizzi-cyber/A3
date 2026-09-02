@@ -4,12 +4,13 @@
 - 反思记录存储与查询
 - 学习复盘数据接口
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from ..models.database import get_db
 from ..models.log_reflection import LearningLogModel, ReflectionModel
 from ..services.path_adjustment_engine import maybe_check_path_adjustment
@@ -51,15 +52,15 @@ async def get_learning_logs(student_id: str, date: Optional[str] = None, db: Ses
 
 class UpsertLogRequest(BaseModel):
     student_id: str
-    date: str
-    total_duration: int = 0
-    kp_count: int = 0
-    quiz_count: int = 0
-    avg_score: float = 0.0
-    mistakes: List[str] = []
-    path_progress: float = 0.0
-    completed_tasks: List[str] = []
-    timeline: List[Dict[str, Any]] = []
+    date: str = Field(..., pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
+    total_duration: int = Field(0, ge=0, le=86400)
+    kp_count: int = Field(0, ge=0, le=10000)
+    quiz_count: int = Field(0, ge=0, le=10000)
+    avg_score: float = Field(0.0, ge=0.0, le=100.0)
+    mistakes: List[str] = Field(default_factory=list, max_length=1000)
+    path_progress: float = Field(0.0, ge=0.0, le=1.0)
+    completed_tasks: List[str] = Field(default_factory=list, max_length=1000)
+    timeline: List[Dict[str, Any]] = Field(default_factory=list, max_length=5000)
 
 
 @router.post("/logs/upsert")
@@ -104,11 +105,11 @@ async def upsert_learning_log(request: UpsertLogRequest, db: Session = Depends(g
 
 class ReflectionCreateRequest(BaseModel):
     student_id: str
-    date: str
-    content: str
-    mood: str = "neutral"
-    tags: List[str] = []
-    ai_feedback: Optional[str] = None
+    date: str = Field(..., pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
+    content: str = Field(..., min_length=1, max_length=20000)
+    mood: str = Field("neutral", pattern="^(happy|neutral|frustrated|excited)$")
+    tags: List[str] = Field(default_factory=list, max_length=50)
+    ai_feedback: Optional[str] = Field(None, max_length=20000)
 
 
 @router.post("/reflections/create")
@@ -187,7 +188,7 @@ async def delete_reflection(reflection_id: str, db: Session = Depends(get_db), _
 
 
 @router.get("/{student_id}/reflections")
-async def get_reflections(student_id: str, limit: int = 30, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def get_reflections(student_id: str, limit: int = Query(30, ge=1, le=100), db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取反思记录列表"""
     if student_id != _current:
         raise HTTPException(status_code=403, detail="Cannot view other student's reflections")

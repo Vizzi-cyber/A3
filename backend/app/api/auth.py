@@ -11,6 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from jose import jwt, JWTError
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 import bcrypt
 
@@ -118,8 +119,22 @@ async def require_teacher(
     if not student_id:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     user = db.query(UserModel).filter(UserModel.student_id == student_id).first()
-    if not user or user.role not in ("teacher", "admin"):
+    if not user or not user.is_active or user.role not in ("teacher", "admin"):
         raise HTTPException(status_code=403, detail="教师权限不足")
+    return student_id
+
+
+async def require_admin(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+) -> str:
+    """管理员权限认证。"""
+    student_id = await require_auth(credentials)
+    user = db.query(UserModel).filter(UserModel.student_id == student_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=403, detail="管理员权限不足")
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="管理员权限不足")
     return student_id
 
 
@@ -131,6 +146,15 @@ def verify_token(token: str) -> Optional[str]:
 def verify_student_ownership(requested_id: str, current_id: str) -> None:
     """校验请求的 student_id 是否等于当前认证用户，否则抛 403"""
     if requested_id != current_id:
+        raise HTTPException(status_code=403, detail="无权操作其他用户的数据")
+
+
+def verify_student_access(requested_id: str, current_id: str, db: Session) -> None:
+    """允许本人或教师/管理员访问学生数据。"""
+    if requested_id == current_id:
+        return
+    user = db.query(UserModel).filter(UserModel.student_id == current_id).first()
+    if not user or not user.is_active or user.role not in ("teacher", "admin"):
         raise HTTPException(status_code=403, detail="无权操作其他用户的数据")
 
 
@@ -157,7 +181,11 @@ async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
         role="student",
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="student_id or email already exists")
     db.refresh(user)
     return {"status": "success", "message": "User registered", "student_id": user.student_id}
 
@@ -168,19 +196,18 @@ async def debug_validate(password: str):
     from ..core.config import settings
     if not settings.DEBUG:
         raise HTTPException(status_code=404, detail="Not found")
-    from pydantic import ValidationError
     try:
-        req = UserRegisterRequest(student_id="debug", username="debug", password=password)
-        return {"valid": True, "password": req.password}
-    except ValidationError as e:
-        return {"valid": False, "errors": e.errors()}
+        UserRegisterRequest(student_id="debug", username="debug", password=password)
+        return {"valid": True}
+    except ValueError as e:
+        return {"valid": False, "errors": [{"msg": str(e)}]}
 
 
 @router.post("/register-teacher")
 async def register_teacher(
     request: UserRegisterRequest,
     db: Session = Depends(get_db),
-    _admin: str = Depends(require_auth),
+    _admin: str = Depends(require_admin),
 ):
     """教师注册（需要管理员认证）"""
     existing = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
@@ -196,7 +223,11 @@ async def register_teacher(
         role="teacher",
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="student_id or email already exists")
     db.refresh(user)
     return {"status": "success", "message": "Teacher registered", "student_id": user.student_id}
 
@@ -205,7 +236,7 @@ async def register_teacher(
 async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     """用户登录"""
     user = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
-    if not user:
+    if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     valid = _verify_password(request.password, user.hashed_password)
     if not valid:

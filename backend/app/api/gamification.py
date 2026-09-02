@@ -8,7 +8,7 @@
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -143,11 +143,11 @@ async def get_tasks(student_id: str, task_type: Optional[str] = None, db: Sessio
 
 class CreateTaskRequest(BaseModel):
     student_id: str
-    task_id: str
-    title: str
-    description: Optional[str] = None
-    task_type: str = "daily"
-    reward_points: int = 0
+    task_id: str = Field(..., min_length=1, max_length=64)
+    title: str = Field(..., min_length=1, max_length=256)
+    description: Optional[str] = Field(None, max_length=512)
+    task_type: Literal["daily", "weekly", "challenge"] = "daily"
+    reward_points: int = Field(0, ge=0, le=10000)
 
 
 @router.post("/tasks/create")
@@ -171,7 +171,7 @@ async def create_task(request: CreateTaskRequest, db: Session = Depends(get_db),
 class UpdateTaskProgressRequest(BaseModel):
     student_id: str
     task_id: str
-    progress: float
+    progress: float = Field(..., ge=0.0, le=1.0)
 
 
 @router.post("/tasks/progress")

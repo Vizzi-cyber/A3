@@ -119,13 +119,20 @@ async def lifespan(app: FastAPI):
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"AIC 算法: BKT 启动拟合异常（{exc}）")
 
-    asyncio.create_task(_auto_fit_bkt())
-    asyncio.create_task(_auto_fit_irt())
+    algorithm_tasks = [
+        asyncio.create_task(_auto_fit_bkt()),
+        asyncio.create_task(_auto_fit_irt()),
+    ]
 
     yield
 
     # 关闭时执行
-    flush_task.cancel()
+    for task in [flush_task, *algorithm_tasks]:
+        task.cancel()
+    await asyncio.gather(flush_task, *algorithm_tasks, return_exceptions=True)
+    monitor = APIMonitorMiddleware._get_instance()
+    if monitor:
+        await monitor._flush_buffer()
     logger.info("Shutting down application")
 
 

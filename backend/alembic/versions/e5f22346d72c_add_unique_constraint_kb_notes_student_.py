@@ -18,11 +18,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 先将索引改为唯一约束，防止同 student_id+title 重复创建笔记
-    op.drop_index(op.f('ix_kb_notes_student_title'), table_name='kb_notes')
-    op.create_unique_constraint('uq_kb_notes_student_title', 'kb_notes', ['student_id', 'title'])
+    # SQLite 不支持直接创建表级唯一约束，使用唯一索引保持跨数据库兼容。
+    # 清理历史重复笔记，仅保留每组最早的一条。
+    connection = op.get_bind()
+    connection.execute(sa.text(
+        "DELETE FROM kb_notes WHERE rowid NOT IN "
+        "(SELECT MIN(rowid) FROM kb_notes GROUP BY student_id, title)"
+    ))
+    inspector = sa.inspect(connection)
+    if "ix_kb_notes_student_title" in {idx["name"] for idx in inspector.get_indexes("kb_notes")}:
+        op.drop_index("ix_kb_notes_student_title", table_name="kb_notes")
+    op.create_index(
+        'uq_kb_notes_student_title', 'kb_notes', ['student_id', 'title'], unique=True
+    )
 
 
 def downgrade() -> None:
-    op.drop_constraint('uq_kb_notes_student_title', 'kb_notes', type_='unique')
+    op.drop_index('uq_kb_notes_student_title', table_name='kb_notes')
     op.create_index(op.f('ix_kb_notes_student_title'), 'kb_notes', ['student_id', 'title'], unique=False)

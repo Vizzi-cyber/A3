@@ -70,6 +70,10 @@ class QuizResultModel(Base):
         Index("ix_quiz_results_created_at", "created_at"),
         Index("ix_quiz_results_student_created", "student_id", "created_at"),
         Index("ix_quiz_results_experiment_phase", "experiment_id", "assessment_phase"),
+        Index(
+            "uq_quiz_results_experiment_student_phase",
+            "experiment_id", "student_id", "assessment_phase", unique=True,
+        ),
     )
 
 

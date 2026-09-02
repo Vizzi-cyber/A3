@@ -27,9 +27,22 @@ import {
   RocketOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
-import { dashboardApi } from "../services/api";
+import { dashboardApi, withCache } from "../services/api";
 
 const { Sider } = Layout;
+
+const preloadRoute = (path: string) => {
+  const loaders: Record<string, () => Promise<unknown>> = {
+    "/": () => import("../pages/Dashboard"),
+    "/tutor": () => import("../pages/Tutor"),
+    "/learning-path": () => import("../pages/LearningPath"),
+    "/resources": () => import("../pages/ResourceCenter"),
+    "/challenges": () => import("../pages/LearningChallenge"),
+    "/personal": () => import("../pages/PersonalSpace"),
+    "/knowledge-base": () => import("../pages/KnowledgeBase"),
+  };
+  loaders[path]?.();
+};
 
 const studentMenuItems = [
   { key: "/", icon: <DashboardOutlined />, label: "学习仪表盘" },
@@ -99,8 +112,9 @@ const Sidebar: React.FC = () => {
   const [todayMinutes, setTodayMinutes] = useState(0);
 
   useEffect(() => {
-    dashboardApi
-      .getSummary(studentId)
+    withCache(`summary:${studentId}`, 30_000, () =>
+      dashboardApi.getSummary(studentId),
+    )
       .then((res) => {
         setTodayMinutes(res.data?.stats?.today_duration_min || 0);
       })
@@ -127,6 +141,8 @@ const Sidebar: React.FC = () => {
             item.label
           ),
           onClick: () => handleNavigate(item.key!),
+          onMouseEnter: () => preloadRoute(item.key!),
+          onFocus: () => preloadRoute(item.key!),
         })),
     [collapsed, navigate, location.pathname],
   );

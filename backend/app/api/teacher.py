@@ -3,8 +3,10 @@
 提供全班数据概览、学生管理、成绩分析等功能
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -31,15 +33,37 @@ async def get_all_students(
 ):
     """获取所有学生列表"""
     students = db.query(UserModel).filter(UserModel.role == "student").all()
+    if not students:
+        return {"status": "success", "students": [], "total": 0}
+    student_ids = [s.student_id for s in students]
+    points_by_student = dict(
+        db.query(PointsModel.student_id, func.max(PointsModel.total_points))
+        .filter(PointsModel.student_id.in_(student_ids))
+        .group_by(PointsModel.student_id)
+        .all()
+    )
+    latest_trend_date = (
+        db.query(
+            TrendDataModel.student_id,
+            func.max(TrendDataModel.date).label("latest_date"),
+        )
+        .filter(TrendDataModel.student_id.in_(student_ids))
+        .group_by(TrendDataModel.student_id)
+        .subquery()
+    )
+    latest_trends = {
+        row.student_id: row
+        for row in db.query(TrendDataModel)
+        .join(
+            latest_trend_date,
+            (TrendDataModel.student_id == latest_trend_date.c.student_id)
+            & (TrendDataModel.date == latest_trend_date.c.latest_date),
+        )
+        .all()
+    }
     result = []
     for s in students:
-        # 获取积分
-        points = db.query(PointsModel).filter(PointsModel.student_id == s.student_id).first()
-        # 获取最新趋势
-        trend = db.query(TrendDataModel).filter(
-            TrendDataModel.student_id == s.student_id
-        ).order_by(TrendDataModel.date.desc()).first()
-
+        trend = latest_trends.get(s.student_id)
         result.append({
             "student_id": s.student_id,
             "username": s.username,
@@ -47,7 +71,7 @@ async def get_all_students(
             "is_active": s.is_active,
             "class_id": s.class_id,
             "created_at": s.created_at.isoformat() if s.created_at else None,
-            "total_points": points.total_points if points else 0,
+            "total_points": points_by_student.get(s.student_id, 0),
             "trend_state": trend.trend_state if trend else "unknown",
             "trend_factor": trend.trend_factor if trend else 0,
         })
@@ -302,7 +326,7 @@ async def get_student_detail(
 @router.get("/student/{student_id}/progress")
 async def get_student_progress(
     student_id: str,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     _current: str = Depends(require_teacher)
 ):
@@ -330,7 +354,7 @@ async def get_student_progress(
 @router.get("/student/{student_id}/scores")
 async def get_student_scores(
     student_id: str,
-    limit: int = 30,
+    limit: int = Query(30, ge=1, le=200),
     db: Session = Depends(get_db),
     _current: str = Depends(require_teacher)
 ):
@@ -364,7 +388,7 @@ async def get_student_scores(
 @router.get("/student/{student_id}/trends")
 async def get_student_trends(
     student_id: str,
-    days: int = 30,
+    days: int = Query(30, ge=1, le=90),
     db: Session = Depends(get_db),
     _current: str = Depends(require_teacher)
 ):
@@ -392,7 +416,7 @@ async def get_student_trends(
 @router.get("/student/{student_id}/reflections")
 async def get_student_reflections(
     student_id: str,
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     _current: str = Depends(require_teacher)
 ):
@@ -419,28 +443,38 @@ async def get_student_reflections(
 @router.get("/ranking")
 async def get_ranking(
     sort_by: str = "points",
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     _current: str = Depends(require_teacher)
 ):
     """学生排行榜"""
     students = db.query(UserModel).filter(UserModel.role == "student").all()
+    student_ids = [s.student_id for s in students]
+    points_by_student = dict(
+        db.query(PointsModel.student_id, func.max(PointsModel.total_points))
+        .filter(PointsModel.student_id.in_(student_ids))
+        .group_by(PointsModel.student_id).all()
+    ) if student_ids else {}
+    duration_by_student = dict(
+        db.query(LearningRecordModel.student_id, func.sum(LearningRecordModel.duration))
+        .filter(LearningRecordModel.student_id.in_(student_ids))
+        .group_by(LearningRecordModel.student_id).all()
+    ) if student_ids else {}
+    score_by_student = dict(
+        db.query(QuizResultModel.student_id, func.avg(QuizResultModel.score))
+        .filter(QuizResultModel.student_id.in_(student_ids))
+        .group_by(QuizResultModel.student_id).all()
+    ) if student_ids else {}
     ranking = []
 
     for s in students:
-        sid = s.student_id
-        points = db.query(PointsModel).filter(PointsModel.student_id == sid).first()
-        total_duration = db.query(func.sum(LearningRecordModel.duration)).filter(
-            LearningRecordModel.student_id == sid
-        ).scalar() or 0
-        avg_score = db.query(func.avg(QuizResultModel.score)).filter(
-            QuizResultModel.student_id == sid
-        ).scalar()
+        total_duration = duration_by_student.get(s.student_id, 0) or 0
+        avg_score = score_by_student.get(s.student_id)
 
         ranking.append({
-            "student_id": sid,
+            "student_id": s.student_id,
             "username": s.username,
-            "total_points": points.total_points if points else 0,
+            "total_points": points_by_student.get(s.student_id, 0),
             "total_hours": round(total_duration / 3600, 1),
             "avg_score": round(avg_score, 1) if avg_score else 0,
         })
@@ -496,9 +530,9 @@ async def get_weak_points(
 
 # ---------- 导出 ----------
 class ExportRequest(BaseModel):
-    report_type: str = Field(..., description="scores / progress / ranking / all")
-    format: str = Field("csv", description="csv / xlsx")
-    student_ids: Optional[List[str]] = None
+    report_type: str = Field(..., pattern="^(scores|progress|ranking|all)$")
+    format: str = Field("csv", pattern="^csv$")
+    student_ids: Optional[List[str]] = Field(None, max_length=500)
 
 
 @router.get("/exports")
@@ -525,18 +559,50 @@ async def export_report(
     import io
     from datetime import datetime, timezone
 
+    if request.report_type not in {"scores", "progress", "ranking", "all"}:
+        raise HTTPException(status_code=422, detail="report_type 必须是 scores、progress、ranking 或 all")
+    if request.format != "csv":
+        raise HTTPException(status_code=422, detail="当前仅支持 csv 格式")
+
     # 查询学生
     query = db.query(UserModel).filter(UserModel.role == "student")
     if request.student_ids:
         query = query.filter(UserModel.student_id.in_(request.student_ids))
     students = query.all()
+    student_ids = [s.student_id for s in students]
+    if not students:
+        rows, fieldnames, title = [], [], ""
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        output.seek(0)
+        return StreamingResponse(iter([output.getvalue().encode("utf-8-sig")]), media_type="text/csv")
+    points_by_student = dict(
+        db.query(PointsModel.student_id, func.max(PointsModel.total_points))
+        .filter(PointsModel.student_id.in_(student_ids))
+        .group_by(PointsModel.student_id).all()
+    )
+    records_by_student = defaultdict(list)
+    for record in db.query(LearningRecordModel).filter(LearningRecordModel.student_id.in_(student_ids)).all():
+        records_by_student[record.student_id].append(record)
+    quizzes_by_student = defaultdict(list)
+    for quiz in db.query(QuizResultModel).filter(QuizResultModel.student_id.in_(student_ids)).all():
+        quizzes_by_student[quiz.student_id].append(quiz)
+    latest_trend_date = db.query(
+        TrendDataModel.student_id, func.max(TrendDataModel.date).label("latest_date")
+    ).filter(TrendDataModel.student_id.in_(student_ids)).group_by(TrendDataModel.student_id).subquery()
+    trends_by_student = {
+        row.student_id: row for row in db.query(TrendDataModel).join(
+            latest_trend_date,
+            (TrendDataModel.student_id == latest_trend_date.c.student_id)
+            & (TrendDataModel.date == latest_trend_date.c.latest_date),
+        ).all()
+    }
 
     if request.report_type == "scores":
         rows = []
         for s in students:
-            quizzes = db.query(QuizResultModel).filter(
-                QuizResultModel.student_id == s.student_id
-            ).all()
+            quizzes = quizzes_by_student.get(s.student_id, [])
             if quizzes:
                 avg = round(sum(q.score for q in quizzes) / len(quizzes), 1)
                 rows.append({
@@ -562,9 +628,7 @@ async def export_report(
     elif request.report_type == "progress":
         rows = []
         for s in students:
-            records = db.query(LearningRecordModel).filter(
-                LearningRecordModel.student_id == s.student_id
-            ).all()
+            records = records_by_student.get(s.student_id, [])
             total_duration = sum(r.duration or 0 for r in records)
             completed = sum(1 for r in records if r.action == "complete")
             rows.append({
@@ -580,21 +644,16 @@ async def export_report(
     elif request.report_type == "ranking":
         rows = []
         for s in students:
-            points = db.query(PointsModel).filter(PointsModel.student_id == s.student_id).first()
-            records = db.query(LearningRecordModel).filter(
-                LearningRecordModel.student_id == s.student_id
-            ).all()
+            points = points_by_student.get(s.student_id, 0)
+            records = records_by_student.get(s.student_id, [])
             total_duration = sum(r.duration or 0 for r in records)
-            avg_score_q = db.query(func.avg(QuizResultModel.score)).filter(
-                QuizResultModel.student_id == s.student_id
-            ).scalar()
-            trend = db.query(TrendDataModel).filter(
-                TrendDataModel.student_id == s.student_id
-            ).order_by(TrendDataModel.date.desc()).first()
+            quizzes = quizzes_by_student.get(s.student_id, [])
+            avg_score_q = (sum(q.score or 0 for q in quizzes) / len(quizzes)) if quizzes else 0
+            trend = trends_by_student.get(s.student_id)
             rows.append({
                 "student_id": s.student_id,
                 "username": s.username,
-                "total_points": points.total_points if points else 0,
+                "total_points": points_by_student.get(s.student_id, 0),
                 "total_hours": round(total_duration / 3600, 1),
                 "avg_score": round(avg_score_q, 1) if avg_score_q else 0,
                 "trend_state": trend.trend_state if trend else "unknown",
@@ -608,25 +667,17 @@ async def export_report(
     else:  # all
         rows = []
         for s in students:
-            points = db.query(PointsModel).filter(PointsModel.student_id == s.student_id).first()
-            records = db.query(LearningRecordModel).filter(
-                LearningRecordModel.student_id == s.student_id
-            ).all()
+            points = points_by_student.get(s.student_id, 0)
+            records = records_by_student.get(s.student_id, [])
             total_duration = sum(r.duration or 0 for r in records)
             completed = sum(1 for r in records if r.action == "complete")
-            quizzes = db.query(QuizResultModel).filter(
-                QuizResultModel.student_id == s.student_id
-            ).all()
-            avg_score_q = db.query(func.avg(QuizResultModel.score)).filter(
-                QuizResultModel.student_id == s.student_id
-            ).scalar()
-            trend = db.query(TrendDataModel).filter(
-                TrendDataModel.student_id == s.student_id
-            ).order_by(TrendDataModel.date.desc()).first()
+            quizzes = quizzes_by_student.get(s.student_id, [])
+            avg_score_q = (sum(q.score or 0 for q in quizzes) / len(quizzes)) if quizzes else 0
+            trend = trends_by_student.get(s.student_id)
             rows.append({
                 "student_id": s.student_id,
                 "username": s.username,
-                "total_points": points.total_points if points else 0,
+                "total_points": points_by_student.get(s.student_id, 0),
                 "total_hours": round(total_duration / 3600, 1),
                 "completed_kps": completed,
                 "quiz_count": len(quizzes),
