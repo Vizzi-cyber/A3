@@ -70,41 +70,38 @@ class NCDDiagnoser:
         w[0] = 1.5                                   # 主分量权重更大
         b = 0.0
 
-        # 训练数据
-        pairs = [(s_idx[r["student_id"]], i_idx[r["item_id"]], int(bool(r["correct"]))) for r in records]
+        # 训练数据（向量化索引）
+        idx_s = np.array([s_idx[r["student_id"]] for r in records], dtype=np.int64)
+        idx_i = np.array([i_idx[r["item_id"]] for r in records], dtype=np.int64)
+        y_true = np.array([int(bool(r["correct"])) for r in records], dtype=np.float64)
+        m = len(y_true)
+        prev_loss = float("inf")
 
         for _ in range(self.epochs):
-            # 前向
-            p = np.zeros(len(pairs))
-            for k, (si, ii, y) in enumerate(pairs):
-                x = H_s[si] * H_e[ii]
-                p[k] = 1.0 / (1.0 + np.exp(-(np.dot(w, x) + b)))
+            # 前向（向量化）：x = h_s ∘ h_e，z = w·x + b，p = σ(z)
+            x_all = H_s[idx_s] * H_e[idx_i]
+            z = x_all @ w + b
+            p = 1.0 / (1.0 + np.exp(-z))
             # 损失（BCE）
-            loss = -np.mean([y * np.log(max(p[k], 1e-9)) + (1 - y) * np.log(max(1 - p[k], 1e-9)) for k, (_, _, y) in enumerate(pairs)])
-            # 梯度（逐样本）
-            for si, ii, y in pairs:
-                x = H_s[si] * H_e[ii]
-                err = p[pairs.index((si, ii, y))] - y if False else None
-            # 简单批量梯度
-            g_w = np.zeros(d)
-            g_b = 0.0
-            g_Hs = np.zeros_like(H_s)
-            g_He = np.zeros_like(H_e)
-            for k, (si, ii, y) in enumerate(pairs):
-                x = H_s[si] * H_e[ii]
-                e = p[k] - y  # dL/dz
-                g_w += e * x
-                g_b += e
-                g_Hs[si] += e * (H_e[ii] * w)
-                g_He[ii] += e * (H_s[si] * w)
-            m = len(pairs)
+            loss = -np.mean(y_true * np.log(np.clip(p, 1e-9, None))
+                            + (1 - y_true) * np.log(np.clip(1 - p, 1e-9, None)))
+            # 早停：损失改进可忽略时提前结束（拟合已收敛）
+            if prev_loss - loss < 1e-7:
+                break
+            prev_loss = loss
+            # 梯度：dL/dz = p - y，w ≥ 0 投影保证单调约束
+            resid = p - y_true
+            g_w = resid @ x_all
+            g_b = float(resid.sum())
+            g_hs = np.zeros_like(H_s)
+            g_he = np.zeros_like(H_e)
+            np.add.at(g_hs, idx_s, resid[:, None] * (H_e[idx_i] * w))
+            np.add.at(g_he, idx_i, resid[:, None] * (H_s[idx_s] * w))
             # 更新 + w 非负投影（单调约束）
             w = np.maximum(w - self.lr * g_w / m, 0.0)
             b = b - self.lr * g_b / m
-            H_s = H_s - self.lr * g_Hs / m
-            H_e = H_e - self.lr * g_He / m
-            if _ % 100 == 0 and _ > 0:
-                pass
+            H_s = H_s - self.lr * g_hs / m
+            H_e = H_e - self.lr * g_he / m
 
         self._fitted = True
         self._student_ids = student_ids
@@ -121,6 +118,7 @@ class NCDDiagnoser:
             "dim": d,
             "final_loss": round(float(loss), 4),
             "monotone_w": [round(float(x), 4) for x in w],
+            "monotone_w_ok": bool(np.all(w >= 0.0)),
         }
 
     def _predict(self, si: int, ii: int) -> float:

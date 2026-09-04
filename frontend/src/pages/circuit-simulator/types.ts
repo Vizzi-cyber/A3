@@ -41,6 +41,21 @@ export interface SimulationResult {
   branchCurrents: Record<string, number>;
   powerDissipation: Record<string, number>;
   errors: string[];
+  /** 含电容/电感时自动附带 RK4 暂态分析结果 */
+  transient?: TransientResult;
+}
+
+export interface TransientResult {
+  time: number[];
+  capacitorVoltages: Record<string, number[]>;
+  inductorCurrents: Record<string, number[]>;
+  errors: string[];
+}
+
+export interface TransientOptions {
+  tEnd?: number; // 仿真时长（秒）
+  dt?: number; // 步长（秒）
+  maxSteps?: number; // 步数上限
 }
 
 export interface NetlistElement {

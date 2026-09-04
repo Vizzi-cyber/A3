@@ -128,3 +128,9 @@ class ThompsonSamplingSelector:
     @property
     def arms(self) -> List[str]:
         return list(self._arms)
+
+    @property
+    def is_warm(self) -> bool:
+        """是否已完成冷启动（每个臂至少获得过一次反馈），
+        调用方据此决定是否让 MAB 接管决策。"""
+        return len(self._decisions) >= len(set(self._arms))

@@ -12,10 +12,23 @@
 - 关键路径法（Critical Path Method, CPM）
 - 加权拓扑排序（Weighted Topological Sort）
 - 贝叶斯知识追踪简化模型（Simplified BKT）
+
+AIC 算法增强（可选注入，未注入时保持原逻辑）：
+- set_bkt_engine：完整 BKT（pyBKT）替代简化掌握度合并
+- set_irt_diagnoser：IRT 标定难度 b 替代人工 1-5 分级（Rasch, 1960 / 2PL）
+- set_strategy_bandit：Thompson Sampling 在分数段候选策略中选择调整动作
+  （回炉复习 / 强化练习 / 加速推进），替代纯 50/70/90 规则分档
 """
 from typing import Dict, Any, List, Set, Tuple, Optional
 from collections import deque, defaultdict
 import math
+
+# 难度 1-5 级 → 时间系数（人工先验表；IRT b 标定后按级插值查此表）
+DIFFICULTY_FACTOR_TABLE = {1: 0.7, 2: 0.9, 3: 1.1, 4: 1.4, 5: 1.8}
+# adjust_path 策略臂（Thompson Sampling）：回炉复习 / 强化练习 / 加速推进 / 维持现状
+# maintain 必须是臂而非仅默认值：≥90 且趋势上升档的候选集为 accelerate+maintain，
+# 若 maintain 不在臂中，MAB 期望排序会在该档退化为必选 accelerate
+STRATEGY_ARMS = ["review_boost", "practice_boost", "accelerate", "maintain"]
 
 
 class DAGPathPlanner:
@@ -28,11 +41,39 @@ class DAGPathPlanner:
         self.in_degree: Dict[str, int] = {}
         self._criticality_cache: Optional[Dict[str, int]] = None
         self._bkt_engine = None                        # 可选：完整 BKT 引擎（pyBKT）
+        self._irt_diagnoser = None                     # 可选：IRT 诊断器（难度 b 标定）
+        self._gkt_engine = None                        # 可选：GKT 引擎（图卷积掌握度传播）
+        self._strategy_bandit = None                   # 可选：路径调整策略 MAB
 
     def set_bkt_engine(self, engine) -> None:
         """注入完整贝叶斯知识追踪引擎（pyBKT），掌握度预测由"简化 BKT 概率合并"
         升级为带 EM 参数估计的完整 BKT（Corbett & Anderson, 1995）。"""
         self._bkt_engine = engine
+
+    def set_gkt_engine(self, engine) -> None:
+        """注入 GKT 引擎（可学习门控图卷积）：对 BKT 覆盖后的掌握度做
+        图感知传播（前置依赖邻居影响），需 engine.build_graph 与本图同构图。"""
+        self._gkt_engine = engine
+
+    def set_irt_diagnoser(self, diagnoser) -> None:
+        """注入 IRT 诊断器：学习成本模型的难度系数优先使用标定 b 值
+        （1PL/2PL MAP 估计），替代人工 1-5 分级；无标定记录的知识点回退人工分级。"""
+        self._irt_diagnoser = diagnoser
+
+    def set_strategy_bandit(self, selector) -> None:
+        """注入路径调整策略 Thompson Sampling 选择器（臂见 STRATEGY_ARMS）。
+        冷启动（收益反馈不足，见 selector.is_warm）时回退规则先验。"""
+        self._strategy_bandit = selector
+
+    def record_strategy_reward(self, arm: str, reward: float) -> bool:
+        """反馈某次调整策略的实际收益（0-1，如下次测验提分比例），驱动 MAB 学习。"""
+        if self._strategy_bandit is None:
+            return False
+        try:
+            self._strategy_bandit.update(arm, reward)
+            return True
+        except Exception:
+            return False
 
     def build_graph(self, knowledge_points: List[Dict[str, Any]]):
         """从知识点列表构建 DAG"""
@@ -139,6 +180,33 @@ class DAGPathPlanner:
         actual = mastery_map.get(kp_id, 0.0)
         return 0.4 * combined + 0.6 * actual
 
+    def _difficulty_factor(self, kp_id: str, kp: Dict[str, Any]) -> Tuple[float, str]:
+        """难度系数与来源。
+
+        优先使用 IRT 标定的题目难度 b（连续 logit 尺度，MAP 估计）：
+          level = clip(3 + 0.8·b, 1, 5)，即 b=0 → 3 级（中等）、b=±2.5 → 5/1 级，
+          再对人工先验系数表线性插值，保证与原量纲可比且单调。
+        IRT 未拟合 / 该知识点无标定记录时回退人工 1-5 分级。
+        """
+        irt = self._irt_diagnoser
+        if irt is not None and getattr(irt, "is_fitted", False):
+            try:
+                b = irt.get_item_difficulty(kp_id)
+            except Exception:
+                b = None
+            if b is not None:
+                level = min(5.0, max(1.0, 3.0 + 0.8 * float(b)))
+                lower, upper = int(math.floor(level)), int(math.ceil(level))
+                if lower == upper:
+                    factor = DIFFICULTY_FACTOR_TABLE[lower]
+                else:
+                    frac = level - lower
+                    factor = (DIFFICULTY_FACTOR_TABLE[lower] * (1.0 - frac)
+                              + DIFFICULTY_FACTOR_TABLE[upper] * frac)
+                return factor, "irt_b"
+        difficulty = kp.get("difficulty", 3)
+        return DIFFICULTY_FACTOR_TABLE.get(difficulty, 1.1), "manual"
+
     def _compute_learning_cost(
         self,
         kp_id: str,
@@ -149,13 +217,13 @@ class DAGPathPlanner:
         计算单个知识点的学习成本（小时）
 
         成本 = 基础时长 * 难度系数 * 掌握度折扣 * 薄弱点加权 * 学习速度因子 * 关键度因子
+        难度系数：IRT 标定 b 值优先（_difficulty_factor），回退人工分级
         """
         kp = self.kp_meta.get(kp_id, {})
         base_hours = 1.5
 
-        # 难度系数
-        difficulty = kp.get("difficulty", 3)
-        diff_factor = {1: 0.7, 2: 0.9, 3: 1.1, 4: 1.4, 5: 1.8}.get(difficulty, 1.1)
+        # 难度系数（IRT b 标定 → 人工分级）
+        diff_factor, _diff_source = self._difficulty_factor(kp_id, kp)
 
         # 掌握度折扣：已掌握越多，所需时间越少
         mastery = mastery_map.get(kp_id, 0.0)
@@ -199,7 +267,6 @@ class DAGPathPlanner:
         """
         criticality = self._compute_criticality()
         max_crit = max(criticality.values()) if criticality else 1
-        topo_order = {k: i for i, k in enumerate(self._topological_sort(kp_ids))}
 
         def score(kp_id):
             kp = self.kp_meta.get(kp_id, {})
@@ -343,6 +410,16 @@ class DAGPathPlanner:
             except Exception:
                 pass  # BKT 不可用时回退画像掌握度
 
+        # 0.5 GKT 增强：图卷积掌握度传播（可学习门控；前置依赖邻居影响当前点）
+        if getattr(self, "_gkt_engine", None) is not None:
+            try:
+                gkt_map = self._gkt_engine.propagate(mastery_map)
+                for kp, prob in gkt_map.items():
+                    if kp in mastery_map:
+                        mastery_map[kp] = prob
+            except Exception:
+                pass  # GKT 不可用时保持原掌握度
+
         # 1. 获取完整依赖链
         dependency_chain = self._get_dependency_chain(target_kp_id)
 
@@ -376,12 +453,14 @@ class DAGPathPlanner:
         for kp_id in unmastered_ids:
             cost = self._compute_learning_cost(kp_id, mastery_map, profile)
             kp = self.kp_meta.get(kp_id, {})
+            _, diff_source = self._difficulty_factor(kp_id, kp)
             kp_costs.append({
                 "kp_id": kp_id,
                 "name": kp.get("name", kp_id),
                 "course": kp.get("course", ""),
                 "hours": round(cost, 1),
                 "difficulty": kp.get("difficulty", 3),
+                "difficulty_source": diff_source,
                 "tags": kp.get("tags", []),
                 "prerequisites": kp.get("prerequisites", []),
             })
@@ -429,16 +508,23 @@ class DAGPathPlanner:
         current_path: Dict[str, Any],
         quiz_result: Dict[str, Any],
         trend_state: str,
+        bandit_selector=None,
     ) -> Dict[str, Any]:
         """
-        根据测验结果和学习趋势动态调整路径
+        根据测验结果和学习趋势动态调整路径（Thompson Sampling 增强）
 
-        策略：
-        - 得分 < 50：插入复习阶段，降低后续阶段难度
-        - 得分 50-70：增加练习资源，延长当前阶段时长
-        - 得分 70-90：正常推进
-        - 得分 >= 90 且趋势上升：允许跳级或加速
-        - 预警状态：减少新内容，增加复习，降低难度
+        策略选择 = 分数段候选集（规则保底） + MAB 候选集内决策：
+        - <50  ：候选 ["review_boost"]（基础未过，强制回炉，无采样空间）
+        - 50-70：候选 ["practice_boost", "review_boost"]，规则先验取强化练习
+        - 70-90：候选 ["maintain"]，正常推进
+        - >=90 且趋势上升：候选 ["accelerate", "maintain"]，规则先验取加速
+        - 注入 bandit_selector 且其已预热（累计收益反馈达到臂数，is_warm）后，
+          由 Thompson Sampling 期望排序在候选集内接管决策（冷启动回退规则先验，
+          避免随机扰动覆盖合理先验）
+        - trend_state == "warning"：叠加预警规则（减少新内容，增加复习），不受 MAB 影响
+
+        输出附带 strategy / strategy_source / strategy_candidates，便于前端
+        在下一轮测验后回传该策略的实际收益（record_strategy_reward），形成闭环。
         """
         adjusted = {
             "status": "success",
@@ -446,14 +532,45 @@ class DAGPathPlanner:
             "stages": [dict(s) for s in current_path.get("stages", [])],
         }
 
-        score = quiz_result.get("score", 0.0)
-        weak_tags = quiz_result.get("weak_tags", [])
+        try:
+            score = float(quiz_result.get("score") or 0.0)
+        except (TypeError, ValueError):
+            score = 0.0
+        weak_tags = quiz_result.get("weak_tags", []) or []
 
+        # 1. 候选策略集（分数段安全保底）与规则先验默认
         if score < 50:
-            adjusted["adjustment_reasons"].append("测验得分过低，插入基础复习阶段并降低后续难度")
+            candidates = ["review_boost"]
+            default_strategy = "review_boost"
+        elif score < 70:
+            candidates = ["practice_boost", "review_boost"]
+            default_strategy = "practice_boost"
+        elif score < 90:
+            candidates = ["maintain"]
+            default_strategy = "maintain"
+        else:
+            candidates = ["accelerate", "maintain"] if trend_state == "growth" else ["maintain"]
+            default_strategy = "accelerate" if trend_state == "growth" else "maintain"
+
+        strategy, strategy_source = default_strategy, "rule_fallback"
+        if bandit_selector is not None and len(candidates) > 1 and getattr(bandit_selector, "is_warm", False):
+            try:
+                exclude = [a for a in bandit_selector.arms if a not in candidates]
+                picked = bandit_selector.select(1, exclude=exclude)
+                if picked:
+                    strategy, strategy_source = picked[0], "thompson_sampling"
+            except Exception:
+                pass  # MAB 异常时回退规则先验
+
+        # 2. 执行所选策略
+        if strategy == "review_boost":
+            adjusted["adjustment_reasons"].append(
+                "测验得分过低，插入基础复习阶段并降低后续难度" if score < 50
+                else "掌握度偏低，插入回炉复习并放慢后续进度"
+            )
             adjusted["stages"].insert(0, {
                 "stage_no": 0,
-                "title": "紧急回炉",
+                "title": "紧急回炉" if score < 50 else "回炉复习",
                 "type": "review",
                 "topics": weak_tags[:3] if weak_tags else ["基础概念"],
                 "kp_ids": [],
@@ -462,11 +579,12 @@ class DAGPathPlanner:
                 "resources": ["基础讲解视频", "入门练习题"],
             })
             # 降低后续阶段难度：延长每个阶段时长（更细致地学习）
+            slow_factor = 1.3 if score < 50 else 1.2
             for s in adjusted["stages"][1:]:
                 if s.get("type") == "adaptive":
-                    s["hours"] = round(s.get("hours", 5) * 1.3, 1)
+                    s["hours"] = round(s.get("hours", 5) * slow_factor, 1)
 
-        elif 50 <= score < 70:
+        elif strategy == "practice_boost":
             adjusted["adjustment_reasons"].append("掌握度一般，增加强化练习")
             # 在第一个学习阶段后插入强化练习
             for i, s in enumerate(adjusted["stages"]):
@@ -483,12 +601,14 @@ class DAGPathPlanner:
                     })
                     break
 
-        elif score >= 90 and trend_state == "growth":
+        elif strategy == "accelerate":
             adjusted["adjustment_reasons"].append("表现优异且趋势上升，加速推进")
             # 将后续阶段时长缩短 20%
             for s in adjusted["stages"]:
                 if s.get("type") == "adaptive":
                     s["hours"] = round(s.get("hours", 5) * 0.8, 1)
+
+        # maintain：结构不变
 
         if trend_state == "warning":
             adjusted["adjustment_reasons"].append("学习预警状态，减少新内容，增加复习")
@@ -501,6 +621,9 @@ class DAGPathPlanner:
             s["stage_no"] = i + 1
 
         adjusted["estimated_total_hours"] = round(sum(s.get("hours", 0) for s in adjusted["stages"]), 1)
+        adjusted["strategy"] = strategy
+        adjusted["strategy_source"] = strategy_source
+        adjusted["strategy_candidates"] = candidates
         return adjusted
 
     def detect_cycles(self) -> List[List[str]]:

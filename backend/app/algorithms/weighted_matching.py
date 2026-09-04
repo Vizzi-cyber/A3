@@ -4,9 +4,30 @@
 场景2：学生 <-> 学习路径匹配（基础水平、薄弱点、节奏、目标）
 输出：匹配度得分、优先级排序、推荐列表
 联动机制：趋势预警触发 -> 自动重新匹配
+
+AIC 算法增强（P1-4）：资源匹配可叠加 Thompson Sampling 探索层——
+  - 人工权重打分作为先验得分（保底可解释）
+  - 学生对各类资源的历史收益（点击/完成）以 MAB 期望建模，按
+    final = score + explore_weight · (E[arm] − 0.5) 混合，
+    冷启动（E=0.5）时排序与纯打分完全一致，预热后偏好高收益资源类型
 """
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import math
+
+# 资源类型臂（Thompson Sampling 探索层；未知类型由 _resource_arm 归入 document）
+RESOURCE_ARMS = ["video", "document", "quiz", "interactive", "audio", "image", "code", "mindmap"]
+
+
+def resource_arm(res: Dict[str, Any]) -> str:
+    """从资源 dict 提取类型臂标识。"""
+    for key in ("type", "content_type", "category"):
+        v = str(res.get(key) or "").strip().lower()
+        if v:
+            return v
+    content_types = res.get("content_types") or []
+    if content_types:
+        return str(content_types[0]).strip().lower()
+    return "document"
 
 
 class MultiDimWeightedMatcher:
@@ -35,18 +56,34 @@ class MultiDimWeightedMatcher:
         student_profile: Dict[str, Any],
         resources: List[Dict[str, Any]],
         top_k: int = 5,
+        bandit_selector: Optional[Any] = None,
+        explore_weight: float = 0.15,
     ) -> Dict[str, Any]:
         """
         学生-学习资源匹配
+
+        :param bandit_selector: 可选，Thompson Sampling 探索层（按资源类型臂）。
+            预热后按 final = score + explore_weight·(E[arm]−0.5) 调序；
+            未提供或冷启动时与纯打分排序完全一致（向后兼容）。
         """
+        exploration_enabled = (
+            bandit_selector is not None
+            and getattr(bandit_selector, "is_warm", False)
+        )
+        expectations = bandit_selector.get_expectations() if exploration_enabled else {}
         scored = []
         for res in resources:
             score, details = self._score_resource(student_profile, res)
+            arm = resource_arm(res)
+            adjust = 0.0
+            if exploration_enabled:
+                adjust = explore_weight * (float(expectations.get(arm, 0.5)) - 0.5)
+            final = min(1.0, max(0.0, score + adjust))
             scored.append({
                 "resource_id": res.get("resource_id", ""),
                 "title": res.get("title", ""),
-                "match_score": round(score, 4),
-                "details": details,
+                "match_score": round(final, 4),
+                "details": {**details, "arm": arm, "exploration_adjust": round(adjust, 4)},
                 "resource": res,
             })
 
@@ -56,6 +93,11 @@ class MultiDimWeightedMatcher:
             "student_id": student_profile.get("student_id", ""),
             "recommendations": scored[:top_k],
             "total_candidates": len(resources),
+            "exploration": {
+                "enabled": exploration_enabled,
+                "weight": explore_weight,
+                "bandit_stats": bandit_selector.get_stats() if bandit_selector is not None else None,
+            },
         }
 
     def match_learning_paths(
@@ -234,8 +276,11 @@ class MultiDimWeightedMatcher:
             return 0.5
         goal_texts = [g.get("title", "") for g in learning_goals if isinstance(g, dict)]
         goal_texts += [str(g) for g in learning_goals if not isinstance(g, dict)]
+        goal_texts = [gt for gt in goal_texts if gt]  # 空串目标不参与匹配（"" in s 恒真会虚增匹配数）
         matched = 0
         for obj in resource_objectives:
+            if not obj:
+                continue
             for gt in goal_texts:
                 if obj in gt or gt in obj:
                     matched += 1

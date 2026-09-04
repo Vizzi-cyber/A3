@@ -20,7 +20,13 @@ from ..models.knowledge import KnowledgePointModel, LearningRecordModel
 from ..models.student import StudentProfileModel
 from ..models.course import CourseModel
 from ..algorithms import DAGPathPlanner
-from ..services.algorithm_registry import get_bkt_engine
+from ..services.algorithm_registry import (
+    get_bkt_engine,
+    get_strategy_bandit,
+    update_strategy_bandit,
+    attach_irt_to_planner,
+    attach_gkt_to_planner,
+)
 from ..agents import PathPlannerAgent
 from .auth import get_current_student_id, require_auth
 
@@ -140,10 +146,12 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
             )
             mastery_map = {row.kp_id: row.max_progress or 0.0 for row in mastery_rows}
             # AIC 算法增强：若完整 BKT 已拟合，注入 BKT 引擎（掌握度用 EM 参数化预测，
-            # 替代画像快照；未拟合时保持原逻辑，向后兼容）
+            # 替代画像快照；未拟合时保持原逻辑，向后兼容）；IRT/GKT 同理注入
             bkt_engine = get_bkt_engine()
             if bkt_engine is not None and bkt_engine.is_fitted:
                 planner.set_bkt_engine(bkt_engine)
+            attach_irt_to_planner(planner)
+            attach_gkt_to_planner(planner)
             dag_result = planner.plan_path(
                 student_id=request.student_id,
                 target_kp_id=target_kp_id,
@@ -324,11 +332,98 @@ async def get_current_path(
     }
 
 
+# ---------- DAG 路径规划算法接口 ----------
+# 注意：/dag/* 路由必须先于 /{student_id}/adjust 声明——FastAPI 按声明顺序匹配，
+# 否则 /dag/adjust 会被 /{student_id}/adjust 遮蔽（student_id="dag"）导致不可达。
+
+@router.post("/dag/generate")
+async def generate_dag_path(request: DAGPathRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """基于DAG生成学习路径"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot generate path for other student")
+    # 查询所有知识点构建图
+    kps = db.query(KnowledgePointModel).all()
+    if not kps:
+        raise HTTPException(status_code=400, detail="No knowledge points available")
+
+    planner = DAGPathPlanner()
+    planner.build_graph([
+        {
+            "kp_id": k.kp_id,
+            "name": k.name,
+            "subject": k.subject,
+            "difficulty": k.difficulty,
+            "prerequisites": k.prerequisites or [],
+            "description": k.description,
+            "tags": k.tags,
+        }
+        for k in kps
+    ])
+    # AIC 算法增强：IRT 已拟合时学习成本模型的难度系数用标定 b 值；
+    # GKT 已训练时掌握度做图卷积传播
+    attach_irt_to_planner(planner)
+    attach_gkt_to_planner(planner)
+
+    # 检测环
+    cycles = planner.detect_cycles()
+    if cycles:
+        raise HTTPException(status_code=400, detail=f"Knowledge graph contains cycles: {cycles}")
+
+    profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
+    profile_dict = {
+        "weak_areas": profile.weak_areas or [] if profile else [],
+    }
+
+    mastery_map = request.mastery_map or {}
+    result = planner.plan_path(
+        student_id=request.student_id,
+        target_kp_id=request.target_kp_id,
+        mastery_map=mastery_map,
+        profile=profile_dict,
+    )
+    return {"status": "success", "data": result}
+
+
+@router.post("/dag/adjust")
+async def adjust_dag_path(request: DAGPathAdjustRequest, _current: str = Depends(require_auth)):
+    """动态调整DAG路径
+
+    AIC 算法增强：Thompson Sampling 策略选择。
+    - request.quiz_result 可携带上一轮调整的 prev_strategy + reward（0-1，
+      如下次测验提分比例），用于反馈更新该学生的策略 MAB（闭环）
+    - 候选策略集由分数段保底，累计反馈达臂数后 MAB 在候选集内接管决策
+    """
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot adjust other student's path")
+
+    quiz_result = dict(request.quiz_result or {})
+    # 闭环反馈：先回传上一轮策略的实际收益，再执行本轮调整
+    prev_strategy = quiz_result.pop("prev_strategy", None)
+    reward = quiz_result.pop("reward", None)
+    if prev_strategy and reward is not None:
+        try:
+            update_strategy_bandit(request.student_id, str(prev_strategy), float(reward))
+        except Exception:
+            pass
+
+    planner = DAGPathPlanner()
+    result = planner.adjust_path(
+        current_path=request.current_path,
+        quiz_result=quiz_result,
+        trend_state=request.trend_state,
+        bandit_selector=get_strategy_bandit(request.student_id),
+    )
+    return {"status": "success", "data": result}
+
+
 @router.post("/{student_id}/adjust")
 async def adjust_path(
     student_id: str, adjustment: PathAdjustmentRequest, _current: str = Depends(require_auth)
 ):
-    """调整学习路径 —— 直接调用 PathPlannerAgent"""
+    """调整学习路径 —— 直接调用 PathPlannerAgent
+
+    （声明顺序在 /dag/adjust 之后：避免通配路由遮蔽具体路由）
+    """
     if student_id != _current:
         raise HTTPException(status_code=403, detail="Cannot adjust other student's path")
     path_data = adjustment.current_path or {}
@@ -357,66 +452,6 @@ async def adjust_path(
         "message": "Path adjusted",
         "data": path_data,
     }
-
-
-# ---------- DAG 路径规划算法接口 ----------
-
-@router.post("/dag/generate")
-async def generate_dag_path(request: DAGPathRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
-    """基于DAG生成学习路径"""
-    if request.student_id != _current:
-        raise HTTPException(status_code=403, detail="Cannot generate path for other student")
-    # 查询所有知识点构建图
-    kps = db.query(KnowledgePointModel).all()
-    if not kps:
-        raise HTTPException(status_code=400, detail="No knowledge points available")
-
-    planner = DAGPathPlanner()
-    planner.build_graph([
-        {
-            "kp_id": k.kp_id,
-            "name": k.name,
-            "subject": k.subject,
-            "difficulty": k.difficulty,
-            "prerequisites": k.prerequisites or [],
-            "description": k.description,
-            "tags": k.tags,
-        }
-        for k in kps
-    ])
-
-    # 检测环
-    cycles = planner.detect_cycles()
-    if cycles:
-        raise HTTPException(status_code=400, detail=f"Knowledge graph contains cycles: {cycles}")
-
-    profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
-    profile_dict = {
-        "weak_areas": profile.weak_areas or [] if profile else [],
-    }
-
-    mastery_map = request.mastery_map or {}
-    result = planner.plan_path(
-        student_id=request.student_id,
-        target_kp_id=request.target_kp_id,
-        mastery_map=mastery_map,
-        profile=profile_dict,
-    )
-    return {"status": "success", "data": result}
-
-
-@router.post("/dag/adjust")
-async def adjust_dag_path(request: DAGPathAdjustRequest, _current: str = Depends(require_auth)):
-    """动态调整DAG路径"""
-    if request.student_id != _current:
-        raise HTTPException(status_code=403, detail="Cannot adjust other student's path")
-    planner = DAGPathPlanner()
-    result = planner.adjust_path(
-        current_path=request.current_path,
-        quiz_result=request.quiz_result,
-        trend_state=request.trend_state,
-    )
-    return {"status": "success", "data": result}
 
 
 @router.get("/dag/dependency-chain/{target_kp_id}")

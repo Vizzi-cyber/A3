@@ -167,10 +167,15 @@ class FSRSMemoryScheduler:
         )
 
     def deserialize(self, payload: str) -> None:
-        """从 JSON 字符串恢复卡片状态。"""
+        """从 JSON 字符串恢复卡片状态（损坏的卡片条目跳过，不中断恢复）。"""
         if not payload:
             return
-        data = json.loads(payload)
+        try:
+            data = json.loads(payload)
+        except (ValueError, TypeError):
+            return
+        if not isinstance(data, dict):
+            return
         for key, card_json in data.items():
             try:
                 self._cards[key] = Card.from_json(card_json)

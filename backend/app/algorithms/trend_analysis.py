@@ -9,11 +9,160 @@
   5. 连续学习稳定性（5%）
   6. 知识点完成率（15%，complete 动作占比 + 完成质量）
 输出：趋势因子、趋势状态、未来3天掌握度预测、干预建议
+
+AIC 算法增强（TrendWeightLearner）：
+  - 6 因子权重可由历史数据学习（L2 正则逻辑回归，标签=随后一周掉队/中断）
+  - 已训练时用学习到的符号归一化权重计算趋势因子，并输出掉队预警概率
+    warning_probability = σ(w·x + b)；未训练时回退人工先验权重（weight_source 标注）
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict, Counter
 import math
+
+import numpy as np
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """安全转换为浮点数（容忍 None / 字符串 / 非法值）。"""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    if value is None:
+        return default
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return default
+
+
+class TrendWeightLearner:
+    """趋势掉队预警学习器（numpy 逻辑回归，L2 正则，符号归一化权重输出）。
+
+    样本：{"dimensions": {6 维因子（各 ∈ [-1,1]）}, "label": 0/1}
+    标签语义：1 = 随后一周平均分下滑或学习中断（掉队），0 = 正常推进。
+    """
+
+    FEATURE_ORDER = [
+        "mastery_trend", "speed_ratio", "time_efficiency",
+        "weakness_priority", "stability", "completion_rate",
+    ]
+
+    def __init__(self, lr: float = 0.3, epochs: int = 600, l2: float = 1e-3) -> None:
+        self.lr = lr
+        self.epochs = epochs
+        self.l2 = l2
+        self._coef: Optional[np.ndarray] = None   # (6,)
+        self._intercept: float = 0.0
+        self._train_info: Dict[str, Any] = {}
+
+    # ------------------------------------------------------------------ 训练
+    def fit(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
+        X_list, y_list = [], []
+        for s in samples or []:
+            dims = s.get("dimensions") or {}
+            if not isinstance(dims, dict):
+                continue
+            X_list.append([_safe_float(dims.get(k)) for k in self.FEATURE_ORDER])
+            y_list.append(1 if s.get("label") else 0)
+        if len(X_list) < 10:
+            return {"status": "error", "message": f"训练样本不足（{len(X_list)} < 10）"}
+        X = np.clip(np.array(X_list, dtype=np.float64), -1.0, 1.0)
+        y = np.array(y_list, dtype=np.float64)
+        # 类别不均衡保护：两类都至少要有 2 个样本
+        if len(set(y.tolist())) < 2 or min(y.mean(), 1 - y.mean()) * len(y) < 2:
+            return {"status": "error", "message": "正负样本过少，无法训练（需两类均有 ≥2 样本）"}
+
+        coef = np.zeros(X.shape[1])
+        intercept = 0.0
+        prev_loss = float("inf")
+        epochs_run = 0
+        n = len(y)
+        for epoch in range(self.epochs):
+            z = X @ coef + intercept
+            p = 1.0 / (1.0 + np.exp(-np.clip(z, -30, 30)))
+            # 交叉熵 + L2（数值稳定版 BCE 梯度：p - y）
+            loss = (-np.mean(y * np.log(np.clip(p, 1e-9, None))
+                             + (1 - y) * np.log(np.clip(1 - p, 1e-9, None)))
+                    + self.l2 * float(np.sum(coef ** 2)))
+            if prev_loss - loss < 1e-8:
+                break
+            prev_loss = loss
+            epochs_run = epoch + 1
+            resid = p - y
+            g_coef = X.T @ resid / n + 2.0 * self.l2 * coef
+            g_int = float(np.mean(resid))
+            coef = coef - self.lr * g_coef
+            intercept = intercept - self.lr * g_int
+
+        self._coef = coef
+        self._intercept = float(intercept)
+        proba = self.predict_proba_batch(X)
+        accuracy = float(np.mean((proba >= 0.5) == (y == 1)))
+        self._train_info = {
+            "n_samples": int(n),
+            "positive_ratio": round(float(y.mean()), 4),
+            "epochs_run": epochs_run,
+            "final_loss": round(float(loss), 6),
+            "train_accuracy": round(accuracy, 4),
+        }
+        return {"status": "success", **self._train_info}
+
+    # ------------------------------------------------------------------ 预测
+    def predict_proba_batch(self, X: np.ndarray) -> np.ndarray:
+        z = X @ self._coef + self._intercept
+        return 1.0 / (1.0 + np.exp(-np.clip(z, -30, 30)))
+
+    def predict_proba(self, dimensions: Dict[str, Any]) -> float:
+        """掉队预警概率（0-1，越大越可能掉队）。未训练时返回 0.5。"""
+        if self._coef is None:
+            return 0.5
+        x = np.array([_safe_float(dimensions.get(k)) for k in self.FEATURE_ORDER])
+        return round(float(self.predict_proba_batch(x[None, :])[0]), 4)
+
+    # ------------------------------------------------------------------ 输出
+    @property
+    def convex_weights(self) -> Dict[str, float]:
+        """趋势因子融合权重：-coef_i / Σ|coef_j|。
+
+        逻辑回归系数 β 指向"掉队"方向（β<0 的维度越积极越安全），而趋势因子
+        语义是"越大越好"，故取负号后按绝对值归一化，与人工先验权重的极性一致。
+        """
+        if self._coef is None:
+            return {k: 0.0 for k in self.FEATURE_ORDER}
+        total = float(np.sum(np.abs(self._coef)))
+        if total < 1e-12:
+            return {k: 0.0 for k in self.FEATURE_ORDER}
+        return {k: round(float(-c) / total, 4) for k, c in zip(self.FEATURE_ORDER, self._coef)}
+
+    @property
+    def is_fitted(self) -> bool:
+        return self._coef is not None
+
+    def serialize(self) -> Dict[str, Any]:
+        coef = [] if self._coef is None else [round(float(c), 6) for c in self._coef]
+        return {
+            "coef": coef,
+            "intercept": round(self._intercept, 6),
+            "feature_order": self.FEATURE_ORDER,
+        }
+
+    def deserialize(self, data: Dict[str, Any]) -> bool:
+        try:
+            coef = [float(c) for c in (data.get("coef") or [])]
+            if len(coef) != len(self.FEATURE_ORDER):
+                return False
+            self._coef = np.array(coef)
+            self._intercept = float(data.get("intercept") or 0.0)
+            return True
+        except (TypeError, ValueError):
+            return False
 
 
 class MultiFactorTrendAnalyzer:
@@ -46,9 +195,13 @@ class MultiFactorTrendAnalyzer:
         learning_records: List[Dict[str, Any]],
         weak_areas: List[str],
         profile: Dict[str, Any],
+        weight_learner: Optional[TrendWeightLearner] = None,
     ) -> Dict[str, Any]:
         """
         主分析入口
+
+        :param weight_learner: 可选，已训练的 TrendWeightLearner。提供且已拟合时
+            用学习权重替代人工权重并输出掉队预警概率；否则回退人工先验。
         """
         # 1. 知识掌握度趋势
         mastery_trend = self._calc_mastery_trend(quiz_history)
@@ -68,18 +221,32 @@ class MultiFactorTrendAnalyzer:
         # 6. 知识点完成率（complete 动作占比 + 完成质量）
         completion_rate = self._calc_completion_rate(learning_records, quiz_history)
 
-        # 综合趋势因子
-        trend_factor = (
-            mastery_trend * self.WEIGHTS["mastery_trend"]
-            + speed_ratio * self.WEIGHTS["speed_ratio"]
-            + time_efficiency * self.WEIGHTS["time_efficiency"]
-            + weakness_priority * self.WEIGHTS["weakness_priority"]
-            + stability * self.WEIGHTS["stability"]
-            + completion_rate * self.WEIGHTS["completion_rate"]
-        )
+        dimensions = {
+            "mastery_trend": mastery_trend,
+            "speed_ratio": speed_ratio,
+            "time_efficiency": time_efficiency,
+            "weakness_priority": weakness_priority,
+            "stability": stability,
+            "completion_rate": completion_rate,
+        }
+
+        # 综合趋势因子（学习权重优先，人工权重兜底）
+        if weight_learner is not None and weight_learner.is_fitted:
+            weights = weight_learner.convex_weights
+            weight_source = "learned"
+        else:
+            weights = dict(self.WEIGHTS)
+            weight_source = "manual_prior"
+        trend_factor = sum(dimensions[k] * weights[k] for k in weights)
 
         # 趋势状态判定
         trend_state = self._classify_trend_state(trend_factor, mastery_trend, stability)
+        if weight_source == "learned":
+            warning_probability = weight_learner.predict_proba(dimensions)
+        else:
+            # 规则兜底预警概率：状态映射（无训练数据时的可解释回退）
+            warning_probability = {"warning": 0.9, "decline": 0.7, "stable": 0.35, "growth": 0.1}.get(
+                trend_state, 0.5)
 
         # 未来3天掌握度预测（简单线性外推）
         predicted_mastery_3d = self._predict_mastery_3d(quiz_history, trend_factor)
@@ -94,14 +261,10 @@ class MultiFactorTrendAnalyzer:
             "student_id": student_id,
             "trend_factor": round(trend_factor, 4),
             "trend_state": trend_state,
-            "dimensions": {
-                "mastery_trend": round(mastery_trend, 4),
-                "speed_ratio": round(speed_ratio, 4),
-                "time_efficiency": round(time_efficiency, 4),
-                "weakness_priority": round(weakness_priority, 4),
-                "stability": round(stability, 4),
-                "completion_rate": round(completion_rate, 4),
-            },
+            "dimensions": {k: round(v, 4) for k, v in dimensions.items()},
+            "weights_source": weight_source,
+            "weights": {k: round(v, 4) for k, v in weights.items()},
+            "warning_probability": warning_probability,
             "predicted_mastery_3d": round(predicted_mastery_3d, 4),
             "intervention": intervention,
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
@@ -111,7 +274,7 @@ class MultiFactorTrendAnalyzer:
         """知识掌握度趋势：基于最近5次测验得分的线性斜率归一化"""
         if not quiz_history:
             return 0.0
-        scores = [q.get("score", 0.0) for q in quiz_history[-5:]]
+        scores = [_safe_float(q.get("score")) for q in quiz_history[-5:]]
         if len(scores) < 2:
             return (scores[0] / 100.0 - 0.5) * 2 if scores else 0.0
         n = len(scores)
@@ -135,7 +298,7 @@ class MultiFactorTrendAnalyzer:
             date = r.get("created_at", "")[:10] if isinstance(r.get("created_at"), str) else ""
             if not date:
                 continue
-            action = str(r.get("action", "")).lower()
+            action = str(r.get("action") or "").lower()
             w = self.ACTION_WEIGHTS.get(action, 0.3)
             daily_weight[date] += w
         if not daily_weight:
@@ -150,12 +313,12 @@ class MultiFactorTrendAnalyzer:
 
     def _calc_time_efficiency(self, learning_records: List[Dict[str, Any]], quiz_history: List[Dict[str, Any]]) -> float:
         """学习时间效率：单位时间得分提升率"""
-        total_duration = sum(r.get("duration", 0) for r in learning_records)
+        total_duration = sum(_safe_float(r.get("duration")) for r in learning_records)
         if total_duration <= 0:
             return 0.0
         total_duration_hours = total_duration / 3600.0
         if len(quiz_history) >= 2:
-            score_diff = quiz_history[-1].get("score", 0) - quiz_history[0].get("score", 0)
+            score_diff = _safe_float(quiz_history[-1].get("score")) - _safe_float(quiz_history[0].get("score"))
             efficiency = score_diff / total_duration_hours if total_duration_hours > 0 else 0.0
         else:
             efficiency = 0.0
@@ -169,7 +332,7 @@ class MultiFactorTrendAnalyzer:
         # 统计薄弱标签在最近测验中的出现频率
         recent_weak_tags = []
         for q in quiz_history[-3:]:
-            recent_weak_tags.extend(q.get("weak_tags", []))
+            recent_weak_tags.extend(q.get("weak_tags") or [])
         if not recent_weak_tags:
             return 0.0
         # 计算薄弱点集中度（重复出现比例高 -> 更需要关注，得分更低）
@@ -193,7 +356,7 @@ class MultiFactorTrendAnalyzer:
         for r in learning_records:
             date = r.get("created_at", "")[:10] if isinstance(r.get("created_at"), str) else ""
             if date:
-                daily_duration[date] += r.get("duration", 0)
+                daily_duration[date] += _safe_int(r.get("duration"))
         if not daily_duration:
             return 0.0
         # 最近7天
@@ -232,7 +395,7 @@ class MultiFactorTrendAnalyzer:
             if not kp_id:
                 continue
             touched_kps.add(kp_id)
-            if str(r.get("action", "")).lower() == "complete" or float(r.get("progress", 0) or 0) >= 1.0:
+            if str(r.get("action") or "").lower() == "complete" or _safe_float(r.get("progress")) >= 1.0:
                 completed_kps.add(kp_id)
         if not touched_kps:
             return 0.0
@@ -242,7 +405,7 @@ class MultiFactorTrendAnalyzer:
         quality = 0.0
         if completed_kps and quiz_history:
             scores = [
-                float(q.get("score", 0))
+                _safe_float(q.get("score"))
                 for q in quiz_history
                 if q.get("kp_id") in completed_kps
             ]
@@ -270,7 +433,7 @@ class MultiFactorTrendAnalyzer:
         """预测未来3天掌握度（百分制）"""
         if not quiz_history:
             return 50.0
-        last_score = quiz_history[-1].get("score", 50.0)
+        last_score = _safe_float(quiz_history[-1].get("score"), 50.0)
         # 简单线性预测：每天变化量 = trend_factor * 5
         predicted = last_score + trend_factor * 5 * 3
         return max(0.0, min(100.0, predicted))

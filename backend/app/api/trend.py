@@ -13,7 +13,11 @@ from ..models.knowledge import QuizResultModel, LearningRecordModel
 from ..models.student import StudentProfileModel
 from ..models.trend import TrendDataModel
 from ..algorithms import MultiFactorTrendAnalyzer, LearningEffectEvaluator
-from ..services.algorithm_registry import build_memory_status
+from ..services.algorithm_registry import (
+    build_memory_status,
+    get_irt_ability,
+    get_trend_weight_learner,
+)
 from .auth import require_auth
 
 router = APIRouter()
@@ -60,12 +64,14 @@ async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_
     weak_areas = profile.weak_areas or [] if profile else []
 
     analyzer = MultiFactorTrendAnalyzer()
+    # AIC 算法增强：已训练的掉队预警学习器（学习权重 + 预警概率），未训练自动回退人工权重
     result = analyzer.analyze(
         student_id=student_id,
         quiz_history=quiz_history,
         learning_records=learning_history,
         weak_areas=weak_areas,
         profile={"learning_tempo": profile.learning_tempo or {}} if profile else {},
+        weight_learner=get_trend_weight_learner(),
     )
 
     # 持久化趋势数据
@@ -126,10 +132,15 @@ async def get_eval_report(student_id: str, db: Session = Depends(get_db), _curre
         }
         for q in quizzes
     ]
+    # AIC 算法修复：补齐 action/kp_id/created_at，否则趋势分析的学习速度、
+    # 连续稳定性、完成率三个维度因子因数据缺失恒为 0
     learning_history = [
         {
+            "action": r.action,
+            "kp_id": r.kp_id,
             "duration": r.duration,
             "progress": r.progress,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
         }
         for r in records
     ]
@@ -137,12 +148,14 @@ async def get_eval_report(student_id: str, db: Session = Depends(get_db), _curre
     evaluator = LearningEffectEvaluator()
     # AIC 算法增强：FSRS 记忆状态（到期复习队列 + 记忆保持预警）
     memory_status = build_memory_status(db, student_id)
+    # AIC 算法增强：IRT 能力 θ（已拟合时掌握度用 Φ(θ)·100 替代加权平均分）
     report = evaluator.evaluate(
         student_id=student_id,
         quiz_history=quiz_history,
         learning_records=learning_history,
         weak_areas=weak_areas,
         memory_status=memory_status,
+        irt_ability=get_irt_ability(student_id),
     )
     return {"status": "success", "data": report}
 

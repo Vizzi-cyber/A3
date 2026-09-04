@@ -26,12 +26,16 @@ from ..algorithms.memory_scheduler import FSRSMemoryScheduler
 from ..algorithms.bandit_selector import ThompsonSamplingSelector
 from ..algorithms.gkt_engine import GKTEngine
 from ..algorithms.ncd_diagnoser import NCDDiagnoser
+from ..algorithms.trend_analysis import TrendWeightLearner
 from ..models.database import get_db
-from ..models.knowledge import KnowledgePointModel, QuizResultModel
+from ..models.knowledge import KnowledgePointModel, QuizResultModel, LearningRecordModel
 from ..models.memory import MemoryCardModel
 from ..core.logger import setup_logger
 from ..services.algorithm_registry import (
     get_bkt_engine, set_bkt_engine, get_irt_diagnoser, set_irt_diagnoser,
+    get_gkt_engine, set_gkt_engine,
+    get_trend_weight_learner, set_trend_weight_learner,
+    build_mastery_snapshots, build_trend_training_samples,
 )
 from .auth import require_auth, require_teacher, verify_student_access
 
@@ -423,6 +427,67 @@ async def bandit_update(
     }
 
 
+# ---------------------------------------------------------------------------
+# GKT 图知识追踪（可学习门控图卷积）
+# ---------------------------------------------------------------------------
+@router.post("/gkt/train")
+async def gkt_train(
+    db: Session = Depends(get_db),
+    _auth: str = Depends(require_teacher),
+):
+    """训练 GKT 门控参数（自监督：每日掌握度快照 → 次日快照的 MSE），
+    学习邻居传播增益 w / 偏置 b / 融合门 α；未训练时确定性平滑。"""
+    kps = db.query(KnowledgePointModel).all()
+    if not kps:
+        raise HTTPException(status_code=400, detail="No knowledge points available")
+    kp_ids = [k.kp_id for k in kps]
+    kp_set = set(kp_ids)
+    edges = [(p, k.kp_id) for k in kps for p in (k.prerequisites or []) if p in kp_set]
+
+    engine = GKTEngine()
+    engine.build_graph(kp_ids, edges)
+
+    student_ids = [row[0] for row in db.query(LearningRecordModel.student_id).distinct().all()]
+    sequences = []
+    for sid in student_ids:
+        snaps = build_mastery_snapshots(db, sid)
+        if len(snaps) >= 2:
+            sequences.append(snaps)
+
+    result = engine.fit(sequences)
+    if result["status"] == "success":
+        set_gkt_engine(engine)
+    result["students"] = len(sequences)
+    return {"status": result["status"], "data": result}
+
+
+# ---------------------------------------------------------------------------
+# 趋势权重学习（掉队预警概率）
+# ---------------------------------------------------------------------------
+@router.post("/trend/train")
+async def trend_train(
+    db: Session = Depends(get_db),
+    _auth: str = Depends(require_teacher),
+):
+    """训练趋势掉队预警学习器（L2 逻辑回归）。
+
+    训练数据由 student_trends 快照 + 测验/学习记录自动构建：
+    标签 = 随后一周平均分 < 60 或学习中断（1=掉队）。
+    """
+    samples = build_trend_training_samples(db)
+    learner = TrendWeightLearner()
+    result = learner.fit(samples)
+    if result["status"] == "success":
+        set_trend_weight_learner(learner)
+    return {
+        "status": result["status"],
+        "data": {
+            **result,
+            "weights": learner.convex_weights if learner.is_fitted else None,
+        },
+    }
+
+
 @router.get("/status")
 async def ai_algorithms_status(
     _auth: str = Depends(require_teacher),
@@ -444,5 +509,13 @@ async def ai_algorithms_status(
             },
             "memory": {"engine": "FSRS", "note": "卡片持久化于 memory_cards 表"},
             "bandit": {"active_selectors": len(_bandit_selectors)},
+            "gkt": {
+                "trained": get_gkt_engine() is not None and get_gkt_engine().is_fitted,
+                "params": get_gkt_engine().get_params() if get_gkt_engine() and get_gkt_engine().is_fitted else None,
+            },
+            "trend_learner": {
+                "trained": get_trend_weight_learner() is not None and get_trend_weight_learner().is_fitted,
+                "weights": get_trend_weight_learner().convex_weights if get_trend_weight_learner() and get_trend_weight_learner().is_fitted else None,
+            },
         },
     }

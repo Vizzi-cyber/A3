@@ -146,6 +146,12 @@ async def submit_onboarding(
                 }
                 for k in kps
             ])
+            # AIC 算法增强：IRT 已拟合时学习成本模型的难度系数用标定 b 值
+            try:
+                from ..services.algorithm_registry import attach_irt_to_planner
+                attach_irt_to_planner(planner)
+            except Exception:
+                pass
             target_kp_id = kps[-1].kp_id
             from datetime import datetime, timedelta, timezone
             from sqlalchemy import func

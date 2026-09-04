@@ -40,6 +40,7 @@ class LearningEffectEvaluator:
         learning_records: List[Dict[str, Any]],
         weak_areas: List[str],
         memory_status: Optional[Dict[str, Any]] = None,
+        irt_ability: Optional[float] = None,
     ) -> Dict[str, Any]:
         """综合评估入口
 
@@ -47,9 +48,17 @@ class LearningEffectEvaluator:
             {"due_kps": [kp_id, ...], "cards": {kp_id: {stability, difficulty, due}},
              "scheduler": "FSRS"}
             提供时输出真实记忆小节（替代"增加间隔重复练习频次"字符串提示）。
+        :param irt_ability: 可选，IRT 标定的学生能力 θ（MAP 估计，先验 θ~N(0,1)）。
+            提供时掌握度改用 θ 的标准正态百分位 Φ(θ)·100（替代"最近5次加权平均分"），
+            mastery_detail 中输出来源与原始 θ，便于复核；未提供时保持原逻辑。
         """
         accuracy = self._calc_accuracy(quiz_history)
-        mastery = self._calc_mastery(quiz_history)
+        mastery_weighted = self._calc_mastery(quiz_history)
+        mastery = mastery_weighted
+        mastery_source = "weighted_average"
+        if irt_ability is not None:
+            mastery = self._theta_to_mastery(irt_ability)
+            mastery_source = "irt_theta_percentile"
         improvement_rate = self._calc_improvement_rate(quiz_history)
         weakness_concentration = self._calc_weakness_concentration(quiz_history, weak_areas)
 
@@ -71,6 +80,11 @@ class LearningEffectEvaluator:
                 "mastery": round(mastery, 4),
                 "improvement_rate": round(improvement_rate, 4),
                 "weakness_concentration": round(weakness_concentration, 4),
+            },
+            "mastery_detail": {
+                "source": mastery_source,
+                "irt_theta": round(float(irt_ability), 4) if irt_ability is not None else None,
+                "weighted_average": round(mastery_weighted, 4),
             },
             "predictions": {
                 "next_score": round(next_score_prediction, 2),
@@ -139,6 +153,16 @@ class LearningEffectEvaluator:
         mastery = sum(s * w for s, w in zip(scores, weights)) / total_weight
         return mastery
 
+    @staticmethod
+    def _theta_to_mastery(theta: float) -> float:
+        """IRT 能力 θ → 掌握度（0-100）：标准正态百分位 Φ(θ)·100。
+
+        IRT MAP 估计采用先验 θ~N(0,1)，θ=0 即同龄群体中位水平（50 分），
+        Φ 变换保证 θ 越高掌握度单调越高，且量纲与加权平均分可比。
+        """
+        cdf = 0.5 * (1.0 + math.erf(float(theta) / math.sqrt(2.0)))
+        return max(0.0, min(100.0, cdf * 100.0))
+
     def _calc_improvement_rate(self, quiz_history: List[Dict[str, Any]]) -> float:
         """
         提升速率：基于测验历史计算趋势
@@ -190,13 +214,12 @@ class LearningEffectEvaluator:
         return hhi
 
     def _predict_next_score(self, quiz_history: List[Dict[str, Any]], improvement_rate: float) -> float:
-        """预测下次测验得分"""
+        """预测下次测验得分：上次得分 + 提升速率的一半，钳位 [0,100]"""
         if not quiz_history:
             return 50.0
         last_score = _safe_float(quiz_history[-1].get("score"), 50.0)
-        # 基于提升速率预测
+        # 基于提升速率预测：近期上升则给更高预期
         predicted = last_score + improvement_rate * 0.5
-        # 添加一点随机波动模拟
         return max(0.0, min(100.0, predicted))
 
     def _predict_loss_points(self, quiz_history: List[Dict[str, Any]], weak_areas: List[str]) -> List[Dict[str, Any]]:

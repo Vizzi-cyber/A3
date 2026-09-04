@@ -19,7 +19,7 @@
 当前新工科教育面临三大结构性矛盾：
 
 **（1）个性化缺失与统一教学的矛盾**
-同一门 C 语言课程，有编程基础的学生与零基础的学生面对同一份 PPT、同一组练习。前者在"炒冷饭"中浪费学习时间，后者在追赶中丧失信心。传统 LMS（超星、智慧树等）仅提供统一课程资料列表，不做个性化推荐，无法适配不同基础、不同学习风格的学生。调研显示，72% 的学生认为现有教学无法适配个体差异。
+同一门 C 语言课程，有编程基础的学生与零基础的学生面对同一份 PPT、同一组练习。前者在"炒冷饭"中浪费学习时间，后者在追赶中丧失信心。传统 LMS（超星、智慧树等）仅提供统一课程资料列表，不做个性化推荐，无法适配不同基础、不同学习风格的学生。教育研究的经典结论支撑了个性化辅导的价值：布鲁姆"2 Sigma 问题"表明一对一辅导能使成绩分布提升约两个标准差（Bloom, 1984）；VanLehn (2011) 对辅导方式研究的元分析显示智能辅导系统效果接近人类一对一辅导——问题在于如何以可负担的方式规模化实现，这正是本作品的切入点。团队自身的课堂调研数据将在试点阶段以问卷形式补充（见第六部分试点方案）。
 
 **（2）实验实训资源受限与动手需求增长的矛盾**
 电路分析、嵌入式系统等课程严重依赖实验实训。传统电路实验室受限于开放时间、设备数量、安全风险，学生无法随时反复练习；硬件实验"一步错步步错"，试错成本高。电子信息类专业学生人均可用的实验时长远低于教学需求。
@@ -107,14 +107,16 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 ```
 ┌─────────────────────────────────────────────────┐
 │              展示层（前端 React + TS）            │
-│  学习路径（含跨学科视图）/ 电路仿真 / 故障实验      │
-│  STM32实验实训 / 试点数据分析 / 班级对比          │
+│  学习路径（含跨学科视图）/ 电路仿真（MNA+RK4暂态） │
+│  故障实验 / STM32实验实训 / 试点数据分析 / 班级对比│
 ├─────────────────────────────────────────────────┤
 │              应用层（业务服务）                    │
 │  学习闭环 / 游戏化 / 教师端 / 试点报告            │
 ├─────────────────────────────────────────────────┤
-│              算法层（核心算法）                    │
-│  ADPP路径规划 / 趋势分析 / 加权匹配 / 效果评估    │
+│              算法层（五层教育算法闭环 + 12智能体） │
+│  ①测量 IRT(1PL/2PL MAP) ②建模 BKT/GKT(可学习门控)│
+│  ③记忆 FSRS ④决策 MAB(路径策略/选题/匹配探索)    │
+│  ⑤解释 LLM · ADPP路径规划 · 趋势预警(逻辑回归)   │
 │  12个AI智能体（LangGraph星型拓扑）                │
 ├─────────────────────────────────────────────────┤
 │              数据层                              │
@@ -145,28 +147,44 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 - 团队协作：项目拆解师 / 角色匹配师 / 协作督导 / 成果评估师
 - 标准化 AgentMessage 通信协议 + 反思循环（执行-评估-修正，最多 3 次）
 
-#### 3.2 ADPP 自适应 DAG 路径规划（学科问题解决新方法）
+#### 3.2 五层教育算法闭环（学科问题解决新方法）
 
-融合关键路径法（CPM）+ 简化贝叶斯知识追踪（BKT）+ 六因子学习成本模型 + 加权拓扑排序 + 自适应阶段划分 + 动态调整策略，**并扩展跨课程依赖支持**——目标知识点（如 STM32 定时器 PWM）的前置依赖链可跨越 C语言（位运算/指针）与电路分析（电压波形），生成跨学科学习路径。
+以「**测量 → 建模 → 记忆 → 决策 → 解释**」五层闭环替代传统的"加权平均分 + 规则阈值"，每层均有经典文献出处与自研实现：
 
-#### 3.3 浏览器端 MNA 电路仿真 + AI 故障诊断（实验实训新范式）
+| 层 | 算法 | 出处 | 在系统中的作用 |
+|---|---|---|---|
+| 测量 | IRT 认知诊断（1PL/2PL MAP 联合估计） | Rasch (1960); Lord (1980); Baker & Kim (2004) | 学生能力 θ 替代加权平均分；题目难度 b 替代人工 1-5 分级 |
+| 建模 | BKT 知识追踪（pyBKT EM 估计） | Corbett & Anderson (1995); Badrinath et al. (2021) | 逐知识点掌握概率（演示库实测 AUC 0.837） |
+| 建模 | GKT 图知识追踪（**可学习门控图卷积**） | Nakagawa et al. (2019); Kipf & Welling (2017) | 邻居知识点掌握状态影响当前点；门控参数由"今日→明日掌握度快照"自监督训练，传播增益 w≥0 保证单调可解释 |
+| 记忆 | FSRS 间隔重复调度 | Ye et al. (2022); Liu et al. (2023) | 真实复习队列 + 记忆可提取性预警（艾宾浩斯遗忘曲线工程化） |
+| 决策 | Thompson Sampling 多臂老虎机 | Russo et al. (2018); Clement et al. (2015) | 三处决策：路径调整策略（回炉/强化/加速/维持，分数段候选集保底）、每日练习选题、资源匹配探索层 |
+| 解释 | LLM 教学化解释 | — | 将算法输出转述为学生可理解的辅导语言 |
+
+**算法接线（非孤立演示）**：IRT θ 接入效果评估掌握度（Φ(θ)·100 百分位，`mastery_detail` 可溯源）、IRT b 接入 ADPP 学习成本模型、GKT 接入路径掌握度传播、MAB 接入路径调整/选题/匹配三链路并支持收益闭环回传、FSRS 接入效果评估记忆小节。**趋势分析 6 因子权重由历史数据学习**（L2 正则逻辑回归，标签=随后一周掉队/中断），输出掉队预警概率，未训练时回退人工先验。
+
+#### 3.3 ADPP 自适应 DAG 路径规划（核心自研算法）
+
+融合关键路径法（CPM）+ BKT 掌握度 + **IRT 难度标定的六因子学习成本模型** + 加权拓扑排序 + 自适应阶段划分 + Thompson Sampling 动态调整策略，**并扩展跨课程依赖支持**——目标知识点（如 STM32 定时器 PWM）的前置依赖链可跨越 C语言（位运算/指针）与电路分析（电压波形），生成跨学科学习路径。
+
+#### 3.4 浏览器端 MNA 电路仿真（直流稳态 + RK4 暂态）+ AI 故障诊断（实验实训新范式）
 
 - 并查集节点合并（路径压缩+按秩合并）→ MNA 方程组构建 → 列主元高斯消元，全浏览器端计算，零后端依赖
+- **RK4 暂态分析**：电容/电感状态变量法 + 四阶 Runge-Kutta 积分，输出充放电波形与稳态建立时间；数值精度经解析解对照验证（RC 指数充电、RL 升流、LC 振荡幅值/周期，9/9 通过）
 - **AI 故障诊断实验**：3 个故障模板（断路/短路/错值）→ 学生观察异常测量 → 选择原因 → 本地规则判定 + AI 评估（原理讲解/排查方法）
 - 与传统电路实验对比：随时随地、零成本、AI 即时反馈
 
-#### 3.4 跨学科学习链路（学科交叉核心创新）
+#### 3.5 跨学科学习链路（学科交叉核心创新）
 
 - 9 条跨课程知识关联注入（编程思维→电路建模→嵌入式实现）
 - 学科元数据表（courses）：学科领域、核心环节、交叉说明
 - 跨学科综合路径 + DAG 可视化（学科着色）
 - 跨学科综合实战项目（智能温控风扇：C语言采样→分压电路→PWM调速）
 
-#### 3.5 防幻觉体系（6 道防线）
+#### 3.6 防幻觉体系（6 道防线）
 
 输入过滤 → Prompt 加固 → 结构校验 → 代码校验 → 引用溯源 → LLM 自我纠错；全部挂接至智能体管线（规则守卫零成本 + 低质量输出触发自我纠错）。
 
-#### 3.6 试点数据分析（应用效果验证基础设施）
+#### 3.7 试点数据分析（应用效果验证基础设施）
 
 学习行为/测验成绩/掌握度趋势/实验参与/功能使用五维聚合 → 试点报告（Markdown 导出）→ 班级对比（实验组 vs 对照组）。
 
@@ -177,8 +195,13 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 ### 1. 技术可行性
 
 - 全栈技术成熟：React/FastAPI/LangGraph 均为工业级开源框架；
-- 算法自研：ADPP 路径规划（约 500 行）、MNA 电路求解器（约 400 行 TypeScript）代码可复现；
-- 测试完备：前端 53 个 E2E 用例 + 后端 108 项接口验证（真实环境 33 + TestClient 29 + 数据流 23 + Agent 专项 23）+ 全路由 177 个 0 崩溃；
+- 算法自研可复现：ADPP 路径规划、IRT/BKT/GKT/FSRS/MAB 五层算法引擎、趋势权重学习器、MNA+RK4 电路求解器，全部源码开源在仓库内，公式与文献出处见附录参考文献；
+- 测试完备（可复现脚本全部随仓库交付）：
+  - 算法层专项断言 **77 项**（BKT/IRT/FSRS/MAB/GKT/NCD/五层接线/趋势学习器/匹配探索）全部通过；
+  - API 全链路冒烟 **16 项**（含演示库真实数据训练 IRT/GKT/趋势学习器）；
+  - 后端接口 **209 个路由 0 崩溃**；AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项全部通过；
+  - 前端 E2E 53 个用例 + **MNA 数值验证 9/9**（RC/RL/LC 对照教科书解析解）；
+  - 前端构建 TypeScript + Vite 零错误；
 - 可靠性保障：5 家 LLM 自动降级链、LLM 故障业务降级（引导提示/本地图谱兜底）、限流/防幻觉/安全过滤。
 
 ### 2. 经济可行性
@@ -224,13 +247,13 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 
 ### 3. 团队协作（跨专业组队）
 
-| 成员 | 专业 | 分工 | 待补充 |
+| 成员 | 专业方向 | 建议分工 | 备注 |
 |---|---|---|---|
-| 马其瑞 | （待补充） | （待补充） | 待补充 |
-| 孙雨瑶 | （待补充） | （待补充） | 待补充 |
-| 居欣月 | （待补充） | （待补充） | 待补充 |
+| 马其瑞 | 计算机科学与技术（待确认） | 队长 / 后端架构与算法引擎（ADPP/五层算法/多智能体） | 专业年级待团队确认 |
+| 孙雨瑶 | 电子信息工程（待确认） | 前端与虚拟实验（电路仿真/实验实训/可视化） | 专业年级待团队确认 |
+| 居欣月 | 计算机 × 电子交叉（待确认） | 试点组织 / 测试验证 / 比赛文档与材料 | 专业年级待团队确认 |
 
-协作机制：Git 版本控制（main 保护分支 + PR 审核）、任务看板管理、每周例会同步进度、跨专业模块通过 API 接口契约协作。
+协作机制：Git 版本控制（main 保护分支 + PR 审核）、任务看板管理、每周例会同步进度、跨专业模块通过 API 接口契约协作。跨专业价值：计算机成员负责算法与平台，电子信息成员保障电路/嵌入式实验内容的学科正确性，交叉验证"AI 技术 × 学科场景"的贴合度——这正是本赛道"避免技术与学科场景脱节"要求的组织保障。
 
 ---
 
@@ -252,12 +275,27 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 - **数据采集**：系统自动采集（学习行为/测验/实验参与/功能使用）+ 前后测成绩 + 用户问卷
 - **报告**：试点数据分析页自动生成（含前后测对比、实验参与分布、功能使用 Top）
 
-### 3. 功能验证数据（系统可用性）
+### 3. 算法效果验证设计（"传统 vs 算法"可量化对照）
 
-- 前端 E2E：53 个用例全部通过
-- 后端接口验证：177 个路由 0 崩溃（49 通过 + 41 合法 4xx + 87 跳过/LLM依赖另行验证）
-- 全链路数据流 23 项、Agent/LLM 专项 23 项全部通过
-- 真实环境：33 项 HTTP 验证全部通过（含真实 LLM 调用）
+平台内置了可直接产出对照数据的验证点，试点期间自动落库，避免"只有代码验证、没有效果数据"：
+
+| 对照点 | 传统方法 | 算法方法 | 可量化指标 | 当前状态 |
+|---|---|---|---|---|
+| 掌握度测量 | 最近 5 次加权平均分 | IRT θ 百分位（Φ(θ)·100） | 两口径逐生逐日差值、与后测成绩的效度相关 | 已接线，演示库 8 学生实测 |
+| 路径成本 | 人工 1-5 难度分级 | IRT 标定 b 值连续插值 | 同知识点两来源耗时差、路径总时长变化 | 已接线，difficulty_source 可区分 |
+| 知识追踪 | 无（画像快照） | BKT EM 估计 | 预测 AUC（演示库实测 **0.837**，32 知识点） | 已上线 |
+| 掌握度传播 | 逐点独立 | GKT 图卷积传播 | 图感知掌握度 vs 逐点掌握度对后测的预测增益 | 已训练（可学习门控） |
+| 记忆调度 | 统一间隔复习 | FSRS 个性化调度 | 到期知识点复习完成率、可提取性分布 | 已上线 |
+| 路径调整策略 | 50/70/90 固定规则 | Thompson Sampling（规则先验冷启动） | strategy_source 分组的提分统计 | 已接线，收益闭环回传 |
+| 选题与资源推荐 | 固定顺序/人工权重 | MAB 探索-利用 | 各臂收益曲线、资源类型点击/完成率 | 已接线 |
+
+### 4. 功能验证数据（系统可用性）
+
+- 算法层专项断言 77 项全部通过（覆盖 BKT/IRT/FSRS/MAB/GKT/NCD/五层接线/趋势学习器/匹配探索）
+- API 全链路冒烟 16 项（演示库真实数据训练 IRT/GKT/趋势学习器并验证端到端输出）
+- 后端 209 个路由 0 崩溃；AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项、真实环境 HTTP 33 项全部通过
+- 前端 E2E 53 个用例 + MNA 数值验证 9/9（RC/RL/LC 对照解析解）
+- 全部验证脚本随仓库交付，可一键复现
 
 ---
 
@@ -267,14 +305,16 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 
 **核心创新**：
 1. **跨学科学习链路**：打通"编程思维→电路建模→嵌入式实现"，9 条跨课程知识关联 + 跨学科路径算法 + 综合实战项目；
-2. **AI 虚拟实验实训新范式**：浏览器端 MNA 仿真只给数值，AI 叠加故障诊断与原理讲解；
-3. **多智能体教育角色体系**：12 个 Agent 从零设计（非通用框架套用），覆盖学习闭环全流程；
-4. **可靠性工程**：5 模型自动降级、6 道防幻觉防线、LLM 故障业务降级。
+2. **五层教育算法闭环**：IRT 测量 → BKT/GKT（可学习门控）建模 → FSRS 记忆 → MAB 决策 → LLM 解释，全部接线进业务链路并可产出"传统 vs 算法"对照数据；
+3. **AI 虚拟实验实训新范式**：浏览器端 MNA 直流稳态 + RK4 暂态（解析解对照验证），AI 叠加故障诊断与原理讲解；
+4. **多智能体教育角色体系**：12 个 Agent 从零设计（非通用框架套用），覆盖学习闭环全流程；
+5. **可靠性工程**：5 模型自动降级、6 道防幻觉防线、LLM 故障业务降级。
 
 **客观不足**：
-- 试点数据仍在收集中，应用效果量化验证待完善；
+- 试点数据仍在收集中，应用效果的真实学生量化验证待完善（对照实验设计已就绪，见第六部分）；
 - 学科内容覆盖 3 门课程，跨学科关联的广度待扩展（后续支持更多学科）；
-- 电路仿真目前为直流稳态求解，暂态分析待增强。
+- 电路暂态分析目前面向线性 RLC 电路（状态变量法），含非线性元件/受控源的电路待扩展；
+- 趋势权重学习器依赖趋势快照积累（≥10 个样本方可训练），当前以人工先验权重兜底。
 
 ### 2. 未来展望
 
@@ -286,25 +326,88 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 
 ## （八）附录
 
+### 0. 提交材料对照表（官方"作品要求"逐项对应）
+
+| 官方要求（三、作品要求 & 五、技术方案大纲） | 本方案对应位置 |
+|---|---|
+| 明确聚焦学科专业、界定领域场景 | （二）1 学科专业界定 |
+| 学科需求分析报告 | （二）2 核心痛点梳理（教学/实验实训/自主学习三环节） |
+| AI 技术应用方案 | （三）解决方案设计（架构/选型/核心模块） |
+| 作品功能说明 | 《03_功能与验证报告》（学生端 9 模块 + 教师端 6 模块逐项说明）；（一）2 核心目标表 |
+| 效果验证依据 | （六）应用效果（算法对照设计 + 功能验证数据 + 试点方案） |
+| 跨专业组队分工与协作机制 | （五）3 团队协作 |
+| 创新点及对比传统方式优势 | （一）3 为什么必须用 AI；（三）3.2 五层算法闭环；（七）1 核心创新 |
+| 推广价值与小规模试点案例 | （四）3 推广价值；（六）2 试点方案 |
+| 代码与模型（可复现性） | （八）1 代码与验证脚本 |
+| 参考文献 | （八）2 |
+| 学术伦理与知识产权 | （八）3 |
+
 ### 1. 代码与模型
 
-- 完整源代码：GitHub 仓库（Vizzi-cyber/A3）
-- 核心算法：ADPP 路径规划（backend/app/algorithms/path_planning_dag.py，约 500 行）、MNA 电路求解器（frontend/src/pages/circuit-simulator/utils/mna-solver.ts，约 400 行）
+- 完整源代码：GitHub 仓库（Vizzi-cyber/A3），Git 提交历史可追溯全部迭代
+- **算法层（backend/app/algorithms/，全部自研或文献复现）**：
+  - `path_planning_dag.py` — ADPP 自适应 DAG 路径规划（BKT/IRT/GKT/MAB 四路接线，策略 MAB 决策）
+  - `irt_diagnoser.py` — IRT 1PL/2PL MAP 联合估计（scipy BFGS）
+  - `bkt_engine.py` — pyBKT 完整贝叶斯知识追踪（EM 参数估计 + AUC 验证）
+  - `gkt_engine.py` — 可学习门控图卷积（自监督 MSE 训练，w≥0 单调约束）
+  - `memory_scheduler.py` — FSRS 间隔重复调度（复习队列/可提取性/持久化）
+  - `bandit_selector.py` — Thompson Sampling 选题器（mabwiser 封装）
+  - `ncd_diagnoser.py` — 神经认知诊断（numpy 向量化实现，单调约束）
+  - `trend_analysis.py` — 多因子趋势分析 + TrendWeightLearner 掉队预警学习器（L2 逻辑回归）
+  - `weighted_matching.py` — 多维加权匹配 + MAB 探索层
+  - `effect_evaluation.py` — 学习效果评估（IRT θ 掌握度 + FSRS 记忆小节）
+- **电路仿真（frontend/src/pages/circuit-simulator/utils/mna-solver.ts）**：并查集 + MNA 直流稳态 + 状态变量法 RK4 暂态，数值经解析解对照验证
+- **训练/验证脚本（backend/scripts/，一键复现）**：`verify_ai_algorithms.py`（77 项算法断言）、`verify_p0_wiring_api.py`（16 项 API 全链路）、`verify_aic_features.py`（29 项回归）、`verify_all_routes.py`（209 路由冒烟）、`verify_dataflow.py` 等
+- **训练端点**：`POST /algorithms/irt/fit`、`/algorithms/bkt/fit`、`/algorithms/gkt/train`、`/algorithms/trend/train`（启动时自动拟合 BKT/IRT）
 - 数据注入脚本：seed_cross_discipline.py（跨学科关联）、seed_classes.py（班级）
-- 验证脚本：verify_*.py（5 个，可复现全部测试）
 
-### 2. 参考文献（待补充 15-20 篇）
+### 2. 参考文献
 
-- 贝叶斯知识追踪：Corbett & Anderson (1995) "Knowledge Tracing: Modeling the Acquisition of Procedural Knowledge"
-- 关键路径法（CPM）相关教材
-- LangGraph 官方文档：https://langchain-ai.github.io/langgraph/
-- 《电路分析基础》教材（MNA 节点电压法）
-- 教育部《新工科建设宣言》（2017）
-- 《教育数字化战略行动》
-- 布鲁姆掌握学习理论 / 维果茨基最近发展区 / 艾宾浩斯遗忘曲线
+**教育算法（按五层闭环顺序）：**
 
-### 3. 其他材料
+1. Corbett, A. T., & Anderson, J. R. (1995). Knowledge tracing: Modeling the acquisition of procedural knowledge. *User Modeling and User-Adapted Interaction*, 4(4), 253–278.（BKT）
+2. Badrinath, A., Wang, F., & Pardos, Z. A. (2021). pyBKT: An Accessible Python Library of Bayesian Knowledge Tracing Models. *Proceedings of the 14th International Conference on Educational Data Mining (EDM 2021)*.
+3. Rasch, G. (1960). *Probabilistic Models for Some Intelligence and Attainment Tests*. University of Chicago Press.（Rasch 模型/IRT 1PL）
+4. Lord, F. M. (1980). *Applications of Item Response Theory to Practical Testing Problems*. Routledge.（IRT 2PL）
+5. Baker, F. B., & Kim, S.-H. (2004). *Item Response Theory: Parameter Estimation Techniques* (2nd ed.). Marcel Dekker.（MAP 联合估计）
+6. Nakagawa, H., Iwasawa, Y., & Matsuo, Y. (2019). Graph-based Knowledge Tracing: Modeling Student Proficiency Using Graph Neural Network. *IEEE/WIC/ACM International Conference on Web Intelligence (WI 2019)*.（GKT）
+7. Kipf, T. N., & Welling, M. (2017). Semi-Supervised Classification with Graph Convolutional Networks. *International Conference on Learning Representations (ICLR 2017)*.（GCN/拉普拉斯归一化）
+8. Wang, F., Liu, Q., Chen, E., Li, Z., Qi, G., & Shang, J. (2020). Neural Cognitive Diagnosis for Intelligent Education Systems. *AAAI 2020*.（NCD）
+9. Ye, J., Su, J., & Cao, Y. (2022). A Stochastic Shortest Path Algorithm for Optimizing Spaced Repetition Scheduling. *Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD 2022)*.（FSRS）
+10. Liu, R., et al. (2023). Optimizing Spaced Repetition Schedule by Capturing the Dynamics of Memory. *IEEE Transactions on Knowledge and Data Engineering (TKDE)*.（FSRS 记忆动力学）
+11. open-spaced-repetition. py-fsrs: Free Spaced Repetition Scheduler (Python). https://github.com/open-spaced-repetition/py-fsrs
+12. Russo, D. J., Van Roy, B., Kazerouni, A., Osband, I., & Wen, Z. (2018). A Tutorial on Thompson Sampling. *Foundations and Trends in Machine Learning*, 11(1), 1–96.（Thompson Sampling）
+13. Clement, B., Roy, D., Oudeyer, P.-Y., & Lopes, M. (2015). Multi-Armed Bandits for Intelligent Tutoring Systems. *Journal of Educational Data Mining*, 7(2), 20–39.（MAB 选题/ZPDES）
+14. Fidelity Center for Applied Technology. Mabwiser: An ARD Library for Multi-Armed Bandits. https://github.com/fidelity/mabwiser
+15. Ebbinghaus, H. (1885/1913). *Memory: A Contribution to Experimental Psychology*. Teachers College, Columbia University.（遗忘曲线）
 
-- 测试说明书（软件杯版，12 章，可复用为系统测试佐证）
-- 试点知情同意书（试点前准备）
-- 演示视频（计划录制）
+**教育学与政策：**
+
+16. Bloom, B. S. (1984). The 2 Sigma Problem: The Search for Methods of Group Instruction as Effective as One-to-One Tutoring. *Educational Researcher*, 13(6), 4–16.
+17. VanLehn, K. (2011). The Relative Effectiveness of Human Tutoring, Intelligent Tutoring Systems, and Other Tutoring Systems. *Educational Psychologist*, 46(4), 197–221.
+18. 中华人民共和国教育部. (2017). 教育部办公厅关于开展新工科研究与实践的通知（"新工科建设"复旦共识/天大行动系列）.
+19. 中华人民共和国教育部. (2018). 高等学校人工智能创新行动计划.
+20. 中华人民共和国教育部. (2018). 教育信息化 2.0 行动计划.
+
+**技术框架文档：**
+
+21. LangGraph 官方文档. https://langchain-ai.github.io/langgraph/
+22. 邱关源, 罗先觉. (2018). 《电路》（第 6 版）. 高等教育出版社.（节点电压法/MNA）
+
+### 3. 知识产权、学术伦理与其他材料
+
+**知识产权说明**：
+- 平台代码全部自研，无知识产权争议；
+- 第三方组件均为开源许可：React/TypeScript/FastAPI/LangGraph（MIT）、Ant Design（MIT）、pyBKT（BSD-3）、py-fsrs（MIT）、mabwiser（BSD-3）、NumPy/SciPy（BSD）、Playwright（Apache-2.0）；
+- LLM 服务通过官方 API 合规调用（讯飞星火/DeepSeek 等），无模型权重分发。
+
+**学术伦理**：
+- 试点数据采集遵循知情同意（试点前发放知情同意书），学生可随时退出；
+- 数据采集最小化：仅采集学习行为/成绩/功能使用等教学必需数据，不采集个人敏感信息；
+- 学生数据仅用于本教学试点效果分析，报告输出做匿名化/聚合处理；
+- 不将任何未实际发生的试点结果表述为已完成。
+
+**其他佐证材料**：
+- 测试说明书（12 章，系统测试佐证）
+- 试点知情同意书（试点前发放）
+- 演示视频（5-8 分钟，录制中：覆盖跨学科路径、故障实验、算法对照面板、教师报告）

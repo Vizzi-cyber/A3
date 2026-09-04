@@ -121,7 +121,11 @@ class BKTEngine:
                     order += 1
             else:
                 # 无逐题数据：以整卷得分 >= 60 视为一次正确作答
-                correct = 1 if (q.get("score") or 0) >= 60 else 0
+                try:
+                    score = float(q.get("score") or 0)
+                except (TypeError, ValueError):
+                    score = 0.0
+                correct = 1 if score >= 60 else 0
                 rows.append({
                     "order_id": order,
                     "student_id": student_id,
