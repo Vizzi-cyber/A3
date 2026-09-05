@@ -214,13 +214,14 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
 
     # Quiz is also a real FSRS review event: map score to a rating and persist
     # the updated card so due dates survive process restarts.
+    fsrs_info = None
     try:
         rating = "again" if request.score < 50 else ("hard" if request.score < 70 else ("good" if request.score < 90 else "easy"))
         scheduler = FSRSMemoryScheduler()
         rows = db.query(MemoryCardModel).filter(MemoryCardModel.student_id == request.student_id).all()
         for row in rows:
             scheduler.restore_card(row.student_id, row.kp_id, row.card_json)
-        scheduler.review(request.student_id, request.kp_id, rating)
+        fsrs_info = scheduler.review(request.student_id, request.kp_id, rating)
         card_json = scheduler.get_card_json(request.student_id, request.kp_id)
         row = db.query(MemoryCardModel).filter(MemoryCardModel.student_id == request.student_id, MemoryCardModel.kp_id == request.kp_id).first()
         if row is None:
@@ -231,9 +232,17 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
     except Exception as exc:
         logger.warning(f"FSRS update failed for quiz {quiz_id}: {exc}")
 
+    response = {"status": "success", "quiz_id": quiz_id}
     if awarded > 0:
-        return {"status": "success", "quiz_id": quiz_id, "points_awarded": awarded, "total_points": total}
-    return {"status": "success", "quiz_id": quiz_id}
+        response.update({"points_awarded": awarded, "total_points": total})
+    if fsrs_info:
+        response["fsrs"] = {
+            "rating": fsrs_info.get("rating"),
+            "next_review": fsrs_info.get("next_review"),
+            "stability": fsrs_info.get("stability"),
+            "difficulty": fsrs_info.get("difficulty"),
+        }
+    return response
 
 
 @router.get("/{student_id}/history")
