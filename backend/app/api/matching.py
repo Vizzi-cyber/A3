@@ -11,6 +11,7 @@ from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from ..models.database import get_db
 from ..models.student import StudentProfileModel
+from ..models.knowledge import KnowledgePointModel
 from ..algorithms import MultiDimWeightedMatcher
 from ..services.algorithm_registry import (
     get_resource_bandit,
@@ -46,6 +47,13 @@ async def match_resources(request: ResourceMatchRequest, db: Session = Depends(g
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == request.student_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Student not found")
+
+    # Recommendations must reference real knowledge points; discard stale or
+    # synthetic candidates before scoring.
+    kp_ids = {row[0] for row in db.query(KnowledgePointModel.kp_id).all()}
+    request.resources = [r for r in request.resources if not r.get("kp_id") or r.get("kp_id") in kp_ids]
+    if not request.resources:
+        raise HTTPException(status_code=404, detail="No valid resources found in knowledge base")
 
     profile_dict = {
         "student_id": profile.student_id,

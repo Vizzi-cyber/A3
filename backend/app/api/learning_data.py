@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..models.database import get_db
 from ..models.knowledge import LearningRecordModel, QuizResultModel, ResourceFeedbackModel
+from ..models.memory import MemoryCardModel
+from ..algorithms.memory_scheduler import FSRSMemoryScheduler
 from ..models.student import StudentProfileModel
 from ..models.gamification import PointsModel, AchievementModel, LeaderboardModel
 from ..models.experiment import (
@@ -209,6 +211,25 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
 
     # 检查是否需要调整路径
     await maybe_check_path_adjustment(request.student_id, db)
+
+    # Quiz is also a real FSRS review event: map score to a rating and persist
+    # the updated card so due dates survive process restarts.
+    try:
+        rating = "again" if request.score < 50 else ("hard" if request.score < 70 else ("good" if request.score < 90 else "easy"))
+        scheduler = FSRSMemoryScheduler()
+        rows = db.query(MemoryCardModel).filter(MemoryCardModel.student_id == request.student_id).all()
+        for row in rows:
+            scheduler.restore_card(row.student_id, row.kp_id, row.card_json)
+        scheduler.review(request.student_id, request.kp_id, rating)
+        card_json = scheduler.get_card_json(request.student_id, request.kp_id)
+        row = db.query(MemoryCardModel).filter(MemoryCardModel.student_id == request.student_id, MemoryCardModel.kp_id == request.kp_id).first()
+        if row is None:
+            db.add(MemoryCardModel(student_id=request.student_id, kp_id=request.kp_id, card_json=card_json or "{}"))
+        else:
+            row.card_json = card_json or row.card_json
+        db.commit()
+    except Exception as exc:
+        logger.warning(f"FSRS update failed for quiz {quiz_id}: {exc}")
 
     if awarded > 0:
         return {"status": "success", "quiz_id": quiz_id, "points_awarded": awarded, "total_points": total}

@@ -1308,6 +1308,7 @@ export const teacherApi = {
       status: string;
       weak_tags: Array<{ tag: string; count: number }>;
       weak_areas: Array<{ area: string; count: number }>;
+      weak_kps: Array<{ kp_id: string; avg_score: number; attempts: number }>;
     }>("/teacher/weak-points"),
 
   getPilotReport: (days?: number, format?: string) =>

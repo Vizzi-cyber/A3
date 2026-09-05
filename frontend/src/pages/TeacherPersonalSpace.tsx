@@ -144,7 +144,6 @@ const TeacherPersonalSpace: React.FC = () => {
     }
   };
 
-  // 模拟学生学习趋势数据
   const trendData = students.slice(0, 10).map((s) => ({
     name: s.username?.slice(0, 4) || s.student_id.slice(0, 8),
     points: s.total_points,

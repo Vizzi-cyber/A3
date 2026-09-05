@@ -19,6 +19,7 @@ from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel, LearningRecordModel
 from ..models.student import StudentProfileModel
 from ..models.course import CourseModel
+from ..models.path_adjustment_log import PathAdjustmentLogModel
 from ..algorithms import DAGPathPlanner
 from ..services.algorithm_registry import (
     get_bkt_engine,
@@ -132,7 +133,9 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                 for k in kps
             ])
             # 默认目标为最后一个知识点
-            target_kp_id = kps[-1].kp_id
+            target_text = (request.target_topic or "").lower()
+            target_match = next((k for k in kps if target_text and (target_text in (k.name or "").lower() or target_text == k.kp_id.lower())), None)
+            target_kp_id = (target_match or kps[-1]).kp_id
             # 使用聚合查询直接获取每个知识点的最大进度，避免加载全部记录
             since = datetime.now(timezone.utc) - timedelta(days=365)
             mastery_rows = (
@@ -145,6 +148,10 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                 .all()
             )
             mastery_map = {row.kp_id: row.max_progress or 0.0 for row in mastery_rows}
+            kp_ids = {k.kp_id for k in kps}
+            for kp_id in (request.current_knowledge or []):
+                if kp_id in kp_ids:
+                    mastery_map[kp_id] = 1.0
             # AIC 算法增强：若完整 BKT 已拟合，注入 BKT 引擎（掌握度用 EM 参数化预测，
             # 替代画像快照；未拟合时保持原逻辑，向后兼容）；IRT/GKT 同理注入
             bkt_engine = get_bkt_engine()
@@ -210,8 +217,10 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                 "stages": fallback_stages,
             }
 
-    path_data = raw_path if raw_path and raw_path.get("stages") else {
-        "target": request.target_topic,
+    if not raw_path or not raw_path.get("stages"):
+        raise HTTPException(status_code=404, detail="No learning path can be generated from available knowledge and records")
+    path_data = raw_path
+    '''
         "estimated_total_hours": 20,
         "stages": [
             {
@@ -247,7 +256,7 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                 "resources": ["高级技术书籍或论文", "技术博客与会议演讲"],
             },
         ],
-    }
+    }'''
 
     return {
         "status": "success",
@@ -385,7 +394,7 @@ async def generate_dag_path(request: DAGPathRequest, db: Session = Depends(get_d
 
 
 @router.post("/dag/adjust")
-async def adjust_dag_path(request: DAGPathAdjustRequest, _current: str = Depends(require_auth)):
+async def adjust_dag_path(request: DAGPathAdjustRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """动态调整DAG路径
 
     AIC 算法增强：Thompson Sampling 策略选择。
@@ -413,12 +422,14 @@ async def adjust_dag_path(request: DAGPathAdjustRequest, _current: str = Depends
         trend_state=request.trend_state,
         bandit_selector=get_strategy_bandit(request.student_id),
     )
+    db.add(PathAdjustmentLogModel(student_id=request.student_id, trigger_type="auto", trigger_source="quiz_result", reason="DAG adjustment", old_path_snapshot=request.current_path, new_path_snapshot=result, confidence=1.0))
+    db.commit()
     return {"status": "success", "data": result}
 
 
 @router.post("/{student_id}/adjust")
 async def adjust_path(
-    student_id: str, adjustment: PathAdjustmentRequest, _current: str = Depends(require_auth)
+    student_id: str, adjustment: PathAdjustmentRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)
 ):
     """调整学习路径 —— 直接调用 PathPlannerAgent
 
@@ -447,6 +458,8 @@ async def adjust_path(
     except Exception as e:
         logger.warning(f"路径调整异常: {e}")
 
+    db.add(PathAdjustmentLogModel(student_id=student_id, trigger_type="manual", trigger_source="user_feedback", reason=adjustment.feedback, old_path_snapshot=adjustment.current_path or {}, new_path_snapshot=path_data, confidence=1.0 if path_data.get("stages") else 0.0))
+    db.commit()
     return {
         "status": "success",
         "message": "Path adjusted",

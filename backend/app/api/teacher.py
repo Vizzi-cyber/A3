@@ -507,6 +507,16 @@ async def get_weak_points(
             for tag in q.weak_tags:
                 tag_count[tag] = tag_count.get(tag, 0) + 1
 
+    kp_scores = defaultdict(list)
+    for q in quizzes:
+        if q.kp_id and q.score is not None:
+            kp_scores[q.kp_id].append(float(q.score))
+    weak_kps = [
+        {"kp_id": kp_id, "avg_score": round(sum(vals) / len(vals), 1), "attempts": len(vals)}
+        for kp_id, vals in kp_scores.items() if sum(vals) / len(vals) < 60
+    ]
+    weak_kps.sort(key=lambda x: (x["avg_score"], -x["attempts"]))
+
     # 排序
     sorted_tags = sorted(tag_count.items(), key=lambda x: x[1], reverse=True)
 
@@ -525,6 +535,7 @@ async def get_weak_points(
         "status": "success",
         "weak_tags": [{"tag": t, "count": c} for t, c in sorted_tags[:20]],
         "weak_areas": [{"area": a, "count": c} for a, c in sorted_weak[:20]],
+        "weak_kps": weak_kps[:20],
     }
 
 

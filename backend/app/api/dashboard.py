@@ -137,19 +137,47 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
         "article": "文章",
     }
     for f in favorites:
+        if not f.url:
+            continue
         recommendations.append({
             "title": f.title,
             "type": type_label_map.get(f.resource_type, "资源"),
             "url": f.url,
         })
     # 如果收藏不足，用兴趣补
-    if len(recommendations) < 4 and interest_areas:
-        for area in interest_areas[: 4 - len(recommendations)]:
-            recommendations.append({
-                "title": f"{area} 精选资源",
-                "type": "推荐",
-                "url": None,
-            })
+    if len(recommendations) < 4:
+        content_kps = (
+            db.query(KnowledgePointModel)
+            .filter(
+                (KnowledgePointModel.document.isnot(None))
+                | (KnowledgePointModel.code_example.isnot(None))
+                | (KnowledgePointModel.questions.isnot(None))
+                | (KnowledgePointModel.mindmap.isnot(None))
+            )
+            .order_by(KnowledgePointModel.created_at.desc())
+            .all()
+        )
+        existing_urls = {item["url"] for item in recommendations if item.get("url")}
+        interest_tokens = [str(area).strip().lower() for area in interest_areas if str(area).strip()]
+        for kp in content_kps:
+            searchable = " ".join([kp.name or "", kp.subject or "", *(kp.tags or [])]).lower()
+            if interest_tokens and not any(token in searchable for token in interest_tokens):
+                continue
+            url = f"/resource/{kp.kp_id}"
+            if url in existing_urls:
+                continue
+            if kp.document:
+                resource_type = "文章"
+            elif kp.code_example:
+                resource_type = "代码"
+            elif kp.questions:
+                resource_type = "练习"
+            else:
+                resource_type = "思维导图"
+            recommendations.append({"title": kp.name, "type": resource_type, "url": url})
+            existing_urls.add(url)
+            if len(recommendations) >= 4:
+                break
 
     # ---------- 画像摘要 ----------
     profile_summary = {
@@ -314,10 +342,11 @@ async def get_growth_timeline(student_id: str, db: Session = Depends(get_db), _c
         ).all()
         kp_name_map = {kp.kp_id: kp.name for kp in kps}
 
+    emitted_mastery_kps = set()
     for r in records:
         if r.action == "complete" or (r.progress and float(r.progress) >= 1.0):
-            if r.kp_id in completed_kps:
-                completed_kps.discard(r.kp_id)  # 只处理一次
+            if r.kp_id in completed_kps and r.kp_id not in emitted_mastery_kps:
+                emitted_mastery_kps.add(r.kp_id)
                 milestones.append({
                     "date": _fmt_iso(r.created_at),
                     "type": "mastery",
@@ -386,7 +415,7 @@ async def get_growth_timeline(student_id: str, db: Session = Depends(get_db), _c
             "daily_curve": daily_curve,
             "summary": {
                 "total_milestones": len(milestones),
-                "mastery_count": len(completed_kps),
+                "mastery_count": len(emitted_mastery_kps),
                 "high_score_count": sum(1 for m in milestones if m["type"] == "achievement"),
                 "achievement_count": len(achievements),
             },

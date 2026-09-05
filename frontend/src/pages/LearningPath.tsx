@@ -444,20 +444,12 @@ const LearningPathPage: React.FC = () => {
             suggestions.push("实践偏好分较低，建议增加练习比重");
           setProfileSuggestions(suggestions);
           setWeakReviewTopics((p.weak_areas || []).slice(0, 5));
-          // 薄弱知识点（用确定性哈希生成掌握度，避免每次渲染随机变化）
+          // 薄弱知识点；画像只提供名称，掌握度必须来自真实学习记录
           if (p.weak_areas?.length) {
             setWeakPoints(
               p.weak_areas.map((area: string) => ({
                 name: area,
-                mastery:
-                  (Math.abs(
-                    Array.from(area).reduce(
-                      (acc, ch) => acc * 31 + ch.charCodeAt(0),
-                      0,
-                    ),
-                  ) %
-                    40) +
-                  30,
+                mastery: 0,
               })),
             );
           }
