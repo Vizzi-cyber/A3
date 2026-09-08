@@ -182,6 +182,8 @@ class RoleMatcherAgent(BaseAgent):
         ]
 
         data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {
             "status": "success",
             "task": "match_team",
@@ -224,6 +226,8 @@ class RoleMatcherAgent(BaseAgent):
         ]
 
         data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {
             "status": "success",
             "task": "suggest_role",
@@ -274,6 +278,8 @@ class RoleMatcherAgent(BaseAgent):
         ]
 
         data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {
             "status": "success",
             "task": "rebalance",

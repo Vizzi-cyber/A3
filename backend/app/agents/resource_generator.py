@@ -3,6 +3,7 @@
 负责生成多模态学习资源：文档、练习题、代码示例、思维导图
 知识图谱约束：所有资源生成必须基于图谱内的知识点，防止幻觉和超纲
 """
+import asyncio
 from typing import Any, Dict, List, Optional
 
 from .base import BaseAgent
@@ -42,6 +43,12 @@ class ResourceGeneratorAgent(BaseAgent):
             self.logger.warning(f"Failed to load knowledge graph: {e}")
         return None
 
+    async def _get_node_info_async(self, topic: str):
+        """同步 DB 查询包 to_thread（避免阻塞事件循环），结果回填实例缓存"""
+        if not self._knowledge_graph:
+            self._knowledge_graph = await asyncio.to_thread(self._load_knowledge_graph_from_db)
+        return self._get_node_info(topic)
+
     def _get_node_info(self, topic: str) -> Optional[Dict[str, Any]]:
         """根据主题名或ID查找图谱节点信息"""
         kg = self._knowledge_graph or self._load_knowledge_graph_from_db()
@@ -54,8 +61,11 @@ class ResourceGeneratorAgent(BaseAgent):
 
     def _build_profile_snippet(self, context: Dict[str, Any]) -> str:
         """从 context 提取画像信息构建个性化 prompt 片段"""
+        from ..services.algorithm_registry import format_ai_engine_context
+
         profile = context.get("profile", {})
-        style = context.get("cognitive_style", profile.get("cognitive_style", {}).get("primary", "visual"))
+        from .base import get_primary_cognitive_style
+        style = context.get("cognitive_style") or get_primary_cognitive_style(profile)
         weak_areas = profile.get("weak_areas", [])
         knowledge_level = profile.get("knowledge_base", {}).get("overall_score", 0.5)
         interest_areas = profile.get("interest_areas", [])
@@ -73,11 +83,15 @@ class ResourceGeneratorAgent(BaseAgent):
         if interest_areas:
             interests = [a.get("area", str(a))[:20] for a in interest_areas[:3]]
             parts.append(f"兴趣领域：{', '.join(interests)}")
+        # AIC 算法增强：BKT 薄弱点 + FSRS 到期复习注入（与 tutor/error_catcher 同源）
+        ai_note = format_ai_engine_context(profile.get("ai_engine") or {})
+        if ai_note:
+            parts.append(ai_note.strip())
         return "\n".join(parts)
 
-    def _build_resource_constraint_prompt(self, topic: str) -> str:
+    async def _build_resource_constraint_prompt(self, topic: str) -> str:
         """构建资源生成约束 prompt 片段"""
-        node = self._get_node_info(topic)
+        node = await self._get_node_info_async(topic)
         if not node:
             return ""
 
@@ -172,6 +186,8 @@ class ResourceGeneratorAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ], temperature=0.4)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         # 防幻觉校验
         schema_check = HallucinationGuard.verify_json_schema(data, ["outline"])
         if not schema_check["valid"]:
@@ -184,7 +200,7 @@ class ResourceGeneratorAgent(BaseAgent):
         profile_snippet = self._build_profile_snippet(context)
 
         # 知识图谱约束
-        graph_constraint = self._build_resource_constraint_prompt(topic)
+        graph_constraint = await self._build_resource_constraint_prompt(topic)
 
         prompt = (
             f"请为主题《{topic}》撰写一份面向{style}型学习者的学习文档。\n"
@@ -208,7 +224,7 @@ class ResourceGeneratorAgent(BaseAgent):
         profile_snippet = self._build_profile_snippet(context)
 
         # 知识图谱约束
-        graph_constraint = self._build_resource_constraint_prompt(topic)
+        graph_constraint = await self._build_resource_constraint_prompt(topic)
 
         prompt = (
             f"请为{subject}课程主题《{topic}》生成 {count} 道练习题。\n"
@@ -227,6 +243,8 @@ class ResourceGeneratorAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ], temperature=0.5)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {"status": "success", "task": "questions", "content": data.get("questions", [])}
 
     async def _generate_code_examples(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -234,7 +252,7 @@ class ResourceGeneratorAgent(BaseAgent):
         topic = context["topic"]
 
         # 知识图谱约束
-        graph_constraint = self._build_resource_constraint_prompt(topic)
+        graph_constraint = await self._build_resource_constraint_prompt(topic)
 
         prompt = (
             f"请为主题《{topic}》提供 2-3 个 {language} 代码示例。\n"
@@ -256,7 +274,7 @@ class ResourceGeneratorAgent(BaseAgent):
         topic = context["topic"]
 
         # 知识图谱约束
-        graph_constraint = self._build_resource_constraint_prompt(topic)
+        graph_constraint = await self._build_resource_constraint_prompt(topic)
 
         prompt = (
             f"请为主题《{topic}》生成思维导图的大纲。\n"
@@ -297,4 +315,6 @@ class ResourceGeneratorAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ], temperature=0.5)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {"status": "success", "task": "match_resources", "content": data.get("matches", [])}

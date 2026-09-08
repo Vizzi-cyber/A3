@@ -70,19 +70,28 @@ class KnowledgeGraphBuilderAgent(BaseAgent):
         # 分批处理
         all_nodes = []
         all_edges = []
+        failed_batches = 0
         for i in range(0, len(kps), BATCH_SIZE):
             batch = kps[i:i + BATCH_SIZE]
             self.logger.info(f"Processing batch {i // BATCH_SIZE + 1}: {len(batch)} knowledge points")
             batch_result = await self._process_batch(batch, subject)
+            if batch_result.get("status") == "error":
+                # 批次失败记录并计数，不静默吞掉（否则图谱缺整批知识点仍报成功）
+                failed_batches += 1
+                self.logger.warning(f"Graph batch {i // BATCH_SIZE + 1} failed: {batch_result.get('message')}")
+                continue
             if batch_result.get("nodes"):
                 all_nodes.extend(batch_result["nodes"])
             if batch_result.get("edges"):
                 all_edges.extend(batch_result["edges"])
 
-        # 去重
+        # 去重（LLM 少给字段的节点/边跳过并记日志，不整体失败）
         seen_ids = set()
         unique_nodes = []
         for node in all_nodes:
+            if not isinstance(node, dict) or not node.get("id"):
+                self.logger.warning(f"Skip malformed node: {str(node)[:80]}")
+                continue
             if node["id"] not in seen_ids:
                 seen_ids.add(node["id"])
                 unique_nodes.append(node)
@@ -90,6 +99,9 @@ class KnowledgeGraphBuilderAgent(BaseAgent):
         seen_edges = set()
         unique_edges = []
         for edge in all_edges:
+            if not isinstance(edge, dict) or not edge.get("from") or not edge.get("to"):
+                self.logger.warning(f"Skip malformed edge: {str(edge)[:80]}")
+                continue
             key = (edge["from"], edge["to"])
             if key not in seen_edges:
                 seen_edges.add(key)
@@ -107,10 +119,14 @@ class KnowledgeGraphBuilderAgent(BaseAgent):
             "graph_data": graph_data,
             "node_count": len(unique_nodes),
             "edge_count": len(unique_edges),
+            "failed_batches": failed_batches,
         }
 
     async def _process_batch(self, kps: List[Dict], subject: str) -> Dict[str, Any]:
-        """处理一批知识点，调用 LLM 解析为图谱节点和边"""
+        """处理一批知识点，调用 LLM 解析为图谱节点和边。
+
+        返回带 status 键：error 时外层批次防护（failed_batches 计数）才生效。
+        """
         # 构建知识点摘要（只发名称和标签，不发完整文档避免 token 超限）
         kp_summaries = []
         for kp in kps:
@@ -150,7 +166,19 @@ class KnowledgeGraphBuilderAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ], temperature=0.3, max_tokens=4096)
 
+        # 必须带 status：外层按 batch_result.get("status") == "error" 计 failed_batches
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {
+                "status": "error",
+                "message": data.get("message", "LLM 返回内容无法解析"),
+                "nodes": [],
+                "edges": [],
+            }
+        if not isinstance(data, dict) or (not data.get("nodes") and not data.get("edges")):
+            return {"status": "error", "message": "批次未产出任何节点/边", "nodes": [], "edges": []}
+
         return {
+            "status": "success",
             "nodes": data.get("nodes", []),
             "edges": data.get("edges", []),
         }

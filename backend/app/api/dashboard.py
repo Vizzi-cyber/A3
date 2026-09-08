@@ -198,7 +198,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
     trend_data = [
         {
             "date": t.date,
-            "value": round((t.trend_factor or 0.5) * 100, 1),
+            "value": round((t.trend_factor if t.trend_factor is not None else 0.5) * 100, 1),
         }
         for t in trend_records
     ]

@@ -46,6 +46,21 @@ class AgentMessage:
             "requires_response": self.requires_response
         }
 
+def get_primary_cognitive_style(profile: Dict[str, Any], default: str = "visual") -> str:
+    """从画像提取主认知风格。
+
+    cognitive_style 在不同数据源里可能是 dict（{"primary": ...}）也可能是
+    裸字符串；统一在此守卫，避免 .get 在字符串上 AttributeError。
+    """
+    cs = (profile or {}).get("cognitive_style")
+    if isinstance(cs, dict):
+        v = cs.get("primary")
+        return str(v) if v else default
+    if isinstance(cs, str) and cs:
+        return cs
+    return default
+
+
 class BaseAgent(ABC):
     """
     智能体基类
@@ -234,10 +249,13 @@ class BaseAgent(ABC):
 
     def get_status(self) -> Dict[str, Any]:
         """获取智能体状态"""
+        # 子类常把 status 覆写为普通字符串（如 "running"），做双兼容避免 .value AttributeError
+        status = self.status
+        status_value = getattr(status, "value", status) if not isinstance(status, str) else status
         return {
             "agent_id": self.agent_id,
             "agent_name": self.agent_name,
-            "status": self.status.value,
+            "status": status_value,
             "queue_size": len(self.message_queue),
             "memory_keys": list(self.memory.keys()),
             "registered_tools": list(self.tools.keys())
@@ -288,8 +306,11 @@ class BaseAgent(ABC):
                 self.logger.info(f"Quality threshold reached: {score}")
                 break
 
-            context["_previous_result"] = result
-            context["_feedback"] = await self._generate_feedback(result, enable_llm_evaluation)
+            # 写局部副本传 process，不污染调用方 context（原实现原地写入
+            # _previous_result/_feedback，且全仓无 agent 消费这两个键——
+            # 反馈环实际死路，仅为下一轮 process 提供上下文）
+            context = {**context, "_previous_result": result,
+                       "_feedback": await self._generate_feedback(result, enable_llm_evaluation)}
 
         if best_result is None:
             best_result = {"status": "error", "message": "No iterations executed"}
@@ -304,7 +325,8 @@ class BaseAgent(ABC):
     def _rule_based_evaluate(self, result: Dict[str, Any]) -> float:
         """基于规则的质量评估（作为 fallback）"""
         score = 0.0
-        if "content" in result or "output" in result:
+        if any(k in result for k in ("content", "output", "evaluation", "report", "analysis")):
+            # evaluation/report/analysis：评估类 agent 的主体输出键
             score += 0.5
         if "confidence" in result:
             score += 0.3

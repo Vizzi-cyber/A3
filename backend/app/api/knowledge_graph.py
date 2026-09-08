@@ -12,7 +12,7 @@ from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel, KnowledgeGraphModel
 from ..agents.knowledge_graph_builder import KnowledgeGraphBuilderAgent
 from ..core.logger import setup_logger
-from .auth import require_auth
+from .auth import require_auth, require_teacher
 
 logger = setup_logger()
 router = APIRouter()
@@ -37,13 +37,36 @@ class GraphNodeResponse(BaseModel):
     learning_objective: str
 
 
+def _local_fallback_graph(kp_list):
+    """基于数据库 prerequisites 构建结构化图谱（数据驱动，无需 LLM）"""
+    return {
+        "nodes": [
+            {
+                "id": k["kp_id"],
+                "name": k["name"],
+                "difficulty": 1 if k["difficulty"] < 0.4 else 3 if k["difficulty"] < 0.6 else 5,
+                "prerequisite": k["prerequisites"] or [],
+                "question_types": ["选择题", "判断题"],
+                "resource_types": ["document", "code", "questions"],
+                "learning_objective": (k["description"] or f"掌握{k['name']}")[:200],
+            }
+            for k in kp_list
+        ],
+        "edges": [
+            {"source": p, "target": k["kp_id"]}
+            for k in kp_list
+            for p in (k["prerequisites"] or [])
+        ],
+    }
+
+
 @router.post("/build")
 async def build_knowledge_graph(
     request: BuildGraphRequest,
     db: Session = Depends(get_db),
-    _current: str = Depends(require_auth),
+    _teacher: str = Depends(require_teacher),
 ):
-    """从数据库知识点构建知识图谱（调用 LLM）"""
+    """从数据库知识点构建知识图谱（调用 LLM，教师操作：全局共享数据 + 消耗 LLM 额度）"""
     # 查询该学科的所有知识点
     COURSE_NAMES = {"C语言", "电路分析", "STM32嵌入式"}
     if request.subject in COURSE_NAMES:
@@ -95,29 +118,15 @@ async def build_knowledge_graph(
 
     if result.get("status") == "fallback":
         # 降级：基于数据库 prerequisites 构建结构化图谱（数据驱动，无需 LLM）
-        graph_data = {
-            "nodes": [
-                {
-                    "id": k["kp_id"],
-                    "name": k["name"],
-                    "difficulty": 1 if k["difficulty"] < 0.4 else 3 if k["difficulty"] < 0.6 else 5,
-                    "prerequisite": k["prerequisites"] or [],
-                    "question_types": ["选择题", "判断题"],
-                    "resource_types": ["document", "code", "questions"],
-                    "learning_objective": (k["description"] or f"掌握{k['name']}")[:200],
-                }
-                for k in kp_list
-            ],
-            "edges": [
-                {"source": p, "target": k["kp_id"]}
-                for k in kp_list
-                for p in (k["prerequisites"] or [])
-            ],
-        }
+        graph_data = _local_fallback_graph(kp_list)
     elif result.get("status") != "success":
         raise HTTPException(status_code=500, detail=result.get("error", "Build failed"))
     else:
-        graph_data = result["graph_data"]
+        graph_data = result.get("graph_data")
+        if not isinstance(graph_data, dict):
+            # agent 返回结构异常：退回本地兜底而非 500/存入坏数据
+            logger.warning("LLM 图谱结果缺 graph_data，退回本地兜底")
+            graph_data = _local_fallback_graph(kp_list)
 
     # 存入数据库（更新或插入）
     kg_id = f"kg_{request.subject}"

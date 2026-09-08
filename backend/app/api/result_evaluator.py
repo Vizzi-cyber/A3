@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
 from ..agents import ResultEvaluatorAgent
+from ..core.config import settings
 from ..core.logger import setup_logger
 from ..models.database import get_db
 from .auth import require_auth
@@ -70,13 +71,28 @@ async def evaluate_code(
     db: Session = Depends(get_db),
     _current: str = Depends(require_auth)
 ):
-    """评估代码质量"""
+    """评估代码质量
+
+    REFLECTION_ENABLED=true 时走反思循环（执行→评估→修正，最多
+    REFLECTION_MAX_ITERATIONS 轮，防幻觉第⑥道自我纠错随此路径生效）；
+    默认关闭时与原行为一致。quality_threshold 显式取 0.7：规则评估器
+    输出无 confidence 字段时上限恰为 0.7，用默认 0.8 会导致空转满轮。
+    """
     try:
-        result = await _evaluator_agent.process({
+        ctx = {
             "task": "evaluate_code",
             "code_submission": request.code_submission.model_dump(),
             "language": request.language,
-        })
+        }
+        if settings.REFLECTION_ENABLED:
+            result = await _evaluator_agent.run_with_reflection(
+                ctx,
+                max_iterations=settings.REFLECTION_MAX_ITERATIONS,
+                quality_threshold=0.7,
+                timeout_per_iteration=settings.REFLECTION_TIMEOUT_PER_ITERATION,
+            )
+        else:
+            result = await _evaluator_agent.process(ctx)
         return result
     except Exception as e:
         logger.error(f"Code evaluation failed: {e}")

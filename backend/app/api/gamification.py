@@ -17,7 +17,7 @@ from ..models.database import get_db
 from ..models.gamification import PointsModel, AchievementModel, TaskModel, LeaderboardModel
 from ..models.user import UserModel
 from ..services.gamification_service import ensure_points, award_points, sync_leaderboard
-from .auth import require_auth
+from .auth import require_auth, require_teacher
 
 router = APIRouter()
 
@@ -49,10 +49,8 @@ class AddPointsRequest(BaseModel):
 
 
 @router.post("/points/add")
-async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
-    """增加积分"""
-    if request.student_id != _current:
-        raise HTTPException(status_code=403, detail="Cannot add points for other student")
+async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _teacher: str = Depends(require_teacher)):
+    """增加积分（仅教师/管理员：积分只应由测验/学习/挑战等服务端行为触发）"""
     total = award_points(db, request.student_id, request.points, request.reason)
     db.commit()
     return {"status": "success", "total_points": total}
@@ -90,10 +88,8 @@ class UnlockAchievementRequest(BaseModel):
 
 
 @router.post("/achievements/unlock")
-async def unlock_achievement(request: UnlockAchievementRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
-    """解锁成就"""
-    if request.student_id != _current:
-        raise HTTPException(status_code=403, detail="Cannot unlock achievement for other student")
+async def unlock_achievement(request: UnlockAchievementRequest, db: Session = Depends(get_db), _teacher: str = Depends(require_teacher)):
+    """解锁成就（仅教师/管理员：成就由服务端行为触发，不允许自铸）"""
     existing = db.query(AchievementModel).filter(
         AchievementModel.student_id == request.student_id,
         AchievementModel.achievement_id == request.achievement_id,

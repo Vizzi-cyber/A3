@@ -31,7 +31,6 @@ interface SystemInfo {
 
 const SystemSettings: React.FC = () => {
   const userInfo = useAppStore((s) => s.userInfo);
-  const [form] = Form.useForm();
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -53,11 +52,7 @@ const SystemSettings: React.FC = () => {
     }
   };
 
-  const handleSave = () => {
-    form.validateFields().then(() => {
-      message.success("设置已保存");
-    });
-  };
+  // 注：后端暂无修改密码接口，原「保存」按钮 validateFields 恒过属假保存，已移除
 
   return (
     <div className="space-y-6">
@@ -68,11 +63,11 @@ const SystemSettings: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 账户信息 */}
         <Card className="rounded-2xl border-0 shadow-sm" title="账户信息">
-          <Form form={form} layout="vertical">
+          <Form layout="vertical">
             <Form.Item label="用户名">
               <Input
                 prefix={<UserOutlined className="text-slate-400" />}
-                defaultValue={userInfo?.username}
+                value={userInfo?.username || ""}
                 disabled
               />
             </Form.Item>
@@ -85,17 +80,8 @@ const SystemSettings: React.FC = () => {
             <Form.Item label="修改密码">
               <Input.Password
                 prefix={<LockOutlined className="text-slate-400" />}
-                placeholder="当前密码"
-                className="mb-3"
-              />
-              <Input.Password
-                prefix={<LockOutlined className="text-slate-400" />}
-                placeholder="新密码"
-                className="mb-3"
-              />
-              <Input.Password
-                prefix={<LockOutlined className="text-slate-400" />}
-                placeholder="确认新密码"
+                placeholder="修改密码功能即将开放，当前请联系管理员"
+                disabled
               />
             </Form.Item>
           </Form>

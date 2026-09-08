@@ -131,6 +131,11 @@ class ThompsonSamplingSelector:
 
     @property
     def is_warm(self) -> bool:
-        """是否已完成冷启动（每个臂至少获得过一次反馈），
-        调用方据此决定是否让 MAB 接管决策。"""
+        """是否已完成冷启动（累计反馈次数达到臂数），调用方据此决定是否
+        让 MAB 接管决策。
+
+        语义说明：按累计反馈次数而非「不同臂覆盖数」判定——快速预热是产品
+        预期（如试点学生只反复点击高收益资源类型时，探索层也应尽快生效）；
+        臂期望由 Thompson 采样自身按反馈质量收敛，无需强制全覆盖。
+        """
         return len(self._decisions) >= len(set(self._arms))

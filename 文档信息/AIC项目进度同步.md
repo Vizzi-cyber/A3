@@ -1,7 +1,7 @@
 # AIC 算法创新赛 · 项目进度同步
 
 > 实时同步 LearnLab 备战第八届 AIC"算法创新赛"· AI+学科交叉赛道的项目进度
-> 最后更新：2026-09-04
+> 最后更新：2026-09-05
 > 提交截止：2026-09-10（剩余约 1 周）
 
 ---
@@ -37,15 +37,17 @@
 | 第一轮 P0 接线 | IRT θ→效果评估掌握度、IRT b→学习成本、Thompson Sampling→路径调整（含路由遮蔽修复） | 23→53 项算法断言 |
 | 第二轮 审计加固 | 双轴审查修复 3 个链路 bug + 8 处健壮性缺陷（趋势分析数据饿死、收益首反馈丢失、maintain 臂缺失等） | 53→62 项 |
 | 第三轮 算法补全 | GKT 可学习门控图卷积（自监督）、趋势权重学习器（L2 逻辑回归掉队预警）、匹配 MAB 探索层+收益闭环、MNA RK4 暂态分析（电感直流短路一并修复，数值对照解析解 9/9） | 62→77 项 |
+| 第四轮 文档-代码对齐 | FSRS 到期→路径复习阶段、KT 注入三处智能体、IRT b→匹配难度（修恒 1.0 bug）、JWT /auth/refresh+前端静默重放、反思循环接线（REFLECTION_ENABLED）、排行榜六维真实化、BFS/DFS 动画、kbStore 防抖；README/技术方案/进度同步勘误 | 77→91 项（API 16→26） |
+| 第五轮 全量后端审计修复 | 修 40+ 真问题：quiz_score 榜恒 500（count(id)）、tutor 三处越权、qa-feedback 契约断裂、反思日志正则失效、作业答案泄漏、自加分入口、难度量纲错位（0-1 vs 1-5）、IRT 复合键断路、tutor 全局锁串行化、WS 泄漏+越权、缓存串号、NCD 孤立引擎接线、/generate 环防护等 | 91→100 项（API 26→38，210 路由） |
 
-### 测试验证记录（2026-09-04 最新）
+### 测试验证记录（2026-09-05 最新）
 
 | 测试 | 范围 | 结果 | 脚本 |
 |---|---|---|---|
-| 算法专项 | 77 项断言（BKT/IRT/FSRS/MAB/GKT/NCD/五层接线/趋势学习器/匹配探索） | ✅ 77/77 | `backend/scripts/verify_ai_algorithms.py` |
-| 算法接线 API 冒烟 | 16 项（演示库真实数据训练 IRT/GKT/趋势学习器 + MAB 闭环） | ✅ 16/16 | `backend/scripts/verify_p0_wiring_api.py` |
+| 算法专项 | 100 项断言（BKT/IRT/FSRS/MAB/GKT/NCD/五层接线/趋势学习器/匹配探索） | ✅ 100/100 | `backend/scripts/verify_ai_algorithms.py` |
+| 算法接线 API 冒烟 | 38 项（演示库真实数据训练 IRT/GKT/趋势学习器 + MAB 闭环） | ✅ 38/38 | `backend/scripts/verify_p0_wiring_api.py` |
 | AIC 功能回归 | 29 项 | ✅ 29/29 | `backend/scripts/verify_aic_features.py` |
-| 全路由冒烟 | 209 个路由 | ✅ 0 崩溃 | `backend/scripts/verify_all_routes.py` |
+| 全路由冒烟 | 210 个路由 | ✅ 0 崩溃 | `backend/scripts/verify_all_routes.py` |
 | MNA 数值对照 | RC/RL/LC 解析解验证 | ✅ 9/9 | `cd frontend && npm run test:mna` |
 | 全链路数据流 | 23 项 | ✅ 23/23 | `backend/scripts/verify_dataflow.py` |
 | Agent/LLM 专项 | 23 项 | ✅ 23/23 | `backend/scripts/verify_agent_llm.py` |
@@ -63,7 +65,7 @@
 | 2 | **团队信息确认** | 文档 | 待办 | 成员：马其瑞、孙雨瑶、居欣月；回填技术方案（五）3 分工表 |
 | 3 | **DeepSeek API Key 配置** | 配置 | 待办 | 配置后降级链 spark→deepseek 自动生效 |
 | 4 | **演示视频录制** | 演示 | 9/5-9/8 | 5-8 分钟：跨学科路径、故障实验、算法对照面板、教师报告、暂态分析 |
-| 5 | **代码提交整理** | git | 9/5 | 三轮算法升级改动未提交，建议分 commit 整理后推送 |
+| 5 | **代码提交整理** | git | 9/5 | ✅ 已完成（`b16c3d5` 等已推送；9/5 文档-代码对齐修复见 06 报告第九节，待提交） |
 | 6 | **PPT 按 AIC 六维评分重排** | 演示 | 9/5-9/9 | 现为软件杯版本（创新35%+功能45%），需调整为六维结构 |
 
 ### 🟡 P1 — 强烈建议
@@ -89,7 +91,7 @@
 | 2 | **试点报告Markdown导出** | pilot-report?format=markdown，前端"导出报告"按钮，参赛文档素材一键生成 |
 | 3 | **STM32实验报告** | 实验实训卡片加"生成实验报告"（目标/元件/步骤/原理→下载.md） |
 | 4 | **存量E2E测试修复** | frontend.spec.ts 8/8全过（登录placeholder、/profile→/personal路由、onboarding Modal拦截） |
-| 5 | **LandingPage学科交叉展示** | 三学科卡片（计算机/电子信息/交叉）+跨学科链路图 |
+| 5 | **学科交叉展示** | 三学科卡片+跨学科链路（原计划置于 LandingPage，现由 `SpaceShowcase` 3D 课程轮播承担，LandingPage 保持旧版） |
 | 6 | **README数据修正** | 数据库状态表与DB对齐（含新表courses/experiment_logs） |
 | 7 | **A5跨学科综合实战项目** | 智能温控风扇/呼吸灯2个实战项目（任务勾选+完成上报cross_project） |
 
@@ -124,8 +126,8 @@
 | 多模型"5家实为1家"诚信风险 | ✅ 已修复（D1） |
 | 防幻觉 self_correct/verify_citations 死代码 | ✅ 已挂接（D2：apply_guards规则守卫+低质量LLM自我纠错，接入反思循环与缓存流程） |
 | 电路分析/知识图谱 LLM 故障 500 | ✅ 已修复（D6：电路降级引导提示、知识图谱降级本地图谱兜底16节点） |
-| 无班级维度（教师端班级对比不可用） | ⏳ 待决策（新增模型或文档弱化） |
-| PRODUCT.md 滞后（只写C语言） | ⏳ 待更新 |
+| 无班级维度（教师端班级对比不可用） | ✅ 已实现（users.class_id + seed_classes.py + /teacher/classes + /teacher/class-comparison，原优化批次已交付，本行旧状态未及时清理） |
+| PRODUCT.md 滞后（只写C语言） | ✅ 已失效（该文件已随文档清理移出仓库，学科定位见 01_项目总览 与 README） |
 | 原有 E2E 测试 frontend.spec.ts 首个用例失败 | ℹ️ 存量问题（登录页默认Tab与旧测试预期不符，Login.tsx 未改动） |
 
 ### ✅ 补漏项（8/13 晚完成，commit `83c6a19`）
@@ -158,4 +160,4 @@
 
 - 分支：main
 - ✅ 历史 commit 已推送（截至 `fbf28bd`）
-- ⚠️ **未提交改动**（2026-09-04）：三轮算法升级（算法引擎 8 个文件 + API 接线 6 个文件 + 验证脚本 2 个）+ 技术方案等文档更新 + 演示数据库；建议按「P0 接线与审计修复 / P1 算法补全 / RK4 暂态 / 文档对齐」分 commit 整理后推送
+- ✅ **未提交改动已整理提交**（2026-09-04~05）：三轮算法升级以 `5a463eb`（算法+仿真）、`1e7c77c`、`17e1869`、`b16c3d5` 等提交入库，远端新增数据闭环 `62eddf6` 与 FSRS 调度暴露 `8170195` 已于 9/5 拉取同步

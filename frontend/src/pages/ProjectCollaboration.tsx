@@ -117,6 +117,78 @@ const DIFFICULTY_LABEL: Record<number, string> = {
   5: "挑战",
 };
 
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error) {
+    const m = (error as { message?: unknown }).message;
+    if (typeof m === "string" && m) return m;
+  }
+  return fallback;
+}
+
+// ---------- 协作督导 / 评估响应最小类型（收窄原 any） ----------
+interface AssignmentsData {
+  team_assignments?: Array<{
+    student_name?: string;
+    primary_role?: string;
+    reason?: string;
+    tasks?: Array<{ title?: string; status?: string }>;
+    growth_areas?: string[];
+  }>;
+  team_dynamics?: {
+    strengths?: string[];
+    weaknesses?: string[];
+    collaboration_score?: number;
+  };
+}
+interface DailyReportData {
+  summary?: string;
+  team_health?: {
+    collaboration_score?: number;
+    communication_score?: number;
+    progress_score?: number;
+    overall_score?: number;
+  };
+  member_status?: Array<{
+    name?: string;
+    status?: string;
+    contribution?: number;
+  }>;
+  recommendations?: string[];
+}
+interface BlockerItem {
+  name?: string;
+  severity?: string;
+  description?: string;
+}
+interface KnowledgePlanData {
+  skill_gaps?: Array<{ member?: string; missing_skills?: string[] }>;
+  sharing_sessions?: Array<{
+    topic?: string;
+    presenter?: string;
+    time?: string;
+  }>;
+}
+interface ConflictResolution {
+  conflict_type?: string;
+  root_cause?: string;
+  solutions?: Array<{ description?: string; effect?: string }>;
+}
+interface EvaluationReport {
+  overall_score?: number;
+  grade?: string;
+  dimension_scores?: Record<string, number>;
+  summary?: string;
+  team_performance?: Array<{
+    student_id?: string;
+    name?: string;
+    role?: string;
+    score?: number;
+    [key: string]: unknown;
+  }>;
+  project_highlights?: string[];
+  final_recommendations?: string[];
+}
+
 const ProjectCollaboration: React.FC = () => {
   const studentId = useAppStore((s) => s.studentId);
   const [loading, setLoading] = useState(false);
@@ -139,15 +211,18 @@ const ProjectCollaboration: React.FC = () => {
   const [decomposition, setDecomposition] = useState<Decomposition | null>(
     null,
   );
-  const [assignments, setAssignments] = useState<any>(null);
+  const [assignments, setAssignments] = useState<AssignmentsData | null>(null);
 
   // 协作督导状态
-  const [dailyReport, setDailyReport] = useState<any>(null);
-  const [blockers, setBlockers] = useState<any[]>([]);
-  const [knowledgePlan, setKnowledgePlan] = useState<any>(null);
+  const [dailyReport, setDailyReport] = useState<DailyReportData | null>(null);
+  const [blockers, setBlockers] = useState<BlockerItem[]>([]);
+  const [knowledgePlan, setKnowledgePlan] = useState<KnowledgePlanData | null>(
+    null,
+  );
   const [conflictModalVisible, setConflictModalVisible] = useState(false);
   const [conflictDesc, setConflictDesc] = useState("");
-  const [conflictResolution, setConflictResolution] = useState<any>(null);
+  const [conflictResolution, setConflictResolution] =
+    useState<ConflictResolution | null>(null);
   const [supervisorLoading, setSupervisorLoading] = useState(false);
 
   // 代码提交状态
@@ -162,7 +237,8 @@ const ProjectCollaboration: React.FC = () => {
   });
 
   // 评估报告状态
-  const [evaluationReport, setEvaluationReport] = useState<any>(null);
+  const [evaluationReport, setEvaluationReport] =
+    useState<EvaluationReport | null>(null);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
 
   useEffect(() => {
@@ -175,7 +251,7 @@ const ProjectCollaboration: React.FC = () => {
       if (data.status === "success") {
         setProjects(data.projects);
       }
-    } catch (error: any) {
+    } catch (error) {
       message.error("加载项目列表失败");
     }
   };
@@ -205,8 +281,8 @@ const ProjectCollaboration: React.FC = () => {
       } else {
         message.error(data.detail || "拆解失败");
       }
-    } catch (error: any) {
-      message.error(error?.message || "请求失败");
+    } catch (error) {
+      message.error(extractErrorMessage(error, "请求失败"));
     } finally {
       setLoading(false);
     }
@@ -227,14 +303,16 @@ const ProjectCollaboration: React.FC = () => {
       });
 
       if (data.status === "success") {
-        setAssignments(data.assignments);
+        setAssignments(
+          (data.assignments ?? null) as unknown as AssignmentsData | null,
+        );
         setCurrentStep(2);
         message.success("团队匹配完成");
       } else {
         message.error(data.detail || "匹配失败");
       }
-    } catch (error: any) {
-      message.error(error?.message || "请求失败");
+    } catch (error) {
+      message.error(extractErrorMessage(error, "请求失败"));
     } finally {
       setLoading(false);
     }
@@ -250,10 +328,8 @@ const ProjectCollaboration: React.FC = () => {
     setAddMemberModalVisible(false);
   };
 
-  const handleRemoveMember = (index: number) => {
-    const updated = [...teamMembers];
-    updated.splice(index, 1);
-    setTeamMembers(updated);
+  const handleRemoveMember = (studentId: string) => {
+    setTeamMembers(teamMembers.filter((m) => m.student_id !== studentId));
   };
 
   const getTotalTasks = () => {
@@ -280,8 +356,8 @@ const ProjectCollaboration: React.FC = () => {
         setDailyReport(data.report);
         message.success("每日报告已生成");
       }
-    } catch (error: any) {
-      message.error(error?.message || "生成报告失败");
+    } catch (error) {
+      message.error(extractErrorMessage(error, "生成报告失败"));
     } finally {
       setSupervisorLoading(false);
     }
@@ -298,11 +374,11 @@ const ProjectCollaboration: React.FC = () => {
         })),
       });
       if (data.status === "success") {
-        setBlockers(data.blockers || []);
+        setBlockers((data.blockers || []) as BlockerItem[]);
         message.success("阻塞检测完成");
       }
-    } catch (error: any) {
-      message.error(error?.message || "检测失败");
+    } catch (error) {
+      message.error(extractErrorMessage(error, "检测失败"));
     } finally {
       setSupervisorLoading(false);
     }
@@ -327,8 +403,8 @@ const ProjectCollaboration: React.FC = () => {
         setKnowledgePlan(data.plan);
         message.success("知识共享计划已生成");
       }
-    } catch (error: any) {
-      message.error(error?.message || "生成计划失败");
+    } catch (error) {
+      message.error(extractErrorMessage(error, "生成计划失败"));
     } finally {
       setSupervisorLoading(false);
     }
@@ -353,8 +429,8 @@ const ProjectCollaboration: React.FC = () => {
         setConflictResolution(data.resolution);
         message.success("冲突解决方案已生成");
       }
-    } catch (error: any) {
-      message.error(error?.message || "解决冲突失败");
+    } catch (error) {
+      message.error(extractErrorMessage(error, "解决冲突失败"));
     } finally {
       setSupervisorLoading(false);
     }
@@ -399,8 +475,8 @@ const ProjectCollaboration: React.FC = () => {
         setEvaluationReport(data.report);
         message.success("评估报告已生成");
       }
-    } catch (error: any) {
-      message.error(error?.message || "生成报告失败");
+    } catch (error) {
+      message.error(extractErrorMessage(error, "生成报告失败"));
     } finally {
       setEvaluationLoading(false);
     }
@@ -1220,9 +1296,9 @@ const ProjectCollaboration: React.FC = () => {
 
             {teamMembers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {teamMembers.map((member, idx) => (
+                {teamMembers.map((member) => (
                   <div
-                    key={idx}
+                    key={member.student_id}
                     className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border border-gray-200"
                   >
                     <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium text-sm">
@@ -1247,7 +1323,7 @@ const ProjectCollaboration: React.FC = () => {
                       type="text"
                       danger
                       icon={<DeleteOutlined />}
-                      onClick={() => handleRemoveMember(idx)}
+                      onClick={() => handleRemoveMember(member.student_id)}
                       size="small"
                     />
                   </div>

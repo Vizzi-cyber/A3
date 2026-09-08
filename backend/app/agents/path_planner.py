@@ -3,6 +3,7 @@
 负责分析学生知识状态，生成个性化学习路径
 知识图谱约束：所有路径规划必须基于图谱内的知识点，防止幻觉
 """
+import asyncio
 from typing import Any, Dict, List, Optional
 
 from .base import BaseAgent
@@ -42,11 +43,15 @@ class PathPlannerAgent(BaseAgent):
             self.logger.warning(f"Failed to load knowledge graph: {e}")
         return None
 
-    def _build_graph_constraint_prompt(self) -> str:
+    async def _get_knowledge_graph(self) -> Optional[Dict[str, Any]]:
+        """获取图谱（缓存优先），同步 DB 查询包 to_thread 并回填缓存"""
+        if not self._knowledge_graph:
+            self._knowledge_graph = await asyncio.to_thread(self._load_knowledge_graph_from_db)
+        return self._knowledge_graph
+
+    async def _build_graph_constraint_prompt(self) -> str:
         """构建知识图谱约束 prompt 片段"""
-        kg = self._knowledge_graph
-        if not kg:
-            kg = self._load_knowledge_graph_from_db()
+        kg = await self._get_knowledge_graph()
         if not kg:
             return ""
 
@@ -148,6 +153,8 @@ class PathPlannerAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ], temperature=0.4)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {"status": "success", "task": "analyze", "analysis": data}
 
     async def _generate_path(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -158,7 +165,7 @@ class PathPlannerAgent(BaseAgent):
         weak_points = profile.get("weak_areas", [])
 
         # 构建知识图谱约束
-        graph_constraint = self._build_graph_constraint_prompt()
+        graph_constraint = await self._build_graph_constraint_prompt()
 
         prompt = (
             f"请为学生制定一份学习路径，目标是掌握《{target}》。\n"
@@ -182,15 +189,17 @@ class PathPlannerAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ], temperature=0.4, max_tokens=2048)
-        path = data if data.get("status") != "error" else data
-        return {"status": "success", "task": "generate_path", "path": path, "raw": data if data.get("status") == "error" else None}
+        if data.get("status") == "error":
+            # LLM 返回非法 JSON：显式失败（REST 侧降级 DAG 规划，graph 侧按失败计数）
+            return {"status": "failed", "task": "generate_path", "error": data.get("message", "LLM 返回内容无法解析")}
+        return {"status": "success", "task": "generate_path", "path": data}
 
     async def _adjust_path(self, context: Dict[str, Any]) -> Dict[str, Any]:
         current_path = context.get("current_path", {})
         feedback = context.get("feedback", "")
 
         # 构建知识图谱约束
-        graph_constraint = self._build_graph_constraint_prompt()
+        graph_constraint = await self._build_graph_constraint_prompt()
 
         prompt = (
             "请根据学生反馈，对现有学习路径进行优化调整。\n"
@@ -207,4 +216,6 @@ class PathPlannerAgent(BaseAgent):
             {"role": "system", "content": self.get_system_prompt()},
             {"role": "user", "content": prompt},
         ], temperature=0.4)
-        return {"status": "success", "task": "adjust_path", "path": data, "raw": data if data.get("status") == "error" else None}
+        if data.get("status") == "error":
+            return {"status": "failed", "task": "adjust_path", "error": data.get("message", "LLM 返回内容无法解析")}
+        return {"status": "success", "task": "adjust_path", "path": data}

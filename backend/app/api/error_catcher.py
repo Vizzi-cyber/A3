@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..agents import ErrorCatcherAgent, CourseDesignerAgent
 from ..core.logger import setup_logger
 from ..services.static_analyzer import analyze_c
+from ..services.algorithm_registry import build_ai_engine_context
 from ..models.database import get_db
 from .auth import require_auth
 
@@ -28,6 +29,7 @@ class ErrorCatchRequest(BaseModel):
     task: str = "catch_error"  # catch_error / analyze_misconception / validate_code
     student_level: str = "beginner"  # beginner / intermediate / advanced
     error_output: Optional[str] = None  # 编译器错误信息
+    student_id: Optional[str] = None  # 提供时注入 BKT/FSRS 算法上下文到诊断 prompt
 
 
 class ErrorCatchResponse(BaseModel):
@@ -53,6 +55,7 @@ async def analyze_code_error(
             "language": request.language,
             "student_level": request.student_level,
             "error_output": request.error_output,
+            "ai_engine": build_ai_engine_context(db, request.student_id) if request.student_id else {},
         })
 
         if result.get("status") == "success":
@@ -85,6 +88,7 @@ async def catch_error(
             "language": request.language,
             "student_level": request.student_level,
             "error_output": request.error_output,
+            "ai_engine": build_ai_engine_context(db, request.student_id) if request.student_id else {},
         })
 
         return result
@@ -107,6 +111,7 @@ async def analyze_misconception(
             "code": request.code,
             "language": request.language,
             "student_level": request.student_level,
+            "ai_engine": build_ai_engine_context(db, request.student_id) if request.student_id else {},
         })
 
         return result
@@ -147,6 +152,7 @@ async def validate_code(
             "code": request.code,
             "language": request.language,
             "student_level": request.student_level,
+            "ai_engine": build_ai_engine_context(db, request.student_id) if request.student_id else {},
         })
 
         return result
@@ -173,6 +179,7 @@ class FullDiagnosisRequest(BaseModel):
 @router.post("/full-diagnosis")
 async def full_diagnosis(
     request: FullDiagnosisRequest,
+    db: Session = Depends(get_db),
     _current: str = Depends(require_auth),
 ):
     """课程设计师Agent编排的全流程错误诊断"""
@@ -185,6 +192,7 @@ async def full_diagnosis(
             "error_output": request.error_output,
             "error_type": request.error_type,
             "student_id": request.student_id,
+            "ai_engine": build_ai_engine_context(db, request.student_id),
         })
         return {"status": "success", "data": result}
     except Exception as e:

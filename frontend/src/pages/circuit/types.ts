@@ -110,6 +110,7 @@ export interface ArduinoProgram {
 }
 
 export interface PinMapping {
+  id?: string; // 稳定标识（列表增删按 id 寻址，避免 index 换绑）
   arduinoPin: string; // e.g. "D13", "A0"
   componentId: string;
   componentPinId: string;

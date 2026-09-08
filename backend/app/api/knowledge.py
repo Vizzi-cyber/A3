@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from ..models.database import get_db
 from ..models.knowledge import KnowledgePointModel
-from .auth import require_auth, get_current_student_id
+from .auth import require_auth, require_teacher, get_current_student_id
 
 router = APIRouter()
 
@@ -26,7 +26,7 @@ class KnowledgePointCreate(BaseModel):
 
 
 @router.post("/create")
-async def create_kp(request: KnowledgePointCreate, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def create_kp(request: KnowledgePointCreate, db: Session = Depends(get_db), _teacher: str = Depends(require_teacher)):
     """创建知识点"""
     existing = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == request.kp_id).first()
     if existing:

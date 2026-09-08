@@ -286,19 +286,17 @@ export const ChatPanel: React.FC<ChatPanelProps> = React.memo(
         <div className="space-y-3 pt-3 border-t border-slate-100">
           {attachedImages.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {attachedImages.map((url, i) => (
-                <div key={i} className="relative group">
+              {attachedImages.map((url) => (
+                <div key={url} className="relative group">
                   <img
                     src={url}
-                    alt={`attach-${i}`}
+                    alt="attachment"
                     className="w-16 h-16 rounded-lg border border-slate-200 object-cover"
                   />
                   <button
                     className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() =>
-                      setAttachedImages((prev) =>
-                        prev.filter((_, idx) => idx !== i),
-                      )
+                      setAttachedImages((prev) => prev.filter((u) => u !== url))
                     }
                   >
                     <CloseOutlined />

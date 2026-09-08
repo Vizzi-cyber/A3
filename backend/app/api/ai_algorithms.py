@@ -35,6 +35,7 @@ from ..services.algorithm_registry import (
     get_bkt_engine, set_bkt_engine, get_irt_diagnoser, set_irt_diagnoser,
     get_gkt_engine, set_gkt_engine,
     get_trend_weight_learner, set_trend_weight_learner,
+    get_ncd_diagnoser,
     build_mastery_snapshots, build_trend_training_samples,
 )
 from .auth import require_auth, require_teacher, verify_student_access
@@ -46,6 +47,18 @@ router = APIRouter()
 # 进程内算法实例（BKT/IRT 存共享注册表，MAB 按学生维度）
 # ---------------------------------------------------------------------------
 _bandit_selectors: Dict[str, ThompsonSamplingSelector] = {}
+
+
+def _get_bandit_selector(owner: str, arms) -> ThompsonSamplingSelector:
+    """按「身份 + 臂集合」缓存并惰性构造选择器。
+
+    原实现 setdefault 按身份缓存：默认参数每次急切构造新对象浪费；
+    且后续以不同 arms 调用时被首个 arms 绑死，新臂静默失效。
+    """
+    key = f"{owner}:{','.join(sorted(map(str, arms)))}"
+    if key not in _bandit_selectors:
+        _bandit_selectors[key] = ThompsonSamplingSelector(arms=list(arms))
+    return _bandit_selectors[key]
 _ncd_diagnoser: Optional[NCDDiagnoser] = None
 
 
@@ -203,8 +216,7 @@ async def ncd_fit(
     db: Session = Depends(get_db),
     _auth: str = Depends(require_teacher),
 ):
-    """训练 NCD 神经认知诊断（numpy，单调约束）。"""
-    global _ncd_diagnoser
+    """训练 NCD 神经认知诊断（numpy，单调约束）。结果入共享注册表。"""
     records = _load_quiz_records(db)
     item_records = []
     for r in records:
@@ -225,7 +237,8 @@ async def ncd_fit(
     diagnoser = NCDDiagnoser()
     result = diagnoser.fit(item_records)
     if result["status"] == "success":
-        _ncd_diagnoser = diagnoser
+        from ..services.algorithm_registry import set_ncd_diagnoser
+        set_ncd_diagnoser(diagnoser)
     return {"status": result["status"], "data": result}
 
 
@@ -237,9 +250,10 @@ async def ncd_ability(
 ):
     """NCD 能力诊断（神经认知诊断，替代/互补 IRT）。"""
     verify_student_access(student_id, _auth, db)
-    if _ncd_diagnoser is None or not _ncd_diagnoser.is_fitted:
+    diagnoser = get_ncd_diagnoser()
+    if diagnoser is None or not diagnoser.is_fitted:
         raise HTTPException(status_code=409, detail="NCD 尚未训练，请先 POST /algorithms/ncd/fit")
-    ability = _ncd_diagnoser.estimate_ability(student_id)
+    ability = diagnoser.estimate_ability(student_id)
     if ability is None:
         raise HTTPException(status_code=404, detail=f"未找到学生 {student_id}")
     return {
@@ -516,6 +530,10 @@ async def ai_algorithms_status(
             "trend_learner": {
                 "trained": get_trend_weight_learner() is not None and get_trend_weight_learner().is_fitted,
                 "weights": get_trend_weight_learner().convex_weights if get_trend_weight_learner() and get_trend_weight_learner().is_fitted else None,
+            },
+            "ncd": {
+                "fitted": get_ncd_diagnoser() is not None and get_ncd_diagnoser().is_fitted,
+                "note": "神经认知诊断（IRT 互补扩展）：/ncd/fit 手动训练或启动自动拟合",
             },
         },
     }

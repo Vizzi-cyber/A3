@@ -119,9 +119,50 @@ async def lifespan(app: FastAPI):
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"AIC 算法: BKT 启动拟合异常（{exc}）")
 
+    async def _auto_fit_ncd():
+        """启动时后台自动拟合 NCD 神经认知诊断（进注册表，供 /ncd/ability 与算法状态总览）。"""
+        try:
+            from .models.database import SessionLocal
+            from .services.algorithm_registry import set_ncd_diagnoser
+            from .algorithms.ncd_diagnoser import NCDDiagnoser
+            from .models.knowledge import QuizResultModel
+
+            db = SessionLocal()
+            try:
+                rows = db.query(QuizResultModel).all()
+                records = []
+                for r in rows:
+                    answers = r.answers or []
+                    if answers:
+                        for a in answers:
+                            records.append({
+                                "student_id": r.student_id,
+                                "item_id": f"{r.kp_id}:{a.get('q_id', 'q')}",
+                                "correct": bool(a.get("correct", False)),
+                            })
+                    else:
+                        records.append({
+                            "student_id": r.student_id,
+                            "item_id": r.kp_id,
+                            "correct": (r.score or 0) >= 60,
+                        })
+                diag = NCDDiagnoser()
+                result = diag.fit(records)
+                if result.get("status") == "success":
+                    set_ncd_diagnoser(diag)
+                    logger.info(f"AIC 算法: 启动自动拟合 NCD 完成 ({result.get('message', '')})")
+                else:
+                    logger.info(f"AIC 算法: NCD 启动拟合跳过（{result.get('message')}）")
+            finally:
+                db.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"AIC 算法: NCD 启动拟合异常（{exc}）")
+
+    # 拟合是同步 CPU/DB 重活，包 to_thread 避免阻塞事件循环
     algorithm_tasks = [
-        asyncio.create_task(_auto_fit_bkt()),
-        asyncio.create_task(_auto_fit_irt()),
+        asyncio.create_task(asyncio.to_thread(lambda: asyncio.run(_auto_fit_bkt()))),
+        asyncio.create_task(asyncio.to_thread(lambda: asyncio.run(_auto_fit_irt()))),
+        asyncio.create_task(asyncio.to_thread(lambda: asyncio.run(_auto_fit_ncd()))),
     ]
 
     yield

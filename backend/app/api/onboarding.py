@@ -131,7 +131,7 @@ async def submit_onboarding(
 
     # 降级到 DAG 算法
     if not path_data:
-        kps = db.query(KnowledgePointModel).all()
+        kps = db.query(KnowledgePointModel).order_by(KnowledgePointModel.created_at.asc()).all()
         if kps:
             planner = DAGPathPlanner()
             planner.build_graph([
@@ -152,7 +152,7 @@ async def submit_onboarding(
                 attach_irt_to_planner(planner)
             except Exception:
                 pass
-            target_kp_id = kps[-1].kp_id
+            target_kp_id = kps[-1].kp_id  # 已按 created_at 排序，DAG 降级终点稳定不漂移
             from datetime import datetime, timedelta, timezone
             from sqlalchemy import func
             since = datetime.now(timezone.utc) - timedelta(days=365)

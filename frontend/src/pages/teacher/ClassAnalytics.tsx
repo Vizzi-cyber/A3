@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Card,
   Row,
@@ -45,10 +45,12 @@ const ClassAnalytics: React.FC = () => {
   }, []);
 
   // 页面重新可见时刷新数据
+  // 经 ref 调用最新函数：effect 空依赖注册一次，但不会闭包过期
+  const loadDataRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        loadData();
+        loadDataRef.current();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -87,6 +89,7 @@ const ClassAnalytics: React.FC = () => {
       setLoading(false);
     }
   };
+  loadDataRef.current = loadData;
 
   // 班级整体数据
   const totalStudents = (overview.total_students as number) || 0;

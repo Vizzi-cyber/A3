@@ -249,6 +249,32 @@ async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     }
 
 
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+):
+    """刷新访问令牌（滑动续期）：凭当前有效 token 换发新 token。
+
+    与现有单 token 架构一致——旧 token 未过期即可续期；查库校验 is_active
+    使被禁用账号无法续期。token 已过期时返回 401，前端应引导重新登录。
+    """
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    student_id = _verify_token(credentials.credentials)
+    if not student_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = db.query(UserModel).filter(UserModel.student_id == student_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Account disabled or not found")
+    token = _create_access_token({"sub": user.student_id})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_DAYS * 86400,
+    }
+
+
 @router.get("/me")
 async def get_me(student_id: str = Depends(get_current_student_id), db: Session = Depends(get_db)):
     """获取当前用户信息"""

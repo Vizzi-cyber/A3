@@ -56,11 +56,15 @@ async def _ark_generate(
     }
 
     client = _get_client()
-    resp = await client.post(url, headers=headers, json=payload)
-    data = resp.json()
+    try:
+        resp = await client.post(url, headers=headers, json=payload)
+        data = resp.json()
+    except Exception as e:
+        # 网络异常/非 JSON 响应（如网关 HTML 错误页）统一转为业务异常，让上层按通道回退
+        raise ImageGenerationError(f"ARK 文生图请求失败: {e}") from e
 
     # 方舟返回格式可能包含 images 数组
-    images = data.get("images") or data.get("data", {}).get("images", [])
+    images = data.get("images") or (data.get("data") or {}).get("images", [])
     if not images:
         raise ImageGenerationError(f"No images returned: {data}")
 

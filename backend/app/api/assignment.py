@@ -104,13 +104,22 @@ async def list_assignments(
 @router.get("/{assignment_id}")
 async def get_assignment(
     assignment_id: str,
+    db: Session = Depends(get_db),
     _current: str = Depends(get_current_student_id),
 ):
-    """获取作业详情"""
+    """获取作业详情（学生视角剥离正确答案，教师/管理员可见完整题目）"""
     a = _assignments.get(assignment_id)
     if not a:
         raise HTTPException(status_code=404, detail="作业不存在")
-    return {"status": "success", "assignment": a}
+    user = db.query(UserModel).filter(UserModel.student_id == _current).first()
+    if user and user.role in ("teacher", "admin"):
+        return {"status": "success", "assignment": a}
+    # 答题前不可见正确答案与解析（自动判分在服务端 submit 内完成）
+    student_view = {**a, "questions": [
+        {k: v for k, v in q.items() if k not in ("correct_answer", "explanation", "answer")}
+        for q in a.get("questions", [])
+    ]}
+    return {"status": "success", "assignment": student_view}
 
 
 @router.post("/submit")

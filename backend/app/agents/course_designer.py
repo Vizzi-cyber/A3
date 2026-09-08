@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 import asyncio
 
-from .base import BaseAgent, AgentMessage
+from .base import BaseAgent
 from .profiler import ProfilerAgent
 from .resource_generator import ResourceGeneratorAgent
 from .path_planner import PathPlannerAgent
@@ -138,8 +138,17 @@ class CourseDesignerAgent(BaseAgent):
                 "student_id": student_id,
                 "inputs": [f"查询学生 {student_id} 的画像"],
             })
-            if result.get("status") == "success" and "profile" in result:
-                return result["profile"]
+            if result.get("status") == "success":
+                # profiler analyze 返回 {"analysis": {...}}（无 "profile" 键）：
+                # 真实画像优先取 analysis 内的 profile，其次 analysis 本身，
+                # 避免恒落入下方硬编码兜底画像
+                analysis = result.get("analysis") or {}
+                if isinstance(analysis, dict) and analysis.get("profile"):
+                    return analysis["profile"]
+                if "profile" in result:
+                    return result["profile"]
+                if isinstance(analysis, dict) and analysis.get("weak_areas"):
+                    return analysis
         # fallback
         return {
             "student_id": student_id,
@@ -335,6 +344,28 @@ class CourseDesignerAgent(BaseAgent):
         results = {}
         completed_tasks = set()
 
+        if not parallel_groups and sub_tasks:
+            # path_planning / general 的 task_plan 无 parallel_groups：
+            # 按 dependencies 拓扑序逐个执行，避免子任务被整体跳过
+            pending = {st["id"]: st for st in sub_tasks}
+            while pending:
+                ready = [
+                    st for st in pending.values()
+                    if all(dep in completed_tasks for dep in st.get("dependencies", []) or [])
+                ]
+                if not ready:  # 依赖成环兜底：剩余任务按原序执行
+                    ready = list(pending.values())
+                for st in ready:
+                    try:
+                        result = await self._execute_single_sub_task(st, context, profile, results)
+                        results[st["id"]] = result
+                    except Exception as e:
+                        self.logger.error(f"Sub-task {st['id']} failed: {str(e)}")
+                        results[st["id"]] = {"status": "failed", "error": str(e)}
+                    completed_tasks.add(st["id"])
+                    pending.pop(st["id"], None)
+            return results
+
         for group in parallel_groups:
             # 获取当前组可执行的任务
             group_tasks = [st for st in sub_tasks if st["id"] in group]
@@ -419,6 +450,7 @@ class CourseDesignerAgent(BaseAgent):
                 "student_level": params.get("student_level", context.get("student_level", "beginner")),
                 "error_output": context.get("error_output", ""),
                 "student_id": context.get("student_id"),
+                "ai_engine": context.get("ai_engine", {}),
             }
 
         # 对于 misconception_tracer 特殊处理

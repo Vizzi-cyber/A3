@@ -42,12 +42,12 @@ const DIMENSIONS = [
   {
     key: "mastery",
     label: "知识掌握榜",
-    desc: "知识点掌握率排名",
+    desc: "掌握知识点个数排名",
     icon: <BookOutlined />,
     color: "#10b981",
     gradient: "from-emerald-400 to-green-500",
     bg: "from-emerald-50 to-green-50",
-    metric: "%",
+    metric: "个",
   },
   {
     key: "quiz_score",
@@ -288,15 +288,9 @@ const LeaderboardPlus: React.FC = () => {
   useEffect(() => {
     let ignore = false;
     setLoading(true);
-    const apiDim =
-      activeDim === "ai_collab"
-        ? "points"
-        : activeDim === "improvement"
-          ? "mastery"
-          : activeDim;
-
+    // 六维均为后端真实计算（ai_collab = AI 问答次数，improvement = 前后测差值）
     leaderboardPlusApi
-      .get(apiDim, period, 20)
+      .get(activeDim, period, 20)
       .then((res) => {
         if (ignore) return;
         const data = res.data.data.entries || [];

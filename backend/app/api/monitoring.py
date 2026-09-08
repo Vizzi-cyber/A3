@@ -16,7 +16,7 @@ from sqlalchemy import func, case
 from ..models.database import get_db
 from ..models.monitor import ApiMonitorModel, LlmCallModel, SystemHealthModel
 from ..models.user import UserModel
-from .auth import require_auth
+from .auth import require_auth, require_teacher
 
 router = APIRouter()
 
@@ -222,7 +222,7 @@ class RecordHealthRequest(BaseModel):
 
 
 @router.post("/health/record")
-async def record_system_health(request: RecordHealthRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+async def record_system_health(request: RecordHealthRequest, db: Session = Depends(get_db), _teacher: str = Depends(require_teacher)):
     """记录系统健康数据"""
     health = SystemHealthModel(
         cpu_percent=request.cpu_percent,

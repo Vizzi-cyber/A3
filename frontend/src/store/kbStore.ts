@@ -42,6 +42,47 @@ interface KBState {
   renameFolder: (folderId: string, name: string) => Promise<void>;
 }
 
+const AUTOSAVE_DEBOUNCE_MS = 500;
+
+// 模块级防抖状态：setContent/setTitle 任一变更都重置同一个窗口，
+// 最终把标题+内容合并为一次 PATCH（zustand store 只初始化一次，模块级变量安全）
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSave: {
+  noteId: string;
+  data: { title?: string; content?: string };
+} | null = null;
+
+/** 立即落盘未触发的防抖保存（切换/删除笔记前调用，防丢尾字） */
+function flushPendingSave() {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  if (pendingSave) {
+    const { noteId, data } = pendingSave;
+    pendingSave = null;
+    void useKBStore.getState().updateNote(noteId, data);
+  }
+}
+
+function scheduleAutosave() {
+  const { activeNoteId, activeNote } = useKBStore.getState();
+  if (!activeNoteId || !activeNote) return;
+  pendingSave = {
+    noteId: activeNoteId,
+    data: {
+      title: activeNote.title,
+      content: useKBStore.getState().currentContent,
+    },
+  };
+  useKBStore.setState({ isDirty: true });
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    flushPendingSave();
+  }, AUTOSAVE_DEBOUNCE_MS);
+}
+
 export const useKBStore = create<KBState>((set, get) => ({
   folders: [],
   notes: [],
@@ -81,6 +122,8 @@ export const useKBStore = create<KBState>((set, get) => ({
 
   selectNote: async (noteId: string) => {
     try {
+      // 切换前先把上一篇未落盘的编辑立即保存，防止防抖窗口内的尾字丢失
+      flushPendingSave();
       const res = await kbApi.getNote(noteId);
       if (res.data?.status === "success") {
         const note = res.data.data;
@@ -152,6 +195,10 @@ export const useKBStore = create<KBState>((set, get) => ({
 
   deleteNote: async (noteId: string) => {
     try {
+      // 若删除的正是当前笔记，先把未落盘的编辑冲刷掉再删，避免对已删笔记发起保存
+      if (get().activeNoteId === noteId) {
+        flushPendingSave();
+      }
       await kbApi.deleteNote(noteId);
       set((s) => ({
         notes: s.notes.filter((n) => n.note_id !== noteId),
@@ -165,21 +212,17 @@ export const useKBStore = create<KBState>((set, get) => ({
   },
 
   setContent: (content: string) => {
+    // 本地状态立即更新（Monaco 受控组件 + 分屏预览实时刷新），保存走 500ms 防抖
     set({ currentContent: content });
-    const { activeNoteId } = get();
-    if (activeNoteId) {
-      get().updateNote(activeNoteId, { content });
-    }
+    scheduleAutosave();
   },
 
   setTitle: (title: string) => {
-    const { activeNoteId, activeNote } = get();
+    const { activeNote } = get();
     if (activeNote) {
       set({ activeNote: { ...activeNote, title } });
     }
-    if (activeNoteId) {
-      get().updateNote(activeNoteId, { title });
-    }
+    scheduleAutosave();
   },
 
   search: async (query: string) => {

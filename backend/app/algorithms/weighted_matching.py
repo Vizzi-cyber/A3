@@ -58,6 +58,8 @@ class MultiDimWeightedMatcher:
         top_k: int = 5,
         bandit_selector: Optional[Any] = None,
         explore_weight: float = 0.15,
+        irt_difficulty: Optional[Dict[str, float]] = None,
+        irt_ability: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         学生-学习资源匹配
@@ -65,6 +67,10 @@ class MultiDimWeightedMatcher:
         :param bandit_selector: 可选，Thompson Sampling 探索层（按资源类型臂）。
             预热后按 final = score + explore_weight·(E[arm]−0.5) 调序；
             未提供或冷启动时与纯打分排序完全一致（向后兼容）。
+        :param irt_difficulty: 可选，IRT 标定的难度映射 {kp_id: b}（复合 item_id
+            已按知识点前缀聚合）。提供时难度适配用 logistic(θ−b) 连续拟合分
+            替代三档字符串匹配（difficulty_source = "irt_b"）。
+        :param irt_ability: 可选，该生 IRT 能力 θ（缺省按 0 = 标定均值处理）。
         """
         exploration_enabled = (
             bandit_selector is not None
@@ -73,7 +79,11 @@ class MultiDimWeightedMatcher:
         expectations = bandit_selector.get_expectations() if exploration_enabled else {}
         scored = []
         for res in resources:
-            score, details = self._score_resource(student_profile, res)
+            score, details = self._score_resource(
+                student_profile, res,
+                irt_b=(irt_difficulty or {}).get(res.get("kp_id") or ""),
+                irt_theta=irt_ability,
+            )
             arm = resource_arm(res)
             adjust = 0.0
             if exploration_enabled:
@@ -132,6 +142,8 @@ class MultiDimWeightedMatcher:
         self,
         profile: Dict[str, Any],
         resource: Dict[str, Any],
+        irt_b: Optional[float] = None,
+        irt_theta: Optional[float] = None,
     ) -> Tuple[float, Dict[str, float]]:
         """为单个资源计算匹配分"""
         # 1. 知识点匹配
@@ -141,10 +153,12 @@ class MultiDimWeightedMatcher:
             profile.get("weak_areas", []),
         )
 
-        # 2. 难度适配
+        # 2. 难度适配（IRT b 可用时用连续拟合分）
         diff_fit = self._difficulty_fit(
             profile.get("knowledge_level", "intermediate"),
             resource.get("difficulty", "medium"),
+            irt_b=irt_b,
+            irt_theta=irt_theta,
         )
 
         # 3. 认知风格匹配
@@ -176,6 +190,7 @@ class MultiDimWeightedMatcher:
         return total, {
             "knowledge_match": round(kp_match, 4),
             "difficulty_fit": round(diff_fit, 4),
+            "difficulty_source": "irt_b" if irt_b is not None else "manual",
             "style_match": round(style_match, 4),
             "goal_match": round(goal_match, 4),
             "tempo_match": round(tempo_match, 4),
@@ -246,10 +261,32 @@ class MultiDimWeightedMatcher:
         master_match = len(tags_set & mastered) / len(tags_set) if tags_set else 0.0
         return 0.3 + weak_match * 0.7 - master_match * 0.2
 
-    def _difficulty_fit(self, student_level: str, resource_difficulty: str) -> float:
-        levels = {"beginner": 1, "intermediate": 2, "advanced": 3}
-        s = levels.get(student_level, 2)
-        r = levels.get(resource_difficulty, 2)
+    def _difficulty_fit(
+        self,
+        student_level: str,
+        resource_difficulty: str,
+        irt_b: Optional[float] = None,
+        irt_theta: Optional[float] = None,
+    ) -> float:
+        """难度适配分。
+
+        传入 IRT 标定 b（该资源关联知识点的难度）与该生能力 θ 时，用
+        2PL 逻辑斯蒂 P = σ(1.7·(θ−b)) 计算答对概率，取 4P(1−P) 作为适配分
+        （难度与能力匹配时取峰值 1.0，过难/过易两侧衰减）——
+        与路径规划 _difficulty_factor 的 IRT 接入口径一致。
+        未标定时回退三档字符串匹配（medium 与中档同义）。
+        """
+        if irt_b is not None:
+            theta = float(irt_theta) if irt_theta is not None else 0.0
+            p = 1.0 / (1.0 + math.exp(-1.7 * (theta - float(irt_b))))
+            return max(0.0, min(1.0, 4.0 * p * (1.0 - p)))
+        levels = {
+            "beginner": 1, "easy": 1, "elementary": 1,
+            "intermediate": 2, "medium": 2,
+            "advanced": 3, "hard": 3,
+        }
+        s = levels.get(str(student_level or "").lower(), 2)
+        r = levels.get(str(resource_difficulty or "").lower(), 2)
         diff = abs(s - r)
         if diff == 0:
             return 1.0

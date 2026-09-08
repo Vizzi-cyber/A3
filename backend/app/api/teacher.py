@@ -615,14 +615,15 @@ async def export_report(
         for s in students:
             quizzes = quizzes_by_student.get(s.student_id, [])
             if quizzes:
-                avg = round(sum(q.score for q in quizzes) / len(quizzes), 1)
+                valid = [q.score for q in quizzes if q.score is not None]
+                avg = round(sum(valid) / len(valid), 1) if valid else 0.0
                 rows.append({
                     "student_id": s.student_id,
                     "username": s.username,
                     "quiz_count": len(quizzes),
                     "avg_score": avg,
-                    "max_score": max(q.score for q in quizzes),
-                    "min_score": min(q.score for q in quizzes),
+                    "max_score": max(valid) if valid else 0,
+                    "min_score": min(valid) if valid else 0,
                 })
             else:
                 rows.append({

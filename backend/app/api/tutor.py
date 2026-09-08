@@ -3,6 +3,7 @@
 直接调用 TutorAgent，避免 LangGraph 多层路由延迟
 """
 import asyncio
+from time import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional, Union
@@ -49,12 +50,21 @@ class ConnectionManager:
         self.active_connections: Dict[str, WebSocket] = {}
 
     async def connect(self, session_id: str, websocket: WebSocket):
+        # 同一 session 二次连接时先关闭旧连接，避免字典覆盖后消息发往死 socket
+        old = self.active_connections.get(session_id)
+        if old is not None and old is not websocket:
+            try:
+                await old.close(code=1012, reason="Session reopened elsewhere")
+            except Exception:
+                pass
         await websocket.accept()
         self.active_connections[session_id] = websocket
 
-    def disconnect(self, session_id: str):
-        if session_id in self.active_connections:
-            del self.active_connections[session_id]
+    def disconnect(self, session_id: str, websocket: Optional[WebSocket] = None):
+        # 仅当断开的是当前登记的连接时才移除，防止误删同 session 的新连接
+        current = self.active_connections.get(session_id)
+        if current is None or websocket is None or current is websocket:
+            self.active_connections.pop(session_id, None)
 
     async def send_message(self, session_id: str, message: Dict):
         if session_id in self.active_connections:
@@ -70,6 +80,9 @@ _tutor_agent = TutorAgent()
 @router.post("/ask", response_model=TutorResponse)
 async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """向AI辅导助手提问（苏格拉底式教学）—— 直接调用 TutorAgent，避免 LangGraph 多层路由延迟"""
+    if request.student_id != _current:
+        # 画像/算法上下文按 student_id 注入且问答记录落到该生名下，禁止代他人提问
+        raise HTTPException(status_code=403, detail="Cannot ask for other student")
     session_id = request.session_id or f"{request.student_id}_default"
 
     # rag_active=True 时拉取学生画像，向 prompt 注入薄弱点与认知风格
@@ -89,40 +102,10 @@ async def ask_tutor(request: TutorRequest, db: Session = Depends(get_db), _curre
             profile_for_prompt = {}
 
         # AIC 算法增强：注入 BKT 掌握度 + FSRS 记忆状态（辅导个性化，算法驱动全流程）
+        # 与 error_catcher / resource_generator 共用同一构建逻辑（algorithm_registry）
         try:
-            from ..services.algorithm_registry import get_bkt_engine
-            from ..algorithms.memory_scheduler import FSRSMemoryScheduler
-            from ..models.memory import MemoryCardModel
-
-            ai_engine: Dict[str, Any] = {}
-            # BKT：该生薄弱知识点（掌握度 < 0.5）
-            bkt = get_bkt_engine()
-            if bkt and bkt.is_fitted:
-                from ..models.knowledge import KnowledgePointModel
-                kp_ids = [k.kp_id for k in db.query(KnowledgePointModel).all()]
-                mastery = bkt.estimate_mastery_map(request.student_id, kp_ids)
-                weak = sorted(
-                    [(k, v) for k, v in mastery.items() if v < 0.5],
-                    key=lambda x: x[1],
-                )[:3]
-                ai_engine["bkt"] = {
-                    "weak_points": [{"kp": k, "mastery": round(v, 2)} for k, v in weak],
-                    "note": "BKT 贝叶斯知识追踪实时掌握度",
-                }
-            # FSRS：待复习 + 低记忆保持知识点
-            scheduler = FSRSMemoryScheduler()
-            rows = db.query(MemoryCardModel).filter(
-                MemoryCardModel.student_id == request.student_id
-            ).all()
-            for r in rows:
-                scheduler.restore_card(r.student_id, r.kp_id, r.card_json)
-            if scheduler.card_count:
-                due = scheduler.get_due_cards(request.student_id)
-                ai_engine["fsrs"] = {
-                    "due_count": len(due),
-                    "due_kps": [d["kp_id"] for d in due[:3]],
-                    "note": "FSRS 间隔重复记忆调度（到期复习）",
-                }
+            from ..services.algorithm_registry import build_ai_engine_context
+            ai_engine = build_ai_engine_context(db, request.student_id)
             if ai_engine:
                 profile_for_prompt["ai_engine"] = ai_engine
         except Exception as e:
@@ -199,6 +182,11 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
     student_id = verify_token_for_websocket(token)
     if not student_id:
         await websocket.close(code=1008, reason="Unauthorized")
+        return
+
+    # 会话归属校验：session_id 约定为 {student_id}_xxx，禁止连入他人会话
+    if not session_id.startswith(f"{student_id}_") and session_id != student_id:
+        await websocket.close(code=1008, reason="Session does not belong to current student")
         return
 
     await manager.connect(session_id, websocket)
@@ -288,8 +276,10 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                         logger.warning(f"WebSocket画像获取失败: {e}")
                         profile_snippet = ""
 
-                # 构建消息历史
-                history = _tutor_agent.session_histories.setdefault(session_id, [])
+                # 构建消息历史（加会话锁取快照，避免 WS 与 REST /ask 并发写同一 session；
+                # LLM 调用不持锁，本轮消息在回答完成后加锁写回）
+                async with _tutor_agent._session_locks.setdefault(session_id, asyncio.Lock()):
+                    history = list(_tutor_agent.session_histories.setdefault(session_id, []))
                 if mode == "socratic":
                     prompt = SafetyGuard.sanitize_prompt(
                         f"学生提问：{question}\n{profile_snippet}请用苏格拉底式提问回应：不直接给答案，而是通过 2-3 个引导性问题，帮助学生自己思考出答案。最后可以给学生一句简短鼓励。"
@@ -362,11 +352,14 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
 
-                # 更新会话历史
-                history.append({"role": "user", "content": question})
-                history.append({"role": "assistant", "content": full_answer})
-                if len(history) > 20:
-                    history[:] = history[-20:]
+                # 更新会话历史（加锁写回，与 REST /ask 路径互斥）
+                async with _tutor_agent._session_locks.setdefault(session_id, asyncio.Lock()):
+                    hist = _tutor_agent.session_histories.setdefault(session_id, [])
+                    hist.append({"role": "user", "content": question})
+                    hist.append({"role": "assistant", "content": full_answer})
+                    if len(hist) > 20:
+                        hist[:] = hist[-20:]
+                    _tutor_agent._session_last_access[session_id] = time()
 
                 # 检测学习状态并推送
                 learning_state = _tutor_agent._detect_learning_state(history)
@@ -408,17 +401,22 @@ async def tutor_websocket(websocket: WebSocket, session_id: str):
                 await manager.send_message(session_id, {"type": "pong"})
 
     except WebSocketDisconnect:
-        manager.disconnect(session_id)
+        pass
+    except Exception as e:
+        # 发送异常（如向已关闭 socket 写入）也要清理，否则连接表泄漏脏条目
+        logger.warning(f"WebSocket 异常断开: {e}")
+    finally:
+        manager.disconnect(session_id, websocket)
         _tutor_agent.clear_session(session_id)
 
 
 @router.get("/session/{session_id}/history")
 async def get_session_history(session_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取辅导会话历史（优先从数据库读取持久化记录）"""
-    # 从数据库读取该 session 的问答记录
+    # 从数据库读取该 session 的问答记录（限定本人，防止枚举他人会话）
     records = (
         db.query(TutorQAModel)
-        .filter(TutorQAModel.session_id == session_id)
+        .filter(TutorQAModel.session_id == session_id, TutorQAModel.student_id == _current)
         .order_by(TutorQAModel.created_at.asc())
         .limit(100)
         .all()
@@ -485,15 +483,23 @@ async def get_student_qa_history(
 @router.post("/qa-feedback/{qa_id}")
 async def submit_qa_feedback(
     qa_id: int,
-    feedback: str,  # like / dislike
+    body: Dict[str, Any],
     db: Session = Depends(get_db),
     _current: str = Depends(require_auth),
 ):
-    """学生对问答记录提交反馈（点赞/点踩）"""
+    """学生对问答记录提交反馈（点赞/点踩）
+
+    契约：前端 api.ts 发送 JSON body {rating: "like"|"dislike", comment?}。
+    """
+    rating = str(body.get("rating", "")).strip().lower()
+    if rating not in ("like", "dislike"):
+        raise HTTPException(status_code=422, detail="rating 必须为 like 或 dislike")
     qa = db.query(TutorQAModel).filter(TutorQAModel.id == qa_id).first()
     if not qa:
         raise HTTPException(status_code=404, detail="QA record not found")
-    qa.feedback = feedback
+    if qa.student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot feedback other student's QA record")
+    qa.feedback = rating
     db.commit()
     return {"status": "success", "message": "Feedback recorded"}
 

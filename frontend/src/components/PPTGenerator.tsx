@@ -77,6 +77,9 @@ const PPTGenerator: React.FC<PPTGeneratorProps> = ({
     }
   }, []);
 
+  // 组件卸载兜底清理（原仅 handleClose 覆盖正常关闭路径，路由切换会泄漏轮询）
+  React.useEffect(() => stopPolling, [stopPolling]);
+
   const handleGenerate = async () => {
     if (!topic.trim()) {
       message.warning("请输入PPT主题");

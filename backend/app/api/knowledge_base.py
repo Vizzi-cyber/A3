@@ -535,13 +535,9 @@ async def analyze_and_save(request: AnalyzeAndSaveRequest, db: Session = Depends
             "5. 输出简洁，不要添加多余的解释\n\n"
             f"笔记内容：\n{content}"
         )
-        resp = await llm.chat.completions.create(
-            model=llm.model_name,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=1024,
-        )
-        analyzed = resp.choices[0].message.content.strip()
+        analyzed = (await llm.ainvoke(
+            [{"role": "user", "content": prompt}], temperature=0.3, max_tokens=1024,
+        )).strip()
     except Exception:
         # LLM 不可用时直接使用原始内容
         analyzed = content

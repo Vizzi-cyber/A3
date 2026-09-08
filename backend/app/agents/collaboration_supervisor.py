@@ -115,6 +115,8 @@ class CollaborationSupervisionAgent(BaseAgent):
         ]
 
         data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {
             "status": "success",
             "task": "daily_report",
@@ -179,6 +181,9 @@ class CollaborationSupervisionAgent(BaseAgent):
         ]
 
         llm_analysis = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
+        if isinstance(llm_analysis, dict) and llm_analysis.get("status") == "error":
+            # LLM 分析失败降级为规则结果（不中断 blockers 主流程）
+            llm_analysis = {}
 
         return {
             "status": "success",
@@ -227,6 +232,8 @@ class CollaborationSupervisionAgent(BaseAgent):
         ]
 
         data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {
             "status": "success",
             "task": "resolve_conflict",
@@ -283,6 +290,8 @@ class CollaborationSupervisionAgent(BaseAgent):
         ]
 
         data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {
             "status": "success",
             "task": "knowledge_sharing",

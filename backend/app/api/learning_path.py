@@ -27,6 +27,7 @@ from ..services.algorithm_registry import (
     update_strategy_bandit,
     attach_irt_to_planner,
     attach_gkt_to_planner,
+    build_memory_status,
 )
 from ..agents import PathPlannerAgent
 from .auth import get_current_student_id, require_auth
@@ -172,7 +173,9 @@ async def generate_learning_path(request: PathGenerationRequest, db: Session = D
                 stages.append({
                     "stage_no": idx + 1,
                     "title": stage.get("title") or (stage_names[idx] if idx < len(stage_names) else f"阶段 {idx + 1}"),
+                    "type": stage.get("type", "adaptive"),
                     "topics": stage.get("topics", stage.get("kp_ids", [])),
+                    "kp_ids": stage.get("kp_ids", []),
                     "hours": stage.get("hours", 5),
                     "criteria": stage.get("criteria", "完成本阶段所有知识点学习"),
                     "resources": stage.get("resources", []),
@@ -384,11 +387,15 @@ async def generate_dag_path(request: DAGPathRequest, db: Session = Depends(get_d
     }
 
     mastery_map = request.mastery_map or {}
+    # AIC 算法增强：FSRS 记忆调度判定为到期的知识点 → 路径头部插入复习阶段
+    # （未建卡/无到期卡时 build_memory_status 返回 None，行为与原逻辑一致）
+    memory_status = build_memory_status(db, request.student_id)
     result = planner.plan_path(
         student_id=request.student_id,
         target_kp_id=request.target_kp_id,
         mastery_map=mastery_map,
         profile=profile_dict,
+        due_kp_ids=(memory_status or {}).get("due_kps"),
     )
     return {"status": "success", "data": result}
 
@@ -501,7 +508,7 @@ async def list_courses(db: Session = Depends(get_db), _current: str = Depends(re
     cross_stats: Dict[str, dict] = {}
     for kp in kps:
         prereqs = kp.prerequisites or []
-        cross = [p for p in prereqs if p[:3] == "kp_" and p[3] != kp.kp_id[3]]
+        cross = [p for p in prereqs if len(p) > 3 and p[:3] == "kp_" and p[3] != kp.kp_id[3]]
         if cross:
             stat = cross_stats.setdefault(kp.course, {"cross_count": 0, "cross_links": []})
             stat["cross_count"] += len(cross)

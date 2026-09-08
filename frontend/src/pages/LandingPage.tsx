@@ -41,19 +41,24 @@ const TypeWriter: React.FC<{
 }> = ({ text, startDelay = 1.0, speed = 55, className = "" }) => {
   const [count, setCount] = React.useState(0);
   React.useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
     const start = setTimeout(() => {
-      const timer = setInterval(() => {
+      timer = setInterval(() => {
         setCount((c) => {
           if (c >= text.length) {
-            clearInterval(timer);
+            if (timer) clearInterval(timer);
             return c;
           }
           return c + 1;
         });
       }, speed);
-      return () => clearInterval(timer);
     }, startDelay * 1000);
-    return () => clearTimeout(start);
+    // 卸载时同时清理延时与已启动的 interval（原实现 cleanup 写在 setTimeout
+    // 回调的 return 里，属死代码，打字中途离开会泄漏 interval）
+    return () => {
+      clearTimeout(start);
+      if (timer) clearInterval(timer);
+    };
   }, [text, startDelay, speed]);
   return (
     <span className={className}>

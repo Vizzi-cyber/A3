@@ -96,11 +96,6 @@ class Settings(BaseSettings):
     VOLC_REGION: str = "cn-north-1"
     VOLC_SERVICE: str = "cv"
 
-    # 火山方舟（ARK）文生图配置
-    ARK_API_KEY: Optional[str] = None
-    ARK_IMAGE_ENDPOINT: str = ""
-    ARK_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3/invoke"
-
     # 火山引擎/方舟 文生图配置
     ARK_API_KEY: Optional[str] = None
     ARK_IMAGE_ENDPOINT: str = ""

@@ -425,8 +425,6 @@ def _default_outline(topic: str, subject: str) -> Dict[str, Any]:
     # 扩展匹配：排序相关、查找相关、树相关
     if any(k in topic_lower for k in ["排序", "快排", "归并", "冒泡", "选择排序", "插入排序", "堆排"]):
         return TOPIC_OUTLINES["排序"]
-    if any(k in topic_lower for k in ["查找", "二分", "搜索"]):
-        pass  # fall through to generic outline below
     if any(k in topic_lower for k in ["栈", "stack"]):
         return TOPIC_OUTLINES["栈"]
     if any(k in topic_lower for k in ["队列", "queue"]):
@@ -570,7 +568,8 @@ def build_pptx(outline: Dict[str, Any], output_path: str) -> str:
                           lines, size=font_size, color=C_DARK, font_name="Consolas")
 
     def add_accent_bar(slide, left, top, height=Inches(0.5)):
-        shape = slide.shapes.add_shape(1, left, top, Inches(0.07), height)
+        from pptx.enum.shapes import MSO_SHAPE
+        shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, Inches(0.07), height)
         shape.fill.solid()
         shape.fill.fore_color.rgb = C_PRIMARY
         shape.line.fill.background()

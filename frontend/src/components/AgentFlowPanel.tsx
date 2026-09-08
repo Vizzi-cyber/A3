@@ -198,9 +198,11 @@ const AgentFlowPanel: React.FC<{
   useEffect(() => {
     if (!runId || !isRunning) return;
 
+    let stale = false; // runId 快速切换时丢弃旧 run 的迟到响应
     const poll = async () => {
       try {
         const res = await agentFlowApi.getStatus(runId);
+        if (stale) return;
         setRunData(res.data);
         if (res.data.status !== "running") {
           setIsRunning(false);
@@ -213,6 +215,7 @@ const AgentFlowPanel: React.FC<{
     poll();
     pollRef.current = setInterval(poll, 1500);
     return () => {
+      stale = true;
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [runId, isRunning]);

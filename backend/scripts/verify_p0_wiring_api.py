@@ -183,8 +183,183 @@ def main():
               and score_by_id.get("vid1", 0) > score_by_id.get("doc1", 0),
               str(score_by_id))
 
+        # ---------- 7. 第二轮接线：auth/refresh、FSRS→路径、排行榜六维、反思循环 ----------
+        print("\n[7] 第二轮接线（auth/refresh + FSRS→路径复习阶段 + 排行榜六维 + 反思循环）")
+
+        # 7.1 JWT 滑动续期
+        r = client.post("/api/v1/auth/refresh", headers=h_s)
+        new_token = (r.json() or {}).get("access_token")
+        check("POST /auth/refresh 换发新 token",
+              r.status_code == 200 and bool(new_token), str(r.status_code))
+        r2 = client.get("/api/v1/auth/me",
+                        headers={"Authorization": f"Bearer {new_token}"} if new_token else {})
+        check("刷新后的 token 可通过认证",
+              r2.status_code == 200 and r2.json().get("data", {}).get("student_id") == "student_001",
+              str(r2.status_code))
+        r3 = client.post("/api/v1/auth/refresh")
+        check("无凭据调用 refresh 返回 401", r3.status_code == 401, str(r3.status_code))
+
+        # 7.2 FSRS 到期复习 → DAG 路径头部复习阶段
+        from app.models.database import SessionLocal
+        from app.models.memory import MemoryCardModel
+        from app.models.knowledge import KnowledgePointModel
+        from app.algorithms.memory_scheduler import FSRSMemoryScheduler
+
+        db = SessionLocal()
+        inserted = False
+        try:
+            all_kps = [k.kp_id for k in db.query(KnowledgePointModel.kp_id).all()]
+            existing_kps = {
+                r[0] for r in db.query(MemoryCardModel.kp_id)
+                .filter(MemoryCardModel.student_id == "student_001").all()
+            }
+            # 选一个该生还没有记忆卡的知识点做到期卡，避免撞 (student_id, kp_id) 唯一约束
+            free_kps = [k for k in all_kps if k not in existing_kps]
+            if len(free_kps) >= 1 and len(all_kps) >= 2:
+                due_kp = free_kps[0]
+                target_kp = next(k for k in all_kps if k != due_kp)
+                sched = FSRSMemoryScheduler()
+                sched.create_card("student_001", due_kp)  # 新卡立即到期
+                db.add(MemoryCardModel(
+                    student_id="student_001", kp_id=due_kp,
+                    card_json=sched.get_card_json("student_001", due_kp) or "{}",
+                ))
+                db.commit()
+                inserted = True
+
+                payload = {
+                    "student_id": "student_001",
+                    "target_kp_id": target_kp,
+                    # 除目标外全部标记已掌握 → 学习阶段不含 due_kp，复习阶段应出现在头部
+                    "mastery_map": {k: 0.95 for k in all_kps if k != target_kp} | {target_kp: 0.3},
+                }
+                r = client.post("/api/v1/learning-path/dag/generate", headers=h_s, json=payload)
+                stages = ((r.json().get("data", {}) or {}).get("stages", []))
+                check("FSRS 到期卡 → /dag/generate 路径头部含复习阶段",
+                      r.status_code == 200 and stages
+                      and stages[0].get("type") == "review"
+                      and stages[0].get("review_source") == "fsrs_due"
+                      and due_kp in stages[0].get("kp_ids", []),
+                      f"status={r.status_code} stages={[s.get('type') for s in stages]}")
+                check("复习阶段后各阶段 stage_no 重编号连续",
+                      [s.get("stage_no") for s in stages] == list(range(1, len(stages) + 1)),
+                      str([s.get("stage_no") for s in stages]))
+        finally:
+            if inserted:
+                db.query(MemoryCardModel).filter(
+                    MemoryCardModel.student_id == "student_001", MemoryCardModel.kp_id == due_kp
+                ).delete()
+                db.commit()
+            db.close()
+
+        # 7.3 排行榜六维真实计算
+        for dim in ("ai_collab", "improvement"):
+            r = client.get(f"/api/v1/gamification-challenge/leaderboard/{dim}?period=all", headers=h_s)
+            body = r.json() or {}
+            check(f"排行榜维度 {dim} 后端真实计算",
+                  body.get("status") == "success"
+                  and body.get("data", {}).get("dimension") == dim
+                  and isinstance(body.get("data", {}).get("entries"), list),
+                  f"status={r.status_code} body={str(body)[:120]}")
+        r = client.get("/api/v1/gamification-challenge/leaderboard/unknown_dim?period=all", headers=h_s)
+        check("未知排行榜维度返回 error", r.json().get("status") == "error", str(r.json().get("status")))
+
+        # 7.4 反思循环（REFLECTION_ENABLED 开启时 evaluate-code 走 run_with_reflection）
+        from unittest.mock import patch as mock_patch
+        from app.core.config import settings as app_settings
+        from app.api import result_evaluator as re_mod
+
+        orig_llm = re_mod._evaluator_agent.llm
+        re_mod._evaluator_agent.llm = None  # 冒烟不消耗真实 LLM 额度，规则评估兜底
+        try:
+            payload = {
+                "code_submission": {"file_name": "main.c", "code": "int main(){return 0;}",
+                                    "student_id": "student_001"},
+                "language": "C",
+            }
+            r = client.post("/api/v1/result-evaluator/evaluate-code", headers=h_s, json=payload)
+            check("REFLECTION_ENABLED=false 时 evaluate-code 走原路径（无反思字段）",
+                  r.status_code == 200 and "_iteration" not in r.json(), str(r.status_code))
+            with mock_patch.object(app_settings, "REFLECTION_ENABLED", True):
+                r = client.post("/api/v1/result-evaluator/evaluate-code", headers=h_s, json=payload)
+                body = r.json() or {}
+                check("REFLECTION_ENABLED=true 时走反思循环（跑满迭代并输出总轮数）",
+                      r.status_code == 200
+                      and body.get("_total_iterations") == app_settings.REFLECTION_MAX_ITERATIONS,
+                      f"total={body.get('_total_iterations')} keys={sorted(list(body.keys()))[:8]}")
+        finally:
+            re_mod._evaluator_agent.llm = orig_llm
+
+        # ---------- 8. 第三轮修复：安全/越权/契约 ----------
+        print()
+        print("[8] 第三轮修复（排行榜quiz_score/越权防护/契约对齐/答案剥离/NCD/反思日志）")
+
+        # 8.1 quiz_score 排行榜（原 QuizResultModel.id 引用不存在列恒 500）
+        r = client.get("/api/v1/gamification-challenge/leaderboard/quiz_score?period=all", headers=h_s)
+        body = r.json() or {}
+        check("quiz_score 排行榜修复（原 count(id) 500）",
+              r.status_code == 200 and body.get("status") == "success"
+              and isinstance(body.get("data", {}).get("entries"), list),
+              f"status={r.status_code}")
+
+        # 8.2 tutor 越权提问防护
+        r = client.post("/api/v1/tutor/ask", headers=h_s,
+                        json={"student_id": "student_002", "question": "test", "rag_active": False})
+        check("tutor /ask 代他人提问返回 403", r.status_code == 403, str(r.status_code))
+
+        # 8.3 tutor 会话历史本人过滤
+        r = client.get("/api/v1/tutor/session/student_002_default/history", headers=h_s)
+        msgs = ((r.json() or {}).get("messages", []))
+        check("tutor 会话历史只返回本人记录", r.status_code == 200 and msgs == [], str(len(msgs)))
+
+        # 8.4 qa-feedback 契约（原必填 query 参数 + 字段不一致恒 422）
+        r = client.post("/api/v1/tutor/qa-feedback/999999", headers=h_s, json={})
+        check("qa-feedback 缺 rating 返回 422（body 契约生效）", r.status_code == 422, str(r.status_code))
+        r = client.post("/api/v1/tutor/qa-feedback/999999", headers=h_s, json={"rating": "meh"})
+        check("qa-feedback rating 非法值返回 422", r.status_code == 422, str(r.status_code))
+
+        # 8.5 assignment 答案剥离
+        questions = [{"q_id": "q1", "text": "1+1=?", "options": ["1", "2"], "correct_answer": "2"}]
+        r = client.post("/api/v1/assignment/create", headers=h_t,
+                        json={"title": "验证作业", "subject": "C语言", "questions": questions})
+        aid = (r.json() or {}).get("assignment_id")
+        r_s = client.get("/api/v1/assignment/" + aid, headers=h_s)
+        qs_s = ((r_s.json() or {}).get("assignment", {}).get("questions", []))
+        check("学生读作业不见 correct_answer", bool(qs_s) and "correct_answer" not in qs_s[0], str(qs_s))
+        r_t = client.get("/api/v1/assignment/" + aid, headers=h_t)
+        qs_t = ((r_t.json() or {}).get("assignment", {}).get("questions", []))
+        check("教师读作业可见 correct_answer", bool(qs_t) and qs_t[0].get("correct_answer") == "2", str(qs_t))
+
+        # 8.6 自我加分入口关闭
+        r = client.post("/api/v1/gamification/points/add", headers=h_s,
+                        json={"student_id": "student_001", "points": 100, "reason": "cheat"})
+        check("学生调用 /points/add 返回 403", r.status_code == 403, str(r.status_code))
+
+        # 8.7 NCD 接线
+        r = client.post("/api/v1/algorithms/ncd/fit", headers=h_t)
+        check("NCD /ncd/fit 训练成功（演示库真实作答）",
+              r.status_code == 200 and r.json().get("status") == "success", str(r.status_code))
+        r = client.get("/api/v1/algorithms/status", headers=h_t)
+        check("算法状态总览含 ncd 且已拟合",
+              (r.json().get("data", {}).get("ncd", {}) or {}).get("fitted") is True,
+              str(r.json().get("data", {}).get("ncd")))
+        r = client.get("/api/v1/algorithms/ncd/ability/student_001", headers=h_t)
+        check("NCD 能力查询端点可用（原重启后恒 409）", r.status_code == 200, str(r.status_code))
+
+        # 8.8 学习日志日期正则修复（原双反斜杠正则永不匹配，创建整体 422）
+        import datetime as _dt
+        today = _dt.date.today().isoformat()
+        r = client.post("/api/v1/log-reflection/logs/upsert", headers=h_s,
+                        json={"student_id": "student_001", "date": today, "total_duration": 30,
+                              "kp_count": 1, "quiz_count": 0, "avg_score": 0,
+                              "mistakes": [], "path_progress": 0.1,
+                              "completed_tasks": [], "timeline": []})
+        check("学习日志创建（日期正则修复）", r.status_code == 200, str(r.status_code) + " " + str(r.json())[:80])
+
+
     print(f"\n结果: {PASS} 通过, {FAIL} 失败")
     sys.exit(1 if FAIL else 0)
+
 
 
 if __name__ == "__main__":

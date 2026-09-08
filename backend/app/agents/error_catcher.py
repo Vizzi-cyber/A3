@@ -40,7 +40,8 @@ class ErrorCatcherAgent(BaseAgent):
             "code": "int main() { ... }",
             "language": "C",
             "student_level": "beginner" | "intermediate" | "advanced",
-            "error_output": "optional: compiler error message"
+            "error_output": "optional: compiler error message",
+            "ai_engine": "optional: BKT/FSRS 算法上下文（build_ai_engine_context 输出）"
         }
         """
         self.status = "running"
@@ -72,6 +73,8 @@ class ErrorCatcherAgent(BaseAgent):
 
     async def _catch_errors(self, code: str, language: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """捕捉代码中的错误"""
+        from ..services.algorithm_registry import format_ai_engine_context
+
         student_level = context.get("student_level", "beginner")
         error_output = context.get("error_output", "")
 
@@ -82,6 +85,7 @@ class ErrorCatcherAgent(BaseAgent):
 
         prompt += (
             f"学生水平：{student_level}\n"
+            f"{format_ai_engine_context(context.get('ai_engine') or {})}"
             '返回格式：{"syntax_errors":[{"line":1,"description":"简述","fix":"修复方法"}],'
             '"logic_errors":[{"description":"简述","impact":"影响","fix":"修复方法"}],'
             '"misconceptions":[{"type":"类型","description":"简述","why_student_makes_this_mistake":"原因","correct_concept":"正确概念"}],'

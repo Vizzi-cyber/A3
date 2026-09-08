@@ -196,6 +196,8 @@ class ProjectDecomposerAgent(BaseAgent):
             ]
 
             data = await self.llm.generate_json(messages, temperature=0.3, max_tokens=4096)
+            if isinstance(data, dict) and data.get("status") == "error":
+                return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
             return {
                 "status": "success",
                 "task": "get_project_info",

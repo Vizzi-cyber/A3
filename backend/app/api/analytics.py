@@ -94,11 +94,10 @@ async def analytics_dashboard(
     dist = [0] * (len(bins) - 1)
     for s in scores:
         for i in range(len(bins) - 1):
-            if bins[i] <= s < bins[i + 1]:
+            # 末桶右闭，使 100 分落入 90-100 桶
+            if bins[i] <= s < bins[i + 1] or (i == len(bins) - 2 and s == bins[i + 1]):
                 dist[i] += 1
                 break
-    if scores and max(scores) == 100:
-        dist[-1] += 1  # 100 分
     score_dist = [
         {"range": f"{bins[i]}-{bins[i + 1]}", "count": dist[i]}
         for i in range(len(bins) - 1)
@@ -174,7 +173,8 @@ async def student_score_prediction(
     )
     scores = [q.score or 0 for q in quizzes]
     if len(scores) < 2:
-        return {"status": "success", "data": {"prediction": round(float(scores[-1] or 60), 1), "confidence": "low"}}
+        last = float(scores[-1]) if scores else 60.0
+        return {"status": "success", "data": {"prediction": round(last, 1), "confidence": "low"}}
     pred = _linear_regression_predict(scores, 3)
     # 置信度：数据量 + 拟合残差
     n = len(scores)

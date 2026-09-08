@@ -27,6 +27,7 @@ from ..schemas import (
 )
 from ..agents import ResourceGeneratorAgent
 from ..services import content_library
+from ..services.algorithm_registry import build_ai_engine_context
 from .auth import require_auth
 from sqlalchemy.orm import Session
 from ..models.database import get_db, SessionLocal
@@ -198,6 +199,10 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
         if request.weak_points and len(request.weak_points) > 0:
             weak_hint = f"\n学生的薄弱知识点：{'、'.join(request.weak_points)}，请重点针对这些知识点生成内容。"
 
+        # AIC 算法增强：BKT 薄弱点 + FSRS 到期复习注入生成 prompt（个性化资源）
+        ai_engine = build_ai_engine_context(db, request.student_id) if getattr(request, "student_id", None) else {}
+        profile_ctx = {"ai_engine": ai_engine} if ai_engine else {}
+
         task.message = "Preparing generation..."
         task.progress = 0.2
         db.commit()
@@ -218,6 +223,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
                     "topic": request.topic,
                     "difficulty": request.difficulty,
                     "subject": subject,
+                    "profile": profile_ctx,
                     "constraints": {"weak_points_hint": weak_hint},
                 }))
             elif rt == "questions":
@@ -225,6 +231,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
                     "task": "generate_questions",
                     "topic": request.topic,
                     "subject": subject,
+                    "profile": profile_ctx,
                     "constraints": {"count": 3, "weak_points_hint": weak_hint},
                 }))
             elif rt == "mindmap":
@@ -232,6 +239,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
                     "task": "generate_mindmap",
                     "topic": request.topic,
                     "subject": subject,
+                    "profile": profile_ctx,
                     "constraints": {"weak_points_hint": weak_hint},
                 }))
             elif rt == "code":
@@ -239,6 +247,7 @@ async def _execute_generation(task_id: str, request: ResourceGenerationRequest):
                     "task": "generate_code_examples",
                     "topic": request.topic,
                     "subject": subject,
+                    "profile": profile_ctx,
                     "constraints": {"language": code_language, "weak_points_hint": weak_hint},
                 }))
 

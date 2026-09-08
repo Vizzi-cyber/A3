@@ -109,6 +109,8 @@ CHALLENGE_DEFS = [
 @router.get("/{student_id}/challenges")
 def get_challenges(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
     """获取挑战列表及进度"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Cannot view other student's challenges")
 
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -233,7 +235,7 @@ def get_leaderboard(
 ):
     """
     多维度排行榜
-    dimension: points | streak | mastery | quiz_score
+    dimension: points | streak | mastery | quiz_score | ai_collab | improvement
     period: daily | weekly | monthly | all
     """
     now = datetime.now(timezone.utc)
@@ -328,7 +330,7 @@ def get_leaderboard(
         score_query = db.query(
             QuizResultModel.student_id,
             sa_func.avg(QuizResultModel.score).label("avg_score"),
-            sa_func.count(QuizResultModel.id).label("cnt")
+            sa_func.count(QuizResultModel.quiz_id).label("cnt")
         )
         if start:
             score_query = score_query.filter(QuizResultModel.created_at >= start)
@@ -337,6 +339,50 @@ def get_leaderboard(
         score_data = [{"student_id": sid, "score": round(float(avg), 1)} for sid, avg, cnt in score_rows if cnt > 0]
         score_data.sort(key=lambda x: x["score"], reverse=True)
         for i, item in enumerate(score_data[:limit]):
+            results.append({**item, "rank": i + 1})
+
+    elif dimension == "ai_collab":
+        # AI 协作榜：辅导问答交互次数 —— SQL 聚合避免 N+1
+        from ..models.tutor_qa import TutorQAModel
+        qa_query = db.query(
+            TutorQAModel.student_id,
+            sa_func.count(TutorQAModel.id).label("cnt")
+        )
+        if start:
+            qa_query = qa_query.filter(TutorQAModel.created_at >= start)
+        qa_rows = qa_query.group_by(TutorQAModel.student_id).all()
+
+        qa_data = [{"student_id": sid, "score": int(cnt)} for sid, cnt in qa_rows if cnt > 0]
+        qa_data.sort(key=lambda x: x["score"], reverse=True)
+        for i, item in enumerate(qa_data[:limit]):
+            results.append({**item, "rank": i + 1})
+
+    elif dimension == "improvement":
+        # 进步榜：前测/后测配对差值（实验测评数据；无配对的学生不参与排名）
+        improve_query = db.query(QuizResultModel).filter(
+            QuizResultModel.assessment_phase.in_(["pre", "post"]),
+            QuizResultModel.score.isnot(None),
+        )
+        if start:
+            improve_query = improve_query.filter(QuizResultModel.created_at >= start)
+        phase_rows = improve_query.all()
+
+        by_student: Dict[str, Dict[str, float]] = {}
+        for q in phase_rows:
+            phase = (q.assessment_phase or "").lower()
+            try:
+                score = float(q.score)
+            except (TypeError, ValueError):
+                continue
+            slot = by_student.setdefault(q.student_id, {})
+            # 同一学生多次同阶段测评取最好成绩
+            slot[phase] = max(slot.get(phase, score), score)
+        improve_data = []
+        for sid, slot in by_student.items():
+            if "pre" in slot and "post" in slot:
+                improve_data.append({"student_id": sid, "score": round(slot["post"] - slot["pre"], 1)})
+        improve_data.sort(key=lambda x: x["score"], reverse=True)
+        for i, item in enumerate(improve_data[:limit]):
             results.append({**item, "rank": i + 1})
     else:
         return {"status": "error", "message": f"未知维度: {dimension}"}

@@ -12,6 +12,12 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.types import Send
 
 from ..agents import ProfilerAgent, ResourceGeneratorAgent, PathPlannerAgent, TutorAgent
+
+
+def _primary_style(profile: dict) -> str:
+    """取画像主认知风格（cognitive_style 可能是 dict 或 str，统一守卫）。"""
+    from ..agents.base import get_primary_cognitive_style
+    return get_primary_cognitive_style(profile or {})
 from ..services.llm_factory import LLMFactory
 from ..core.safety import SafetyGuard
 from .state import AgentState, AgentStep
@@ -133,8 +139,18 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     # 降级到 V1 简单配置
     steps = TASK_ROUTES.get(task_type)
     if not steps:
-        _push(run_id, "supervisor", "completed", f"未知任务类型: {task_type}，直接汇总")
-        return {"next_agent": "finish", "iteration": iteration + 1}
+        _push(run_id, "supervisor", "failed", f"未知任务类型: {task_type}")
+        return {
+            "next_agent": "finish",
+            "iteration": iteration + 1,
+            "final_output": {
+                "status": "error",
+                "task_type": task_type,
+                "student_id": state.get("student_id", ""),
+                "summary": f"未知任务类型: {task_type}，无可用执行计划",
+                "data": {},
+            },
+        }
 
     for step in steps:
         if step not in results:
@@ -206,7 +222,11 @@ async def profiler_node(state: AgentState) -> Dict[str, Any]:
     def _profiler_cache_key(ctx: Dict[str, Any]) -> str:
         from ..core.cache import prompt_cache
         salt = f"{ctx.get('student_id', '')}_{ctx.get('action', '')}"
-        return prompt_cache.hash_prompt({"inputs": ctx.get("inputs", [])}, extra_salt=salt)
+        # 纳入当前画像：相同输入二次提交时避免命中旧画像快照缓存
+        return prompt_cache.hash_prompt(
+            {"inputs": ctx.get("inputs", []), "current_profile": ctx.get("current_profile")},
+            extra_salt=salt,
+        )
 
     result = await _call_with_retry(
         lambda ctx: _profiler.cached_process(ctx, cache_key_fn=_profiler_cache_key),
@@ -260,8 +280,14 @@ async def resource_generator_node(state: AgentState) -> Dict[str, Any]:
     else:
         def _resource_cache_key(ctx: Dict[str, Any]) -> str:
             from ..core.cache import prompt_cache
+            # 纳入认知风格与画像摘要：不同学生/风格不应共享同一份「个性化」资源
             return prompt_cache.hash_prompt(
-                {"task": ctx.get("task", ""), "topic": ctx.get("topic", ""), "difficulty": ctx.get("difficulty", "")},
+                {
+                    "task": ctx.get("task", ""), "topic": ctx.get("topic", ""),
+                    "difficulty": ctx.get("difficulty", ""),
+                    "cognitive_style": ctx.get("cognitive_style", ""),
+                    "profile": ctx.get("profile", {}),
+                },
                 extra_salt="resource_gen",
             )
 
@@ -271,13 +297,17 @@ async def resource_generator_node(state: AgentState) -> Dict[str, Any]:
                 "task": task,
                 "topic": _safe_topic(ctx),
                 "difficulty": ctx.get("difficulty", profile.get("knowledge_level", "medium")),
-                "cognitive_style": profile.get("cognitive_style", {}).get("primary", "visual"),
+                "cognitive_style": _primary_style(profile),
                 "profile": profile,
                 "constraints": ctx.get("constraints", {}),
             },
         )
 
-    _push(run_id, "resource_generator", "completed", "资源生成完成")
+    _push(
+        run_id, "resource_generator",
+        "completed" if result.get("status") == "success" else "failed",
+        "资源生成完成" if result.get("status") == "success" else f"资源生成失败: {result.get('error', result.get('reason', ''))}",
+    )
     return {
         "results": {"resource_generator": result},
         "messages": [
@@ -297,8 +327,9 @@ async def path_planner_node(state: AgentState) -> Dict[str, Any]:
     def _path_planner_cache_key(ctx: Dict[str, Any]) -> str:
         from ..core.cache import prompt_cache
         salt = f"{ctx.get('student_id', '')}_{ctx.get('target', '')}"
+        # 纳入画像：路径规划按画像个性化，不同画像不应共享缓存
         return prompt_cache.hash_prompt(
-            {"task": ctx.get("task", ""), "feedback": ctx.get("feedback", "")},
+            {"task": ctx.get("task", ""), "feedback": ctx.get("feedback", ""), "profile": ctx.get("profile", {})},
             extra_salt=salt,
         )
 
@@ -314,7 +345,11 @@ async def path_planner_node(state: AgentState) -> Dict[str, Any]:
         },
     )
 
-    _push(run_id, "path_planner", "completed", "学习路径规划完成")
+    _push(
+        run_id, "path_planner",
+        "completed" if result.get("status") == "success" else "failed",
+        "学习路径规划完成" if result.get("status") == "success" else f"路径规划失败: {result.get('error', '')}",
+    )
     return {
         "results": {"path_planner": result},
         "messages": [
@@ -343,7 +378,11 @@ async def tutor_node(state: AgentState) -> Dict[str, Any]:
         timeout=45.0,  # 辅导回答可能较慢
     )
 
-    _push(run_id, "tutor", "completed", "辅导回答生成完成")
+    _push(
+        run_id, "tutor",
+        "completed" if result.get("status") == "success" else "failed",
+        "辅导回答生成完成" if result.get("status") == "success" else f"辅导执行失败: {result.get('error', result.get('reason', ''))}",
+    )
     return {
         "results": {"tutor": result},
         "messages": [
@@ -361,7 +400,11 @@ async def assembler_node(state: AgentState) -> Dict[str, Any]:
     results = state.get("results", {})
     task_type = state["task_type"]
 
-    failed = [k for k, v in results.items() if isinstance(v, dict) and v.get("status") in ("failed", "blocked")]
+    # failed/blocked/error 都算未成功——_call_with_retry 重试耗尽返回 error，
+    # 不纳入会导致「全部智能体失败仍报 success」
+    # failed/blocked/error/partial_failure 都算未完全成功
+    failed = [k for k, v in results.items()
+              if isinstance(v, dict) and v.get("status") in ("failed", "blocked", "error", "partial_failure")]
     success_count = len(results) - len(failed)
 
     final_output = {
@@ -394,10 +437,14 @@ def router_edge(state: AgentState):
         iteration = state.get("iteration", 0)
         sends = []
         for agent_name in parallel_agents:
+            # 构造 Send 时清除 _parallel_agents：否则 fan-out 完成回到
+            # supervisor 后，router_edge 仍优先读残留列表并无视 next_agent，
+            # 对同一组 agent 无限 fan-out（直到 recursion_limit 崩溃）
             sends.append(Send(agent_name, {
                 **state,
                 "next_agent": agent_name,
                 "iteration": iteration + 1,
+                "_parallel_agents": None,
             }))
         return sends
     return state["next_agent"]

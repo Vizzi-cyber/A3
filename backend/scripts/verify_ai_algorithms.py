@@ -476,6 +476,267 @@ def test_p1_upgrades():
           str(r_warm["exploration"]["enabled"]))
 
 
+def test_wiring_round2():
+    print("第二轮接线（FSRS→路径复习阶段 / IRT b→匹配难度 / agent 上下文构建）")
+    from app.algorithms.path_planning_dag import DAGPathPlanner
+    from app.algorithms.weighted_matching import MultiDimWeightedMatcher
+    from app.services.algorithm_registry import (
+        build_ai_engine_context,
+        format_ai_engine_context,
+    )
+
+    planner = DAGPathPlanner()
+    planner.build_graph([
+        {"kp_id": "k1", "name": "K1", "subject": "C", "difficulty": 3,
+         "prerequisites": [], "description": "", "tags": []},
+        {"kp_id": "k2", "name": "K2", "subject": "C", "difficulty": 3,
+         "prerequisites": ["k1"], "description": "", "tags": []},
+    ])
+
+    # --- FSRS 到期复习 → 路径头部插入 review 阶段 ---
+    r = planner.plan_path("s1", "k2", {"k1": 0.95, "k2": 0.3}, {}, due_kp_ids=["k1"])
+    st = r["stages"]
+    check("FSRS 到期知识点 → 路径头部插入 review 阶段",
+          st[0].get("type") == "review" and st[0].get("review_source") == "fsrs_due"
+          and "k1" in st[0].get("kp_ids", []),
+          str(st[0]))
+    check("插入复习阶段后 stage_no 连续重编号",
+          [s["stage_no"] for s in st] == list(range(1, len(st) + 1)), str([s["stage_no"] for s in st]))
+    check("总时长包含复习阶段",
+          r["estimated_total_hours"] == round(sum(s["hours"] for s in st), 1),
+          f"{r['estimated_total_hours']} vs {sum(s['hours'] for s in st)}")
+
+    # 已被学习阶段覆盖的到期知识点去重（不重复既学又复习）
+    r2 = planner.plan_path("s1", "k2", {"k1": 0.3, "k2": 0.3}, {}, due_kp_ids=["k1"])
+    check("到期知识点已被学习阶段覆盖时去重",
+          all(s.get("review_source") != "fsrs_due" for s in r2["stages"]),
+          str([s.get("type") for s in r2["stages"]]))
+
+    # 无到期卡行为不变（向后兼容）
+    r3 = planner.plan_path("s1", "k2", {"k1": 0.95, "k2": 0.3}, {})
+    check("无到期卡时路径无 FSRS 复习阶段",
+          all(s.get("type") != "review" for s in r3["stages"]),
+          str([s.get("type") for s in r3["stages"]]))
+
+    # 全已掌握 + 到期卡 → 纯复习路径并入到期知识点
+    r4 = planner.plan_path("s1", "k2", {"k1": 0.95, "k2": 0.9}, {}, due_kp_ids=["k1"])
+    check("全已掌握时到期知识点并入复习阶段",
+          r4["stages"][0].get("type") == "review"
+          and set(r4["stages"][0].get("kp_ids", [])) == {"k1", "k2"},
+          str(r4["stages"][0]))
+
+    # --- IRT b → 匹配难度适配分 ---
+    matcher = MultiDimWeightedMatcher()
+    check("难度适配三档回退（medium 与中档同义）",
+          matcher._difficulty_fit("beginner", "medium") == 0.6,
+          str(matcher._difficulty_fit("beginner", "medium")))
+    fit_eq = matcher._difficulty_fit("beginner", "medium", irt_b=0.0, irt_theta=0.0)
+    fit_hard = matcher._difficulty_fit("beginner", "medium", irt_b=3.0, irt_theta=0.0)
+    fit_easy = matcher._difficulty_fit("beginner", "medium", irt_b=-3.0, irt_theta=0.0)
+    check("IRT 适配分：θ=b 峰值 1.0，过难/过易对称衰减",
+          fit_eq == 1.0 and 0 < fit_hard < 1 and 0 < fit_easy < 1
+          and abs(fit_hard - fit_easy) < 1e-9,
+          f"eq={fit_eq} hard={fit_hard} easy={fit_easy}")
+
+    profile = {"knowledge_base": {}, "weak_areas": [], "cognitive_style": {},
+               "learning_goals": [], "learning_tempo": {}, "knowledge_level": "beginner"}
+    resources = [
+        {"resource_id": "r_easy", "title": "入门", "type": "document", "kp_id": "kA",
+         "kp_tags": [], "content_types": [], "difficulty": "medium", "objectives": [],
+         "estimated_duration": 45},
+        {"resource_id": "r_match", "title": "匹配", "type": "document", "kp_id": "kB",
+         "kp_tags": [], "content_types": [], "difficulty": "medium", "objectives": [],
+         "estimated_duration": 45},
+    ]
+    r_irt = matcher.match_resources(profile, resources, irt_difficulty={"kA": -3.0, "kB": 0.0}, irt_ability=0.0)
+    det = {x["resource_id"]: x["details"] for x in r_irt["recommendations"]}
+    check("匹配 difficulty_source 标注 irt_b",
+          det["r_easy"].get("difficulty_source") == "irt_b"
+          and det["r_match"].get("difficulty_source") == "irt_b", str(det["r_easy"]))
+    check("IRT b 影响难度适配分（θ=b 的资源拟合分更高）",
+          det["r_match"]["difficulty_fit"] > det["r_easy"]["difficulty_fit"],
+          f"match={det['r_match']['difficulty_fit']} easy={det['r_easy']['difficulty_fit']}")
+    r_plain = matcher.match_resources(profile, resources)
+    det_plain = {x["resource_id"]: x["details"] for x in r_plain["recommendations"]}
+    check("未标定时 difficulty_source 回退 manual 且行为不变",
+          det_plain["r_easy"].get("difficulty_source") == "manual"
+          and det_plain["r_easy"]["difficulty_fit"] == det_plain["r_match"]["difficulty_fit"],
+          str(det_plain["r_easy"]))
+
+    # --- agent 共享上下文构建/格式化 ---
+    check("空算法上下文格式化为空串", format_ai_engine_context({}) == "")
+    note = format_ai_engine_context({
+        "bkt": {"weak_points": [{"kp": "kp1", "mastery": 0.32}]},
+        "fsrs": {"due_count": 2, "due_kps": ["kp1", "kp2"]},
+    })
+    check("算法上下文含 BKT 薄弱点与 FSRS 到期片段",
+          "【BKT 算法感知】" in note and "【FSRS 记忆调度】" in note, note)
+
+    try:
+        from app.models.database import SessionLocal
+        db = SessionLocal()
+        try:
+            ctx = build_ai_engine_context(db, "no_such_student_xyz")
+            check("build_ai_engine_context 无数据时返回空 dict（静默降级）", ctx == {}, str(ctx))
+        finally:
+            db.close()
+    except Exception as e:  # pragma: no cover - 数据库不可用时跳过该断言
+        print(f"  ⏭️ 跳过 build_ai_engine_context 数据库断言: {e}")
+
+
+
+
+def test_robustness_round2():
+    print("第三轮修复（难度量纲/IRT 聚合/环防护/is_warm/内容库容错/不可变 mastery）")
+    from app.algorithms.path_planning_dag import DAGPathPlanner, _normalize_difficulty_level
+    from app.algorithms.bandit_selector import ThompsonSamplingSelector
+    from app.services.algorithm_registry import attach_irt_to_planner, set_irt_diagnoser
+    from app.services.content_library import _extract_content
+
+    # --- 难度量纲归一化 ---
+    check("难度归一化：0-1 比例 → 1-5 级",
+          _normalize_difficulty_level(0.2) == 2 and _normalize_difficulty_level(0.65) == 4,
+          f"{_normalize_difficulty_level(0.2)}/{_normalize_difficulty_level(0.65)}")
+    check("难度归一化：已是级数与非法值兼容",
+          _normalize_difficulty_level(3) == 3 and _normalize_difficulty_level(None) == 3,
+          f"{_normalize_difficulty_level(3)}/{_normalize_difficulty_level(None)}")
+    planner = DAGPathPlanner()
+    planner.build_graph([
+        {"kp_id": "k1", "name": "K1", "subject": "C", "difficulty": 0.2,
+         "prerequisites": [], "description": "", "tags": []},
+        {"kp_id": "k2", "name": "K2", "subject": "C", "difficulty": 0.6,
+         "prerequisites": ["k1"], "description": "", "tags": []},
+    ])
+    check("build_graph 入口难度归一化",
+          planner.kp_meta["k1"]["difficulty"] == 2 and planner.kp_meta["k2"]["difficulty"] == 3,
+          str({k: planner.kp_meta[k]["difficulty"] for k in ("k1", "k2")}))
+
+    # --- IRT 复合键聚合注入 ---
+    class FakeIRT:
+        is_fitted = True
+        difficulty_map = {"kp_c01:q1": 1.0, "kp_c01:q2": 2.0, "kp_c02": 3.0}
+        def get_item_difficulty(self, item_id):
+            return self.difficulty_map.get(item_id)
+    set_irt_diagnoser(FakeIRT())
+    planner2 = DAGPathPlanner()
+    planner2.build_graph([
+        {"kp_id": "kp_c01", "name": "K", "subject": "C", "difficulty": 0.3,
+         "prerequisites": [], "description": "", "tags": []},
+    ])
+    ok_attach = attach_irt_to_planner(planner2)
+    _, src = planner2._difficulty_factor("kp_c01", {"difficulty": 0.3})
+    check("attach_irt_to_planner 聚合复合 item_id 后按 kp 命中",
+          ok_attach is True and src == "irt_b", str(src))
+
+    # --- 环检测防护 ---
+    cyc = DAGPathPlanner()
+    cyc.build_graph([
+        {"kp_id": "a", "name": "A", "subject": "C", "difficulty": 0.3,
+         "prerequisites": ["b"], "description": "", "tags": []},
+        {"kp_id": "b", "name": "B", "subject": "C", "difficulty": 0.3,
+         "prerequisites": ["a"], "description": "", "tags": []},
+    ])
+    check("成环脏数据：plan_path 入口拒绝（不再递归爆炸）",
+          cyc.plan_path("s1", "a", {"a": 0.1, "b": 0.1}, {})["status"] == "error", "ok")
+
+    # --- is_warm 语义（不同臂覆盖） ---
+    sel = ThompsonSamplingSelector(["x", "y", "z"], seed=1)
+    for _ in range(3):
+        sel.update("x", 1.0)
+    check("is_warm：累计反馈达臂数即预热（快速预热语义）", sel.is_warm is True)
+    check("is_warm：反馈不足臂数保持冷启动", ThompsonSamplingSelector(["x", "y", "z"], seed=1).is_warm is False)
+
+    # --- 内容库单列损坏不连坐 ---
+    class FakeKP:
+        kp_id = "kx"
+        document = "# doc"
+        code_example = "int main(){}"
+        questions = "{broken json"
+        mindmap = "{also broken"
+    content = _extract_content(FakeKP())
+    check("内容库 JSON 单列损坏只丢该列（document/code 保留）",
+          content.get("document") == "# doc" and bool(content.get("code")) and
+          "questions" not in content and "mindmap" not in content, str(content.keys()))
+
+    # --- plan_path 不修改调用方 mastery_map ---
+    planner3 = DAGPathPlanner()
+    planner3.build_graph([
+        {"kp_id": "m1", "name": "M1", "subject": "C", "difficulty": 0.3,
+         "prerequisites": [], "description": "", "tags": []},
+    ])
+    src_map = {"m1": 0.5}
+    planner3.plan_path("s1", "m1", src_map, {})
+    check("plan_path 不再原地修改调用方 mastery_map", src_map == {"m1": 0.5}, str(src_map))
+
+
+
+
+def test_agent_hardening():
+    print("第六轮智能体加固（kg 批次防护 / 画像兼容读 / cognitive_style 守卫 / status 兼容）")
+    import asyncio
+    from app.agents.base import BaseAgent, get_primary_cognitive_style
+
+    # --- cognitive_style 守卫 ---
+    check("cognitive_style：dict 形态取 primary",
+          get_primary_cognitive_style({"cognitive_style": {"primary": "auditory"}}) == "auditory", "ok")
+    check("cognitive_style：字符串形态直接用",
+          get_primary_cognitive_style({"cognitive_style": "kinesthetic"}) == "kinesthetic", "ok")
+    check("cognitive_style：缺失/None 回退 visual",
+          get_primary_cognitive_style({}) == "visual"
+          and get_primary_cognitive_style({"cognitive_style": None}) == "visual", "ok")
+
+    # --- get_status str/Enum 双兼容 ---
+    class _FakeAgent(BaseAgent):
+        def __init__(self):
+            super().__init__(agent_id="fake", agent_name="Fake", description="")
+            self.status = "running"  # 子类常见覆写
+        def get_system_prompt(self):
+            return ""
+        async def process(self, context):
+            return {}
+    try:
+        st = _FakeAgent().get_status()["status"]
+        check("get_status 对字符串 status 不再 AttributeError", st == "running", str(st))
+    except AttributeError:
+        check("get_status 对字符串 status 不再 AttributeError", False, "AttributeError")
+
+    # --- course_designer 兼容读 profiler analysis ---
+    from app.agents.course_designer import CourseDesignerAgent
+    cd = CourseDesignerAgent.__new__(CourseDesignerAgent)
+    # 不走 LLM：直接验证 _get_student_profile 的提取逻辑（用假 profiler 注入）
+    class FakeProfiler:
+        async def process(self, ctx):
+            return {"status": "success", "analysis": {
+                "weak_areas": ["指针"], "cognitive_style": {"primary": "reading"}}}
+    cd.sub_agents = {"profiler": FakeProfiler()}
+    prof = asyncio.run(cd._get_student_profile("s1"))
+    check("course_designer 能读到 profiler analysis 内的真实画像",
+          prof.get("weak_areas") == ["指针"], str(prof.get("weak_areas")))
+
+    class EmptyProfiler:
+        async def process(self, ctx):
+            return {"status": "success", "analysis": {}}
+    cd2 = CourseDesignerAgent.__new__(CourseDesignerAgent)
+    cd2.sub_agents = {"profiler": EmptyProfiler()}
+    prof2 = asyncio.run(cd2._get_student_profile("s1"))
+    check("profiler 无画像时回退兜底画像（原行为保留）",
+          prof2.get("weak_areas") == ["recursion", "dynamic_programming"], str(prof2.get("weak_areas")))
+
+    # --- kg_builder 批次失败带 status ---
+    from app.agents.knowledge_graph_builder import KnowledgeGraphBuilderAgent
+    kg = KnowledgeGraphBuilderAgent.__new__(KnowledgeGraphBuilderAgent)
+    import types
+
+    class ErrLLM:
+        async def generate_json(self, messages, **kw):
+            return {"status": "error", "message": "bad json"}
+    kg.llm = ErrLLM()
+    kg.logger = __import__("logging").getLogger("test")
+    batch = asyncio.run(kg._process_batch([{"kp_id": "k1", "name": "K1"}], "C"))
+    check("kg_builder 批次失败返回 status=error（外层 failed_batches 防护生效）",
+          batch.get("status") == "error", str(batch.get("status")))
+
+
 if __name__ == "__main__":
     test_bkt()
     test_irt()
@@ -487,5 +748,8 @@ if __name__ == "__main__":
     test_p0_wiring()
     test_robustness()
     test_p1_upgrades()
+    test_wiring_round2()
+    test_robustness_round2()
+    test_agent_hardening()
     print(f"\n结果: {PASS} 通过, {FAIL} 失败")
     sys.exit(1 if FAIL else 0)

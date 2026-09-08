@@ -132,14 +132,23 @@ class AgentFlowStatusResponse(BaseModel):
 
 
 # ---------- 路由 ----------
+# 后台任务引用集：create_task 不持引用可能被 GC 中途回收
+_background_tasks: set = set()
+
+
 @router.post("/run")
 async def start_agent_flow(request: AgentFlowRunRequest, _current: str = Depends(require_auth)):
     """启动一次多智能体工作流执行"""
+    if request.student_id != _current:
+        # 工作流消耗 LLM 配额且产出挂到 student_id 名下，禁止代他人启动
+        raise HTTPException(status_code=403, detail="Cannot run agent flow for other student")
     run_id = str(uuid.uuid4())[:12]
     flow_store.create_run(run_id, request.student_id, request.task_type)
 
-    # 后台执行 LangGraph
-    asyncio.create_task(_execute_graph(run_id, request))
+    # 后台执行 LangGraph（持引用防 GC）
+    task = asyncio.create_task(_execute_graph(run_id, request))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
     return {"run_id": run_id, "status": "running", "task_type": request.task_type}
 

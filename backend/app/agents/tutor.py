@@ -25,7 +25,7 @@ class TutorAgent(BaseAgent):
         self.session_histories: Dict[str, List[Dict[str, Any]]] = {}
         self._session_last_access: Dict[str, float] = {}  # 记录会话最后访问时间
         self._student_summaries: Dict[str, str] = {}  # 跨session记忆，keyed by student_id
-        self._lock = asyncio.Lock()  # 并发保护：同一实例的 session 操作互斥
+        self._session_locks: Dict[str, asyncio.Lock] = {}  # 每会话独立锁
 
     def _detect_learning_state(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -89,6 +89,7 @@ class TutorAgent(BaseAgent):
         for session_id, _ in sorted_sessions[:to_remove]:
             self.session_histories.pop(session_id, None)
             self._session_last_access.pop(session_id, None)
+            self._session_locks.pop(session_id, None)
 
     def get_system_prompt(self) -> str:
         return (
@@ -121,11 +122,15 @@ class TutorAgent(BaseAgent):
             "llm_provider": "bigmodel" | "deepseek" | "openai" | "spark" | None
         }
         """
-        async with self._lock:
+        # 每会话独立锁：同会话请求串行（保证历史一致性），不同会话并行——
+        # 原实现为全局单锁且覆盖整个 LLM 调用，会把全站辅导请求串行化
+        session_id_for_lock = context.get("session_id", "default")
+        lock = self._session_locks.setdefault(session_id_for_lock, asyncio.Lock())
+        async with lock:
             return await self._process_inner(context)
 
     async def _process_inner(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """process 的内部实现（已持有锁）"""
+        """process 的内部实现（已持有当前会话锁）"""
         self.status = "running"
         task = context.get("task", "answer_question")
         question = context.get("question", "")
@@ -181,22 +186,15 @@ class TutorAgent(BaseAgent):
             return {"status": "failed", "error": str(e)}
 
     def _format_ai_engine(self, ai_engine: Dict[str, Any]) -> str:
-        """把 BKT/FSRS 算法状态格式化为 prompt 上下文（辅导个性化依据）。"""
-        if not ai_engine:
-            return ""
-        parts = []
-        bkt = ai_engine.get("bkt") or {}
-        if bkt.get("weak_points"):
-            wp = "、".join(f"{w['kp']}(掌握{w['mastery']})" for w in bkt["weak_points"])
-            parts.append(f"【BKT 算法感知】学生薄弱知识点：{wp}——讲解时优先针对这些，避免泛泛而谈")
-        fsrs = ai_engine.get("fsrs") or {}
-        if fsrs.get("due_count"):
-            parts.append(f"【FSRS 记忆调度】有 {fsrs['due_count']} 个知识点到期复习（{fsrs.get('due_kps', [])}）——可提醒学生先复习再学新内容")
-        return chr(10).join(parts) + chr(10) if parts else ""
+        """把 BKT/FSRS 算法状态格式化为 prompt 上下文（与 error_catcher /
+        resource_generator 共用同一格式化逻辑）。"""
+        from ..services.algorithm_registry import format_ai_engine_context
+        return format_ai_engine_context(ai_engine)
 
     async def _socratic_answer(self, question: Union[str, List[Dict[str, Any]]], history: List[Dict[str, Any]], profile: Dict[str, Any], llm: Optional[BaseLLM] = None, mode: str = "socratic") -> Dict[str, Any]:
+        from .base import get_primary_cognitive_style
         weak_areas = profile.get("weak_areas", [])
-        style = profile.get("cognitive_style", {}).get("primary", "visual")
+        style = get_primary_cognitive_style(profile)
         ai_engine = profile.get("ai_engine", {})
         llm = llm or self.llm
 
@@ -218,9 +216,10 @@ class TutorAgent(BaseAgent):
                 f"学习状态：{learning_state['state']}\n"
                 f"{'教学建议：' + learning_state['hint'] if learning_state['hint'] else ''}\n"
                 f"{self._format_ai_engine(ai_engine)}"
-                f"{self._format_ai_engine(ai_engine)}"
                 f"{instruction}"
             )
+            # 图文模式同样追加安全约束（原实现完全绕过 sanitize_prompt）
+            prefix_text = SafetyGuard.sanitize_prompt(prefix_text)
             prefixed_content: List[Dict[str, Any]] = [{"type": "text", "text": prefix_text}] + question
             messages = [
                 {"role": "system", "content": sys_prompt},
@@ -234,6 +233,7 @@ class TutorAgent(BaseAgent):
                 f"认知风格：{style}\n"
                 f"学习状态：{learning_state['state']}\n"
                 f"{'教学建议：' + learning_state['hint'] if learning_state['hint'] else ''}\n"
+                f"{self._format_ai_engine(ai_engine)}"
                 f"{instruction}"
             )
             prompt = SafetyGuard.sanitize_prompt(prompt)
@@ -323,3 +323,4 @@ class TutorAgent(BaseAgent):
         """清空指定会话历史"""
         self.session_histories.pop(session_id, None)
         self._session_last_access.pop(session_id, None)
+        self._session_locks.pop(session_id, None)

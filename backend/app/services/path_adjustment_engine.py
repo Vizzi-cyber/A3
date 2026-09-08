@@ -16,6 +16,7 @@ logger = setup_logger()
 # 冷却时间：1小时内不重复检查
 _cooldown_seconds = 3600
 _last_check: dict = {}  # student_id -> timestamp
+_bg_tasks: set = set()  # 后台任务引用集（防 GC 中途回收）
 
 # 负面关键词
 _NEGATIVE_KEYWORDS = ["太难", "不会", "困惑", "不理解", "放弃", "听不懂", "跟不上", "太简单", "无聊", "没意思", "太慢", "太累", "不想学"]
@@ -45,7 +46,7 @@ def analyze_adjustment_need(student_id: str, db: Session) -> AdjustmentDecision:
     last = _last_check.get(student_id, 0)
     if now - last < _cooldown_seconds:
         return decision
-    _last_check[student_id] = now
+    # 时间戳在分析成功后写入：本次分析异常时不至于冷却期内不再尝试
 
     signals = []
 
@@ -145,29 +146,35 @@ def analyze_adjustment_need(student_id: str, db: Session) -> AdjustmentDecision:
                 parts.append("辅导提问频率较高，建议放慢进度")
             decision.suggested_feedback = "；".join(parts) if parts else "根据学习行为分析，建议调整路径"
 
+    _last_check[student_id] = now  # 分析成功，开始冷却计时
     return decision
 
 
 async def maybe_check_path_adjustment(student_id: str, db: Session):
     """检查是否需要调整路径，如需要则异步执行"""
-    decision = analyze_adjustment_need(student_id, db)
+    # 分析含 3 次同步 DB 查询，包 to_thread 避免阻塞事件循环
+    decision = await asyncio.to_thread(analyze_adjustment_need, student_id, db)
     if not decision.should_adjust:
         return None
 
-    # 异步执行调整
-    asyncio.create_task(_execute_adjustment(student_id, decision, db))
+    # 异步执行调整（任务内自建 Session：请求返回后 Depends(get_db) 会话即被关闭）
+    task = asyncio.create_task(_execute_adjustment(student_id, decision))
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
     return decision
 
 
-async def _execute_adjustment(student_id: str, decision, db: Session):
+async def _execute_adjustment(student_id: str, decision):
     """执行路径调整"""
+    from ..models.database import SessionLocal
+
+    db = SessionLocal()  # try 外创建，保证 finally 可安全关闭
     try:
         from ..models.path_adjustment_log import PathAdjustmentLogModel
         from ..models.knowledge import KnowledgePointModel, LearningRecordModel
         from ..agents import PathPlannerAgent
 
         agent = PathPlannerAgent()
-
         # 获取当前路径快照
         from sqlalchemy import func
         kps = db.query(KnowledgePointModel).order_by(KnowledgePointModel.created_at.asc()).all()
@@ -214,3 +221,5 @@ async def _execute_adjustment(student_id: str, decision, db: Session):
         logger.warning(f"路径自动调整超时: student_id={student_id}")
     except Exception as e:
         logger.warning(f"路径自动调整异常: {e}")
+    finally:
+        db.close()

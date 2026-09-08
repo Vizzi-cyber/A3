@@ -120,7 +120,32 @@ const Tutor: React.FC = () => {
   const token = useAppStore((s) => s.token);
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  // 消息镜像 ref：副作用（画像分析）必须在 updater 外触发，用 ref 读最新消息
+  const messagesRef = useRef<DisplayMessage[]>([]);
+  messagesRef.current = messages;
+  const profileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [input, setInput] = useState("");
+
+  // 对话完成后自动分析对话并更新画像（副作用独立于 setMessages updater）
+  const triggerConversationAnalysis = (msgs?: DisplayMessage[]) => {
+    const source = msgs ?? messagesRef.current;
+    const conversationText = source
+      .filter((m) => m.role === "user" || m.role === "ai")
+      .map(
+        (m) =>
+          `${m.role === "user" ? "学生" : "AI"}: ${typeof m.content === "string" ? m.content : ""}`,
+      )
+      .join("\n");
+    if (conversationText.length > 20) {
+      profileApi
+        .analyzeConversation(studentId, conversationText)
+        .catch(() => {});
+    }
+  };
+  const scheduleProfileRefresh = () => {
+    if (profileTimerRef.current) clearTimeout(profileTimerRef.current);
+    profileTimerRef.current = setTimeout(() => loadProfile(), 2000);
+  };
   const [loading, setLoading] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
     string | undefined
@@ -443,24 +468,9 @@ const Tutor: React.FC = () => {
         } else if (data.type === "complete") {
           setLoading(false);
           setMultiAgentStep("done");
-          // 对话完成后自动分析对话并更新画像
-          setMessages((prev) => {
-            const conversationText = prev
-              .filter((m) => m.role === "user" || m.role === "ai")
-              .map(
-                (m) =>
-                  `${m.role === "user" ? "学生" : "AI"}: ${typeof m.content === "string" ? m.content : ""}`,
-              )
-              .join("\n");
-            if (conversationText.length > 20) {
-              profileApi
-                .analyzeConversation(studentId, conversationText)
-                .catch(() => {});
-            }
-            return prev;
-          });
-          // 延迟刷新画像（等待分析完成）
-          setTimeout(() => loadProfile(), 2000);
+          // 对话完成后自动分析对话并更新画像（updater 外触发，updater 保持纯函数）
+          triggerConversationAnalysis();
+          scheduleProfileRefresh();
         } else if (data.type === "pong") {
           // keepalive
         }
@@ -501,6 +511,7 @@ const Tutor: React.FC = () => {
     return () => {
       mountedRef.current = false;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (profileTimerRef.current) clearTimeout(profileTimerRef.current);
       wsRef.current?.close();
     };
   }, [connectWebSocket]);
@@ -562,36 +573,20 @@ const Tutor: React.FC = () => {
       });
       const aiReply = res.data?.response || "服务暂时无响应，请稍后再试。";
       setMultiAgentStep("done");
-      setMessages((prev) => {
-        const newMsgs = [
-          ...prev,
-          {
-            id: `ai-${Date.now()}`,
-            role: "ai" as const,
-            content: aiReply,
-            time: new Date().toLocaleTimeString("zh-CN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          },
-        ];
-        // 对话完成后自动分析对话并更新画像
-        const conversationText = newMsgs
-          .filter((m) => m.role === "user" || m.role === "ai")
-          .map(
-            (m) =>
-              `${m.role === "user" ? "学生" : "AI"}: ${typeof m.content === "string" ? m.content : ""}`,
-          )
-          .join("\n");
-        if (conversationText.length > 20) {
-          profileApi
-            .analyzeConversation(studentId, conversationText)
-            .catch(() => {});
-        }
-        return newMsgs;
-      });
-      // 延迟刷新画像
-      setTimeout(() => loadProfile(), 2000);
+      const aiMsg: DisplayMessage = {
+        id: `ai-${Date.now()}`,
+        role: "ai" as const,
+        content: aiReply,
+        time: new Date().toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+      const newMsgs = [...messages, userMsg, aiMsg];
+      setMessages(newMsgs);
+      // 对话完成后自动分析对话并更新画像（updater 外触发）
+      triggerConversationAnalysis(newMsgs);
+      scheduleProfileRefresh();
     } catch (e: unknown) {
       message.error(extractApiError(e, "请求失败"));
       setMultiAgentStep("done");

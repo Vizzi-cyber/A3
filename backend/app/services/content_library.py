@@ -1,6 +1,7 @@
 """
 C语言课程内容库
-优先从数据库 knowledge_points 表读取，保留本地 fallback
+从数据库 knowledge_points 表读取；单个 JSON 列损坏时跳过该字段（部分降级），
+DB 无记录/异常时返回 None，由上游走 LLM 生成兜底
 """
 import json
 from typing import Dict, Any, Optional
@@ -9,18 +10,35 @@ from ..core.logger import setup_logger
 
 logger = setup_logger()
 
-# 本地 fallback（当数据库不可用时使用）
-_FALLBACK_LIBRARY: Dict[str, Dict[str, Any]] = {}
 
-
-def _load_fallback():
-    """延迟加载 fallback 数据（避免启动时大量内存占用）"""
-    global _FALLBACK_LIBRARY
-    if _FALLBACK_LIBRARY:
-        return
-    # 若需紧急 fallback，可在此处填充硬编码数据
-    # 正常流程应走数据库
-    _FALLBACK_LIBRARY = {}
+def _extract_content(kp) -> Dict[str, Any]:
+    """从 KnowledgePointModel 提取四类内容；单列 JSON 损坏只丢该列，不连坐整体"""
+    result: Dict[str, Any] = {}
+    if kp.document:
+        result["document"] = kp.document
+    if kp.code_example:
+        result["code"] = kp.code_example
+    if kp.questions:
+        questions = kp.questions
+        if not isinstance(questions, list):
+            try:
+                questions = json.loads(questions)
+            except Exception:
+                logger.warning(f"questions 列 JSON 损坏，跳过该字段: kp_id={kp.kp_id}")
+                questions = None
+        if questions:
+            result["questions"] = questions
+    if kp.mindmap:
+        if isinstance(kp.mindmap, str) and kp.mindmap.strip().startswith("#"):
+            result["mindmap"] = kp.mindmap  # markmap 缩进格式
+        elif isinstance(kp.mindmap, dict):
+            result["mindmap"] = kp.mindmap
+        else:
+            try:
+                result["mindmap"] = json.loads(kp.mindmap)
+            except Exception:
+                logger.warning(f"mindmap 列 JSON 损坏，跳过该字段: kp_id={kp.kp_id}")
+    return result
 
 
 def get_content(kp_id: str, db=None) -> Optional[Dict[str, Any]]:
@@ -35,26 +53,13 @@ def get_content(kp_id: str, db=None) -> Optional[Dict[str, Any]]:
             kp = db.query(KnowledgePointModel).filter(KnowledgePointModel.kp_id == kp_id).first()
             if not kp:
                 return None
-            result: Dict[str, Any] = {}
-            if kp.document:
-                result["document"] = kp.document
-            if kp.code_example:
-                result["code"] = kp.code_example
-            if kp.questions:
-                result["questions"] = kp.questions if isinstance(kp.questions, list) else json.loads(kp.questions)
-            if kp.mindmap:
-                if isinstance(kp.mindmap, str) and kp.mindmap.strip().startswith("#"):
-                    result["mindmap"] = kp.mindmap  # markmap 缩进格式
-                else:
-                    result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
-            return result
+            return _extract_content(kp)
         finally:
             if own_session:
                 db.close()
     except Exception as e:
-        logger.warning(f"内容库查询失败，回退到本地数据: {e}")
-        _load_fallback()
-        return _FALLBACK_LIBRARY.get(kp_id)
+        logger.warning(f"内容库查询失败: {e}")
+        return None
 
 
 def get_content_by_topic(topic: str, db=None) -> Optional[Dict[str, Any]]:
@@ -74,19 +79,7 @@ def get_content_by_topic(topic: str, db=None) -> Optional[Dict[str, Any]]:
             if not kp:
                 return None
             # 直接从已查询的 kp 对象提取内容，避免二次查询
-            result: Dict[str, Any] = {}
-            if kp.document:
-                result["document"] = kp.document
-            if kp.code_example:
-                result["code"] = kp.code_example
-            if kp.questions:
-                result["questions"] = kp.questions if isinstance(kp.questions, list) else json.loads(kp.questions)
-            if kp.mindmap:
-                if isinstance(kp.mindmap, str) and kp.mindmap.strip().startswith("#"):
-                    result["mindmap"] = kp.mindmap  # markmap 缩进格式
-                else:
-                    result["mindmap"] = kp.mindmap if isinstance(kp.mindmap, dict) else json.loads(kp.mindmap)
-            return result
+            return _extract_content(kp)
         finally:
             if own_session:
                 db.close()

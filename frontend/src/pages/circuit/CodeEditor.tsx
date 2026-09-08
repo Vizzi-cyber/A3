@@ -312,6 +312,10 @@ export default function CodeEditor({
     if (!mcu) return;
 
     const newMapping: PinMapping = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `map-${Date.now()}-${pinMappings.length}`,
       arduinoPin: "PA0",
       componentId: "",
       componentPinId: "",
@@ -320,18 +324,26 @@ export default function CodeEditor({
     onPinMappingsChange([...pinMappings, newMapping]);
   };
 
+  // 按 id 寻址增删改（旧数据无 id 时回退 index，保持兼容）
+  const indexOfMapping = (mapping: PinMapping) =>
+    pinMappings.findIndex(
+      (m) => (mapping.id && m.id === mapping.id) || m === mapping,
+    );
+
   const updateMapping = (
-    index: number,
+    mapping: PinMapping,
     field: keyof PinMapping,
     value: string,
   ) => {
+    const idx = indexOfMapping(mapping);
+    if (idx < 0) return;
     const updated = [...pinMappings];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[idx] = { ...updated[idx], [field]: value };
     onPinMappingsChange(updated);
   };
 
-  const removeMapping = (index: number) => {
-    onPinMappingsChange(pinMappings.filter((_, i) => i !== index));
+  const removeMapping = (mapping: PinMapping) => {
+    onPinMappingsChange(pinMappings.filter((m) => m !== mapping));
   };
 
   const nonMcuComponents = components.filter((c) => {
@@ -463,9 +475,9 @@ export default function CodeEditor({
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {pinMappings.map((mapping, index) => (
+                {pinMappings.map((mapping) => (
                   <div
-                    key={index}
+                    key={mapping.id ?? pinMappings.indexOf(mapping)}
                     className="p-3 bg-bg rounded-xl border border-border"
                   >
                     <div className="flex items-center gap-2 mb-2">
@@ -473,7 +485,7 @@ export default function CodeEditor({
                       <select
                         value={mapping.arduinoPin}
                         onChange={(e) =>
-                          updateMapping(index, "arduinoPin", e.target.value)
+                          updateMapping(mapping, "arduinoPin", e.target.value)
                         }
                         className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-[12px] outline-none"
                       >
@@ -571,7 +583,7 @@ export default function CodeEditor({
                       <select
                         value={mapping.componentId}
                         onChange={(e) =>
-                          updateMapping(index, "componentId", e.target.value)
+                          updateMapping(mapping, "componentId", e.target.value)
                         }
                         className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-[12px] outline-none"
                       >
@@ -587,7 +599,11 @@ export default function CodeEditor({
                       <select
                         value={mapping.componentPinId}
                         onChange={(e) =>
-                          updateMapping(index, "componentPinId", e.target.value)
+                          updateMapping(
+                            mapping,
+                            "componentPinId",
+                            e.target.value,
+                          )
                         }
                         className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-[12px] outline-none"
                       >
@@ -604,7 +620,7 @@ export default function CodeEditor({
                       </select>
 
                       <button
-                        onClick={() => removeMapping(index)}
+                        onClick={() => removeMapping(mapping)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                       >
                         <Trash2 size={12} />
@@ -619,7 +635,7 @@ export default function CodeEditor({
                       ).map((mode) => (
                         <button
                           key={mode}
-                          onClick={() => updateMapping(index, "mode", mode)}
+                          onClick={() => updateMapping(mapping, "mode", mode)}
                           className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
                             mapping.mode === mode
                               ? "bg-accent text-white"

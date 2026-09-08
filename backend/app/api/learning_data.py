@@ -207,6 +207,7 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
             profile.knowledge_base = kb
             db.commit()
     except Exception:
+        db.rollback()  # 会话失效态不回滚会让后续查询抛 PendingRollbackError
         logger.warning(f"Failed to update profile from quiz: student_id={request.student_id}")
 
     # 检查是否需要调整路径

@@ -5,7 +5,7 @@
 import json
 import random
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
@@ -67,7 +67,10 @@ def _calculate_difficulty(profile: Optional[StudentProfileModel], mastery_map: D
     if profile:
         # 知识基础影响
         kb = profile.knowledge_base or {}
-        overall_score = kb.get("overall_score", 0.5)
+        try:
+            overall_score = float(kb.get("overall_score", 0.5))
+        except (TypeError, ValueError):
+            overall_score = 0.5
         base_difficulty = 1.0 + overall_score * 4.0  # 映射到 1-5
 
         # 薄弱点需要降低难度
@@ -115,7 +118,7 @@ def _get_weak_kp_ids(profile: Optional[StudentProfileModel], mastery_map: Dict[s
 def _select_questions(
     all_questions: List[Dict[str, Any]],
     target_difficulty: int,
-    count: int = 5,
+    count: int = Query(5, ge=1, le=50),
     focus_kp_ids: Optional[List[str]] = None,
     preferred_kps: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
@@ -170,7 +173,7 @@ def _select_questions(
 
 @router.get("/daily")
 async def get_daily_quiz(
-    count: int = 5,
+    count: int = Query(5, ge=1, le=50),
     subject: Optional[str] = None,
     db: Session = Depends(get_db),
     student_id: str = Depends(get_current_student_id),
@@ -179,8 +182,7 @@ async def get_daily_quiz(
     # 加载学生画像
     profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
 
-    # 获取学习进度
-    since = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
+    # 获取学习进度（全量最大进度聚合，难度自适应用）
     progress_rows = (
         db.query(LearningRecordModel.kp_id, func.max(LearningRecordModel.progress).label("max_progress"))
         .filter(LearningRecordModel.student_id == student_id)

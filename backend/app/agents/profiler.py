@@ -164,6 +164,8 @@ class ProfilerAgent(BaseAgent):
             {"role": "user", "content": prompt},
         ]
         data = await self.llm.generate_json(messages, temperature=0.4, max_tokens=4096)
+        if isinstance(data, dict) and data.get("status") == "error":
+            return {"status": "failed", "error": data.get("message", "LLM 返回内容无法解析")}
         return {"status": "success", "analysis": data}
 
     def _default_profile(self, student_id: str) -> Dict[str, Any]:

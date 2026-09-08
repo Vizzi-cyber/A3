@@ -25,6 +25,21 @@ import math
 
 # 难度 1-5 级 → 时间系数（人工先验表；IRT b 标定后按级插值查此表）
 DIFFICULTY_FACTOR_TABLE = {1: 0.7, 2: 0.9, 3: 1.1, 4: 1.4, 5: 1.8}
+
+
+def _normalize_difficulty_level(raw: Any) -> int:
+    """难度归一化到 1-5 级。
+
+    knowledge_points.difficulty 列为 0-1 比例（seed 数据 0.2~0.65）：≤1 视为
+    0-1 比例线性映射到 1-5；>1 视为已是级数（兼容手工构造数据）。
+    """
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return 3
+    if v <= 1.0:
+        return int(round(min(5.0, max(1.0, 1.0 + v * 4.0))))
+    return int(round(min(5.0, max(1.0, v))))
 # adjust_path 策略臂（Thompson Sampling）：回炉复习 / 强化练习 / 加速推进 / 维持现状
 # maintain 必须是臂而非仅默认值：≥90 且趋势上升档的候选集为 accelerate+maintain，
 # 若 maintain 不在臂中，MAB 期望排序会在该档退化为必选 accelerate
@@ -89,7 +104,11 @@ class DAGPathPlanner:
                 continue
             prereqs = kp.get("prerequisites", []) or []
             self.kp_graph[kp_id] = prereqs
-            self.kp_meta[kp_id] = kp
+            meta = dict(kp)
+            # 难度量纲归一化：DB difficulty 列为 0-1 比例（seed 0.2~0.65），
+            # 算法内系数表/排序按 1-5 级设计，入口统一转换避免恒命中默认系数
+            meta["difficulty"] = _normalize_difficulty_level(kp.get("difficulty", 3))
+            self.kp_meta[kp_id] = meta
             self.in_degree[kp_id] = len(prereqs)
             for p in prereqs:
                 self.reverse_graph[p].append(kp_id)
@@ -141,20 +160,25 @@ class DAGPathPlanner:
         """
         criticality = defaultdict(int)
 
-        def count_downstream(kp_id, memo):
+        def count_downstream(kp_id, memo, in_progress=None):
             if kp_id in memo:
                 return memo[kp_id]
+            in_progress = in_progress if in_progress is not None else set()
+            if kp_id in in_progress:  # 成环防护：环上节点按直接后继数近似
+                return len(self.reverse_graph.get(kp_id, []))
+            in_progress.add(kp_id)
             succs = self.reverse_graph.get(kp_id, [])
             count = len(succs)
             for s in succs:
-                count += count_downstream(s, memo)
+                count += count_downstream(s, memo, in_progress)
+            in_progress.discard(kp_id)
             memo[kp_id] = count
             return count
 
         memo = {}
         for kp_id in self.kp_graph:
             criticality[kp_id] = count_downstream(kp_id, memo)
-        return criticality
+        return dict(criticality)
 
     def _estimate_mastery_probability(self, kp_id: str, mastery_map: Dict[str, float]) -> float:
         """
@@ -291,14 +315,17 @@ class DAGPathPlanner:
 
         # 计算每个节点的拓扑层级（最长前置链长度）
         level_cache: Dict[str, int] = {}
+        in_progress: set = set()
         def topo_level(kp_id: str) -> int:
             if kp_id in level_cache:
                 return level_cache[kp_id]
-            prereqs = [p for p in self.kp_graph.get(kp_id, []) if p in kp_set]
-            if not prereqs:
+            if kp_id in in_progress:  # 成环防护
                 level_cache[kp_id] = 0
                 return 0
-            lv = max(topo_level(p) for p in prereqs) + 1
+            in_progress.add(kp_id)
+            prereqs = [p for p in self.kp_graph.get(kp_id, []) if p in kp_set]
+            lv = max((topo_level(p) for p in prereqs), default=-1) + 1
+            in_progress.discard(kp_id)
             level_cache[kp_id] = lv
             return lv
 
@@ -383,18 +410,47 @@ class DAGPathPlanner:
             "resources": unique_tags,
         }
 
+    def _build_fsrs_review_stage(self, due_ids: List[str]) -> Optional[Dict[str, Any]]:
+        """FSRS 到期知识点 → 复习阶段（schema 与既有 review 阶段一致）。
+
+        review_source 字段用于与测验触发的回炉复习（adjust_path）区分来源。
+        """
+        valid_ids = [k for k in due_ids if k in self.kp_graph]
+        if not valid_ids:
+            return None
+        return {
+            "title": "到期复习",
+            "type": "review",
+            "topics": [self.kp_meta.get(k, {}).get("name", k) for k in valid_ids],
+            "kp_ids": valid_ids,
+            "hours": round(min(2.0, max(0.5, 0.5 * len(valid_ids))), 1),
+            "criteria": f"复习 {len(valid_ids)} 个到期知识点，按 FSRS 记忆调度巩固记忆",
+            "resources": [],
+            "review_source": "fsrs_due",
+        }
+
     def plan_path(
         self,
         student_id: str,
         target_kp_id: str,
         mastery_map: Dict[str, float],
         profile: Dict[str, Any],
+        due_kp_ids: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         生成个性化学习路径（自适应 DAG 路径规划算法）
+
+        due_kp_ids: FSRS 记忆调度判定的到期复习知识点（可选注入，与 BKT/IRT/GKT
+        同一模式）。提供时在路径头部插入 type="review" 的复习阶段，已被学习阶段
+        覆盖的知识点自动去重；未提供或全部无效时行为与原逻辑完全一致。
         """
         if target_kp_id not in self.kp_graph:
             return {"status": "error", "message": f"目标知识点 {target_kp_id} 不存在"}
+
+        # 脏数据成环会使依赖递归/拓扑排序退化：入口即拒绝，调用方降级默认路径
+        cycles = self.detect_cycles()
+        if cycles:
+            return {"status": "error", "message": f"知识图谱存在环，无法规划路径: {cycles[:3]}"}
 
         # 0. BKT 增强：注入完整 BKT 引擎时，用参数化估计的掌握度
         #    覆盖画像快照掌握度（预测概率 > 0 才覆盖，保持向后兼容）
@@ -427,15 +483,15 @@ class DAGPathPlanner:
         unmastered_ids = [k for k in dependency_chain if mastery_map.get(k, 0.0) < 0.85]
 
         if not unmastered_ids:
-            return {
-                "status": "success",
-                "student_id": student_id,
-                "target_kp_id": target_kp_id,
-                "estimated_total_hours": 2,
-                "mastered_count": len(dependency_chain),
-                "review_count": 0,
-                "learn_count": 0,
-                "stages": [{
+            # 全部已掌握：纯复习路径；有 FSRS 到期卡时一并纳入复习范围
+            if due_kp_ids:
+                review_stage = self._build_fsrs_review_stage(
+                    list(dict.fromkeys([target_kp_id, *due_kp_ids]))
+                )
+            else:
+                review_stage = None
+            if review_stage is None:
+                review_stage = {
                     "stage_no": 1,
                     "title": "复习巩固",
                     "type": "review",
@@ -444,7 +500,16 @@ class DAGPathPlanner:
                     "hours": 2,
                     "criteria": "复习已掌握内容，巩固记忆",
                     "resources": [],
-                }],
+                }
+            return {
+                "status": "success",
+                "student_id": student_id,
+                "target_kp_id": target_kp_id,
+                "estimated_total_hours": review_stage["hours"],
+                "mastered_count": len(dependency_chain),
+                "review_count": len(review_stage.get("kp_ids", [])),
+                "learn_count": 0,
+                "stages": [review_stage],
                 "dependency_chain": dependency_chain,
             }
 
@@ -483,6 +548,17 @@ class DAGPathPlanner:
         preference = profile.get("preference", "balanced")
 
         stages = self._stage_division(sorted_kps, daily_duration, preference)
+
+        # 5.5 FSRS 增强：到期复习知识点插入路径头部（与 BKT/IRT/GKT 注入同一模式；
+        # 已被学习阶段 kp_ids 覆盖的知识点去重，避免同一知识点既学又复习）
+        if due_kp_ids:
+            covered = {kp for s in stages for kp in (s.get("kp_ids") or [])}
+            pending_due = [k for k in dict.fromkeys(due_kp_ids) if k not in covered]
+            review_stage = self._build_fsrs_review_stage(pending_due)
+            if review_stage is not None:
+                stages.insert(0, review_stage)
+                for i, s in enumerate(stages):  # 插入后统一重编号
+                    s["stage_no"] = i + 1
 
         # 6. 分类统计
         mastered = [k for k in dependency_chain if mastery_map.get(k, 0.0) >= 0.85]

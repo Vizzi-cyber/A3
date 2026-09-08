@@ -406,11 +406,27 @@ const App: React.FC = () => {
       <Routes>
         <Route
           path="/login"
-          element={isLoggedIn ? <Navigate to="/" replace /> : <Login />}
+          element={
+            isLoggedIn ? (
+              <Navigate to="/" replace />
+            ) : (
+              <ErrorBoundary>
+                <Login />
+              </ErrorBoundary>
+            )
+          }
         />
         <Route
           path="/*"
-          element={isLoggedIn ? <PrivateLayout /> : <LandingPage />}
+          element={
+            isLoggedIn ? (
+              <PrivateLayout />
+            ) : (
+              <ErrorBoundary>
+                <LandingPage />
+              </ErrorBoundary>
+            )
+          }
         />
       </Routes>
       <OnboardingQuestionnaire

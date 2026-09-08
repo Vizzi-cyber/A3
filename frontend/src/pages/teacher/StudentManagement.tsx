@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Table,
   Card,
@@ -49,10 +49,12 @@ const StudentManagement: React.FC = () => {
   }, []);
 
   // 页面重新可见时刷新数据
+  // 经 ref 调用最新函数：effect 空依赖注册一次，但不会闭包过期
+  const loadStudentsRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        loadStudents();
+        loadStudentsRef.current();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -71,6 +73,7 @@ const StudentManagement: React.FC = () => {
       setLoading(false);
     }
   };
+  loadStudentsRef.current = loadStudents;
 
   const handleViewDetail = async (studentId: string) => {
     setDetailLoading(true);

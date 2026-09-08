@@ -13,10 +13,17 @@ from typing import Any, Dict, List, Optional
 
 _bkt_engine: Any = None
 _irt_diagnoser: Any = None
+_ncd_diagnoser: Any = None
 _gkt_engine: Any = None
 _trend_weight_learner: Any = None
 _strategy_bandits: Dict[str, Any] = {}  # student_id -> ThompsonSamplingSelector
 _resource_bandits: Dict[str, Any] = {}  # student_id -> ThompsonSamplingSelector
+_BANDIT_CACHE_MAX = 5000  # 进程内缓存上限（超出时随机淘汰，防长期运行无界增长）
+
+
+def _evict_bandit_cache(cache: Dict[str, Any]) -> None:
+    while len(cache) >= _BANDIT_CACHE_MAX:
+        cache.pop(next(iter(cache)))
 
 
 def set_bkt_engine(engine: Any) -> None:
@@ -35,6 +42,15 @@ def set_irt_diagnoser(diagnoser: Any) -> None:
 
 def get_irt_diagnoser() -> Any:
     return _irt_diagnoser
+
+
+def set_ncd_diagnoser(diagnoser: Any) -> None:
+    global _ncd_diagnoser
+    _ncd_diagnoser = diagnoser
+
+
+def get_ncd_diagnoser() -> Any:
+    return _ncd_diagnoser
 
 
 def set_gkt_engine(engine: Any) -> None:
@@ -66,13 +82,60 @@ def get_irt_ability(student_id: str) -> Optional[float]:
         return None
 
 
+def get_irt_difficulty_map() -> Optional[Dict[str, float]]:
+    """查询 IRT 标定的难度 b 值映射 {item_id: b}（未拟合返回 None，静默降级）。
+
+    注意：item_id 可能是 f"{kp_id}:{question_id}" 复合键（启动拟合按作答明细
+    构造），按知识点使用时需对前缀聚合。
+    """
+    diagnoser = _irt_diagnoser
+    if diagnoser is None or not getattr(diagnoser, "is_fitted", False):
+        return None
+    try:
+        return dict(diagnoser.difficulty_map)
+    except Exception:
+        return None
+
+
+class _KpAggregatedIRT:
+    """IRT 诊断器的按知识点聚合视图。
+
+    拟合时作答明细存在则 item_id 为 f"{kp_id}:{question_id}" 复合键，路径规划等
+    按 kp_id 查难度的调用方会全部 miss；此处按前缀聚合 b 值（同 api/matching.py
+    口径），其余属性透传内部诊断器。
+    """
+
+    def __init__(self, inner: Any):
+        self._inner = inner
+        self.is_fitted = True
+        raw = getattr(inner, "difficulty_map", {}) or {}
+        agg: Dict[str, List[float]] = {}
+        for item_id, b in raw.items():
+            try:
+                agg.setdefault(str(item_id).split(":")[0], []).append(float(b))
+            except (TypeError, ValueError):
+                continue
+        self._kp_map: Dict[str, float] = {kp: sum(v) / len(v) for kp, v in agg.items() if v}
+
+    def get_item_difficulty(self, item_id: str):
+        return self._kp_map.get(item_id)
+
+    @property
+    def difficulty_map(self) -> Dict[str, float]:
+        return dict(self._kp_map)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 def attach_irt_to_planner(planner) -> bool:
     """将已拟合的 IRT 诊断器注入路径规划器（学习成本模型用 b 值）。
-    未拟合时不动 planner，返回 False（调用方无需判空）。"""
+    未拟合时不动 planner，返回 False（调用方无需判空）。
+    注入的是复合 item_id 按知识点前缀聚合后的视图，保证按 kp_id 查难度可命中。"""
     diagnoser = _irt_diagnoser
     if diagnoser is None or not getattr(diagnoser, "is_fitted", False):
         return False
-    planner.set_irt_diagnoser(diagnoser)
+    planner.set_irt_diagnoser(_KpAggregatedIRT(diagnoser))
     return True
 
 
@@ -199,6 +262,7 @@ def get_strategy_bandit(student_id: str) -> Any:
     if student_id not in _strategy_bandits:
         from ..algorithms.bandit_selector import ThompsonSamplingSelector
         from ..algorithms.path_planning_dag import STRATEGY_ARMS
+        _evict_bandit_cache(_strategy_bandits)
         _strategy_bandits[student_id] = ThompsonSamplingSelector(STRATEGY_ARMS, seed=42)
     return _strategy_bandits[student_id]
 
@@ -221,6 +285,7 @@ def get_resource_bandit(student_id: str) -> Any:
     if student_id not in _resource_bandits:
         from ..algorithms.bandit_selector import ThompsonSamplingSelector
         from ..algorithms.weighted_matching import RESOURCE_ARMS
+        _evict_bandit_cache(_resource_bandits)
         _resource_bandits[student_id] = ThompsonSamplingSelector(RESOURCE_ARMS, seed=42)
     return _resource_bandits[student_id]
 
@@ -259,3 +324,66 @@ def build_memory_status(db, student_id: str) -> Optional[dict]:
         }
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------- agent prompt 算法上下文
+def build_ai_engine_context(db, student_id: str) -> Dict[str, Any]:
+    """构建注入 agent prompt 的算法上下文（BKT 薄弱点 + FSRS 到期复习）。
+
+    tutor / error_catcher / resource_generator 三处 agent 共用；任一算法层
+    故障都静默降级为空 dict，保证 LLM 主流程不受影响。
+    """
+    ai_engine: Dict[str, Any] = {}
+    try:
+        bkt = _bkt_engine
+        if bkt is not None and getattr(bkt, "is_fitted", False):
+            from ..models.knowledge import KnowledgePointModel
+            kp_ids = [k.kp_id for k in db.query(KnowledgePointModel).all()]
+            mastery = bkt.estimate_mastery_map(student_id, kp_ids)
+            weak = sorted(
+                [(k, v) for k, v in mastery.items() if v < 0.5],
+                key=lambda x: x[1],
+            )[:3]
+            if weak:
+                ai_engine["bkt"] = {
+                    "weak_points": [{"kp": k, "mastery": round(v, 2)} for k, v in weak],
+                    "note": "BKT 贝叶斯知识追踪实时掌握度",
+                }
+    except Exception:
+        pass
+    try:
+        from ..algorithms.memory_scheduler import FSRSMemoryScheduler
+        from ..models.memory import MemoryCardModel
+
+        scheduler = FSRSMemoryScheduler()
+        rows = db.query(MemoryCardModel).filter(
+            MemoryCardModel.student_id == student_id
+        ).all()
+        for r in rows:
+            scheduler.restore_card(r.student_id, r.kp_id, r.card_json)
+        if scheduler.card_count:
+            due = scheduler.get_due_cards(student_id)
+            if due:
+                ai_engine["fsrs"] = {
+                    "due_count": len(due),
+                    "due_kps": [d["kp_id"] for d in due[:3]],
+                    "note": "FSRS 间隔重复记忆调度（到期复习）",
+                }
+    except Exception:
+        pass
+    return ai_engine
+
+
+def format_ai_engine_context(ai_engine: Dict[str, Any]) -> str:
+    """把 build_ai_engine_context 的输出格式化为 prompt 片段（空输入返回空串）。"""
+    if not ai_engine:
+        return ""
+    parts = []
+    bkt = ai_engine.get("bkt") or {}
+    if bkt.get("weak_points"):
+        wp = "、".join(f"{w['kp']}(掌握{w['mastery']})" for w in bkt["weak_points"])
+        parts.append(f"【BKT 算法感知】学生薄弱知识点：{wp}——讲解时优先针对这些，避免泛泛而谈")
+    fsrs = ai_engine.get("fsrs") or {}
+    if fsrs.get("due_count"):
+        parts.append(f"【FSRS 记忆调度】有 {fsrs['due_count']} 个知识点到期复习（{fsrs.get('due_kps', [])}）——可提醒学生先复习再学新内容")
+    return "\n".join(parts) + "\n" if parts else ""

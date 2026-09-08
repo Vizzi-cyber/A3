@@ -165,13 +165,14 @@ async def get_trend_history(student_id: str, days: int = 30, db: Session = Depen
     """获取历史趋势数据"""
     if student_id != _current:
         raise HTTPException(status_code=403, detail="Not authorized to view this history")
-    trends = (
+    rows = (
         db.query(TrendDataModel)
         .filter(TrendDataModel.student_id == student_id)
-        .order_by(TrendDataModel.date.asc())
+        .order_by(TrendDataModel.date.desc())
         .limit(days)
         .all()
     )
+    trends = list(reversed(rows))  # 取最近 N 天后按日期升序返回
     return {
         "status": "success",
         "student_id": student_id,

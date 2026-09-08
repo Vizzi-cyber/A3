@@ -24,11 +24,13 @@ const NoteEditor: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [titleValue, setTitleValue] = useState("");
 
+  // 仅在切换笔记时重置标题：依赖 activeNote 对象身份会让自动保存回写
+  // （store 每次都换新对象）把用户正在输入的标题覆盖回旧值
   useEffect(() => {
     if (activeNote) {
       setTitleValue(activeNote.title);
     }
-  }, [activeNote]);
+  }, [activeNote?.note_id]);
 
   const handleContentChange = useCallback(
     (value: string | undefined) => {

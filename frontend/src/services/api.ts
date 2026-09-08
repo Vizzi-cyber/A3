@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { AxiosResponse } from "axios";
+import type { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useAppStore } from "../store";
 import type {
   StudentProfile,
@@ -83,10 +83,36 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// 401 自动刷新：并发 401 合并等待同一次 /auth/refresh，成功后重放原请求
+let refreshInFlight: Promise<boolean> | null = null;
+
+function tryRefreshToken(): Promise<boolean> {
+  const token = useAppStore.getState().token;
+  if (!token) return Promise.resolve(false);
+  if (!refreshInFlight) {
+    refreshInFlight = axios
+      .post<LoginResponse>(`${API_BASE_URL}/auth/refresh`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const newToken = res.data?.access_token;
+        if (!newToken) return false;
+        const { studentId, login } = useAppStore.getState();
+        login(newToken, studentId || "");
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
 // 响应拦截器
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error) => {
+  async (error) => {
     // 网络错误 / 离线状态
     if (!error.response) {
       if (error.code === "ERR_NETWORK" || error.code === "ERR_FAILED") {
@@ -102,6 +128,29 @@ api.interceptors.response.use(
     const message =
       data?.message || data?.detail || error.message || "请求失败";
     if (status === 401) {
+      const originalRequest = error.config as
+        | (AxiosRequestConfig & { _retried401?: boolean })
+        | undefined;
+      const requestUrl = originalRequest?.url || "";
+      const isAuthCall =
+        requestUrl.includes("/auth/refresh") ||
+        requestUrl.includes("/auth/login") ||
+        requestUrl.includes("/auth/register");
+      // 认证接口本身的 401 直接登出；业务接口先尝试静默刷新一次
+      if (!isAuthCall && originalRequest && !originalRequest._retried401) {
+        const refreshed = await tryRefreshToken();
+        if (refreshed) {
+          originalRequest._retried401 = true;
+          const newToken = useAppStore.getState().token;
+          if (newToken) {
+            originalRequest.headers = {
+              ...(originalRequest.headers || {}),
+              Authorization: `Bearer ${newToken}`,
+            };
+          }
+          return api.request(originalRequest);
+        }
+      }
       useAppStore.getState().logout();
       window.dispatchEvent(new CustomEvent("auth:expired"));
       return Promise.reject(new Error("登录已过期，请重新登录"));
@@ -345,6 +394,7 @@ export const authApi = {
       data,
     ),
   me: () => api.get<UserInfoResponse>("/auth/me"),
+  refresh: () => api.post<LoginResponse>("/auth/refresh"),
 };
 
 // ---------- Dashboard ----------
@@ -1647,18 +1697,34 @@ export interface StreamCallbacks {
   onError?: (message: string) => void;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
+// fetch 通道 401 处理：与 axios 拦截器同一策略——静默刷新换新 token 重发一次，
+// 刷新失败才派发 auth:expired 软通知（不再 window.location.href 硬跳转丢页面状态）
+async function fetchWithAuth(
+  path: string,
+  init: RequestInit,
+  retried = false,
+): Promise<Response> {
   const token = useAppStore.getState().token;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...(init.headers as Record<string, string> | undefined),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}${path}`, { headers });
-  if (res.status === 401) {
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (res.status === 401 && !retried && !path.includes("/auth/")) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      return fetchWithAuth(path, init, true);
+    }
     useAppStore.getState().logout();
-    window.location.href = "/login";
+    window.dispatchEvent(new CustomEvent("auth:expired"));
     throw new Error("登录已过期，请重新登录");
   }
+  return res;
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetchWithAuth(path, {});
   if (!res.ok) {
     const err = await res
       .json()
@@ -1673,22 +1739,10 @@ export async function apiStream(
   body: unknown,
   callbacks: StreamCallbacks,
 ): Promise<void> {
-  const token = useAppStore.getState().token;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetchWithAuth(path, {
     method: "POST",
-    headers,
     body: JSON.stringify(body),
   });
-  if (res.status === 401) {
-    useAppStore.getState().logout();
-    window.location.href = "/login";
-    throw new Error("登录已过期，请重新登录");
-  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: "请求失败" }));
     throw new Error(err.message || `HTTP ${res.status}`);

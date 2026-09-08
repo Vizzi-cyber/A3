@@ -111,6 +111,19 @@ class BaseLLM(ABC):
 _DEFAULT_TIMEOUT = 60.0  # 秒
 
 
+# 监控日志后台任务引用集：create_task 不持引用可能被 GC 中途回收（日志偶丢）
+_log_bg_tasks: set = set()
+
+
+def _spawn_logged(llm, prompt_tokens, completion_tokens, duration_ms, success, error=""):
+    task = asyncio.create_task(asyncio.to_thread(
+        llm._log_llm_call, llm.provider, llm.model,
+        prompt_tokens, completion_tokens, duration_ms, success, error,
+    ))
+    _log_bg_tasks.add(task)
+    task.add_done_callback(_log_bg_tasks.discard)
+
+
 class OpenAICompatibleLLM(BaseLLM):
     """OpenAI 兼容接口（智谱AI/DeepSeek/讯飞星火 等）"""
 
@@ -172,12 +185,9 @@ class OpenAICompatibleLLM(BaseLLM):
                 content = msg.content or ""
                 duration_ms = (time.time() - start) * 1000
                 usage = getattr(response, 'usage', None)
-                asyncio.create_task(asyncio.to_thread(
-                    self._log_llm_call, self.provider, self.model,
-                    getattr(usage, 'prompt_tokens', 0) if usage else 0,
-                    getattr(usage, 'completion_tokens', 0) if usage else 0,
-                    duration_ms, True,
-                ))
+                _spawn_logged(self, getattr(usage, 'prompt_tokens', 0) if usage else 0,
+                              getattr(usage, 'completion_tokens', 0) if usage else 0,
+                              duration_ms, True)
                 return content
             except Exception as e:
                 last_exception = e
@@ -189,10 +199,7 @@ class OpenAICompatibleLLM(BaseLLM):
                     logger.warning(f"LLM transient error (attempt {attempt+1}/{max_retries}), retrying in {wait}s: {e}")
                     await asyncio.sleep(wait)
                     continue
-                asyncio.create_task(asyncio.to_thread(
-                    self._log_llm_call, self.provider, self.model,
-                    0, 0, duration_ms, False, str(e)[:500],
-                ))
+                _spawn_logged(self, 0, 0, duration_ms, False, str(e)[:500])
                 raise
         raise last_exception
 
@@ -210,6 +217,8 @@ class OpenAICompatibleLLM(BaseLLM):
 
         max_retries = 3
         last_exception = None
+        yielded = False  # 已向消费者 yield 过内容后不再重试，否则会输出重复文本
+        _bg_tasks: set = set()
         for attempt in range(max_retries):
             start = time.time()
             try:
@@ -222,16 +231,28 @@ class OpenAICompatibleLLM(BaseLLM):
                         continue
                     content = choice.delta.content
                     if content:
+                        yielded = True
                         yield content
                 duration_ms = (time.time() - start) * 1000
-                asyncio.create_task(asyncio.to_thread(
+                task = asyncio.create_task(asyncio.to_thread(
                     self._log_llm_call, self.provider, self.model,
                     0, 0, duration_ms, True,
                 ))
+                _bg_tasks.add(task)
+                task.add_done_callback(_bg_tasks.discard)
                 return
             except Exception as e:
                 last_exception = e
                 duration_ms = (time.time() - start) * 1000
+                if yielded:
+                    logger.warning(f"LLM stream interrupted after yielding content: {e}")
+                    task = asyncio.create_task(asyncio.to_thread(
+                        self._log_llm_call, self.provider, self.model,
+                        0, 0, duration_ms, False, str(e)[:500],
+                    ))
+                    _bg_tasks.add(task)
+                    task.add_done_callback(_bg_tasks.discard)
+                    raise
                 error_str = str(e).lower()
                 is_transient = any(k in error_str for k in ["timeout", "429", "503", "connection", "rate limit"])
                 if is_transient and attempt < max_retries - 1:
@@ -239,10 +260,12 @@ class OpenAICompatibleLLM(BaseLLM):
                     logger.warning(f"LLM stream transient error (attempt {attempt+1}/{max_retries}), retrying in {wait}s: {e}")
                     await asyncio.sleep(wait)
                     continue
-                asyncio.create_task(asyncio.to_thread(
+                task = asyncio.create_task(asyncio.to_thread(
                     self._log_llm_call, self.provider, self.model,
                     0, 0, duration_ms, False, str(e)[:500],
                 ))
+                _bg_tasks.add(task)
+                task.add_done_callback(_bg_tasks.discard)
                 raise
         raise last_exception
 
@@ -281,13 +304,19 @@ class FailoverLLM(BaseLLM):
 
     async def astream(self, messages, temperature=0.7, max_tokens=1024, thinking: bool = False) -> AsyncIterator[str]:
         last_error = None
+        yielded = False
         for llm in self._providers:
             try:
                 async for chunk in llm.astream(messages, temperature, max_tokens, thinking):
+                    yielded = True
                     yield chunk
                 return
             except Exception as e:
                 last_error = e
+                if yielded:
+                    # 已向消费者输出过内容：降级会从头重发造成文本重复，直接上抛
+                    logger.warning(f"LLM provider {llm.provider}({llm.model}) 流式中途失败（已输出 {yielded and '部分内容'}），不再降级: {str(e)[:200]}")
+                    raise
                 logger.warning(f"LLM provider {llm.provider}({llm.model}) 流式调用失败，自动降级: {str(e)[:200]}")
         raise last_error
 

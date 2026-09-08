@@ -108,7 +108,7 @@ RAG 本地知识库问答，不直接给答案、引导独立思考
 
 ### 个性化学习路径
 
-基于艾宾浩斯遗忘曲线生成复习提醒
+基于 FSRS 记忆调度算法生成复习提醒（到期知识点自动插入路径复习阶段）
 分阶段 C 语言学习大纲（16 个学习节点）
 AI 自动生成薄弱点定向学习资源
 可视化学习进度，智能调整学习难度
@@ -170,7 +170,7 @@ C 语言代码粘贴自动捕获语法 / 逻辑 / 思维错误
 - **ADPP 掌握度升级**：`DAGPathPlanner.set_bkt_engine()` 注入完整 BKT 引擎后，路径规划使用带 EM 参数估计的掌握度（替代"简化 BKT"概率合并公式）
 - **效果评估升级**：`evaluate(memory_status=...)` 输出真实 FSRS 复习队列与记忆保持预警（替代"增加间隔重复练习频次"字符串提示）
 - **FSRS 持久化**：记忆卡片状态存 `memory_cards` 表，重启不丢失
-- **验证**：`python scripts/verify_ai_algorithms.py`（23 项断言全部通过）
+- **验证**：`python scripts/verify_ai_algorithms.py`（100 项断言全部通过）
 
 
 
@@ -325,7 +325,7 @@ C 语言代码粘贴自动捕获语法 / 逻辑 / 思维错误
 
 | 防线 | 机制 | 实现 |
 |------|------|------|
-| ① 输入过滤 | `SafetyGuard.check_input()` | 预编译正则匹配15个敏感词 |
+| ① 输入过滤 | `SafetyGuard.check_input()` | 预编译正则匹配14个敏感词 |
 | ② Prompt加固 | `SafetyGuard.sanitize_prompt()` | 自动追加安全约束，未成年人额外保护 |
 | ③ 输出过滤 | `SafetyGuard.check_output()` | 同样敏感词检测 |
 | ④ 结构校验 | `HallucinationGuard.verify_json_schema()` | JSON必要字段验证 |
@@ -376,11 +376,11 @@ C 语言代码粘贴自动捕获语法 / 逻辑 / 思维错误
 ### 已实现
 
 - ✅ 12 个 AI 智能体完整实现，LangGraph 工作流编排
-- ✅ 28 个前端页面 + 36 个后端 API 模块（167+ 接口）
+- ✅ 30+ 个前端页面 + 39 个后端 API 模块（210+ 接口）
 - ✅ 学生端 + 教师端双角色完整功能
 - ✅ 浏览器端电路仿真（MNA 求解器）
-- ✅ 39 个 E2E 测试用例全部通过
-- ✅ Docker 一键部署
+- ✅ 49 个 E2E 测试用例（7 个 spec 文件）全部通过
+- ✅ Docker 一键部署（`frontend/Dockerfile` 多阶段构建）
 
 ### 展望
 
@@ -404,8 +404,8 @@ C 语言代码粘贴自动捕获语法 / 逻辑 / 思维错误
 | **内容体系** | 16个C语言知识点，四维内容 | 数据库驱动，文档+代码+练习+导图 |
 | **游戏化** | 知识树+等级+挑战+排行榜 | D3.js动画 + 10级系统 + 6维排名 |
 | **多模型** | 5种LLM一键切换 | LLMFactory统一接口 + 指数退避重试 |
-| **教师端** | 学情分析+班级对比+报告导出 | 雷达图 + 排名表 + PDF/Excel导出 |
-| **工程化** | 167+API，39个E2E测试 | FastAPI + Playwright + Docker部署 |
+| **教师端** | 学情分析+班级对比+报告导出 | 雷达图 + 排名表 + CSV(Excel兼容)/Markdown导出 |
+| **工程化** | 210+API，49个E2E测试 | FastAPI + Playwright + Docker部署 |
 
 ---
 
@@ -473,7 +473,7 @@ C 语言代码粘贴自动捕获语法 / 逻辑 / 思维错误
 | **Axios** | ^1.6.0 | HTTP客户端（Token拦截器、请求去重） |
 | **React Markdown** | ^9.0.0 | Markdown渲染（GFM/数学公式/代码高亮） |
 | **KaTeX** | ^0.17.0 | 数学公式渲染 |
-| **Playwright** | ^1.59.1 | E2E测试（39个测试用例） |
+| **Playwright** | ^1.59.1 | E2E测试（7个spec文件，49个测试用例） |
 | **Sentry** | ^10.50.0 | 错误监控 |
 
 ---
@@ -662,7 +662,7 @@ result = await agent.cached_process(context)
 
 **输入检查** `check_input(text)`：
 - 支持纯文本和图文数组两种输入格式
-- 预编译正则匹配15个敏感词（政治敏感、暴力恐怖等）
+- 预编译正则匹配14个敏感词（政治敏感、暴力恐怖等）
 - 返回 `{safe: bool, messages: []}`
 
 **Prompt安全加固** `sanitize_prompt(prompt, student_age)`：
@@ -1038,7 +1038,7 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 | `config.py` | `Settings(BaseSettings)` | 应用配置：5种LLM供应商、数据库、Redis、火山引擎、LangSmith |
 | `logger.py` | `setup_logger(name)` | 双通道日志（控制台+文件轮转10MB×5） |
 | `exceptions.py` | 异常处理器 | 请求校验错误(422)、HTTP异常、全局异常(500) |
-| `safety.py` | `SafetyGuard` + `HallucinationGuard` | 敏感词过滤(15个)、JSON校验、代码语法检查、引用溯源、LLM自我修正 |
+| `safety.py` | `SafetyGuard` + `HallucinationGuard` | 敏感词过滤(14个)、JSON校验、代码语法检查、引用溯源、LLM自我修正 |
 | `rate_limiter.py` | `RateLimiter` | 滑动窗口限流：全局60次/分钟，登录10次/分钟，LLM 20次/分钟 |
 | `cache.py` | `PromptCache` | LRU+TTL内存缓存，512条，600秒过期 |
 
@@ -1168,7 +1168,7 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 | `Dashboard.tsx` | `/` | 学习仪表盘：统计卡片、学习趋势图、任务进度、推荐资源、知识树、每日练习、排行榜 |
 | `Login.tsx` | `/login` | 登录/注册：三Tab（登录/学生注册/教师注册），GSAP动画 |
 | `LandingPage.tsx` | `/`（未登录） | 落地页：功能特性展示、使用流程、统计数据、FAQ |
-| `Profile.tsx` | `/profile` | 对话式学习画像：AI对话评估6维画像，雷达图可视化 |
+| `PersonalSpace.tsx` | `/personal` | 个人空间：6维画像雷达图（画像功能入口，含学习历史/笔记/收藏/番茄钟） |
 | `LearningPath.tsx` | `/learning-path` | 学习路径：DAG可视化、路径调整、依赖链查询、调整日志 |
 | `ResourceCenter.tsx` | `/resources` | 学习资源中心：课程目录树+多标签内容（文档/代码/练习/思维导图/算法可视化） |
 | `ResourceDetail.tsx` | `/resource/:kpId` | 资源详情：Markdown讲义、Monaco代码编辑器、练习题、AI辅导 |
@@ -1193,7 +1193,7 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 | `LearningAnalytics.tsx` | `/teacher/analytics` | 学情分析：薄弱知识点、薄弱领域、学习洞察 |
 | `ClassAnalytics.tsx` | `/teacher/class-analytics` | 班级学情：雷达图、排名表、多维度分析 |
 | `ClassComparison.tsx` | `/teacher/class-comparison` | 班级对比：多班数据对比分析 |
-| `ReportExport.tsx` | `/teacher/reports` | 报告导出：PDF/Excel/Word |
+| `ReportExport.tsx` | `/teacher/reports` | 报告导出：CSV(Excel兼容)/Markdown |
 | `SystemSettings.tsx` | `/teacher/settings` | 系统设置：账户/密码/通知/语言 |
 
 #### 电路模拟器
@@ -1317,16 +1317,18 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 
 | 表名 | 记录数 | 说明 |
 |------|--------|------|
-| `users` | 18 | 学生+教师账号（含班级字段 class_id） |
+| `users` | 10 | 学生+教师账号（含班级字段 class_id） |
 | `knowledge_points` | 35 | 知识点（C语言16/电路5/STM32 14，含9条跨课程依赖） |
 | `learning_records` | 92 | 学习记录 |
 | `quiz_results` | 51 | 测验结果 |
-| `game_points` | 12 | 游戏积分 |
-| `kb_notes` | 33 | 知识库笔记 |
-| `student_profiles` | 12 | 学生画像 |
-| `student_trends` | 133 | 趋势数据 |
-| `experiment_logs` | 29 | 实验行为日志（AIC新增） |
+| `game_points` | 8 | 游戏积分 |
+| `kb_notes` | 23 | 知识库笔记 |
+| `student_profiles` | 8 | 学生画像 |
+| `student_trends` | 121 | 趋势数据 |
+| `experiment_logs` | 80 | 实验行为日志（AIC新增） |
 | `courses` | 3 | 学科课程元数据（AIC新增） |
+
+> 注：以上为演示库（`backend/ai_learning_v2.db`）随开发演进的近似快照，实际以运行时查询为准。
 
 ### 核心数据流
 
@@ -1348,12 +1350,13 @@ function gaussianElimination(matrix: number[][], vector: number[]): number[] {
 
 ---
 
-## API接口列表（36个模块，167+接口）
+## API接口列表（39个模块，210+接口）
 
 ### 用户认证 (`/api/v1/auth`)
 - `POST /register` — 学生注册
 - `POST /register-teacher` — 教师注册
 - `POST /login` — 登录（返回JWT Token）
+- `POST /refresh` — Token 滑动续期（401 静默刷新+请求重放）
 - `GET /me` — 获取当前用户信息
 
 ### 学生画像 (`/api/v1/profile`)
@@ -1636,7 +1639,7 @@ npm run dev -- --host 0.0.0.0 --port 5173
 
 ## Docker部署
 
-当前仓库包含 `Dockerfile` 和 `nginx.conf`，但根目录没有 `docker-compose.yml`，因此不提供未经验证的 Compose 一键启动命令。推荐先使用本地前后端启动方式。
+当前仓库包含 `frontend/Dockerfile`（前端多阶段构建）和根目录 `nginx.conf`，但没有 `docker-compose.yml`，因此不提供未经验证的 Compose 一键启动命令。推荐先使用本地前后端启动方式。
 
 如需 Docker 部署，请先根据实际部署环境补充 Compose 编排、环境变量注入、数据库持久化和健康检查配置，再更新本节。
 
@@ -1649,7 +1652,7 @@ npm run dev -- --host 0.0.0.0 --port 5173
 - **Playwright** (v1.59.1)
 - 串行执行（`workers: 1`），超时60秒，重试2次
 
-### 前端 E2E 测试（6 个文件，53 个用例）
+### 前端 E2E 测试（7 个文件，49 个用例）
 
 | 文件 | 用例数 | 测试内容 |
 |------|--------|----------|
@@ -1664,7 +1667,8 @@ npm run dev -- --host 0.0.0.0 --port 5173
 
 | 脚本 | 范围 | 运行方式 |
 |------|------|----------|
-| `verify_ai_algorithms.py` | 四类算法专项验证 23 项（BKT/IRT/FSRS/MAB） | 无需服务 |
+| `verify_ai_algorithms.py` | 算法专项验证 100 项（BKT/IRT/FSRS/MAB/GKT/NCD/五层接线/趋势学习器/匹配探索/安全与接线加固） | 无需服务 |
+| `verify_p0_wiring_api.py` | API 全链路冒烟 38 项（接线/refresh/FSRS 路径/排行榜六维/反思循环/安全） | 需服务启动 |
 | `verify_aic_features.py` | TestClient 回归 29 项（新功能+核心接口，mock LLM） | 需服务启动或按脚本配置 |
 | `verify_live.py` | 真实环境 HTTP 验证 | 需服务启动（8000） |
 | `verify_all_routes.py` | 全路由冒烟 | 需服务启动 |
@@ -1722,7 +1726,7 @@ A3_项目框架/
 │   │   │   ├── role_matcher.py    # 角色匹配师
 │   │   │   ├── collaboration_supervisor.py  # 协作督导
 │   │   │   └── result_evaluator.py  # 成果评估师
-│   │   ├── api/                   # 36个API路由模块（167+接口）
+│   │   ├── api/                   # 39个API路由模块（210+接口）
 │   │   ├── core/                  # 核心配置（config/logger/exceptions/safety/rate_limiter/cache）
 │   │   ├── graph/                 # LangGraph工作流（state/nodes/graph）
 │   │   ├── models/                # 23个ORM数据模型
@@ -1750,7 +1754,7 @@ A3_项目框架/
 │   │   ├── styles/                # Markdown样式
 │   │   ├── App.tsx                # 路由配置（React Router v6）
 │   │   └── main.tsx               # React入口
-│   ├── e2e/                       # Playwright E2E测试（4个文件，39个用例）
+│   ├── e2e/                       # Playwright E2E测试（7个文件，49个用例）
 │   ├── tailwind.config.js         # TailwindCSS配置（自定义颜色/动画/阴影）
 │   ├── vite.config.ts             # Vite配置（代码分割/代理）
 │   ├── playwright.config.ts       # Playwright配置
@@ -1759,11 +1763,9 @@ A3_项目框架/
 │   ├── test_api.py                 # API冒烟测试
 │   └── test_llm.py                 # LLM调用测试
 ├── .gitignore
-├── .dockerignore
 ├── .husky/pre-commit               # Git提交前钩子
-├── Dockerfile                      # 多阶段Docker构建
-├── docker-compose.yml              # Docker Compose配置
 ├── nginx.conf                      # Nginx反向代理配置
+│   （前端多阶段 Dockerfile 位于 frontend/Dockerfile；无 docker-compose.yml）
 ├── start.bat                       # Windows一键启动
 └── README.md
 ```
@@ -1815,7 +1817,7 @@ A3_项目框架/
 
 | 检查项 | 状态 | 说明 |
 |--------|------|------|
-| AI 算法专项 | ✅ 通过 | `verify_ai_algorithms.py`：23/23 |
+| AI 算法专项 | ✅ 通过 | `verify_ai_algorithms.py`：100/100 |
 | AIC 功能回归 | ✅ 通过 | `verify_aic_features.py`：29/29 |
 | 全链路数据流 | ✅ 通过 | `verify_dataflow.py`：23/23 |
 | Agent/LLM 专项 | ✅ 通过 | `verify_agent_llm.py`：23/23 |
@@ -1838,7 +1840,7 @@ A3_项目框架/
 5. ✅ 学生画像（6维度：知识基础、认知风格、薄弱环节、兴趣领域、学习习惯、情感状态）
 6. ✅ 学习路径（DAG路径规划+动态调整+依赖链查询）
 7. ✅ 智能辅导（苏格拉底式问答+WebSocket流式+学习状态自动检测）
-8. ✅ 艾宾浩斯复习提醒（基于遗忘曲线的智能复习推荐）
+8. ✅ 复习提醒（FSRS 记忆调度算法，到期知识点自动插入路径复习阶段）
 9. ✅ 新手引导问卷（首次登录个性化配置，支持多学科）
 
 #### 内容生成
@@ -1896,7 +1898,7 @@ A3_项目框架/
 45. ✅ 学情分析（薄弱知识点、薄弱领域、学习洞察）
 46. ✅ 班级学情（雷达图、排名表、多维度分析）
 47. ✅ 班级对比（多班数据对比）
-48. ✅ 报告导出（PDF/Excel/Word）
+48. ✅ 报告导出（CSV 兼容 Excel / Markdown）
 
 #### 系统能力
 49. ✅ 多模型支持（5种LLM供应商，统一接口，一键切换）

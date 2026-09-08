@@ -52,7 +52,7 @@ async def get_learning_logs(student_id: str, date: Optional[str] = None, db: Ses
 
 class UpsertLogRequest(BaseModel):
     student_id: str
-    date: str = Field(..., pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
+    date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     total_duration: int = Field(0, ge=0, le=86400)
     kp_count: int = Field(0, ge=0, le=10000)
     quiz_count: int = Field(0, ge=0, le=10000)
@@ -105,7 +105,7 @@ async def upsert_learning_log(request: UpsertLogRequest, db: Session = Depends(g
 
 class ReflectionCreateRequest(BaseModel):
     student_id: str
-    date: str = Field(..., pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
+    date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     content: str = Field(..., min_length=1, max_length=20000)
     mood: str = Field("neutral", pattern="^(happy|neutral|frustrated|excited)$")
     tags: List[str] = Field(default_factory=list, max_length=50)
