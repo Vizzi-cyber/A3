@@ -170,7 +170,9 @@ const AppHeader: React.FC = () => {
     if (key === "profile") {
       navigate("/personal");
     } else if (key === "settings") {
-      message.info("设置功能开发中");
+      const isTeacher =
+        userInfo?.role === "teacher" || userInfo?.role === "admin";
+      navigate(isTeacher ? "/teacher/settings" : "/personal?tab=profile");
     } else if (key === "logout") {
       logout();
       message.success("已退出登录");
@@ -341,7 +343,12 @@ const AppHeader: React.FC = () => {
               placement="bottomRight"
               arrow
             >
-              <Space className="cursor-pointer hover:bg-slate-50/80 px-3 py-1.5 rounded-full transition-all border border-transparent hover:border-slate-100">
+              <Space
+                role="button"
+                aria-label="用户菜单"
+                tabIndex={0}
+                className="cursor-pointer hover:bg-slate-50/80 px-3 py-1.5 rounded-full transition-all border border-transparent hover:border-slate-100"
+              >
                 <Avatar
                   size="small"
                   icon={<UserOutlined />}

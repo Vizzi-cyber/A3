@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
+const chromiumExecutable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -17,11 +19,12 @@ export default defineConfig({
       name: "api",
       use: {
         browserName: "chromium",
+        // Let Playwright resolve its managed browser. A hard-coded user profile
+        // makes every E2E run fail as soon as the project changes machines.
         headless: true,
-        launchOptions: {
-          executablePath:
-            "C:/Users/15722/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe",
-        },
+        ...(chromiumExecutable
+          ? { launchOptions: { executablePath: chromiumExecutable } }
+          : {}),
       },
     },
   ],

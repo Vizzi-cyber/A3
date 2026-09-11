@@ -35,6 +35,14 @@ def _verify_password(plain: str, hashed: str) -> bool:
     except Exception:
         return False
 
+
+def _validate_password_strength(password: str) -> str:
+    if not re.search(r"[A-Za-z]", password):
+        raise ValueError("密码必须包含至少一个字母")
+    if not re.search(r"\d", password):
+        raise ValueError("密码必须包含至少一个数字")
+    return password
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
@@ -47,16 +55,22 @@ class UserRegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        if not re.search(r"[A-Za-z]", v):
-            raise ValueError("密码必须包含至少一个字母")
-        if not re.search(r"\d", v):
-            raise ValueError("密码必须包含至少一个数字")
-        return v
+        return _validate_password_strength(v)
 
 
 class UserLoginRequest(BaseModel):
     student_id: str = Field(..., min_length=3, max_length=64)
     password: str = Field(..., min_length=1, max_length=128)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password_strength(cls, v: str) -> str:
+        return _validate_password_strength(v)
 
 
 class TokenResponse(BaseModel):
@@ -291,3 +305,30 @@ async def get_me(student_id: str = Depends(get_current_student_id), db: Session 
             "is_active": user.is_active,
         },
     }
+
+
+@router.post("/change-password")
+async def change_password(
+    request: PasswordChangeRequest,
+    student_id: str = Depends(get_current_student_id),
+    db: Session = Depends(get_db),
+):
+    """Change only the authenticated user's password after verifying it."""
+    user = db.query(UserModel).filter(UserModel.student_id == student_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.hashed_password or not _verify_password(
+        request.current_password, user.hashed_password
+    ):
+        raise HTTPException(status_code=400, detail="当前密码不正确")
+    if _verify_password(request.new_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="新密码不能与当前密码相同")
+
+    user.hashed_password = _hash_password(request.new_password)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Password change failed for user %s", student_id)
+        raise HTTPException(status_code=500, detail="密码更新失败，请稍后重试")
+    return {"status": "success", "message": "密码已更新，请重新登录"}

@@ -4,7 +4,7 @@
  */
 import { test, expect } from "@playwright/test";
 
-const BASE = "http://localhost:5173";
+const BASE = "http://127.0.0.1:5173";
 
 /** 页面存在覆盖层吞点击事件，统一用 focus + Enter 触发按钮 */
 async function pressClick(
@@ -27,10 +27,7 @@ async function studentLogin(page: import("@playwright/test").Page) {
   await page.goto(`${BASE}/login`);
   await page.getByPlaceholder("学号 / 工号").fill("student_001");
   await page.getByPlaceholder("输入密码").fill("123456");
-  await page
-    .getByRole("button", { name: /登\s*录/ })
-    .first()
-    .click();
+  await page.locator(".ant-btn-primary").first().click();
   // 登录成功后会离开 /login（跳转首页或 dashboard）
   await page.waitForURL((url) => url.pathname !== "/login", {
     timeout: 15000,
@@ -125,10 +122,7 @@ test.describe("AIC 新功能验证", () => {
     await page.goto(`${BASE}/login`);
     await page.getByPlaceholder("学号 / 工号").fill("T001");
     await page.getByPlaceholder("输入密码").fill("Teacher123");
-    await page
-      .getByRole("button", { name: /登\s*录/ })
-      .first()
-      .click();
+    await page.locator(".ant-btn-primary").first().click();
     await page.waitForURL((url) => url.pathname !== "/login", {
       timeout: 15000,
     });
@@ -138,7 +132,9 @@ test.describe("AIC 新功能验证", () => {
       waitUntil: "domcontentloaded",
     });
     // 统计卡片渲染
-    await expect(page.getByText("试点数据分析")).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: /试点数据分析/ }),
+    ).toBeVisible({
       timeout: 10000,
     });
     await expect(page.getByText("活跃学生")).toBeVisible({ timeout: 8000 });
