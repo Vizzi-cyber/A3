@@ -167,7 +167,7 @@ const PilotReport: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <BarChartOutlined className="text-indigo-500" />
@@ -177,7 +177,7 @@ const PilotReport: React.FC = () => {
             AIC 应用效果验证数据源：学习行为 / 测验成绩 / 实验参与 / 功能使用
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
             导出报告(Markdown)
           </Button>
@@ -194,8 +194,8 @@ const PilotReport: React.FC = () => {
       </div>
 
       {/* 统计卡片 */}
-      <Row gutter={16}>
-        <Col span={4}>
+      <Row gutter={[12, 12]}>
+        <Col xs={24} sm={12} md={8} xl={4}>
           <Card>
             <Statistic
               title="活跃学生"
@@ -204,7 +204,7 @@ const PilotReport: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} xl={4}>
           <Card>
             <Statistic
               title="总学习时长(h)"
@@ -213,7 +213,7 @@ const PilotReport: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} xl={4}>
           <Card>
             <Statistic
               title="日均时长(h)"
@@ -222,7 +222,7 @@ const PilotReport: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} xl={4}>
           <Card>
             <Statistic
               title="测验次数"
@@ -231,12 +231,12 @@ const PilotReport: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} xl={4}>
           <Card>
             <Statistic title="平均分" value={s.avg_score} precision={1} />
           </Card>
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} xl={4}>
           <Card>
             <Statistic
               title="实验次数"
@@ -248,8 +248,8 @@ const PilotReport: React.FC = () => {
       </Row>
 
       {/* 前后测对比 + 实验参与 + 趋势 */}
-      <Row gutter={16}>
-        <Col span={8}>
+      <Row gutter={[12, 12]}>
+        <Col xs={24} lg={8}>
           <Card title="前后测成绩对比" size="small">
             {data.quiz_pre_post ? (
               <div>
@@ -295,7 +295,7 @@ const PilotReport: React.FC = () => {
             )}
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} lg={8}>
           <Card title="实验参与分布" size="small">
             {Object.keys(data.experiments).length > 0 ? (
               <div className="space-y-2">
@@ -316,7 +316,7 @@ const PilotReport: React.FC = () => {
             )}
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} lg={8}>
           <Card title="学习趋势分布" size="small">
             {Object.keys(data.trend_distribution).length > 0 ? (
               <div className="space-y-2">
@@ -376,6 +376,7 @@ const PilotReport: React.FC = () => {
           rowKey="student_id"
           size="small"
           pagination={false}
+          scroll={{ x: 720 }}
         />
       </Card>
     </div>

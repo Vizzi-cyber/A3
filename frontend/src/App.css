@@ -12,3 +12,20 @@
 .animate-pulse-once {
   animation: pulse-once 1.5s ease-out;
 }
+
+@media (max-width: 767px) {
+  .app-private-content {
+    margin-left: 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

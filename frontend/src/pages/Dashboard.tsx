@@ -375,7 +375,7 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8 pb-12 relative">
+    <div className="space-y-8 pb-12 relative overflow-x-hidden">
       {/* 顶部氛围光晕（知识空间风格） */}
       <div className="absolute -top-10 -right-16 w-72 h-72 rounded-full bg-indigo-100/50 blur-3xl pointer-events-none" />
       <div className="absolute top-40 -left-16 w-64 h-64 rounded-full bg-sky-100/50 blur-3xl pointer-events-none" />
@@ -733,7 +733,11 @@ const Dashboard: React.FC = () => {
                               {currentQuizIdx + 1}
                             </span>
                             <Tag className="rounded-full border-0 bg-slate-100 text-slate-600 text-xs">
-                              {q.type}
+                              {q.type === "single_choice"
+                                ? "单选题"
+                                : q.type === "multiple_choice"
+                                  ? "多选题"
+                                  : q.type}
                             </Tag>
                             <Tag className="rounded-full border-0 bg-amber-50 text-amber-600 text-xs">
                               难度 {q.difficulty}/5

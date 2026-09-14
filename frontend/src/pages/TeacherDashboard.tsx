@@ -222,6 +222,7 @@ const TeacherDashboard: React.FC = () => {
         <Card
           title={<span className="text-sm font-medium">成绩分布</span>}
           size="small"
+          className="lg:order-2"
         >
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={scoreDistribution}>
@@ -240,6 +241,7 @@ const TeacherDashboard: React.FC = () => {
             <span className="text-sm font-medium">全班薄弱知识点 TOP10</span>
           }
           size="small"
+          className="lg:order-1"
         >
           {weakPoints?.weak_tags?.length > 0 ? (
             <div className="space-y-2">
@@ -300,6 +302,7 @@ const TeacherDashboard: React.FC = () => {
             rowKey="student_id"
             size="small"
             pagination={{ pageSize: 10 }}
+            scroll={{ x: 600 }}
             columns={[
               {
                 title: "排名",
@@ -609,7 +612,7 @@ const TeacherDashboard: React.FC = () => {
   return (
     <div className="space-y-5 pb-12">
       {/* 标题 */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">

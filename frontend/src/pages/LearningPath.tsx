@@ -1025,7 +1025,7 @@ const LearningPathPage: React.FC = () => {
     : 0;
 
   return (
-    <div className="relative space-y-5 pb-8">
+    <div className="relative space-y-5 pb-8 overflow-x-hidden">
       <div className="pointer-events-none absolute -top-16 right-0 h-72 w-72 rounded-full bg-indigo-100/45 blur-3xl" />
       <div className="pointer-events-none absolute top-72 -left-20 h-64 w-64 rounded-full bg-sky-100/40 blur-3xl" />
       {/* 顶部控制栏 */}
@@ -1054,10 +1054,10 @@ const LearningPathPage: React.FC = () => {
               </Typography.Text>
             </div>
           </div>
-          <Space size={8}>
+          <Space size={8} wrap>
             <Tooltip title="基于知识图谱约束的 LLM 路径规划">
               <Tag className="rounded-full border-0 bg-indigo-50 text-indigo-600 text-xs cursor-default">
-                <ApartmentOutlined /> KG 约束
+                <ApartmentOutlined /> 知识依赖约束
               </Tag>
             </Tooltip>
             <Button
@@ -1097,6 +1097,17 @@ const LearningPathPage: React.FC = () => {
             showInfo={false}
             strokeLinecap="round"
           />
+          <div className="mt-3 flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <BulbOutlined className="mt-0.5 shrink-0 text-amber-500" />
+            <span>
+              <strong className="text-slate-700">推荐依据：</strong>
+              系统结合你的学习目标、当前进度
+              {weakReviewTopics.length > 0
+                ? `和薄弱知识点（${weakReviewTopics.slice(0, 3).join("、")}）`
+                : "和知识点掌握情况"}
+              安排顺序，并用知识依赖关系避免跳过必要基础。
+            </span>
+          </div>
         </div>
       </Card>
 
@@ -1107,14 +1118,14 @@ const LearningPathPage: React.FC = () => {
       >
         <button
           type="button"
-          className="w-full flex items-center gap-2 text-left text-slate-700 hover:text-purple-600 transition-colors cursor-pointer"
+          className="w-full flex items-start sm:items-center gap-2 text-left text-slate-700 hover:text-purple-600 transition-colors cursor-pointer"
           onClick={() => setShowCrossDiscipline(!showCrossDiscipline)}
         >
           <ApartmentOutlined className="text-purple-500" />
           <span className="text-sm font-medium">
             跨学科学习链路（编程思维 → 电路建模 → 嵌入式实现）
           </span>
-          <span className="ml-auto text-xs text-gray-400">
+          <span className="ml-auto shrink-0 text-xs text-gray-400">
             {showCrossDiscipline ? "收起 ▲" : "展开 ▼"}
           </span>
         </button>
@@ -1127,15 +1138,15 @@ const LearningPathPage: React.FC = () => {
 
       {/* 艾宾浩斯复习提醒 */}
       {showReviewAlert && weakReviewTopics.length > 0 && (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
-          <ExclamationCircleOutlined className="text-amber-500 text-lg" />
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <ExclamationCircleOutlined className="text-amber-500 text-lg self-start sm:self-auto" />
           <div className="flex-1">
             <div className="text-sm font-medium text-amber-800">
-              遗忘曲线提醒：有 {weakReviewTopics.length} 个知识点需要今日复习
+              今日复习建议：有 {weakReviewTopics.length} 个知识点需要巩固
             </div>
             <div className="text-xs text-amber-600">
               {weakReviewTopics.slice(0, 3).join("、")} —
-              基于画像薄弱点与艾宾浩斯遗忘曲线计算
+              综合薄弱画像与复习间隔生成，完成后将更新后续安排
             </div>
           </div>
           <Button
@@ -1310,14 +1321,14 @@ const LearningPathPage: React.FC = () => {
               </div>
               <div className="flex-1">
                 <div className="font-semibold text-slate-800 text-sm">
-                  AI 智能生成
+                  个性化学习资源
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  基于画像和错题，一键生成针对性资源
+                  根据薄弱知识点和错题生成针对性资源
                 </div>
               </div>
               <Tag color="blue" className="rounded-full text-[10px]">
-                Beta
+                画像驱动
               </Tag>
             </div>
 

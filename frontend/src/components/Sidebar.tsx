@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Layout, Menu, Typography, Space, Tooltip } from "antd";
+import { Grid, Layout, Menu, Typography, Space, Tooltip } from "antd";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   DashboardOutlined,
@@ -44,7 +44,18 @@ const preloadRoute = (path: string) => {
   loaders[path]?.();
 };
 
-const studentMenuItems = [
+interface NavLeaf {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+}
+
+type NavEntry =
+  | NavLeaf
+  | { type: "divider" }
+  | { type: "group"; key: string; label: string; children: NavLeaf[] };
+
+const studentMenuItems: NavEntry[] = [
   { key: "/", icon: <DashboardOutlined />, label: "学习仪表盘" },
 
   { key: "/tutor", icon: <RobotOutlined />, label: "智能辅导" },
@@ -61,43 +72,49 @@ const studentMenuItems = [
   { key: "/knowledge-base", icon: <BookOutlined />, label: "知识库" },
 ];
 
-const teacherMenuItems = [
-  { key: "/teacher", icon: <DashboardOutlined />, label: "首页" },
+const teacherMenuItems: NavEntry[] = [
   {
-    key: "/teacher/assignments",
-    icon: <FileTextOutlined />,
-    label: "作业管理",
-  },
-  { key: "/teacher/students", icon: <TeamOutlined />, label: "学生管理" },
-  { key: "/teacher/resources", icon: <BookOutlined />, label: "备课资源" },
-  { key: "/teacher/analytics", icon: <BarChartOutlined />, label: "学情分析" },
-  {
-    key: "/teacher/class-analytics",
-    icon: <LineChartOutlined />,
-    label: "班级学情",
+    type: "group",
+    key: "teaching",
+    label: "教学管理",
+    children: [
+      { key: "/teacher", icon: <DashboardOutlined />, label: "首页" },
+      { key: "/teacher/assignments", icon: <FileTextOutlined />, label: "作业管理" },
+      { key: "/teacher/students", icon: <TeamOutlined />, label: "学生管理" },
+      { key: "/teacher/resources", icon: <BookOutlined />, label: "备课资源" },
+    ],
   },
   {
-    key: "/teacher/class-comparison",
-    icon: <ExperimentOutlined />,
-    label: "班级对比",
+    type: "group",
+    key: "analytics",
+    label: "学情与报告",
+    children: [
+      { key: "/teacher/analytics", icon: <BarChartOutlined />, label: "学情分析" },
+      { key: "/teacher/class-analytics", icon: <LineChartOutlined />, label: "班级学情" },
+      { key: "/teacher/class-comparison", icon: <ExperimentOutlined />, label: "班级对比" },
+      { key: "/teacher/reports", icon: <FileExcelOutlined />, label: "报告导出" },
+      { key: "/teacher/pilot-report", icon: <BarChartOutlined />, label: "试点数据分析" },
+    ],
   },
-  { key: "/teacher/reports", icon: <FileExcelOutlined />, label: "报告导出" },
   {
-    key: "/teacher/pilot-report",
-    icon: <BarChartOutlined />,
-    label: "试点数据分析",
+    type: "group",
+    key: "ai-tools",
+    label: "智能教学工具",
+    children: [
+      { key: "/teacher/lesson-plan", icon: <BulbOutlined />, label: "AI智能备课" },
+      { key: "/teacher/insights", icon: <LineChartOutlined />, label: "AI学情洞察" },
+      { key: "/teacher/smart-quiz", icon: <RocketOutlined />, label: "AI智能组卷" },
+    ],
   },
-  { type: "divider" as const },
-  { key: "/teacher/lesson-plan", icon: <BulbOutlined />, label: "AI智能备课" },
   {
-    key: "/teacher/insights",
-    icon: <LineChartOutlined />,
-    label: "AI学情洞察",
+    type: "group",
+    key: "account",
+    label: "账户",
+    children: [
+      { key: "/teacher/settings", icon: <SettingOutlined />, label: "系统设置" },
+      { key: "/teacher/personal", icon: <UserOutlined />, label: "个人空间" },
+    ],
   },
-  { key: "/teacher/smart-quiz", icon: <RocketOutlined />, label: "AI智能组卷" },
-  { type: "divider" as const },
-  { key: "/teacher/settings", icon: <SettingOutlined />, label: "系统设置" },
-  { key: "/teacher/personal", icon: <UserOutlined />, label: "个人空间" },
 ];
 
 const Sidebar: React.FC = () => {
@@ -105,11 +122,18 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const setSidebarCollapsed = useAppStore((s) => s.setSidebarCollapsed);
   const studentId = useAppStore((s) => s.studentId);
   const userInfo = useAppStore((s) => s.userInfo);
   const isTeacher = userInfo?.role === "teacher" || userInfo?.role === "admin";
+  const screens = Grid.useBreakpoint();
+  const isMobile = screens.md === false;
   const menuItems = isTeacher ? teacherMenuItems : studentMenuItems;
   const [todayMinutes, setTodayMinutes] = useState(0);
+
+  useEffect(() => {
+    if (isMobile) setSidebarCollapsed(true);
+  }, [isMobile, setSidebarCollapsed]);
 
   useEffect(() => {
     withCache(`summary:${studentId}`, 30_000, () =>
@@ -122,38 +146,61 @@ const Sidebar: React.FC = () => {
   }, [studentId]);
 
   const handleNavigate = (path: string) => {
+    if (isMobile) setSidebarCollapsed(true);
     if (location.pathname === path) return;
     navigate(path);
   };
 
-  const navMenuItems = React.useMemo(
-    () =>
-      menuItems
-        .filter((item) => item.key)
-        .map((item) => ({
-          key: item.key!,
-          icon: item.icon,
-          label: collapsed ? (
-            <Tooltip title={item.label} placement="right">
-              <span>{item.label}</span>
-            </Tooltip>
-          ) : (
-            item.label
-          ),
-          onClick: () => handleNavigate(item.key!),
-          onMouseEnter: () => preloadRoute(item.key!),
-          onFocus: () => preloadRoute(item.key!),
-        })),
-    [collapsed, navigate, location.pathname],
-  );
+  const navMenuItems = React.useMemo(() => {
+    const toMenuLeaf = (item: NavLeaf) => ({
+      key: item.key,
+      icon: item.icon,
+      label: collapsed && !isMobile ? (
+        <Tooltip title={item.label} placement="right">
+          <span>{item.label}</span>
+        </Tooltip>
+      ) : (
+        <span
+          onMouseEnter={() => preloadRoute(item.key)}
+          onFocus={() => preloadRoute(item.key)}
+        >
+          {item.label}
+        </span>
+      ),
+    });
+
+    return menuItems.map((item) => {
+      if ("type" in item && item.type === "divider") return item;
+      if ("type" in item && item.type === "group") {
+        return {
+          type: "group" as const,
+          key: item.key,
+          label: item.label,
+          children: item.children.map(toMenuLeaf),
+        };
+      }
+      return toMenuLeaf(item as NavLeaf);
+    });
+  }, [menuItems, collapsed, isMobile]);
 
   return (
-    <Sider
+    <>
+      {isMobile && !collapsed && (
+        <button
+          type="button"
+          aria-label="关闭导航"
+          className="fixed inset-0 z-40 bg-slate-950/25"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+      <Sider
       width={240}
       collapsedWidth={80}
-      collapsed={collapsed}
+      collapsed={isMobile ? false : collapsed}
       theme="light"
-      className="fixed left-0 top-0 h-screen z-50 border-r border-slate-200 bg-white transition-all duration-300"
+      className={`fixed left-0 top-0 h-screen z-50 border-r border-slate-200 bg-white transition-transform duration-300 ${
+        isMobile && collapsed ? "-translate-x-full" : "translate-x-0"
+      } ${isMobile && !collapsed ? "shadow-2xl" : ""}`}
     >
       {/* Logo区域 */}
       <div className="h-16 flex items-center px-5 border-b border-slate-100 justify-between">
@@ -161,7 +208,7 @@ const Sidebar: React.FC = () => {
           <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary">
             <RobotOutlined className="text-white text-lg" />
           </div>
-          {!collapsed && (
+          {(!collapsed || isMobile) && (
             <Typography.Title
               level={5}
               className="!m-0 text-slate-900 font-bold tracking-tight"
@@ -174,7 +221,7 @@ const Sidebar: React.FC = () => {
           onClick={toggleSidebar}
           className="text-slate-400 hover:text-primary transition-colors p-1 rounded-lg hover:bg-slate-50"
         >
-          {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          {!isMobile && collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
         </button>
       </div>
 
@@ -182,9 +229,10 @@ const Sidebar: React.FC = () => {
       <div className="py-4 px-2">
         <Menu
           mode="inline"
-          inlineCollapsed={collapsed}
+          inlineCollapsed={!isMobile && collapsed}
           selectedKeys={[location.pathname]}
           items={navMenuItems}
+          onClick={({ key }) => handleNavigate(key)}
           className="border-r-0 bg-transparent"
           style={
             {
@@ -196,7 +244,7 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* 底部学习进度 */}
-      {!collapsed && (
+      {!collapsed && !isTeacher && !isMobile && (
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
             <Typography.Text className="text-xs text-slate-500 block mb-2 font-medium">
@@ -227,7 +275,7 @@ const Sidebar: React.FC = () => {
         </div>
       )}
 
-      {collapsed && (
+      {collapsed && !isTeacher && !isMobile && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center">
           <Tooltip
             title={`今日已学 ${todayMinutes >= 60 ? `${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m` : `${todayMinutes}m`}`}
@@ -238,7 +286,8 @@ const Sidebar: React.FC = () => {
           </Tooltip>
         </div>
       )}
-    </Sider>
+      </Sider>
+    </>
   );
 };
 

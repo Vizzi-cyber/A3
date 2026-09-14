@@ -50,6 +50,7 @@ interface AppState {
 
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  setSidebarCollapsed: (_collapsed: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -80,6 +81,7 @@ export const useAppStore = create<AppState>()(
       sidebarCollapsed: false,
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
     }),
     {
       name: "learnlab-storage",

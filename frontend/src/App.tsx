@@ -127,11 +127,11 @@ const PrivateLayout: React.FC = () => {
       <GlobalToast />
       <Sidebar />
       <Layout
-        className="transition-all duration-300 ease-smooth bg-slate-50"
+        className="app-private-content transition-all duration-300 ease-smooth bg-slate-50 min-w-0"
         style={{ marginLeft: sidebarCollapsed ? 80 : 240 }}
       >
         <AppHeader />
-        <Content className="p-6 md:p-8 min-h-[280px]">
+        <Content className="p-3 sm:p-5 md:p-8 min-h-[280px] min-w-0 overflow-x-hidden">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>

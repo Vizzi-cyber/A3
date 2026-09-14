@@ -12,6 +12,7 @@ import {
   List,
   Modal,
   Spin,
+  Select,
 } from "antd";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,6 +27,7 @@ import {
   TrophyOutlined,
   CloseOutlined,
   SwapOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "../store";
 import { knowledgeApi, dashboardApi } from "../services/api";
@@ -60,6 +62,7 @@ const AppHeader: React.FC = () => {
   const studentId = useAppStore((s) => s.studentId);
   const currentSubject = useAppStore((s) => s.currentSubject);
   const setCurrentSubject = useAppStore((s) => s.setCurrentSubject);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
 
   // 搜索
   const [searchValue, setSearchValue] = useState("");
@@ -194,16 +197,25 @@ const AppHeader: React.FC = () => {
 
   return (
     <>
-      <Header className="glass px-6 md:px-8 flex items-center justify-between sticky top-0 z-40 h-16">
-        <div className="flex items-center gap-4 flex-1">
+      <Header className="glass !px-3 sm:!px-5 md:!px-8 flex items-center justify-between sticky top-0 z-30 h-16 min-w-0">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button
+            type="button"
+            aria-label="打开导航"
+            className="md:hidden w-11 h-11 shrink-0 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center"
+            onClick={toggleSidebar}
+          >
+            <MenuOutlined />
+          </button>
           <Typography.Text className="text-slate-500 text-sm hidden xl:block">
-            欢迎回来，{displayName}！继续今天的学习之旅吧！
+            欢迎回来，{displayName}！
+            {isTeacher ? "查看今天需要关注的教学情况。" : "继续今天的学习之旅吧！"}
           </Typography.Text>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="flex items-center gap-2 md:gap-6 min-w-0">
           {/* 课程切换按钮 */}
-          <div className="flex items-center bg-slate-100 rounded-full p-1">
+          <div className="hidden sm:flex items-center bg-slate-100 rounded-full p-1">
             {(["C语言", "电路分析", "STM32嵌入式"] as const).map((course) => (
               <button
                 key={course}
@@ -218,6 +230,17 @@ const AppHeader: React.FC = () => {
               </button>
             ))}
           </div>
+          <Select
+            aria-label="选择学科"
+            className="sm:hidden w-[108px]"
+            value={currentSubject}
+            onChange={setCurrentSubject}
+            options={[
+              { value: "C语言", label: "C语言" },
+              { value: "电路分析", label: "电路分析" },
+              { value: "STM32嵌入式", label: "STM32" },
+            ]}
+          />
 
           <div className="hidden md:block relative" ref={searchRef}>
             <SearchOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
@@ -267,7 +290,7 @@ const AppHeader: React.FC = () => {
             )}
           </div>
 
-          <Space size={12}>
+          <Space size={8}>
             <Popover
               open={notifOpen}
               onOpenChange={(open) => {
@@ -326,13 +349,14 @@ const AppHeader: React.FC = () => {
               trigger="click"
             >
               <Badge dot color="#ef4444">
-                <button className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary transition-all">
+                <button aria-label="通知中心" className="w-11 h-11 md:w-9 md:h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary transition-all">
                   <BellOutlined className="text-lg" />
                 </button>
               </Badge>
             </Popover>
             <button
-              className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary transition-all"
+              aria-label="帮助中心"
+              className="hidden sm:flex w-11 h-11 md:w-9 md:h-9 rounded-full bg-slate-50 hover:bg-slate-100 items-center justify-center text-slate-500 hover:text-primary transition-all"
               onClick={() => setHelpOpen(true)}
             >
               <QuestionCircleOutlined className="text-lg" />
