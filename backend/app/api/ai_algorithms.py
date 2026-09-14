@@ -122,7 +122,7 @@ class BanditUpdateRequest(BaseModel):
 
 
 class IRTFitRequest(BaseModel):
-    model: str = Field("2pl", description="1pl / 2pl")
+    model: str = Field("auto", pattern="^(auto|1pl|2pl)$", description="auto / 1pl / 2pl")
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +275,7 @@ async def irt_fit(
     db: Session = Depends(get_db),
     _auth: str = Depends(require_teacher),
 ):
-    """拟合 IRT 模型（1PL/2PL MAP 估计），返回学生能力与题目难度。"""
+    """拟合 IRT 模型；auto 会在小样本时使用更稳健的 1PL。"""
     records = _load_quiz_records(db)
     # 逐题展开为 (student_id, item_id, correct)
     item_records = []
@@ -518,6 +518,7 @@ async def ai_algorithms_status(
             "irt": {
                 "fitted": get_irt_diagnoser() is not None and get_irt_diagnoser().is_fitted,
                 "model": get_irt_diagnoser().model if get_irt_diagnoser() and get_irt_diagnoser().is_fitted else None,
+                "requested_model": get_irt_diagnoser().requested_model if get_irt_diagnoser() and get_irt_diagnoser().is_fitted else None,
                 "students": len(get_irt_diagnoser().ability_map) if get_irt_diagnoser() and get_irt_diagnoser().is_fitted else 0,
                 "items": len(get_irt_diagnoser().difficulty_map) if get_irt_diagnoser() and get_irt_diagnoser().is_fitted else 0,
             },

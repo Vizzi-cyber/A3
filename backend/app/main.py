@@ -69,12 +69,13 @@ async def lifespan(app: FastAPI):
                             "item_id": r.kp_id,
                             "correct": (r.score or 0) >= 60,
                         })
-                diagnoser = IRTDiagnoser(model="2pl")
+                diagnoser = IRTDiagnoser(model="auto")
                 result = diagnoser.fit(item_records)
                 if result["status"] == "success":
                     set_irt_diagnoser(diagnoser)
                     logger.info(
-                        f"AIC 算法: 启动自动拟合 IRT 完成 (学生={len(result.get('ability', {}))}, "
+                        f"AIC 算法: 启动自动拟合 IRT 完成 (模型={result.get('model')}, "
+                        f"学生={len(result.get('ability', {}))}, "
                         f"题目={len(result.get('difficulty', {}))})"
                     )
                 else:

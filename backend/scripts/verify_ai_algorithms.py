@@ -72,7 +72,45 @@ def test_irt():
     check("IRT 能力估计（学生数>0）", len(res.get("ability", {})) > 0, str(res))
     check("IRT 难度标定（题数>0）", len(res.get("difficulty", {})) > 0, str(res))
     check("IRT 能力查询", diag.estimate_ability("s1") is not None)
+    auto = IRTDiagnoser(model="auto")
+    auto_res = auto.fit(rows)
+    check("IRT 小样本自动降级 1PL", auto_res.get("model") == "1pl", str(auto_res))
+    check("IRT 自动选择原因可审计",
+          auto_res.get("model_selection_reason") == "small_sample_rasch_fallback", str(auto_res))
+    large_model, large_reason = IRTDiagnoser._select_model("auto", 100, 10, 1200, 40)
+    check("IRT 数据充分时自动启用 2PL",
+          (large_model, large_reason) == ("2pl", "sample_supports_2pl"),
+          str((large_model, large_reason)))
+    check("IRT 标尺中心化", abs(sum(auto_res["ability"].values()) / len(auto_res["ability"])) < 1e-3,
+          str(auto_res.get("ability")))
+    check("IRT 似然与 MAP 目标语义分离",
+          auto_res.get("log_likelihood", 0) <= 0 and auto_res.get("map_objective", 0) >= 0,
+          str({k: auto_res.get(k) for k in ("log_likelihood", "map_objective")}))
     check("IRT 数据不足降级", IRTDiagnoser().fit([{"student_id": "a", "item_id": "x", "correct": True}])["status"] == "error")
+
+
+def test_offline_evaluation():
+    print("算法离线评估（按学生时间留出）")
+    from app.algorithms.bkt_engine import BKTEngine
+    from app.algorithms.offline_evaluation import (
+        binary_metrics,
+        chronological_student_split,
+        evaluate_bkt_time_holdout,
+    )
+
+    rows = make_quiz_records(n_students=8, n_kps=3, seed=17)
+    frame = BKTEngine.build_dataframe(rows)
+    train, test = chronological_student_split(frame, test_fraction=0.25)
+    check("离线评估时间切分无交叉", set(train.index).isdisjoint(test.index))
+    check("离线评估每生保留训练记录",
+          all(len(group) >= 1 for _, group in train.groupby("student_id")))
+    metrics = binary_metrics([0, 0, 1, 1], [0.1, 0.2, 0.8, 0.9])
+    check("离线评估指标方向正确",
+          metrics["auc"] == 1.0 and metrics["brier_score"] < 0.05, str(metrics))
+    report = evaluate_bkt_time_holdout(rows, test_fraction=0.25)
+    check("BKT 时间留出报告可生成",
+          report.get("status") == "success" and report.get("coverage", {}).get("eligible_test_answers", 0) > 0,
+          str(report))
 
 
 def test_memory():
@@ -740,6 +778,7 @@ def test_agent_hardening():
 if __name__ == "__main__":
     test_bkt()
     test_irt()
+    test_offline_evaluation()
     test_memory()
     test_bandit()
     test_upgrades()

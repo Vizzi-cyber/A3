@@ -178,13 +178,19 @@ class BKTEngine:
 
     # ------------------------------------------------------------------ 评估
     def evaluate_auc(self) -> Optional[float]:
-        """预测 AUC（对比简化 BKT / 随机基线用）。"""
+        """训练集 AUC，仅用于拟合诊断；效果声明应使用时间留出评估。"""
         if not self._fitted or self._train_df is None:
             return None
         try:
             return round(float(self._model.evaluate(data=self._train_df, metric="auc")), 4)
         except Exception:
             return None
+
+    def predict_dataframe(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Return pre-answer correctness probabilities for an ordered data frame."""
+        if not self._fitted:
+            raise RuntimeError("BKT model is not fitted")
+        return self._model.predict(data=frame)
 
     def get_params(self) -> Dict[str, Dict[str, float]]:
         """输出每个知识点的 BKT 参数（prior/learns/guesses/slips/forgets）。"""

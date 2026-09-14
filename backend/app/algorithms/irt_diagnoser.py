@@ -28,9 +28,10 @@ from scipy.optimize import minimize
 class IRTDiagnoser:
     """1PL/2PL IRT 认知诊断器（MAP 联合估计）。"""
 
-    def __init__(self, model: str = "2pl", max_iter: int = 300) -> None:
-        if model not in ("1pl", "2pl"):
-            raise ValueError("model 必须是 '1pl' 或 '2pl'")
+    def __init__(self, model: str = "auto", max_iter: int = 300) -> None:
+        if model not in ("auto", "1pl", "2pl"):
+            raise ValueError("model 必须是 'auto'、'1pl' 或 '2pl'")
+        self.requested_model = model
         self.model = model
         self.max_iter = max_iter
         self._fitted = False
@@ -41,6 +42,25 @@ class IRTDiagnoser:
         self._a: np.ndarray = np.array([])              # 题目区分度
         self._log_likelihood: float = 0.0
         self._n_responses: int = 0
+
+    @staticmethod
+    def _select_model(
+        requested_model: str,
+        n_students: int,
+        n_items: int,
+        n_responses: int,
+        median_item_responses: float,
+    ) -> Tuple[str, str]:
+        if requested_model != "auto":
+            return requested_model, "explicit_request"
+        enough_for_2pl = (
+            n_students >= 100
+            and median_item_responses >= 30
+            and n_responses >= 10 * (n_students + 2 * n_items)
+        )
+        if enough_for_2pl:
+            return "2pl", "sample_supports_2pl"
+        return "1pl", "small_sample_rasch_fallback"
 
     # ------------------------------------------------------------------ 数据
     @staticmethod
@@ -83,6 +103,19 @@ class IRTDiagnoser:
             return {"status": "error", "message": "学生或题目数量不足（至少 2×2）"}
 
         n_students, n_items = X.shape
+        n_responses = int(np.sum(~np.isnan(X)))
+        item_counts = np.sum(~np.isnan(X), axis=0)
+        median_item_responses = float(np.median(item_counts))
+
+        # 2PL adds one discrimination parameter per item. Require enough
+        # independent students and repeated observations before estimating it.
+        self.model, selection_reason = self._select_model(
+            self.requested_model,
+            n_students,
+            n_items,
+            n_responses,
+            median_item_responses,
+        )
 
         # 初始化：θ~N(0,1)，b 用经验 logit，log a = 0（a=1）
         theta0 = np.zeros(n_students)
@@ -121,8 +154,10 @@ class IRTDiagnoser:
         b = x[n_students:n_students + n_items]
         log_a = x[n_students + n_items:] if self.model == "2pl" else np.zeros(n_items)
 
-        # 可识别性：θ 中心化
-        theta = theta - float(np.mean(theta))
+        # 可识别性：同时平移 θ 与 b，保持 θ-b 及所有预测概率不变。
+        location_shift = float(np.mean(theta))
+        theta = theta - location_shift
+        b = b - location_shift
 
         self._fitted = True
         self._student_ids = student_ids
@@ -130,12 +165,21 @@ class IRTDiagnoser:
         self._theta = theta
         self._b = b
         self._a = np.exp(log_a) if self.model == "2pl" else np.ones(n_items)
-        self._log_likelihood = result.fun
-        self._n_responses = int(np.sum(~np.isnan(X)))
+        probabilities = 1.0 / (
+            1.0 + np.exp(-self._a[None, :] * (theta[:, None] - b[None, :]))
+        )
+        probabilities = np.clip(probabilities, 1e-12, 1 - 1e-12)
+        self._log_likelihood = float(np.nansum(
+            X * np.log(probabilities) + (1.0 - X) * np.log(1.0 - probabilities)
+        ))
+        self._n_responses = n_responses
 
         return {
             "status": "success",
             "model": self.model,
+            "requested_model": self.requested_model,
+            "model_selection_reason": selection_reason,
+            "median_item_responses": round(median_item_responses, 2),
             "converged": bool(result.success),
             "iterations": int(result.nit),
             "students": student_ids,
@@ -144,6 +188,7 @@ class IRTDiagnoser:
             "difficulty": {i: round(float(b[j]), 4) for j, i in enumerate(item_ids)},
             "discrimination": {i: round(float(self._a[j]), 4) for j, i in enumerate(item_ids)},
             "log_likelihood": round(self._log_likelihood, 4),
+            "map_objective": round(float(result.fun), 4),
             "n_responses": self._n_responses,
         }
 

@@ -153,8 +153,8 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 
 | 层 | 算法 | 出处 | 在系统中的作用 |
 |---|---|---|---|
-| 测量 | IRT 认知诊断（1PL/2PL MAP 联合估计） | Rasch (1960); Lord (1980); Baker & Kim (2004) | 学生能力 θ 替代加权平均分；题目难度 b 替代人工 1-5 分级 |
-| 建模 | BKT 知识追踪（pyBKT EM 估计） | Corbett & Anderson (1995); Badrinath et al. (2021) | 逐知识点掌握概率（演示库实测 AUC 0.837） |
+| 测量 | IRT 认知诊断（小样本自动 1PL，数据充分可选 2PL） | Rasch (1960); Lord (1980); Baker & Kim (2004) | 学生能力 θ 替代加权平均分；题目难度 b 替代人工 1-5 分级 |
+| 建模 | BKT 知识追踪（pyBKT EM 估计） | Corbett & Anderson (1995); Badrinath et al. (2021) | 逐知识点掌握概率（按学生时间留出评估，指标可一键复现） |
 | 建模 | GKT 图知识追踪（**可学习门控图卷积**） | Nakagawa et al. (2019); Kipf & Welling (2017) | 邻居知识点掌握状态影响当前点；门控参数由"今日→明日掌握度快照"自监督训练，传播增益 w≥0 保证单调可解释 |
 | 记忆 | FSRS 间隔重复调度 | Ye et al. (2022); Liu et al. (2023) | 真实复习队列 + 记忆可提取性预警（艾宾浩斯遗忘曲线工程化） |
 | 决策 | Thompson Sampling 多臂老虎机 | Russo et al. (2018); Clement et al. (2015) | 三处决策：路径调整策略（回炉/强化/加速/维持，分数段候选集保底）、每日练习选题、资源匹配探索层 |
@@ -197,7 +197,7 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 - 全栈技术成熟：React/FastAPI/LangGraph 均为工业级开源框架；
 - 算法自研可复现：ADPP 路径规划、IRT/BKT/GKT/FSRS/MAB 五层算法引擎、趋势权重学习器、MNA+RK4 电路求解器，全部源码开源在仓库内，公式与文献出处见附录参考文献；
 - 测试完备（可复现脚本全部随仓库交付）：
-  - 算法层专项断言 **100 项**（BKT/IRT/FSRS/MAB/GKT/NCD/五层接线/趋势学习器/匹配探索/安全与接线加固）全部通过；
+  - 算法层专项断言 **116 项**（BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索/安全与接线加固）全部通过；
   - API 全链路冒烟 **38 项**（含演示库真实数据训练 IRT/GKT/趋势学习器）；
   - 后端接口 **210 个路由 0 崩溃**；AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项全部通过；
   - 前端 E2E 49 个用例（7 文件）+ **MNA 数值验证 9/9**（RC/RL/LC 对照教科书解析解）；
@@ -283,7 +283,7 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 |---|---|---|---|---|
 | 掌握度测量 | 最近 5 次加权平均分 | IRT θ 百分位（Φ(θ)·100） | 两口径逐生逐日差值、与后测成绩的效度相关 | 已接线，演示库 8 学生实测 |
 | 路径成本 | 人工 1-5 难度分级 | IRT 标定 b 值连续插值 | 同知识点两来源耗时差、路径总时长变化 | 已接线，difficulty_source 可区分 |
-| 知识追踪 | 无（画像快照） | BKT EM 估计 | 预测 AUC（演示库实测 **0.837**，32 知识点） | 已上线 |
+| 知识追踪 | 无（画像快照） | BKT EM 估计 | 时间留出 AUC / LogLoss / Brier（并与最近正确率、多数类比较） | 已上线；小样本结果附置信区间与风险提示 |
 | 掌握度传播 | 逐点独立 | GKT 图卷积传播 | 图感知掌握度 vs 逐点掌握度对后测的预测增益 | 已训练（可学习门控） |
 | 记忆调度 | 统一间隔复习 | FSRS 个性化调度 | 到期知识点复习完成率、可提取性分布 | 已上线 |
 | 路径调整策略 | 50/70/90 固定规则 | Thompson Sampling（规则先验冷启动） | strategy_source 分组的提分统计 | 已接线，收益闭环回传 |
@@ -291,7 +291,7 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
 
 ### 4. 功能验证数据（系统可用性）
 
-- 算法层专项断言 100 项全部通过（覆盖 BKT/IRT/FSRS/MAB/GKT/NCD/五层接线/趋势学习器/匹配探索）
+- 算法层专项断言 116 项全部通过（覆盖 BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索）
 - API 全链路冒烟 38 项（演示库真实数据训练 IRT/GKT/趋势学习器并验证端到端输出）
 - 后端 210 个路由 0 崩溃；AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项、真实环境 HTTP 22 项全部通过
 - 前端 E2E 49 个用例（7 文件）+ MNA 数值验证 9/9（RC/RL/LC 对照解析解）
@@ -357,7 +357,7 @@ AI（大模型、多智能体、知识图谱、自适应算法）是解决上述
   - `weighted_matching.py` — 多维加权匹配 + MAB 探索层
   - `effect_evaluation.py` — 学习效果评估（IRT θ 掌握度 + FSRS 记忆小节）
 - **电路仿真（frontend/src/pages/circuit-simulator/utils/mna-solver.ts）**：并查集 + MNA 直流稳态 + 状态变量法 RK4 暂态，数值经解析解对照验证
-- **训练/验证脚本（backend/scripts/，一键复现）**：`verify_ai_algorithms.py`（100 项算法断言）、`verify_p0_wiring_api.py`（38 项 API 全链路）、`verify_aic_features.py`（29 项回归）、`verify_all_routes.py`（210 路由冒烟）、`verify_dataflow.py` 等
+- **训练/验证脚本（backend/scripts/，一键复现）**：`verify_ai_algorithms.py`（算法断言）、`evaluate_algorithms.py`（按学生时间留出，输出 AUC/LogLoss/Brier/置信区间及基线对照）、`verify_p0_wiring_api.py`（38 项 API 全链路）、`verify_aic_features.py`（29 项回归）、`verify_all_routes.py`（210 路由冒烟）、`verify_dataflow.py` 等
 - **训练端点**：`POST /algorithms/irt/fit`、`/algorithms/bkt/fit`、`/algorithms/gkt/train`、`/algorithms/trend/train`（启动时自动拟合 BKT/IRT）
 - 数据注入脚本：seed_cross_discipline.py（跨学科关联）、seed_classes.py（班级）
 
