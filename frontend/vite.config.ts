@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       "/api/v1": {
         // 可用 VITE_PROXY_TARGET 覆盖（多项目共存时指向备用后端端口）
-        target: process.env.VITE_PROXY_TARGET || "http://localhost:8000",
+        target: process.env.VITE_PROXY_TARGET || "http://localhost:8010",
         changeOrigin: true,
         ws: true,
       },

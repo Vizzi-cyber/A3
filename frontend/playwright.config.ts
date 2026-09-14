@@ -11,7 +11,7 @@ export default defineConfig({
   reporter: "list",
   timeout: 60000,
   use: {
-    baseURL: "http://localhost:8000",
+    baseURL: process.env.E2E_BASE_URL || "http://127.0.0.1:5180",
     trace: "on-first-retry",
   },
   projects: [

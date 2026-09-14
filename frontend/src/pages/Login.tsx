@@ -25,6 +25,7 @@ const tabItems = [
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const [loginForm] = Form.useForm();
   const login = useAppStore((s) => s.login);
   const setUserInfo = useAppStore((s) => s.setUserInfo);
   const [activeTab, setActiveTab] = useState("login");
@@ -134,6 +135,11 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleQuickLogin = (studentId: string, password: string) => {
+    loginForm.setFieldsValue({ student_id: studentId, password });
+    void handleLogin({ student_id: studentId, password });
+  };
+
   const handleRegister = async (values: {
     student_id: string;
     username: string;
@@ -217,7 +223,12 @@ const Login: React.FC = () => {
               />
 
               {activeTab === "login" && (
-                <Form layout="vertical" onFinish={handleLogin} size="large">
+                <Form
+                  form={loginForm}
+                  layout="vertical"
+                  onFinish={handleLogin}
+                  size="large"
+                >
                   <Form.Item
                     name="student_id"
                     rules={[{ required: true, message: "请输入学号" }]}
@@ -254,6 +265,22 @@ const Login: React.FC = () => {
                       登 录
                     </Button>
                   </Form.Item>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <Button
+                      icon={<UserOutlined />}
+                      disabled={loading}
+                      onClick={() => handleQuickLogin("student_001", "123456")}
+                    >
+                      学生一键登录
+                    </Button>
+                    <Button
+                      icon={<UserOutlined />}
+                      disabled={loading}
+                      onClick={() => handleQuickLogin("T001", "Teacher123")}
+                    >
+                      教师一键登录
+                    </Button>
+                  </div>
                 </Form>
               )}
 

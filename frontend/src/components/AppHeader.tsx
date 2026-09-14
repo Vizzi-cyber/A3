@@ -166,12 +166,12 @@ const AppHeader: React.FC = () => {
     }
   };
 
+  const isTeacher = userInfo?.role === "teacher" || userInfo?.role === "admin";
+
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === "profile") {
-      navigate("/personal");
+      navigate(isTeacher ? "/teacher/personal" : "/personal");
     } else if (key === "settings") {
-      const isTeacher =
-        userInfo?.role === "teacher" || userInfo?.role === "admin";
       navigate(isTeacher ? "/teacher/settings" : "/personal?tab=profile");
     } else if (key === "logout") {
       logout();

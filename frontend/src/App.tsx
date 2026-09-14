@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, Suspense } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { Layout, Spin } from "antd";
 import AppHeader from "./components/AppHeader";
 import Sidebar from "./components/Sidebar";
@@ -93,6 +93,15 @@ const InitLoader = () => (
 
 const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <div>{children}</div>;
+};
+
+const TeacherRoute: React.FC = () => {
+  const role = useAppStore((state) => state.userInfo?.role);
+  return role === "teacher" || role === "admin" ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/" replace />
+  );
 };
 
 /** 根据角色选择首页 */
@@ -207,126 +216,128 @@ const PrivateLayout: React.FC = () => {
                     </PageWrapper>
                   }
                 />
-                <Route
-                  path="/teacher"
-                  element={
-                    <PageWrapper>
-                      <TeacherDashboard />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/home"
-                  element={
-                    <PageWrapper>
-                      <TeacherHome />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/assignments"
-                  element={
-                    <PageWrapper>
-                      <AssignmentManagement />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/students"
-                  element={
-                    <PageWrapper>
-                      <StudentManagement />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/resources"
-                  element={
-                    <PageWrapper>
-                      <TeachingResources />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/analytics"
-                  element={
-                    <PageWrapper>
-                      <LearningAnalytics />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/class-analytics"
-                  element={
-                    <PageWrapper>
-                      <ClassAnalytics />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/class-comparison"
-                  element={
-                    <PageWrapper>
-                      <ClassComparison />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/reports"
-                  element={
-                    <PageWrapper>
-                      <ReportExport />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/pilot-report"
-                  element={
-                    <PageWrapper>
-                      <PilotReport />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/lesson-plan"
-                  element={
-                    <PageWrapper>
-                      <LessonPlan />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/insights"
-                  element={
-                    <PageWrapper>
-                      <LearningInsights />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/smart-quiz"
-                  element={
-                    <PageWrapper>
-                      <SmartQuiz />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/settings"
-                  element={
-                    <PageWrapper>
-                      <SystemSettings />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="/teacher/personal"
-                  element={
-                    <PageWrapper>
-                      <TeacherPersonalSpace />
-                    </PageWrapper>
-                  }
-                />
+                <Route element={<TeacherRoute />}>
+                  <Route
+                    path="/teacher"
+                    element={
+                      <PageWrapper>
+                        <TeacherDashboard />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/home"
+                    element={
+                      <PageWrapper>
+                        <TeacherHome />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/assignments"
+                    element={
+                      <PageWrapper>
+                        <AssignmentManagement />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/students"
+                    element={
+                      <PageWrapper>
+                        <StudentManagement />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/resources"
+                    element={
+                      <PageWrapper>
+                        <TeachingResources />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/analytics"
+                    element={
+                      <PageWrapper>
+                        <LearningAnalytics />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/class-analytics"
+                    element={
+                      <PageWrapper>
+                        <ClassAnalytics />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/class-comparison"
+                    element={
+                      <PageWrapper>
+                        <ClassComparison />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/reports"
+                    element={
+                      <PageWrapper>
+                        <ReportExport />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/pilot-report"
+                    element={
+                      <PageWrapper>
+                        <PilotReport />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/lesson-plan"
+                    element={
+                      <PageWrapper>
+                        <LessonPlan />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/insights"
+                    element={
+                      <PageWrapper>
+                        <LearningInsights />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/smart-quiz"
+                    element={
+                      <PageWrapper>
+                        <SmartQuiz />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/settings"
+                    element={
+                      <PageWrapper>
+                        <SystemSettings />
+                      </PageWrapper>
+                    }
+                  />
+                  <Route
+                    path="/teacher/personal"
+                    element={
+                      <PageWrapper>
+                        <TeacherPersonalSpace />
+                      </PageWrapper>
+                    }
+                  />
+                </Route>
                 <Route
                   path="/knowledge-base"
                   element={
