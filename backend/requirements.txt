@@ -27,4 +27,15 @@ passlib[bcrypt]>=1.7.4
 pyBKT>=1.4.3
 fsrs>=6.3.2
 mabwiser>=2.7.4
-scipy>=1.18.0
+# scipy 1.18 起 requires-python>=3.12，服务器与本地 venv 均为 3.11
+scipy>=1.10,<1.18
+
+# 代码静态分析（error_catcher / static_analyzer 的 C 语法树解析）
+tree-sitter>=0.26.0
+tree-sitter-c>=0.24.2
+
+# 中文分词（资源检索 / 知识点匹配）
+jieba>=0.42.1
+
+# 数据处理（学情分析 / 趋势评估）
+pandas>=2.0.0
