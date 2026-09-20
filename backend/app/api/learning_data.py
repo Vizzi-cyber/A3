@@ -34,7 +34,8 @@ logger = setup_logger()
 class LearningRecordRequest(BaseModel):
     student_id: str
     kp_id: str
-    action: Literal["watch", "read", "practice", "review", "complete"] = Field(...)
+    # skip/reset：学习路径节点跳过/重置（不计积分）；由前端 handleNodeAction 上报
+    action: Literal["watch", "read", "practice", "review", "complete", "skip", "reset"] = Field(...)
     duration: int = Field(0, ge=0, le=86400)
     progress: float = Field(0.0, ge=0.0, le=1.0)
     score: Optional[float] = Field(None, ge=0.0, le=100.0)

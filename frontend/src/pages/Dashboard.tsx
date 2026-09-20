@@ -831,7 +831,7 @@ const Dashboard: React.FC = () => {
                                     .record({
                                       student_id: studentId,
                                       kp_id: "daily_quiz",
-                                      action: "quiz",
+                                      action: "practice",
                                       duration: 0,
                                       progress: 0.1,
                                       meta: {
@@ -875,6 +875,14 @@ const Dashboard: React.FC = () => {
                             >
                               下一题 <ArrowRightOutlined />
                             </Button>
+                            {showAnswer &&
+                              currentQuizIdx ===
+                                dailyQuiz.questions.length - 1 && (
+                                <span className="ml-auto inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                                  <CheckCircleOutlined />
+                                  今日练习已完成
+                                </span>
+                              )}
                           </div>
                         </div>
                       );

@@ -236,7 +236,7 @@ const ErrorDiagnosis: React.FC = () => {
           .record({
             student_id: studentId,
             kp_id: "error_diagnosis",
-            action: "error_analysis",
+            action: "practice",
             duration: 0,
             progress: 0.1,
             meta: {
@@ -317,7 +317,7 @@ const ErrorDiagnosis: React.FC = () => {
           .record({
             student_id: studentId,
             kp_id: "error_diagnosis",
-            action: "misconception_trace",
+            action: "practice",
             duration: 0,
             progress: 0.2,
             meta: {
