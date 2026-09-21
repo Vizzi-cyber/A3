@@ -45,7 +45,6 @@ import {
   CrownOutlined,
   ThunderboltOutlined,
   BulbOutlined,
-  MessageOutlined,
   ApartmentOutlined,
   CheckCircleOutlined,
   PlayCircleOutlined,
@@ -163,62 +162,49 @@ const typeMeta: Record<
   },
 };
 
+// 徽章墙：id 与后端 achievement_id 一一对应（见 gamification_service/learning_data）
 const defaultBadges = [
   {
-    id: "1",
+    id: "first_complete",
     name: "初出茅庐",
-    desc: "完成首次学习",
+    desc: "完成首次知识点学习",
     icon: <StarOutlined />,
     color: "#f59e0b",
   },
   {
-    id: "2",
-    name: "代码能手",
-    desc: "完成5次代码实操",
+    id: "first_quiz",
+    name: "初窥门径",
+    desc: "完成首次测验",
     icon: <CodeOutlined />,
     color: "#3b82f6",
   },
   {
-    id: "3",
-    name: "学习王者",
-    desc: "连续打卡30天",
+    id: "perfect_score",
+    name: "满分达人",
+    desc: "测验获得满分",
     icon: <CrownOutlined />,
     color: "#ef4444",
   },
   {
-    id: "4",
-    name: "全勤标兵",
-    desc: "连续7天完成每日挑战",
+    id: "complete_10",
+    name: "博学多才",
+    desc: "完成10个不同知识点",
+    icon: <BulbOutlined />,
+    color: "#8b5cf6",
+  },
+  {
+    id: "streak_7",
+    name: "勤学不辍",
+    desc: "连续打卡7天",
     icon: <FireOutlined />,
     color: "#10b981",
   },
   {
-    id: "5",
-    name: "思维导图",
-    desc: "生成10张思维导图",
-    icon: <ApartmentOutlined />,
-    color: "#8b5cf6",
-  },
-  {
-    id: "6",
-    name: "提问达人",
-    desc: "向AI辅导提问50次",
-    icon: <MessageOutlined />,
-    color: "#0ea5e9",
-  },
-  {
-    id: "7",
-    name: "知识探索者",
-    desc: "完成全部基础章节",
-    icon: <BulbOutlined />,
-    color: "#f59e0b",
-  },
-  {
-    id: "8",
-    name: "完美通过",
-    desc: "测验全部满分",
+    id: "practice_20",
+    name: "百炼成钢",
+    desc: "累计20次学习行为",
     icon: <CheckCircleOutlined />,
-    color: "#10b981",
+    color: "#0ea5e9",
   },
 ];
 
@@ -1158,7 +1144,8 @@ const PersonalSpace: React.FC = () => {
   const badgeList = useMemo(
     () =>
       defaultBadges.map((db) => {
-        const unlocked = achievements.find((a) => a.name === db.name);
+        // 按achievement_id匹配（名字匹配会因前后端文案不一致永远无法点亮）
+        const unlocked = achievements.find((a) => a.achievement_id === db.id);
         return {
           ...db,
           unlocked: !!unlocked,

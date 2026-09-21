@@ -22,7 +22,7 @@ from ..models.experiment import (
     ExperimentBatchModel,
     ExperimentAssignmentModel,
 )
-from ..services.gamification_service import award_points, maybe_unlock_achievement
+from ..services.gamification_service import award_points, check_progress_achievements, maybe_unlock_achievement
 from ..services.path_adjustment_engine import maybe_check_path_adjustment
 from ..core.logger import setup_logger
 from .auth import require_auth
@@ -102,14 +102,18 @@ async def record_learning(request: LearningRecordRequest, db: Session = Depends(
         meta=request.meta,
     )
     db.add(record)
+    db.flush()  # 让下面的统计类成就看到本条记录
+
+    # ---------- 进阶成就（打卡/知识点数/行为数，与前端徽章墙按 id 对齐） ----------
+    check_progress_achievements(db, request.student_id)
 
     # ---------- 自动积分（同一事务） ----------
     awarded = 0
     if request.action == "complete" or request.progress >= 1.0:
         awarded += 10
         maybe_unlock_achievement(
-            db, request.student_id, "first_complete", "初次完成",
-            "首次完成一个知识点的学习，继续保持！", "check-circle"
+            db, request.student_id, "first_complete", "初出茅庐",
+            "完成首次知识点学习，继续保持！", "check-circle"
         )
     elif request.action == "practice":
         awarded += 5
@@ -180,13 +184,13 @@ async def record_quiz(request: QuizResultRequest, db: Session = Depends(get_db),
     if awarded > 0:
         total = award_points(db, request.student_id, awarded, "quiz")
         maybe_unlock_achievement(
-            db, request.student_id, "first_quiz", "初次测验",
-            "完成了第一次测验，继续挑战更高分数！", "file-done"
+            db, request.student_id, "first_quiz", "初窥门径",
+            "完成首次测验，继续挑战更高分数！", "file-done"
         )
         if request.score >= 100:
             maybe_unlock_achievement(
-                db, request.student_id, "perfect_score", "满分成就",
-                "在一次测验中获得了满分，太棒了！", "star"
+                db, request.student_id, "perfect_score", "满分达人",
+                "测验获得满分，太棒了！", "star"
             )
 
     db.commit()
