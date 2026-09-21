@@ -156,7 +156,10 @@ api.interceptors.response.use(
       return Promise.reject(new Error("登录已过期，请重新登录"));
     }
     if (status === 403) {
-      return Promise.reject(new Error("没有权限执行此操作"));
+      // 后端带具体原因（如"邀请码错误或缺失"）时优先展示
+      return Promise.reject(
+        new Error(data?.detail || message || "没有权限执行此操作"),
+      );
     }
     if (status === 404) {
       return Promise.reject(new Error("请求的资源不存在"));
