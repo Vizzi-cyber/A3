@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     SECRET_KEY: str = ""
+    # 教师注册邀请码（公开页"教师注册"用；置空则仅限管理员后台创建教师）
+    TEACHER_INVITE_CODE: str = "LearnLab2026"
 
     # 服务器配置
     HOST: str = "0.0.0.0"

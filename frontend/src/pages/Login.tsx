@@ -7,6 +7,7 @@ import {
   LockOutlined,
   MailOutlined,
   HomeOutlined,
+  SafetyOutlined,
 } from "@ant-design/icons";
 import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
@@ -163,10 +164,11 @@ const Login: React.FC = () => {
     username: string;
     email?: string;
     password: string;
+    invite_code: string;
   }) => {
     setLoading(true);
     try {
-      await teacherAuthApi.register(values);
+      await teacherAuthApi.register(values, values.invite_code);
       message.success("教师注册成功，请登录");
       setActiveTab("login");
     } catch (e: unknown) {
@@ -374,6 +376,16 @@ const Login: React.FC = () => {
                     <Input
                       prefix={<MailOutlined className="text-slate-400" />}
                       placeholder="请输入邮箱（可选）"
+                      className="rounded-lg"
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="invite_code"
+                    rules={[{ required: true, message: "请输入教师邀请码" }]}
+                  >
+                    <Input
+                      prefix={<SafetyOutlined className="text-slate-400" />}
+                      placeholder="请输入教师邀请码（向管理员获取）"
                       className="rounded-lg"
                     />
                   </Form.Item>

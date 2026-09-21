@@ -396,7 +396,10 @@ export const authApi = {
   me: () => api.get<UserInfoResponse>("/auth/me"),
   refresh: () => api.post<LoginResponse>("/auth/refresh"),
   changePassword: (data: { current_password: string; new_password: string }) =>
-    api.post<{ status: string; message: string }>("/auth/change-password", data),
+    api.post<{ status: string; message: string }>(
+      "/auth/change-password",
+      data,
+    ),
 };
 
 // ---------- Dashboard ----------
@@ -1621,15 +1624,19 @@ export const assignmentApi = {
 
 // ---------- 教师注册 ----------
 export const teacherAuthApi = {
-  register: (data: {
-    student_id: string;
-    username: string;
-    email?: string;
-    password: string;
-  }) =>
+  register: (
+    data: {
+      student_id: string;
+      username: string;
+      email?: string;
+      password: string;
+    },
+    inviteCode?: string,
+  ) =>
     api.post<{ status: string; message: string; student_id: string }>(
       "/auth/register-teacher",
       data,
+      inviteCode ? { headers: { "X-Invite-Code": inviteCode } } : undefined,
     ),
 };
 

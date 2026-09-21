@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from jose import jwt, JWTError
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.exc import IntegrityError
@@ -221,9 +221,21 @@ async def debug_validate(password: str):
 async def register_teacher(
     request: UserRegisterRequest,
     db: Session = Depends(get_db),
-    _admin: str = Depends(require_admin),
+    invite_code: Optional[str] = Header(None, alias="X-Invite-Code"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ):
-    """教师注册（需要管理员认证）"""
+    """教师注册（邀请码 或 管理员身份二选一）"""
+    authorized = False
+    if credentials is not None:
+        try:
+            await require_admin(credentials, db)
+            authorized = True
+        except HTTPException:
+            authorized = False
+    if not authorized:
+        expected = (settings.TEACHER_INVITE_CODE or "").strip()
+        if not expected or (invite_code or "").strip() != expected:
+            raise HTTPException(status_code=403, detail="邀请码错误或缺失")
     existing = db.query(UserModel).filter(UserModel.student_id == request.student_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="student_id already exists")
