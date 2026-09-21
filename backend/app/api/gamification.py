@@ -15,8 +15,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..models.database import get_db
 from ..models.gamification import PointsModel, AchievementModel, TaskModel, LeaderboardModel
+from ..models.knowledge import LearningRecordModel, QuizResultModel
 from ..models.user import UserModel
-from ..services.gamification_service import ensure_points, award_points, sync_leaderboard
+from ..services.gamification_service import (
+    ensure_points,
+    award_points,
+    sync_leaderboard,
+    maybe_unlock_achievement,
+    check_progress_achievements,
+)
 from .auth import require_auth, require_teacher
 
 router = APIRouter()
@@ -60,9 +67,29 @@ async def add_points(request: AddPointsRequest, db: Session = Depends(get_db), _
 
 @router.get("/{student_id}/achievements")
 async def get_achievements(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
-    """获取已解锁成就"""
+    """获取已解锁成就（含历史数据追溯解锁：为老行为数据补发应得成就）"""
     if student_id != _current:
         raise HTTPException(status_code=403, detail="Cannot view other student's achievements")
+
+    # ---------- 追溯解锁（幂等）：修复前产生的老数据没有成就记录，这里补齐 ----------
+    if (
+        db.query(LearningRecordModel.kp_id)
+        .filter(LearningRecordModel.student_id == student_id, LearningRecordModel.action == "complete")
+        .first()
+    ):
+        maybe_unlock_achievement(
+            db, student_id, "first_complete", "初出茅庐", "完成首次知识点学习", "check-circle"
+        )
+    check_progress_achievements(db, student_id)
+    quiz_scores = [
+        score for (score,) in db.query(QuizResultModel.score).filter(QuizResultModel.student_id == student_id)
+    ]
+    if quiz_scores:
+        maybe_unlock_achievement(db, student_id, "first_quiz", "初窥门径", "完成首次测验", "file-done")
+        if any(score >= 100 for score in quiz_scores):
+            maybe_unlock_achievement(db, student_id, "perfect_score", "满分达人", "测验获得满分", "star")
+    db.commit()
+
     achievements = db.query(AchievementModel).filter(AchievementModel.student_id == student_id).all()
     return {
         "status": "success",
