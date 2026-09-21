@@ -1102,7 +1102,14 @@ const ResourceCenter: React.FC = () => {
                 </Space.Compact>
               </Space>
             }
-            styles={{ body: { padding: "40px" } }}
+            styles={{
+              body: {
+                padding: "40px",
+                // 讲义卡固定为视口内阅读窗格：内容在卡内滚动，不被页面滚动状态拖累
+                maxHeight: "calc(100vh - 230px)",
+                overflowY: "auto",
+              },
+            }}
           >
             <Spin spinning={resLoading}>
               <div

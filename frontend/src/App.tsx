@@ -372,6 +372,27 @@ const App: React.FC = () => {
   const [onboardingSubject, setOnboardingSubject] = useState("C语言");
   const currentSubject = useAppStore((s) => s.currentSubject);
 
+  // 全局兜底：antd Modal 卸载后滚动锁残留会把整页锁死（表现为页面无法滚动）
+  useEffect(() => {
+    const cleanup = () => {
+      const wraps = [...document.querySelectorAll(".ant-modal-wrap")];
+      const anyOpen = wraps.some((w) => getComputedStyle(w).display !== "none");
+      if (!anyOpen && document.body.style.overflow) {
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("position");
+        document.body.style.removeProperty("width");
+      }
+    };
+    const ob = new MutationObserver(cleanup);
+    ob.observe(document.body, {
+      childList: true,
+      subtree: false,
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    });
+    return () => ob.disconnect();
+  }, []);
+
   useEffect(() => {
     if (isLoggedIn) {
       authApi
