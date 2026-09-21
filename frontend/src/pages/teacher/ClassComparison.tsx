@@ -142,7 +142,13 @@ const ClassComparison: React.FC = () => {
           {/* 班级概览卡片 */}
           <Row gutter={16}>
             {meta.map((c) => (
-              <Col span={8} key={c.class_id}>
+              <Col
+                xs={24}
+                sm={12}
+                md={8}
+                key={c.class_id}
+                className="mb-3 sm:mb-0"
+              >
                 <Card size="small">
                   <Statistic
                     title={c.class_id}
