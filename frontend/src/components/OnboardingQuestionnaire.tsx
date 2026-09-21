@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Radio, Slider, Typography, Space, Card } from "antd";
+import {
+  Modal,
+  Button,
+  Radio,
+  Slider,
+  Typography,
+  Space,
+  Card,
+  message,
+} from "antd";
 import {
   TrophyOutlined,
   RocketOutlined,
@@ -47,7 +56,7 @@ export const isOnboardingCompleted = (subject: string): boolean => {
 };
 
 // 标记课程问卷已完成
-const markOnboardingCompleted = (subject: string): void => {
+export const markOnboardingCompleted = (subject: string): void => {
   localStorage.setItem(`onboarding_completed_${subject}`, "true");
 };
 
@@ -101,6 +110,8 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
       markOnboardingCompleted(subject);
       onComplete();
     } catch (e) {
+      // 静默失败会让用户被困在锁滚动的 Modal 里，必须给出可见反馈
+      message.error("问卷提交失败，请检查网络后重试");
       console.error("提交失败:", e);
     } finally {
       setLoading(false);

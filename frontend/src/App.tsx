@@ -9,9 +9,10 @@ import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import { useAppStore } from "./store";
-import { authApi, profileApi } from "./services/api";
+import { authApi, profileApi, onboardingApi } from "./services/api";
 import OnboardingQuestionnaire, {
   isOnboardingCompleted,
+  markOnboardingCompleted,
 } from "./components/OnboardingQuestionnaire";
 import "./App.css";
 
@@ -386,8 +387,22 @@ const App: React.FC = () => {
           // 检查是否需要引导问卷（仅学生，仅C语言）
           if (u.role === "student" || u.role === "user") {
             if (!isOnboardingCompleted("C语言")) {
-              setOnboardingSubject("C语言");
-              setShowOnboarding(true);
+              // localStorage 缺失不代表未完成（换浏览器/清缓存会丢），
+              // 以服务端画像记录为准，避免已完成的用户被问卷遮罩再次锁住页面
+              onboardingApi
+                .check()
+                .then((res) => {
+                  if (res.data?.completed) {
+                    markOnboardingCompleted("C语言");
+                  } else {
+                    setOnboardingSubject("C语言");
+                    setShowOnboarding(true);
+                  }
+                })
+                .catch(() => {
+                  setOnboardingSubject("C语言");
+                  setShowOnboarding(true);
+                });
             }
           }
         })
