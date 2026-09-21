@@ -739,7 +739,7 @@ const Tutor: React.FC = () => {
                 </Tag>
               </Tooltip>
               <Tooltip title="当前使用讯飞星火">
-                <Tag className="rounded-full border-0 bg-blue-50 text-blue-600 text-xs cursor-default">
+                <Tag className="hidden md:inline-flex rounded-full border-0 bg-blue-50 text-blue-600 text-xs cursor-default">
                   <FlagFilled className="mr-1" />
                   讯飞星火
                 </Tag>
@@ -757,6 +757,10 @@ const Tutor: React.FC = () => {
             </Space>
           }
           styles={{
+            header: {
+              flexWrap: "wrap",
+              gap: 4,
+            },
             body: {
               padding: 0,
               height: "100%",

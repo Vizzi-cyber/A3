@@ -354,10 +354,10 @@ export default function CodeEditor({
   return (
     <div className="flex flex-col h-full">
       {/* Tabs */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-border overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setActiveTab("code")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === "code"
               ? "bg-ink text-surface"
               : "text-ink-secondary hover:bg-bg"
@@ -368,7 +368,7 @@ export default function CodeEditor({
         </button>
         <button
           onClick={() => setActiveTab("pins")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === "pins"
               ? "bg-ink text-surface"
               : "text-ink-secondary hover:bg-bg"
@@ -384,7 +384,7 @@ export default function CodeEditor({
         </button>
         <button
           onClick={() => setActiveTab("serial")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === "serial"
               ? "bg-ink text-surface"
               : "text-ink-secondary hover:bg-bg"

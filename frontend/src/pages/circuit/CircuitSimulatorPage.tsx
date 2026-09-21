@@ -880,48 +880,48 @@ ${description}
   return (
     <div className="flex flex-col h-[calc(100vh-100px)]">
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="font-display text-[22px] font-bold tracking-tight text-ink">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="shrink-0">
+          <h1 className="font-display text-[22px] font-bold tracking-tight text-ink whitespace-nowrap">
             电路仿真器
           </h1>
           <p className="text-[14px] text-ink-secondary mt-1">
             拖拽元件、连线、编写代码，实时仿真电路
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
           {/* Mobile panel toggles */}
           <button
             onClick={() => setShowLeftPanel(!showLeftPanel)}
-            className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer"
+            className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
             <Grid3X3 size={14} />
             元件
           </button>
           <button
             onClick={() => setShowRightPanel(!showRightPanel)}
-            className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer"
+            className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
             <Settings size={14} />
             属性
           </button>
           <button
             onClick={() => setShowTemplates(!showTemplates)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
             <BookOpen size={14} />
             <span className="hidden sm:inline">示例电路</span>
           </button>
           <button
             onClick={handleImport}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
             <Upload size={14} />
             <span className="hidden sm:inline">导入</span>
           </button>
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-bg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
             <Download size={14} />
             <span className="hidden sm:inline">导出</span>
@@ -992,7 +992,7 @@ ${description}
         {/* Tool selector */}
         <button
           onClick={() => setTool("select")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
             tool === "select"
               ? "bg-ink text-surface"
               : "text-ink-secondary hover:bg-bg"
@@ -1003,7 +1003,7 @@ ${description}
         </button>
         <button
           onClick={() => setTool("wire")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
             tool === "wire"
               ? "bg-ink text-surface"
               : "text-ink-secondary hover:bg-bg"
@@ -1013,40 +1013,40 @@ ${description}
           连线
         </button>
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border mx-1 shrink-0" />
 
         {/* Zoom */}
         <button
           onClick={handleZoomOut}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-secondary hover:bg-bg transition-colors cursor-pointer"
+          className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-ink-secondary hover:bg-bg transition-colors cursor-pointer"
           title="缩小"
         >
           <ZoomOut size={14} />
         </button>
-        <span className="text-[11px] text-ink-faint w-10 text-center">
+        <span className="text-[11px] text-ink-faint w-10 text-center shrink-0">
           {Math.round(transform.scale * 100)}%
         </span>
         <button
           onClick={handleZoomIn}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-secondary hover:bg-bg transition-colors cursor-pointer"
+          className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-ink-secondary hover:bg-bg transition-colors cursor-pointer"
           title="放大"
         >
           <ZoomIn size={14} />
         </button>
         <button
           onClick={handleZoomFit}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-secondary hover:bg-bg transition-colors cursor-pointer"
+          className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-ink-secondary hover:bg-bg transition-colors cursor-pointer"
           title="适应画布"
         >
           <Maximize2 size={14} />
         </button>
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border mx-1 shrink-0" />
 
         {/* Grid */}
         <button
           onClick={() => setShowGrid(!showGrid)}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+          className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
             showGrid
               ? "bg-accent-light text-accent"
               : "text-ink-secondary hover:bg-bg"
@@ -1062,7 +1062,7 @@ ${description}
         {isRunning ? (
           <button
             onClick={handleStop}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-500 text-white text-[12px] font-semibold hover:bg-red-600 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-500 text-white text-[12px] font-semibold hover:bg-red-600 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
             <Square size={12} />
             停止仿真
@@ -1070,7 +1070,7 @@ ${description}
         ) : (
           <button
             onClick={handleRun}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-teal text-white text-[12px] font-semibold hover:bg-teal/90 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-teal text-white text-[12px] font-semibold hover:bg-teal/90 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
             <Play size={12} />
             运行仿真
@@ -1080,19 +1080,19 @@ ${description}
         {/* AI 分析 */}
         <button
           onClick={handleAiAnalyze}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/40 bg-accent-light text-accent text-[12px] font-medium hover:bg-accent/10 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/40 bg-accent-light text-accent text-[12px] font-medium hover:bg-accent/10 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           title="AI 分析电路功能与仿真结果"
         >
           <Bot size={13} />
           AI 分析
         </button>
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border mx-1 shrink-0" />
 
         {/* Clear */}
         <button
           onClick={handleClear}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-faint hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+          className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-ink-faint hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
           title="清空画布"
         >
           <Trash2 size={14} />

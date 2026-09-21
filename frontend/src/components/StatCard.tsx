@@ -31,7 +31,7 @@ export const StatCard: React.FC<StatCardProps> = React.memo(
             <Typography.Text className="text-slate-500 text-sm block">
               {title}
             </Typography.Text>
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-baseline gap-1 whitespace-nowrap">
               <Typography.Text className="text-[26px] font-bold text-slate-800 tracking-tight leading-tight">
                 {value}
               </Typography.Text>

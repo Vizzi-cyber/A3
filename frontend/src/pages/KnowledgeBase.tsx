@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Tabs, Spin } from "antd";
+import { Tabs, Spin, Grid, Button } from "antd";
 import {
   FolderOutlined,
   SearchOutlined,
   ApartmentOutlined,
   LinkOutlined,
+  LeftOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import { useKBStore } from "../store/kbStore";
 import FileTree from "../components/kb/FileTree";
@@ -18,6 +20,9 @@ const KnowledgeBase: React.FC = () => {
   const { loadFolders, loadNotes, selectNote, activeNoteId } = useKBStore();
   const [loading, setLoading] = useState(true);
   const [rightTab, setRightTab] = useState("backlinks");
+  const screens = Grid.useBreakpoint();
+  const isMobile = screens.md === false;
+  const [mobileTab, setMobileTab] = useState("folders");
 
   useEffect(() => {
     const init = async () => {
@@ -34,6 +39,7 @@ const KnowledgeBase: React.FC = () => {
 
   const handleNoteSelect = (noteId: string) => {
     selectNote(noteId);
+    if (isMobile) setMobileTab("note");
   };
 
   if (loading) {
@@ -45,6 +51,91 @@ const KnowledgeBase: React.FC = () => {
         <Spin size="large" tip="加载知识库...">
           <div style={{ padding: 50 }} />
         </Spin>
+      </div>
+    );
+  }
+
+  // 移动端：三栏改为单栏 Tab 切换，避免 750px+ 的固定宽度挤压
+  if (isMobile) {
+    return (
+      <div
+        className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col"
+        style={{ height: "calc(100vh - 128px)" }}
+      >
+        {mobileTab === "note" ? (
+          <>
+            <div className="px-3 py-2 border-b border-slate-200 flex items-center gap-2">
+              <Button
+                size="small"
+                icon={<LeftOutlined />}
+                onClick={() => setMobileTab("notes")}
+              >
+                笔记列表
+              </Button>
+              <span className="text-xs text-slate-400">笔记内容</span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <NoteEditor />
+            </div>
+          </>
+        ) : (
+          <Tabs
+            activeKey={mobileTab}
+            onChange={setMobileTab}
+            className="h-full flex flex-col"
+            tabBarStyle={{ paddingLeft: 8, marginBottom: 0, fontSize: 12 }}
+            items={[
+              {
+                key: "folders",
+                label: (
+                  <span className="text-xs">
+                    <FolderOutlined /> 文件夹
+                  </span>
+                ),
+                children: (
+                  <div
+                    className="overflow-hidden"
+                    style={{ height: "calc(100% - 44px)" }}
+                  >
+                    <FileTree onNoteSelect={handleNoteSelect} />
+                  </div>
+                ),
+              },
+              {
+                key: "notes",
+                label: (
+                  <span className="text-xs">
+                    <FileTextOutlined /> 笔记
+                  </span>
+                ),
+                children: (
+                  <div
+                    className="overflow-hidden"
+                    style={{ height: "calc(100% - 44px)" }}
+                  >
+                    <NoteList onNoteSelect={handleNoteSelect} />
+                  </div>
+                ),
+              },
+              {
+                key: "search",
+                label: (
+                  <span className="text-xs">
+                    <SearchOutlined /> 搜索
+                  </span>
+                ),
+                children: (
+                  <div
+                    className="overflow-hidden"
+                    style={{ height: "calc(100% - 44px)" }}
+                  >
+                    <SearchPanel onNoteClick={handleNoteSelect} />
+                  </div>
+                ),
+              },
+            ]}
+          />
+        )}
       </div>
     );
   }
