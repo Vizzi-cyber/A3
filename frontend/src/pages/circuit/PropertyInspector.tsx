@@ -67,7 +67,7 @@ export default function PropertyInspector({
   };
 
   return (
-    <div className="w-[240px] shrink-0 bg-surface border border-border rounded-2xl card-shadow flex flex-col overflow-hidden">
+    <div className="w-[240px] h-full min-h-0 shrink-0 bg-surface border border-border rounded-2xl card-shadow flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center justify-between">

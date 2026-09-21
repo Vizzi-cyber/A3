@@ -1218,7 +1218,7 @@ ${description}
         )}
 
         {/* Desktop: Right: Property Inspector */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block h-full min-h-0">
           <PropertyInspector
             component={selectedComp}
             onUpdate={handleUpdateComponent}
