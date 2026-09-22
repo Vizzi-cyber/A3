@@ -18,7 +18,15 @@ const NoteList: React.FC<NoteListProps> = ({ onNoteSelect }) => {
   } = useKBStore();
 
   const handleCreateNote = async () => {
-    const noteId = await createNote("未命名笔记", currentFolderId);
+    // 后端对学生+标题有唯一约束：已有同名笔记时 409。自动生成不冲突的默认标题
+    const existing = new Set(notes.map((n) => n.title));
+    let title = "未命名笔记";
+    let seq = 2;
+    while (existing.has(title)) {
+      title = `未命名笔记 ${seq}`;
+      seq += 1;
+    }
+    const noteId = await createNote(title, currentFolderId);
     if (noteId) {
       onNoteSelect?.(noteId);
     }
