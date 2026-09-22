@@ -808,7 +808,7 @@ const ResourceCenter: React.FC = () => {
   };
 
   return (
-    <div className="relative space-y-5 pb-8 xl:pb-0 xl:h-[calc(100vh-8rem)] xl:flex xl:flex-col xl:overflow-hidden">
+    <div className="relative space-y-5 pb-8 xl:pb-0 xl:h-[150vh] xl:flex xl:flex-col xl:overflow-hidden">
       <div className="pointer-events-none absolute -top-12 right-0 h-72 w-72 rounded-full bg-indigo-100/40 blur-3xl" />
       <div className="pointer-events-none absolute top-96 -left-20 h-64 w-64 rounded-full bg-sky-100/35 blur-3xl" />
       {/* 艾宾浩斯复习提醒 */}
