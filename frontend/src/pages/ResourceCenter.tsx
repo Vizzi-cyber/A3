@@ -808,12 +808,12 @@ const ResourceCenter: React.FC = () => {
   };
 
   return (
-    <div className="relative space-y-5 pb-8">
+    <div className="relative space-y-5 pb-8 xl:pb-0 xl:h-[calc(100vh-8rem)] xl:flex xl:flex-col xl:overflow-hidden">
       <div className="pointer-events-none absolute -top-12 right-0 h-72 w-72 rounded-full bg-indigo-100/40 blur-3xl" />
       <div className="pointer-events-none absolute top-96 -left-20 h-64 w-64 rounded-full bg-sky-100/35 blur-3xl" />
       {/* 艾宾浩斯复习提醒 */}
       {showReviewBanner && weakReviewTopics.length > 0 && (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex items-center gap-3">
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex items-center gap-3 shrink-0">
           <ReloadOutlined className="text-amber-500 text-lg" />
           <div className="flex-1">
             <div className="text-sm font-medium text-amber-800">
@@ -843,7 +843,7 @@ const ResourceCenter: React.FC = () => {
 
       {/* 顶部标题栏 */}
       <Card
-        className="border border-blue-100/70 rounded-2xl shadow-card relative z-10"
+        className="border border-blue-100/70 rounded-2xl shadow-card relative z-10 shrink-0"
         styles={{ body: { padding: "20px 24px" } }}
       >
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -908,9 +908,9 @@ const ResourceCenter: React.FC = () => {
         </div>
       </Card>
 
-      <div className="flex gap-5 items-start">
+      <div className="flex flex-col xl:flex-row gap-5 xl:items-stretch xl:flex-1 xl:min-h-0">
         {/* 左侧列 —— 目录 + 线索栏（加宽填充） */}
-        <div className="hidden xl:flex flex-shrink-0 w-80 sticky top-16 self-start z-10 flex-col gap-4 h-[calc(100vh-5rem)]">
+        <div className="hidden xl:flex flex-shrink-0 w-80 z-10 flex-col gap-4 h-full min-h-0">
           {/* 课程目录 */}
           <Card
             className="border border-slate-100 rounded-2xl max-h-[calc(100vh-24rem)] overflow-y-auto"
@@ -1029,7 +1029,7 @@ const ResourceCenter: React.FC = () => {
         </div>
 
         {/* 中间主内容区 */}
-        <div className="flex-1 min-w-0 space-y-5">
+        <div className="flex-1 min-w-0 space-y-5 xl:h-full xl:overflow-y-auto xl:pr-1">
           {/* 图文讲义 */}
           <Card
             className="border border-blue-100/70 rounded-2xl shadow-card relative z-10"
@@ -1102,14 +1102,7 @@ const ResourceCenter: React.FC = () => {
                 </Space.Compact>
               </Space>
             }
-            styles={{
-              body: {
-                padding: "40px",
-                // 讲义卡固定为视口内阅读窗格：内容在卡内滚动，不被页面滚动状态拖累
-                maxHeight: "calc(100vh - 230px)",
-                overflowY: "auto",
-              },
-            }}
+            styles={{ body: { padding: "40px" } }}
           >
             <Spin spinning={resLoading}>
               <div
@@ -1612,7 +1605,7 @@ const ResourceCenter: React.FC = () => {
 
         {/* 右侧 AI 辅导 */}
         {chatOpen && (
-          <div className="hidden xl:block w-64 flex-shrink-0 sticky top-16 self-start h-[calc(100vh-5rem)]">
+          <div className="hidden xl:block w-64 flex-shrink-0 h-full min-h-0">
             <Card
               className="border border-slate-100 rounded-2xl h-full flex flex-col"
               styles={{
