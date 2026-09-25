@@ -392,11 +392,18 @@ def _append_to_note(note: KBNoteModel, section_title: str, content: str, action:
     """向笔记追加内容（自动去重）"""
     existing = note.content or ""
 
-    # 去重检查：如果 content 已存在于笔记中，跳过追加
-    # 提取内容中的关键标识行作为去重依据（取前 3 行非空内容）
-    content_lines = [l for l in content.strip().split("\n") if l.strip()]
-    dedup_key = "\n".join(content_lines[:3]).strip()
-    if dedup_key and dedup_key in existing:
+    # 去重检查：如果 content 已存在于笔记中，跳过追加。
+    # 关键：跳过首行元数据（**学习时间** 等带时间戳的行，每次都不同会导致去重失效），
+    # 用第一条"实质内容行"作为指纹（如文档标题行）。时间戳变化但内容相同 → 跳过追加。
+    key_line = next(
+        (
+            l.strip()
+            for l in content.split("\n")
+            if l.strip() and not l.strip().startswith("**")
+        ),
+        "",
+    )
+    if key_line and key_line in existing:
         return
 
     # 检查是否已有该章节
