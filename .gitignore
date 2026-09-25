@@ -96,5 +96,6 @@ screenshots/
 frontend/playwright.config.local.ts
 frontend/test-screenshots/
 
+
 # ZCode session files
 .zcode/
