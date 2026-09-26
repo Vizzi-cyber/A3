@@ -44,7 +44,7 @@
 
 | 测试 | 范围 | 结果 | 脚本 |
 |---|---|---|---|
-| 算法专项 | 116 项断言（BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索） | ✅ 116/116 | `backend/scripts/verify_ai_algorithms.py` |
+| 算法专项 | 107 项断言（BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索） | ✅ 107/107 | `backend/scripts/verify_ai_algorithms.py` |
 | 算法接线 API 冒烟 | 38 项（演示库真实数据训练 IRT/GKT/趋势学习器 + MAB 闭环） | ✅ 38/38 | `backend/scripts/verify_p0_wiring_api.py` |
 | AIC 功能回归 | 29 项 | ✅ 29/29 | `backend/scripts/verify_aic_features.py` |
 | 全路由冒烟 | 210 个路由 | ✅ 0 崩溃 | `backend/scripts/verify_all_routes.py` |

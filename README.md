@@ -170,7 +170,7 @@ C 语言代码粘贴自动捕获语法 / 逻辑 / 思维错误
 - **ADPP 掌握度升级**：`DAGPathPlanner.set_bkt_engine()` 注入完整 BKT 引擎后，路径规划使用带 EM 参数估计的掌握度（替代"简化 BKT"概率合并公式）
 - **效果评估升级**：`evaluate(memory_status=...)` 输出真实 FSRS 复习队列与记忆保持预警（替代"增加间隔重复练习频次"字符串提示）
 - **FSRS 持久化**：记忆卡片状态存 `memory_cards` 表，重启不丢失
-- **验证**：`python scripts/verify_ai_algorithms.py`（116 项断言全部通过）；`python scripts/evaluate_algorithms.py` 生成按学生时间留出的泛化评估
+- **验证**：`python scripts/verify_ai_algorithms.py`（107 项断言全部通过）；`python scripts/evaluate_algorithms.py` 生成按学生时间留出的泛化评估
 
 
 
@@ -1667,7 +1667,7 @@ npm run dev -- --host 0.0.0.0 --port 5173
 
 | 脚本 | 范围 | 运行方式 |
 |------|------|----------|
-| `verify_ai_algorithms.py` | 算法专项验证 116 项（BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索/安全与接线加固） | 无需服务 |
+| `verify_ai_algorithms.py` | 算法专项验证 107 项（BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索/安全与接线加固） | 无需服务 |
 | `verify_p0_wiring_api.py` | API 全链路冒烟 38 项（接线/refresh/FSRS 路径/排行榜六维/反思循环/安全） | 需服务启动 |
 | `verify_aic_features.py` | TestClient 回归 29 项（新功能+核心接口，mock LLM） | 需服务启动或按脚本配置 |
 | `verify_live.py` | 真实环境 HTTP 验证 | 需服务启动（8000） |
@@ -1817,7 +1817,7 @@ A3_项目框架/
 
 | 检查项 | 状态 | 说明 |
 |--------|------|------|
-| AI 算法专项 | ✅ 通过 | `verify_ai_algorithms.py`：116/116 |
+| AI 算法专项 | ✅ 通过 | `verify_ai_algorithms.py`：107/107 |
 | AIC 功能回归 | ✅ 通过 | `verify_aic_features.py`：29/29 |
 | 全链路数据流 | ✅ 通过 | `verify_dataflow.py`：23/23 |
 | Agent/LLM 专项 | ✅ 通过 | `verify_agent_llm.py`：23/23 |
