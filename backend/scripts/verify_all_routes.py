@@ -82,7 +82,11 @@ def main():
         if "login" in path:
             return {"student_id": "student_001", "password": "123456"}
         if "register" in path:
-            return {"student_id": "test_e2e", "password": "Test123456", "username": "测试", "role": "student"}
+            # 随机 ID+强随机密码：不产生固定可登录的测试账号（残留账号不可登录，无害）
+            import secrets as _s, time as _t
+            suffix = str(int(_t.time()))[-6:] + _s.token_hex(2)
+            return {"student_id": f"verify_e2e_{suffix}", "password": _s.token_urlsafe(12) + "aA1!",
+                    "username": "冒烟", "role": "student"}
         if "record" in path or "learning-data" in path and "experiment" in path:
             return {"student_id": "student_001", "kp_id": "kp_c01", "action": "read", "duration": 30}
         if "experiment" in path:
