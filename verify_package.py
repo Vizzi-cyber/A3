@@ -3,12 +3,13 @@
 import os
 import sys
 import time
+import tempfile
 import zipfile
 import urllib.request
 import urllib.error
 
-ZIP = os.path.join("交付材料", "08_源码与运行说明", "LearnLab_AIC源码包.zip")
-EXTRACT = os.path.abspath(f"交付材料/08_源码与运行说明/_验收_run{int(time.time())}")
+ZIP = os.path.join("交付材料", "2_源码包.zip")
+EXTRACT = tempfile.mkdtemp(prefix="learnlab_verify_")
 
 # 1. 解压
 if os.path.exists(EXTRACT):
@@ -57,13 +58,15 @@ proc = subprocess.Popen(
     stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
 )
 ok = False
-for _ in range(30):
+for i in range(60):
     time.sleep(2)
     try:
         with urllib.request.urlopen("http://127.0.0.1:8765/health", timeout=3) as resp:
             ok = resp.status == 200
             break
     except Exception:
+        if i % 15 == 14:
+            print(f"  仍在等待启动... ({(i + 1) * 2}s)")
         continue
 print("后端启动(独立目录):", "OK /health=200" if ok else "FAIL")
 if not ok:

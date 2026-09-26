@@ -4,7 +4,7 @@
 用法（仓库根目录执行）：
     python make_source_package.py
 
-输出：交付材料/08_源码与运行说明/LearnLab_AIC源码包.zip
+输出：交付材料/2_源码包.zip（zip 内 README.md 为 AIC 评审运行说明）
 - 只含评审运行所需源码与演示数据库
 - 排除虚拟环境/依赖目录/一次性开发脚本/个人路径文件
 """
@@ -12,8 +12,8 @@ import os
 import zipfile
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(ROOT, "交付材料", "08_源码与运行说明")
-OUT = os.path.join(OUT_DIR, "LearnLab_AIC源码包.zip")
+OUT_DIR = os.path.join(ROOT, "交付材料")
+OUT = os.path.join(OUT_DIR, "2_源码包.zip")
 
 INCLUDE = [
     "backend/app",
@@ -39,7 +39,6 @@ INCLUDE = [
     "frontend/tsconfig.node.json",
     "frontend/eslint.config.js",
     "frontend/index.html",
-    "README.md",
 ]
 
 # 目录级排除（虚拟环境/构建产物/缓存）
@@ -101,6 +100,10 @@ def main():
                             continue
                         z.write(os.path.join(dirpath, fn), rel)
                         count += 1
+        # zip 内 README 用 AIC 评审运行说明（仓库根 README 是软件杯口吻，评审包不适用）
+        readme_src = os.path.join(ROOT, "文档信息", "08_源码评审运行说明.md")
+        z.write(readme_src, "README.md")
+        count += 1
     print(f"打包完成: {count} 个文件, {os.path.getsize(OUT) / 1048576:.1f} MB -> {OUT}")
 
 
