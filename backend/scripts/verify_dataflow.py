@@ -3,13 +3,14 @@
 学习行为 → 画像更新 → 路径生成 → 测验反馈 → 趋势分析 → 教师端报告
 运行：cd backend && python scripts/verify_dataflow.py
 """
+import os
 import sys
 import json
 import time
 import urllib.request
 import urllib.error
 
-BASE = "http://127.0.0.1:8000"
+BASE = os.environ.get("VERIFY_BASE", "http://127.0.0.1:8000")
 PASS = 0
 FAIL = 0
 
