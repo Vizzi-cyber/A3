@@ -68,10 +68,13 @@ EXCLUDE_NAMES = {
     "test_ai_features.py",
     "verify_live.py",
 }
+EXCLUDE_PREFIXES = ("kp_e0",)
 
 
 def excluded(rel: str, name: str) -> bool:
     if name in EXCLUDE_NAMES:
+        return True
+    if name.startswith(EXCLUDE_PREFIXES):
         return True
     if os.path.splitext(name)[1].lower() in EXCLUDE_EXT:
         return True

@@ -5,9 +5,10 @@ import sys
 import time
 import zipfile
 import urllib.request
+import urllib.error
 
 ZIP = os.path.join("交付材料", "08_源码与运行说明", "LearnLab_AIC源码包.zip")
-EXTRACT = os.path.abspath("交付材料/08_源码与运行说明/_验收临时目录")
+EXTRACT = os.path.abspath(f"交付材料/08_源码与运行说明/_验收_run{int(time.time())}")
 
 # 1. 解压
 if os.path.exists(EXTRACT):
@@ -65,6 +66,8 @@ for _ in range(30):
     except Exception:
         continue
 print("后端启动(独立目录):", "OK /health=200" if ok else "FAIL")
+if not ok:
+    sys.exit(1)
 proc.terminate()
 try:
     proc.wait(timeout=10)

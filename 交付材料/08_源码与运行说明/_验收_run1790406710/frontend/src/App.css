@@ -1,0 +1,31 @@
+/* App.css — 仅保留 index.css 未覆盖的样式 */
+
+/* 通用工具类 */
+.text-center { text-align: center; }
+
+/* 路径节点变化动画 */
+@keyframes pulse-once {
+  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}
+.animate-pulse-once {
+  animation: pulse-once 1.5s ease-out;
+}
+
+@media (max-width: 767px) {
+  .app-private-content {
+    margin-left: 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

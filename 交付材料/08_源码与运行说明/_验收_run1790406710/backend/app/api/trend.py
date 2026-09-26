@@ -1,0 +1,197 @@
+"""
+学习趋势与评估API
+- 预测、报告、预警
+"""
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy.orm import Session
+from ..models.database import get_db
+from ..models.knowledge import QuizResultModel, LearningRecordModel
+from ..models.student import StudentProfileModel
+from ..models.trend import TrendDataModel
+from ..algorithms import MultiFactorTrendAnalyzer, LearningEffectEvaluator
+from ..services.algorithm_registry import (
+    build_memory_status,
+    get_irt_ability,
+    get_trend_weight_learner,
+)
+from .auth import require_auth
+
+router = APIRouter()
+
+
+class TrendAnalyzeRequest(BaseModel):
+    student_id: str
+
+
+@router.post("/analyze")
+async def analyze_trend(request: TrendAnalyzeRequest, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """多因素趋势分析"""
+    if request.student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to analyze this student's data")
+    student_id = request.student_id
+
+    # 查询数据（限制最近 90 天，避免全表扫描）
+    since = datetime.now(timezone.utc) - timedelta(days=90)
+    quizzes = db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id, QuizResultModel.created_at >= since).order_by(QuizResultModel.created_at).all()
+    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= since).order_by(LearningRecordModel.created_at).all()
+    profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
+
+    quiz_history = [
+        {
+            "kp_id": q.kp_id,
+            "score": q.score,
+            "correct_count": q.correct_count,
+            "total_questions": q.total_questions,
+            "weak_tags": q.weak_tags or [],
+            "created_at": q.created_at.isoformat() if q.created_at else None,
+        }
+        for q in quizzes
+    ]
+    learning_history = [
+        {
+            "kp_id": r.kp_id,
+            "duration": r.duration,
+            "progress": r.progress,
+            "action": r.action,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in records
+    ]
+    weak_areas = profile.weak_areas or [] if profile else []
+
+    analyzer = MultiFactorTrendAnalyzer()
+    # AIC 算法增强：已训练的掉队预警学习器（学习权重 + 预警概率），未训练自动回退人工权重
+    result = analyzer.analyze(
+        student_id=student_id,
+        quiz_history=quiz_history,
+        learning_records=learning_history,
+        weak_areas=weak_areas,
+        profile={"learning_tempo": profile.learning_tempo or {}} if profile else {},
+        weight_learner=get_trend_weight_learner(),
+    )
+
+    # 持久化趋势数据
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    existing = db.query(TrendDataModel).filter(
+        TrendDataModel.student_id == student_id,
+        TrendDataModel.date == today,
+    ).first()
+    if existing:
+        existing.trend_factor = result["trend_factor"]
+        existing.trend_state = result["trend_state"]
+        existing.mastery_trend = result["dimensions"]["mastery_trend"]
+        existing.speed_ratio = result["dimensions"]["speed_ratio"]
+        existing.time_efficiency = result["dimensions"]["time_efficiency"]
+        existing.weakness_priority = result["dimensions"]["weakness_priority"]
+        existing.stability = result["dimensions"]["stability"]
+        existing.predicted_mastery_3d = result["predicted_mastery_3d"]
+        existing.intervention = result["intervention"]
+        existing.details = {"completion_rate": result["dimensions"]["completion_rate"]}
+    else:
+        trend = TrendDataModel(
+            student_id=student_id,
+            date=today,
+            trend_factor=result["trend_factor"],
+            trend_state=result["trend_state"],
+            mastery_trend=result["dimensions"]["mastery_trend"],
+            speed_ratio=result["dimensions"]["speed_ratio"],
+            time_efficiency=result["dimensions"]["time_efficiency"],
+            weakness_priority=result["dimensions"]["weakness_priority"],
+            stability=result["dimensions"]["stability"],
+            predicted_mastery_3d=result["predicted_mastery_3d"],
+            intervention=result["intervention"],
+            details={"completion_rate": result["dimensions"]["completion_rate"]},
+        )
+        db.add(trend)
+    db.commit()
+
+    return {"status": "success", "data": result}
+
+
+@router.get("/{student_id}/report")
+async def get_eval_report(student_id: str, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """学习效果评估报告"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to view this report")
+    since = datetime.now(timezone.utc) - timedelta(days=90)
+    quizzes = db.query(QuizResultModel).filter(QuizResultModel.student_id == student_id, QuizResultModel.created_at >= since).order_by(QuizResultModel.created_at).all()
+    records = db.query(LearningRecordModel).filter(LearningRecordModel.student_id == student_id, LearningRecordModel.created_at >= since).order_by(LearningRecordModel.created_at).all()
+    profile = db.query(StudentProfileModel).filter(StudentProfileModel.student_id == student_id).first()
+    weak_areas = profile.weak_areas or [] if profile else []
+
+    quiz_history = [
+        {
+            "score": q.score,
+            "correct_count": q.correct_count,
+            "total_questions": q.total_questions,
+            "weak_tags": q.weak_tags or [],
+        }
+        for q in quizzes
+    ]
+    # AIC 算法修复：补齐 action/kp_id/created_at，否则趋势分析的学习速度、
+    # 连续稳定性、完成率三个维度因子因数据缺失恒为 0
+    learning_history = [
+        {
+            "action": r.action,
+            "kp_id": r.kp_id,
+            "duration": r.duration,
+            "progress": r.progress,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+        }
+        for r in records
+    ]
+
+    evaluator = LearningEffectEvaluator()
+    # AIC 算法增强：FSRS 记忆状态（到期复习队列 + 记忆保持预警）
+    memory_status = build_memory_status(db, student_id)
+    # AIC 算法增强：IRT 能力 θ（已拟合时掌握度用 Φ(θ)·100 替代加权平均分）
+    report = evaluator.evaluate(
+        student_id=student_id,
+        quiz_history=quiz_history,
+        learning_records=learning_history,
+        weak_areas=weak_areas,
+        memory_status=memory_status,
+        irt_ability=get_irt_ability(student_id),
+    )
+    return {"status": "success", "data": report}
+
+
+@router.get("/{student_id}/history")
+async def get_trend_history(student_id: str, days: int = 30, db: Session = Depends(get_db), _current: str = Depends(require_auth)):
+    """获取历史趋势数据"""
+    if student_id != _current:
+        raise HTTPException(status_code=403, detail="Not authorized to view this history")
+    rows = (
+        db.query(TrendDataModel)
+        .filter(TrendDataModel.student_id == student_id)
+        .order_by(TrendDataModel.date.desc())
+        .limit(days)
+        .all()
+    )
+    trends = list(reversed(rows))  # 取最近 N 天后按日期升序返回
+    return {
+        "status": "success",
+        "student_id": student_id,
+        "data": [
+            {
+                "date": t.date,
+                "trend_factor": t.trend_factor,
+                "trend_state": t.trend_state,
+                "dimensions": {
+                    "mastery_trend": t.mastery_trend,
+                    "speed_ratio": t.speed_ratio,
+                    "time_efficiency": t.time_efficiency,
+                    "weakness_priority": t.weakness_priority,
+                    "stability": t.stability,
+                    "completion_rate": (t.details or {}).get("completion_rate", 0.0) if t.details else 0.0,
+                },
+                "predicted_mastery_3d": t.predicted_mastery_3d,
+                "intervention": t.intervention,
+            }
+            for t in trends
+        ],
+    }
