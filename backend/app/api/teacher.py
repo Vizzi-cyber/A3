@@ -166,7 +166,6 @@ async def get_class_comparison(
         # 人均记录
         rec_row = db.query(
             func.count(LearningRecordModel.record_id),
-            func.count(func.distinct(LearningRecordModel.student_id)),
         ).filter(
             LearningRecordModel.student_id.in_(student_ids),
             LearningRecordModel.created_at >= since,
@@ -183,7 +182,7 @@ async def get_class_comparison(
             "student_count": r.student_count,
             "avg_score": round(float(score_row[0] or 0), 1),
             "total_hours": round(float(hours_row[0] or 0) / 3600, 1),
-            "avg_records_per_student": round(float(rec_row[0] or 0) / max(int(rec_row[1] or 1), 1), 1),
+            "avg_records_per_student": round(float(rec_row[0] or 0) / max(int(r.student_count or 1), 1), 1),
             "completed_kps": done_row[0] or 0,
         })
 
@@ -1044,6 +1043,7 @@ async def get_pilot_report(
 
     total_duration = sum(s["total_duration_sec"] for s in students)
     total_quiz = sum(s["quiz_count"] for s in students)
+    total_score = sum(s["avg_score"] * s["quiz_count"] for s in students)
     report = {
         "status": "success",
         "period_days": days,
@@ -1054,7 +1054,8 @@ async def get_pilot_report(
             "avg_daily_hours": round(total_duration / 3600 / max(days, 1), 2),
             "total_records": sum(s["record_count"] for s in students),
             "total_quizzes": total_quiz,
-            "avg_score": round(sum(s["avg_score"] for s in students) / max(len(students), 1), 1),
+            # 按测验次数加权，保证汇总平均分与学生明细/测验总量一致。
+            "avg_score": round(total_score / total_quiz, 1) if total_quiz else 0,
             "total_experiments": sum(experiment_map.values()),
             "completed_kps_total": sum(s["completed_kps"] for s in students),
         },

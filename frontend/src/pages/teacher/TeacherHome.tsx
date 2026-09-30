@@ -56,6 +56,15 @@ const TeacherHome: React.FC = () => {
       trend_state: string;
     }>
   >([]);
+  const [activeStudents, setActiveStudents] = useState<
+    Array<{
+      student_id: string;
+      username: string;
+      total_points: number;
+      total_hours: number;
+      trend_state: string;
+    }>
+  >([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [alertStats, setAlertStats] = useState({
     high_risk: 0,
@@ -82,13 +91,24 @@ const TeacherHome: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [overviewRes, studentsRes, alertsRes] = await Promise.all([
+      const [overviewRes, studentsRes, rankingRes, alertsRes] = await Promise.all([
         teacherApi.getOverview(),
         teacherApi.getStudents(),
+        teacherApi.getRanking("hours", 10).catch(() => null),
         teacherApi.getAlerts().catch(() => null),
       ]);
       setOverview(overviewRes.data.overview || {});
-      setStudents((studentsRes.data.students || []).slice(0, 10));
+      const studentList = studentsRes.data.students || [];
+      setStudents(studentList.slice(0, 10));
+      const studentById = new Map(
+        studentList.map((student) => [student.student_id, student]),
+      );
+      setActiveStudents(
+        (rankingRes?.data?.ranking || []).map((student) => ({
+          ...student,
+          trend_state: studentById.get(student.student_id)?.trend_state || "unknown",
+        })),
+      );
       if (alertsRes?.data) {
         setAlerts(alertsRes.data.alerts || []);
         setAlertStats({
@@ -346,12 +366,12 @@ const TeacherHome: React.FC = () => {
           </Card>
         </Col>
 
-        {/* 最近活跃学生 */}
+        {/* 学习投入较多学生 */}
         <Col xs={24} lg={12}>
-          <Card className="rounded-2xl border-0 shadow-sm" title="最近活跃学生">
+          <Card className="rounded-2xl border-0 shadow-sm" title="学习投入较多学生">
             <List
               loading={loading}
-              dataSource={students}
+              dataSource={activeStudents}
               renderItem={(student) => (
                 <List.Item
                   className="hover:bg-slate-50 rounded-xl transition-colors"
@@ -376,6 +396,7 @@ const TeacherHome: React.FC = () => {
                     description={
                       <Space>
                         <span>积分: {student.total_points}</span>
+                        <span>时长: {student.total_hours}h</span>
                         <Tag
                           className="rounded-full border-0 text-xs"
                           color={
