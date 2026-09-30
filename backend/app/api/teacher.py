@@ -1027,14 +1027,17 @@ async def get_pilot_report(
 
     # ---------- 汇总 ----------
     students = []
-    for r in learn_rows:
-        q = quiz_map.get(r.student_id)
+    learning_map = {r.student_id: r for r in learn_rows}
+    student_ids = set(learning_map) | set(quiz_map)
+    for sid in student_ids:
+        r = learning_map.get(sid)
+        q = quiz_map.get(sid)
         students.append({
-            "student_id": r.student_id,
-            "record_count": r.record_count,
-            "total_duration_sec": r.total_duration,
-            "total_duration_hours": round(r.total_duration / 3600, 1),
-            "completed_kps": complete_map.get(r.student_id, 0),
+            "student_id": sid,
+            "record_count": r.record_count if r else 0,
+            "total_duration_sec": r.total_duration if r else 0,
+            "total_duration_hours": round((r.total_duration if r else 0) / 3600, 1),
+            "completed_kps": complete_map.get(sid, 0),
             "quiz_count": q.quiz_count if q else 0,
             "avg_score": round(q.avg_score, 1) if q and q.avg_score else 0,
             "max_score": q.max_score if q else 0,

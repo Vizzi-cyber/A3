@@ -80,7 +80,7 @@ const TeacherDashboard: React.FC = () => {
       const [overviewRes, weakRes, rankRes] = await Promise.all([
         teacherApi.getOverview().catch(() => null),
         teacherApi.getWeakPoints().catch(() => null),
-        teacherApi.getRanking("points").catch(() => null),
+        teacherApi.getRanking("points", 100).catch(() => null),
       ]);
       const errors: Record<string, boolean> = {};
       if (overviewRes?.data?.status === "success")
@@ -88,7 +88,14 @@ const TeacherDashboard: React.FC = () => {
       else errors.overview = true;
       if (weakRes?.data?.status === "success") setWeakPoints(weakRes.data);
       else errors.weakPoints = true;
-      if (rankRes?.data?.status === "success") setRanking(rankRes.data.ranking);
+      if (rankRes?.data?.status === "success") {
+        setRanking(
+          (rankRes.data.ranking || []).map((student: any, index: number) => ({
+            ...student,
+            rank: index + 1,
+          })),
+        );
+      }
       else errors.ranking = true;
       if (Object.keys(errors).length > 0) setLoadErrors(errors);
     } catch (e) {
@@ -123,8 +130,15 @@ const TeacherDashboard: React.FC = () => {
   const handleRankingSort = async (sortBy: string) => {
     setRankingSort(sortBy);
     try {
-      const { data } = await teacherApi.getRanking(sortBy);
-      if (data.status === "success") setRanking(data.ranking);
+      const { data } = await teacherApi.getRanking(sortBy, 100);
+      if (data.status === "success") {
+        setRanking(
+          (data.ranking || []).map((student: any, index: number) => ({
+            ...student,
+            rank: index + 1,
+          })),
+        );
+      }
     } catch (e) {
       message.error("加载排行失败");
     }
@@ -306,13 +320,14 @@ const TeacherDashboard: React.FC = () => {
             columns={[
               {
                 title: "排名",
+                dataIndex: "rank",
                 key: "rank",
                 width: 60,
-                render: (_: any, __: any, idx: number) => (
+                render: (rank: number) => (
                   <span
-                    className={idx < 3 ? "font-semibold text-orange-500" : ""}
+                    className={rank <= 3 ? "font-semibold text-orange-500" : ""}
                   >
-                    {idx + 1}
+                    {rank}
                   </span>
                 ),
               },
@@ -328,7 +343,6 @@ const TeacherDashboard: React.FC = () => {
                 dataIndex: "total_points",
                 key: "points",
                 width: 80,
-                sorter: (a: any, b: any) => a.total_points - b.total_points,
               },
               {
                 title: "学时",

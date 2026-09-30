@@ -239,6 +239,13 @@ async def get_assignment_stats(
         raise HTTPException(status_code=404, detail="作业不存在")
 
     submissions = [s for s in _submissions.values() if s["assignment_id"] == assignment_id]
+    # 学生允许重复提交，统计按每名学生最新一次提交计数，避免提交率超过 100%。
+    latest_by_student: Dict[str, Dict[str, Any]] = {}
+    for submission in submissions:
+        current = latest_by_student.get(submission["student_id"])
+        if current is None or submission["submitted_at"] > current["submitted_at"]:
+            latest_by_student[submission["student_id"]] = submission
+    submissions = list(latest_by_student.values())
     total_students = db.query(UserModel).filter(UserModel.role == "student").count()
     submitted_count = len(submissions)
     graded_count = sum(1 for s in submissions if s["status"] == "graded")
