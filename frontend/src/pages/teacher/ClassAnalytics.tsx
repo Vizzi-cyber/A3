@@ -33,6 +33,7 @@ const ClassAnalytics: React.FC = () => {
       student_id: string;
       username: string;
       total_points: number;
+      rank?: number;
       trend_state: string;
       total_hours?: number;
       avg_score?: number;
@@ -64,24 +65,31 @@ const ClassAnalytics: React.FC = () => {
       const [overviewRes, studentsRes, rankingRes] = await Promise.all([
         teacherApi.getOverview(),
         teacherApi.getStudents(),
-        teacherApi.getRanking("points", 20),
+        // 请求完整的排行榜窗口，避免非前 20 名学生被错误显示为 0。
+        teacherApi.getRanking("points", 100),
       ]);
       setOverview(overviewRes.data.overview || {});
-      setStudents(studentsRes.data.students || []);
 
-      // 合并排行榜数据
+      const studentList = studentsRes.data.students || [];
+      const studentById = new Map(
+        studentList.map((student) => [student.student_id, student]),
+      );
       const ranking = rankingRes.data.ranking || [];
-      setStudents((prev) =>
-        prev.map((s) => {
-          const rank = ranking.find(
-            (r: { student_id: string }) => r.student_id === s.student_id,
-          );
-          return {
-            ...s,
-            total_hours: rank?.total_hours || 0,
-            avg_score: rank?.avg_score || 0,
-          };
-        }),
+      // 排名表按真实排行榜顺序展示，并保留学生列表中的趋势信息。
+      setStudents(
+        ranking.length > 0
+          ? ranking.map((rank, index) => ({
+              ...rank,
+              rank: index + 1,
+              trend_state:
+                studentById.get(rank.student_id)?.trend_state || "unknown",
+            }))
+          : studentList.map((student, index) => ({
+              ...student,
+              rank: index + 1,
+              total_hours: 0,
+              avg_score: 0,
+            })),
       );
     } catch {
       // ignore
@@ -134,9 +142,10 @@ const ClassAnalytics: React.FC = () => {
     {
       title: "排名",
       key: "rank",
-      render: (_: unknown, __: unknown, index: number) => (
-        <span className={index < 3 ? "text-[#0052ff] font-bold" : ""}>
-          {index + 1}
+      dataIndex: "rank",
+      render: (rank: number) => (
+        <span className={rank <= 3 ? "text-[#0052ff] font-bold" : ""}>
+          {rank}
         </span>
       ),
     },

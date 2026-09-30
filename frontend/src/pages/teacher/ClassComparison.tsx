@@ -32,14 +32,6 @@ interface ClassRow {
   completed_kps: number;
 }
 
-interface ClassMeta {
-  class_id: string;
-  student_count: number;
-  avg_score: number;
-  avg_points: number;
-  total_hours: number;
-}
-
 /**
  * 班级对比（AIC 试点"实验组 vs 对照组"数据源）
  * 展示各班级的人数/平均分/学习时长/活跃度，支持时间范围切换
@@ -47,18 +39,15 @@ interface ClassMeta {
 const ClassComparison: React.FC = () => {
   const [days, setDays] = useState(30);
   const [classes, setClasses] = useState<ClassRow[]>([]);
-  const [meta, setMeta] = useState<ClassMeta[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      teacherApi.getClassComparison(days).catch(() => null),
-      teacherApi.getClasses().catch(() => null),
-    ])
-      .then(([cmpRes, metaRes]) => {
+    teacherApi
+      .getClassComparison(days)
+      .catch(() => null)
+      .then((cmpRes) => {
         setClasses(cmpRes?.data?.classes || []);
-        setMeta(metaRes?.data?.classes || []);
       })
       .finally(() => setLoading(false));
   }, [days]);
@@ -141,7 +130,7 @@ const ClassComparison: React.FC = () => {
         <>
           {/* 班级概览卡片 */}
           <Row gutter={16}>
-            {meta.map((c) => (
+            {classes.map((c) => (
               <Col
                 xs={24}
                 sm={12}
@@ -163,8 +152,10 @@ const ClassComparison: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <div className="text-gray-400">平均积分</div>
-                      <div className="font-medium">{c.avg_points}</div>
+                      <div className="text-gray-400">人均记录</div>
+                      <div className="font-medium">
+                        {c.avg_records_per_student}
+                      </div>
                     </div>
                     <div>
                       <div className="text-gray-400">总时长(h)</div>
