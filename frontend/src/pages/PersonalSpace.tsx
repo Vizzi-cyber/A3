@@ -459,7 +459,6 @@ const PersonalSpace: React.FC = () => {
       // 按 Tab 分组：只拉取当前 Tab 需要的接口
       const needsHistory = activeTab === "history";
       const needsBadges = activeTab === "profile";
-      const needsLeaderboard = activeTab === "profile";
       const needsFavorites = activeTab === "favorites";
       const needsReflections = activeTab === "notes";
 
@@ -467,9 +466,7 @@ const PersonalSpace: React.FC = () => {
       const [pRes, dRes, ptRes, aRes, hRes, thRes, fRes, rRes] =
         await Promise.all([
           safe(profileApi.get(studentId)),
-          needsHistory || needsLeaderboard
-            ? safe(dashboardApi.getSummary(studentId))
-            : Promise.resolve(null),
+          safe(dashboardApi.getSummary(studentId)),
           needsBadges
             ? safe(gamificationApi.getPoints(studentId))
             : Promise.resolve(null),
@@ -1117,7 +1114,7 @@ const PersonalSpace: React.FC = () => {
         icon: <ClockCircleOutlined />,
       },
       {
-        title: "最长连续打卡",
+        title: "当前连续打卡",
         value: Number(statsRecord.streak_days) || 0,
         suffix: "天",
         color: "#f59e0b",
@@ -1125,20 +1122,20 @@ const PersonalSpace: React.FC = () => {
       },
       {
         title: "获得勋章",
-        value: achievements.filter((a) => a.unlocked_at).length,
+        value: Number(statsRecord.achievements) || 0,
         suffix: "枚",
         color: "#10b981",
         icon: <TrophyOutlined />,
       },
       {
         title: "收藏资源",
-        value: favorites.length,
+        value: Number(statsRecord.favorites) || 0,
         suffix: "个",
         color: "#ec4899",
         icon: <HeartOutlined />,
       },
     ],
-    [dashboardStats, achievements, favorites],
+    [dashboardStats],
   );
 
   const badgeList = useMemo(

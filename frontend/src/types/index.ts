@@ -312,6 +312,7 @@ export interface DashboardStats {
   achievements: number;
   favorites: number;
   mastered_kps: number;
+  total_kps: number;
   today_duration_min: number;
 }
 
