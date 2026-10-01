@@ -266,7 +266,11 @@ const TeacherDashboard: React.FC = () => {
                     <span className="text-xs text-gray-400 w-6">{idx + 1}</span>
                     <span className="text-sm flex-1">{item.tag}</span>
                     <Progress
-                      percent={Math.min(100, item.count * 10)}
+                      percent={
+                        overview?.total_students
+                          ? Math.min(100, (item.count / overview.total_students) * 100)
+                          : 0
+                      }
                       size="small"
                       style={{ width: 120 }}
                       showInfo={false}
@@ -606,7 +610,9 @@ const TeacherDashboard: React.FC = () => {
                     <Progress
                       percent={Math.min(
                         100,
-                        (item.count / (students.length || 1)) * 100,
+                        overview?.total_students
+                          ? (item.count / overview.total_students) * 100
+                          : 0,
                       )}
                       size="small"
                       style={{ width: 150 }}

@@ -500,11 +500,11 @@ async def get_weak_points(
     """全班薄弱知识点统计"""
     # 从测验结果中统计弱项标签
     quizzes = db.query(QuizResultModel).all()
-    tag_count = {}
+    tag_students = defaultdict(set)
     for q in quizzes:
         if q.weak_tags:
             for tag in q.weak_tags:
-                tag_count[tag] = tag_count.get(tag, 0) + 1
+                tag_students[tag].add(q.student_id)
 
     kp_scores = defaultdict(list)
     for q in quizzes:
@@ -517,7 +517,10 @@ async def get_weak_points(
     weak_kps.sort(key=lambda x: (x["avg_score"], -x["attempts"]))
 
     # 排序
-    sorted_tags = sorted(tag_count.items(), key=lambda x: x[1], reverse=True)
+    sorted_tags = sorted(
+        ((tag, len(student_ids)) for tag, student_ids in tag_students.items()),
+        key=lambda x: (-x[1], x[0]),
+    )
 
     # 从学生画像中统计薄弱领域
     profiles = db.query(StudentProfileModel).all()
@@ -910,9 +913,6 @@ async def get_pilot_report(
                 UserModel.class_id == class_id,
             ).all()
         ]
-        if not class_student_ids:
-            return {"status": "success", "period_days": days, "scope": f"class:{class_id}",
-                    "summary": {"active_students": 0}, "students": []}
     from ..models.monitor import ApiMonitorModel
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
@@ -921,7 +921,7 @@ async def get_pilot_report(
         """班级/学生作用域过滤条件"""
         if student_id:
             return model.student_id == student_id
-        if class_student_ids:
+        if class_student_ids is not None:
             return model.student_id.in_(class_student_ids)
         return None
 
@@ -1042,17 +1042,17 @@ async def get_pilot_report(
             "avg_score": round(q.avg_score, 1) if q and q.avg_score else 0,
             "max_score": q.max_score if q else 0,
         })
-    students.sort(key=lambda s: -s["total_duration_sec"])
+    students.sort(key=lambda s: (-s["total_duration_sec"], s["student_id"]))
 
     total_duration = sum(s["total_duration_sec"] for s in students)
     total_quiz = sum(s["quiz_count"] for s in students)
-    total_score = sum(s["avg_score"] * s["quiz_count"] for s in students)
+    total_score = sum((q.avg_score or 0) * q.quiz_count for q in quiz_map.values())
     report = {
         "status": "success",
         "period_days": days,
         "scope": class_id or ("student" if student_id else "class"),
         "summary": {
-            "active_students": len(students),
+            "active_students": len(learning_map),
             "total_duration_hours": round(total_duration / 3600, 1),
             "avg_daily_hours": round(total_duration / 3600 / max(days, 1), 2),
             "total_records": sum(s["record_count"] for s in students),
