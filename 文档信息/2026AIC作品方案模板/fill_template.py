@@ -118,6 +118,38 @@ for p in list(body.iter(qn('w:p'))):
     t = ptext_all(p)
     if '单击键入正文' in t:
         p.getparent().remove(p); removed += 1
+
+# 压缩目录条目样式（防 50 条目录+分节段溢出产生空白页）
+for sn in ('toc 1', 'toc 2', 'toc 3'):
+    try:
+        st = d.styles[sn]
+        st.font.size = Pt(11)
+        st.paragraph_format.line_spacing = 1.0
+        st.paragraph_format.space_after = Pt(0)
+    except KeyError: pass
+
+# 目录节尾空段清理（防目录与简介之间出现空白页）：
+# 从目录最后一条（含页码的知识产权条目）向后，删空段（保留分节段）直到简介标题
+t_toc_last = t_intro = None
+for p in body.iter(qn('w:p')):
+    t = ptext(p).strip()
+    if t.startswith('（四）知识产权、学术伦理与其他材料') and t.endswith(re.search(r'（四）知识产权、学术伦理与其他材料(\d+)', t).group(1) if re.search(r'（四）知识产权、学术伦理与其他材料(\d+)', t) else 'x'):
+        t_toc_last = p
+    if t.strip() == '作品简介' and t_intro is None:
+        t_intro = p
+if t_toc_last is not None and t_intro is not None:
+    children = list(body)
+    i_last = children.index(t_toc_last)
+    i_intro = children.index(t_intro)
+    removed_n = 0
+    for j in range(i_last + 1, i_intro):
+        c = children[j]
+        if c.tag == qn('w:p'):
+            pPr = c.find(qn('w:pPr'))
+            has_sect = pPr is not None and pPr.find(qn('w:sectPr')) is not None
+            if not has_sect:
+                c.getparent().remove(c); removed += 1; removed_n += 1
+print('目录尾空段清理:', removed)
 print('删除旧骨架/占位/提示段:', removed)
 
 # ---------- 3. 追加工具（文尾，顺序天然正确）----------
