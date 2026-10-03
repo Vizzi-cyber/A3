@@ -1,0 +1,316 @@
+\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
+\usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=3cm,headheight=0.9cm,headsep=0.58cm,footskip=1.23cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\definecolor{aicblue}{RGB}{18,86,184}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\includegraphics[height=0.55cm]{aic_logo.png}}
+\fancyhead[R]{\zihao{-5} 2026 第八届全球校园人工智能算法精英大赛}
+\renewcommand{\headrulewidth}{0.5pt}
+\fancyfoot[C]{\zihao{5}\thepage}
+\renewcommand{\labelitemi}{{\zihao{-5}●}}
+\renewcommand{\labelitemii}{--}
+\setcounter{secnumdepth}{-1}
+\usepackage{titlesec}
+\titleformat{\section}{\bfseries\zihao{3}}{}{0em}{}
+\titleformat{\subsection}{\bfseries\zihao{4}}{}{0em}{}
+\titleformat{\subsubsection}{\bfseries\zihao{-4}}{}{0em}{}
+\usepackage{needspace}
+\newcommand{\sectionbreak}{\needspace{6\baselineskip}}
+\newcommand{\subsectionbreak}{\needspace{6\baselineskip}}
+\newcommand{\subsubsectionbreak}{\needspace{6\baselineskip}}
+\xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
+\xeCJKDeclareCharClass{CJK}{"25A0 -> "25FF}
+\usepackage{xurl}
+\ttfamily
+\hyphenchar\font=-1
+\normalfont
+\linespread{1.083}
+\setlength{\parindent}{2em}
+\usepackage{indentfirst}
+\renewcommand{\arraystretch}{1.15}
+% 截图：宽 13.5cm 居中 + 图题（不浮动，跟随正文）
+\newcommand{\shot}[2]{\par\noindent\begin{center}\includegraphics[width=13.5cm]{#1}\\[3pt]{\zihao{5}#2}\end{center}\par}
+% 封面页样式：页眉同正文，页脚无页码
+\fancypagestyle{cover}{%
+  \fancyhf{}%
+  \fancyhead[L]{\includegraphics[height=0.55cm]{aic_logo.png}}%
+  \fancyhead[R]{\zihao{-5} 2026 第八届全球校园人工智能算法精英大赛}%
+  \renewcommand{\headrulewidth}{0.5pt}%
+  \fancyfoot[C]{}%
+}
+\begin{document}
+% ===== 封面 =====
+\begin{titlepage}
+\thispagestyle{cover}
+\vspace*{2.8cm}
+\begin{center}
+{\bfseries\zihao{1} 佐\ 证\ 材\ 料}\\[1.2em]
+{\bfseries\zihao{3} 系统功能实证 · 测试验证数据 · 试点材料 · 原创性声明}\\[3em]
+\end{center}
+\vspace{4em}
+\begin{flushleft}
+\hspace*{4em}\zihao{4}
+团队名称：\underline{\makebox[7cm][c]{一起搞事情}}\\[0.8em]
+\hspace*{4em}参赛编号：\underline{\makebox[7cm][c]{AIC-2026-21740176}}\\[0.8em]
+\hspace*{4em}作品名称：\underline{\makebox[7cm][c]{LearnLab 跨学科智能学习平台}}\\
+\end{flushleft}
+\vfill
+\begin{center}\zihao{4} 日期：2026 年 10 月\end{center}
+\vspace*{1.5cm}
+\end{titlepage}
+\setcounter{page}{1}
+
+\section{一、测试验证数据摘要}
+
+平台全部验证脚本随源码交付（backend/scripts/），以下结果均可一键复现。另有提交前全系统实测 3 轮：24 个页面逐页遍历零 JS 错误、API 全接口 26 项通过（含越权访问 403 校验）、新用户注册到成就解锁 11 步全旅程零异常、生产环境 24 小时零 500 错误。
+
+\par\noindent\begin{tabular}{|p{3.0cm}|p{6.5cm}|p{4.0cm}|}
+\hline
+\textbf{验证项} & \textbf{范围} & \textbf{结果} \\ \hline
+算法层专项断言 & BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索 & 116/116 通过 \\ \hline
+算法接线 API 冒烟 & 演示库真实数据训练 IRT/GKT/趋势学习器 + MAB 闭环回传 & 38/38 通过 \\ \hline
+后端全路由冒烟 & 210 个路由逐一调用 & 0 崩溃 \\ \hline
+AIC 功能回归 & 跨学科链路/试点报告/故障实验/实验日志 & 29/29 通过 \\ \hline
+数据流验证 & 学习行为→画像→路径→效果全链路 & 23/23 通过 \\ \hline
+Agent/LLM 专项 & 多智能体编排/降级链/防幻觉守卫 & 23/23 通过 \\ \hline
+前端 E2E & 学生端核心流程 Playwright 用例 & 49/49 通过 \\ \hline
+MNA 数值对照 & RC/RL/C 电路暂态对照教科书解析解 & 9/9 通过 \\ \hline
+真实环境部署验证 & 腾讯云 + Nginx + HTTPS 生产环境 & 24h 零 500，接口平均响应 <60ms \\ \hline
+全系统提交前实测 & 24 页逐页遍历 + API 26 项 + 新用户 11 步全旅程 & 零 JS 错误、零失败请求 \\ \hline
+\end{tabular}\par
+
+\section{二、算法效果对照设计}
+
+平台内置七处“传统方法 vs 算法”可量化对照点（掌握度测量/路径成本/知识追踪/掌握度传播/记忆调度/路径调整策略/选题与资源推荐），试点期间数据自动落库，用于产出应用效果的量化对比（详见技术方案六（三））。
+
+\section{三、系统功能实证}
+
+以下 13 张截图全部来自线上运行系统（https://www.dreamlast.cn），覆盖学生端、教师端与试点场景。
+
+\shot{fig01.png}{图 1　平台登录页：支持账号登录、学生注册与一键体验}
+\shot{fig02.png}{图 2　学生仪表盘：学习进度、每日练习与知识点掌握度环形图}
+\shot{fig03.png}{图 3　个性化学习路径：ADPP 算法生成的 16 阶段跨学科计划与复习建议}
+\shot{fig04.png}{图 4　学习中心：课程目录、图文讲义、康奈尔线索栏与 AI 辅导助手三栏阅读视图}
+\shot{fig05.png}{图 5　知识冒险：游戏化挑战地图与知识树成长体系}
+\shot{fig06.png}{图 6　多维排行榜：学习成长/连续学习/知识掌握/闯关挑战/AI 协作/进步最快六维度}
+\shot{fig07.png}{图 7　AI 智能辅导：苏格拉底式引导对话，支持 RAG 检索增强与流式输出}
+\shot{fig08.png}{图 8　错误诊断系统：语法错误/逻辑错误定位与思维误区溯源（tree-sitter 静态分析 + AI 评估）}
+\shot{fig09.png}{图 9　个人空间：学习时长、勋章徽章、专注度趋势与学习历史}
+\shot{fig10.png}{图 10　教师工作台：全班学情概览、薄弱知识点 TOP10 与成绩分布}
+\shot{fig11.png}{图 11　学情分析：班级薄弱知识点分布与薄弱领域统计}
+\shot{fig12.png}{图 12　试点数据分析：实验组/对照组五维数据聚合，一键导出报告（Markdown）}
+\shot{fig13.png}{图 13　AI 智能组卷：输入主题与知识点，AI 自动生成多题型试卷}
+
+\section{四、试点知情同意书}
+
+\textbf{一、项目介绍}
+
+LearnLab 是面向学习者的智能学习辅助系统，本次试点旨在评估系统的可用性与学习效果，收集用户反馈用于产品迭代优化。本次试点为 AIC 创新竞赛项目研究，非商业用途。
+
+\textbf{二、您的权利}
+
+1. 参与本次试点完全自愿，您可以随时无理由退出，不会受到任何负面影响。
+
+2. 所有采集信息仅用于本项目研究，项目所有数据匿名化处理（以编号 SY01、CK01 等代称），不会泄露您的姓名、学号等个人隐私信息，不会对外公开您的个人身份。
+
+3. 您可以随时向项目团队询问试点相关问题。
+
+\textbf{三、试点内容}
+
+您将使用 LearnLab 系统（网页端）开展 1-2 周的学习任务；前测与后测问卷通过微信小程序在线填写，无需纸面作答。
+
+\textbf{四、数据说明}
+
+本次收集问卷答案与系统使用行为数据，仅用于本项目效果分析，原始数据不会对外共享；试点报告中仅呈现匿名汇总统计结果。
+
+\textbf{五、知情确认方式}
+
+参与学生均已在线收到并阅读本知情同意书；通过微信小程序在线填写并提交问卷，即视为自愿参与本次试点并同意上述数据使用方式，无需纸面签名。
+
+如对试点有任何疑问，可联系项目团队（LearnLab 项目组，队长：马其瑞）。
+
+\section{五、试点前后测问卷}
+
+前测在开始使用系统前填写，后测在完成学习任务后填写；问卷通过微信小程序在线发放与回收，全部匿名（以试点编号 SY01、CK01 等代称，不收集姓名学号），参与学生提交问卷即视为知情同意。
+
+\subsection{前测（使用系统前填写）}
+
+\textbf{第一部分　基础信息}
+
+1. 你的年级：
+
+□ 大一　　□ 大二　　□ 大三　　□ 大四
+
+2. 你对【本项目对应学科】的熟悉程度：
+
+□ 完全不了解　　□ 了解一点　　□ 比较熟悉　　□ 非常熟悉
+
+\textbf{第二部分　能力前测题目}
+
+3. 下面关于 C 语言指针 \texttt{int *p = \&a;} 说法正确的是：
+
+□ A. p 中存放的是变量 a 的值
+
+□ B. *p 代表指针变量 p 的地址
+
+□ C. p 中存放的是变量 a 的内存地址
+
+□ D. *p = \&a 写法完全不合法
+
+4. 某二端网络开路电压 U\textsubscript{OC}=12V，戴维南等效内阻 R\textsubscript{eq}=2Ω，外接负载 R\textsubscript{L}=4Ω，则负载两端电压为：
+
+□ A. 12V　　□ B. 8V　　□ C. 6V　　□ D. 4V
+
+\textbf{第三部分　学习习惯问卷}
+
+5. 你往往通过哪些方式学习相关知识？【多选题】
+
+□ 课堂听讲　　□ 课本/PPT 自学　　□ B站、短视频网课　　□ 刷题、练习训练　　□ 其他
+
+6. 你在学习该类知识时，最大的困难是？【多选题】
+
+□ 知识点抽象、看不懂原理　　□ 公式/代码容易忘　　□ 做题不会举一反三
+
+□ 学习枯燥、难以坚持　　□ 找不到合适练习资源　　□ 知识点零散、不成体系
+
+7. 平时自主学习该学科的频率？
+
+□ 几乎不学　　□ 每周 <2h　　□ 每周 2-5h　　□ 每周 >5 小时
+
+8. 你是否使用过同类学习辅助系统/学习工具？
+
+□ 从未使用　　□ 偶尔使用　　□ 经常使用
+
+\subsection{后测（完成学习任务后填写）}
+
+\textbf{一、能力后测}
+
+1. 下面关于数组与指针说法错误的是：
+
+□ A. 数组名为右值时等价于数组首元素地址
+
+□ B. a[i] 等价于 *(a+i)
+
+□ C. 指针变量可以执行 p++ 自增运算
+
+□ D. 数组名 a 可以执行 a++ 运算
+
+2. 二端网络开路电压 U\textsubscript{OC}=8V，短路电流 I\textsubscript{SC}=2A，戴维南等效内阻为：
+
+□ A. 0.25Ω　　□ B. 4Ω　　□ C. 8Ω　　□ D. 16Ω
+
+3. STM32 中，GPIO 引脚复用功能是指：
+
+□ A. 一个引脚可配置为普通 GPIO 或者外设功能（UART、SPI 等）
+
+□ B. 一个引脚同时输出两种信号
+
+□ C. 引脚可以同时输入又输出
+
+□ D. 多个 GPIO 共用同一个寄存器
+
+\textbf{二、系统满意度问卷}
+
+4. 你每次平均使用时长大概是？
+
+□ 5 分钟以内　　□ 5-15 分钟　　□ 15-30 分钟　　□ 30-60 分钟　　□ 60 分钟以上
+
+5. 请对以下描述选择你的同意程度：
+
+{\setlength{\tabcolsep}{3pt}
+\par\noindent\begin{tabular}{|p{5.2cm}|p{1.7cm}|p{1.7cm}|p{1.7cm}|p{1.7cm}|p{1.7cm}|}
+\hline
+\textbf{题项} & \textbf{非常不同意} & \textbf{不同意} & \textbf{一般} & \textbf{同意} & \textbf{非常同意} \\ \hline
+系统界面容易操作 & □ & □ & □ & □ & □ \\ \hline
+系统提供的学习内容对我有帮助 & □ & □ & □ & □ & □ \\ \hline
+我愿意继续使用该系统学习 & □ & □ & □ & □ & □ \\ \hline
+\end{tabular}\par}
+
+6. 在使用过程中是否遇到错误、卡顿、崩溃、页面错乱？
+
+□ 完全没有　　□ 有少量小问题，不影响使用
+
+□ 有问题，部分功能无法完成　　□ 严重问题，完全无法继续使用
+
+7. 如果遇到问题，请简单描述发生了什么，在哪个页面？（开放作答）
+
+\textbf{三、开放性反馈}
+
+8. 你认为 LearnLab 系统有哪些优点与不足？（开放作答）
+
+\section{六、AI 工具使用与原创性声明}
+
+作品名称：LearnLab 跨学科智能学习平台
+
+赛道：第八届全球校园人工智能算法精英大赛·算法创新赛·AI+学科交叉
+
+\textbf{一、团队自主完成的工作}
+
+LearnLab 平台的系统设计、核心算法、软件开发和全部验证工作由我们团队独立完成，主要包括：
+
+算法部分：ADPP 自适应 DAG 路径规划的求解实现、知识追踪与记忆调度（BKT/GKT/IRT/NCD/FSRS）的工程化实现与参数调优，以及多臂老虎机资源推荐策略。相关的离线评估脚本、116 项算法断言和 MNA 数值验证 9/9 的结果，都是我们自己在仓库里跑出来的；
+
+系统部分：FastAPI 后端（38 个路由模块、210+ 接口）、React 前端（学习中心三栏阅读布局、电路仿真交互、多智能体可视化）、SQLite 数据模型与 Alembic 迁移、部署脚本，均为团队编写；
+
+教学内容：C 语言、电路分析、STM32 三门课的知识图谱、讲义和题库，由团队按公开教材的知识体系整理编写；
+
+测试部分：29 项功能回归、23 项数据流验证、210 个路由冒烟，以及真实学生试点流程，均由团队设计并执行。
+
+\textbf{二、AI 工具的参与环节}
+
+开发过程中我们用过一些 AI 工具辅助开发，但没有用它们代替完成任何核心创新点：
+
+\par\noindent\begin{tabular}{|p{3.4cm}|p{10.6cm}|}
+\hline
+\textbf{环节} & \textbf{AI 工具的用途} \\ \hline
+代码辅助 & 代码补全、样例生成、报错排查参考。所有代码经过团队逐行审查、修改和测试之后才采用 \\ \hline
+平台内置 AI 功能 & AI 辅导（讯飞星火 Spark，OpenAI 兼容接口）、组卷/备课/资源生成的文本生成，以及本地中文向量化模型。这些是平台被评审的产品功能，属于系统集成，不是开发代做 \\ \hline
+文档整理 & 技术方案部分段落的文字润色与格式整理。技术内容、数据和结论全部由团队核定 \\ \hline
+素材辅助 & 部分示意图的配色与排版建议 \\ \hline
+\end{tabular}\par
+
+AI 生成的所有内容都经过人工核验与修正。算法公式推导、实验数据和评测结果的真实性，由团队负责。
+
+\textbf{三、第三方组件与来源声明}
+
+后端开源组件：FastAPI、SQLAlchemy、Alembic、Uvicorn 等（MIT/BSD 许可）；pyBKT、fsrs、mabwiser（开源算法库，用于对照与工程化封装）；
+
+前端开源组件：React、Ant Design 5、Recharts、Monaco Editor 等（MIT 许可）；
+
+外部 AI 服务：讯飞星火大模型（OpenAI 兼容接口）、火山引擎文生图接口，均为公开商业 API，调用过程不涉及训练数据投入；
+
+教学内容参考公开教材的知识体系编写，未复制任何受版权保护的教材原文章节。
+
+\textbf{四、原创性承诺}
+
+我们团队承诺：
+
+\noindent\hangindent=2em 1.~本作品不存在代做、抄袭、剽窃他人成果的行为；
+
+\noindent\hangindent=2em 2.~没有伪造实验数据、用户数据或评测结果；
+
+\noindent\hangindent=2em 3.~试点数据均已获得参与者知情同意，并做了匿名化处理；
+
+\noindent\hangindent=2em 4.~AI 工具的使用范围和方式如上文如实声明，核心创新点与主要工作量由团队自主完成；
+
+\noindent\hangindent=2em 5.~如有违反，愿意接受大赛组委会的相关处理决定。
+
+\vspace{1.5em}
+
+\noindent 团队名称：一起搞事情
+
+\vspace{0.6em}
+
+\noindent 队长签字：\underline{\hspace{2.2cm}\raisebox{-0.55\height}{\includegraphics[height=0.85cm]{sign_mqr.png}}\hspace{0.6cm}}
+
+\vspace{0.6em}
+
+\noindent 日\ 期：\underline{\makebox[3.4cm][c]{2026 年 10 月 3 日}}
+
+\end{document}
