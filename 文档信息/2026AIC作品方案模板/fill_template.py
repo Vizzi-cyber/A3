@@ -122,6 +122,16 @@ print('删除旧骨架/占位/提示段:', removed)
 # ---------- 3. 追加工具（文尾，顺序天然正确）----------
 count = {'h1': 0, 'h2': 0, 'h3': 0, 'para': 0, 'bullet': 0, 'table': 0, 'img': 0, 'intro': 0}
 
+def fmt_para(p, indent=True):
+    pf = p.paragraph_format
+    pf.line_spacing = 1.0
+    pf.space_before = Pt(0); pf.space_after = Pt(0)
+    if indent: pf.first_line_indent = Pt(24)
+    pPr = p._p.get_or_add_pPr()
+    if pPr.find(qn('w:snapToGrid')) is None:
+        snap = pPr.makeelement(qn('w:snapToGrid'), {qn('w:val'): '0'})
+        pPr.insert(0, snap)
+
 def add_text_runs(para, text, size=12, bold_all=False):
     for part in re.split(r'(\*\*.*?\*\*)', text):
         if not part: continue
@@ -163,14 +173,14 @@ def H(level, text):
 def P(text, size=12, indent=True):
     p = d.add_paragraph('', style='Normal')
     add_text_runs(p, text, size=size)
-    if indent: p.paragraph_format.first_line_indent = Pt(24)
+    fmt_para(p, indent)
     count['para'] += 1
 
 def B(text):
     p = d.add_paragraph('', style='Normal')
     add_text_runs(p, '• ' + text)
+    fmt_para(p, indent=False)
     p.paragraph_format.left_indent = Pt(24)
-    p.paragraph_format.first_line_indent = Pt(0)
     count['bullet'] += 1
 
 def T(rows):
@@ -222,7 +232,7 @@ for kind, val in elems:
         from docx.text.paragraph import Paragraph
         para_obj = Paragraph(np, t_title.getparent())
         add_text_runs(para_obj, val)
-        para_obj.paragraph_format.first_line_indent = Pt(24)
+        fmt_para(para_obj, True)
         count['intro'] += 1; continue
     if kind == 'h1':
         d.add_paragraph(val, style='Heading 1')
