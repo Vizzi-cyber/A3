@@ -15,7 +15,7 @@ const { chromium } = require("playwright");
     path: out,
     format: "A4",
     printBackground: false,
-    margin: { top: "0mm", bottom: "0mm", left: "0mm", right: "0mm" },
+    margin: { top: "20mm", bottom: "18mm", left: "18mm", right: "18mm" },
   });
   console.log("PDF_OK:", out);
   await browser.close();
