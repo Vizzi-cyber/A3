@@ -67,9 +67,10 @@ while i < len(lines):
             if cells:
                 rows_data.append([re.sub(r'<[^>]+>', ' ', c).replace(chr(10), ' ').strip() for c in cells])
         elems.append(('team_table', rows_data)); continue
-    if ln.startswith('- '):
-        elems.append(('bullet', ln[2:].strip())); i += 1; continue
-    m_ol = re.match(r'^(\d+)\.\s+(.*)$', ln.strip())
+    ls = ln.strip()
+    if ls.startswith('- '):
+        elems.append(('bullet', ls[2:].strip())); i += 1; continue
+    m_ol = re.match(r'^(\d+)\.\s+(.*)$', ls)
     if m_ol:
         elems.append(('olitem', (m_ol.group(1), m_ol.group(2).strip()))); i += 1; continue
     elems.append(('para', ln.strip())); i += 1
@@ -85,8 +86,9 @@ def tex_escape(s):
     return s
 
 def tex_inline(s):
-    # 直引号成对转中文引号（XeLaTeX 西文字体把 " 渲染成两个右引号）
+    # 直引号成对转中文引号（XeLaTeX 西文字体把 " 渲染成两个右引号）；直角引号统一为弯引号
     s = re.sub(r'"([^"]*?)"', '\u201c\\1\u201d', s)
+    s = s.replace('\u300c', '\u201c').replace('\u300d', '\u201d')
     out = []
     for part in re.split(r'(\*\*.+?\*\*|\*[^*]+?\*)', s):
         if not part: continue
@@ -144,6 +146,13 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 % 西文 Times New Roman（fontspec）
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
+% 带圈数字①-⑳等符号区字符用中文字体渲染（Times 无字形，否则出豆腐块）
+\xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
+% 标题孤行控制：页尾不足三行时不排标题
+\usepackage{needspace}
+\newcommand{\sectionbreak}{\needspace{3\baselineskip}}
+\newcommand{\subsectionbreak}{\needspace{3\baselineskip}}
+\newcommand{\subsubsectionbreak}{\needspace{3\baselineskip}}
 % 行距：单倍（模板要求）
 \linespread{1.0}
 \setlength{\parindent}{2em}
@@ -189,7 +198,7 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 cur = []
 for kind, val in elems:
     if kind == 'para_intro':
-        TEX += tex_inline(val) + '\n\n'; continue
+        TEX += '\n\n' + tex_inline(val) + '\n\n'; continue
     if kind == 'h1':
         TEX += '\\section{' + tex_inline(val) + '}\n'; continue
     if kind == 'h2':
@@ -197,7 +206,7 @@ for kind, val in elems:
     if kind == 'h3':
         TEX += '\\subsubsection{' + tex_inline(val) + '}\n'; continue
     if kind == 'para':
-        TEX += tex_inline(val) + '\n\n'; continue
+        TEX += '\n\n' + tex_inline(val) + '\n\n'; continue
     if kind == 'bullet':
         TEX += '\\begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]\n\\item ' + tex_inline(val) + '\n\\end{itemize}\n'; continue
     if kind == 'olitem':
@@ -214,20 +223,27 @@ for kind, val in elems:
             colspec = '|p{2.2cm}|p{2.2cm}|p{2.6cm}|p{3.4cm}|p{3.0cm}|'
         else:
             colspec = '|' + '|'.join([f'p{{{round(15.0/ncol,2)}cm}}'] * ncol) + '|'
-        TEX += '\\begin{longtable}{' + colspec + '}\n\\hline\n'
-        for ri, row in enumerate(rows):
+        # 表头行（可跨页重复）
+        hdr = []
+        for ci in range(ncol):
+            cell = rows[0][ci] if ci < len(rows[0]) else ''
+            hdr.append('\\textbf{' + tex_inline(cell) + '}')
+        hdr_tex = ' & '.join(hdr) + r' \\ \hline'
+        TEX += '\\begin{longtable}{' + colspec + '}\n\\hline\n' + hdr_tex + '\n\\endfirsthead\n\\hline\n' + hdr_tex + '\n\\endhead\n'
+        for row in rows[1:]:
             cells = []
             for ci in range(ncol):
                 cell = row[ci] if ci < len(row) else ''
-                ct = tex_inline(cell)
-                if ri == 0: ct = '\\textbf{' + ct + '}'
-                cells.append(ct)
+                cells.append(tex_inline(cell))
             TEX += ' & '.join(cells) + r' \\ \hline' + '\n'
         TEX += '\\end{longtable}\n'; continue
     if kind == 'team_table':
         rows = val
+        if rows and rows[0] and str(rows[0][0]).startswith('成员'):
+            rows = rows[1:]  # <th> 表头行已单独排版，跳过避免重复
         TEX += '\\begin{longtable}{|p{2.6cm}|p{3.0cm}|p{4.4cm}|p{5.0cm}|}\n\\hline\n'
-        TEX += r'\textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline' + '\n'
+        TEAMHDR = r'\textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline'
+        TEX += TEAMHDR + '\n\\endfirsthead\n\\hline\n' + TEAMHDR + '\n\\endhead\n'
         for row in rows:
             row = (row + ['', '', '', ''])[:4]
             name = row[0].split('队长')[0].split('2025')[0].strip()
@@ -236,7 +252,10 @@ for kind, val in elems:
             ph2 = os.path.join('交付材料/02_技术方案/latex', name + '.jpg')
             ph = ph2 if os.path.exists(ph2) else ph
             photo_tex = (r'\includegraphics[height=3.2cm]{' + PHOTO_FILE.get(name, '') + '}') if PHOTO_FILE.get(name) else ''
-            c0 = tex_inline(re.sub(r'\s+', ' ', row[0].replace('·', ' '))); c2 = tex_inline(row[2]); c3 = tex_inline(row[3])
+            c0 = tex_inline(re.sub(r'\s+', ' ', row[0].replace('·', ' ')))
+            if ' ' in c0:
+                c0 = c0.replace(' ', r'\newline ', 1)  # 姓名/角色与年级分两行，避免窄列两端对齐拉字距
+            c2 = tex_inline(row[2]); c3 = tex_inline(row[3])
             TEX += c0 + ' & ' + photo_tex + ' & ' + c2 + ' & ' + c3 + r' \\ \hline' + '\n'
         TEX += '\\end{longtable}\n'; continue
     if kind == 'img':

@@ -3,13 +3,13 @@
 \contentsline {subsection}{（一）背景与意义}{3}{}%
 \contentsline {subsubsection}{1. 行业痛点}{3}{}%
 \contentsline {subsubsection}{2. 学科发展现状与行业需求}{3}{}%
-\contentsline {subsubsection}{3. 为什么传统信息化手段不够，必须用 AI}{3}{}%
+\contentsline {subsubsection}{3. 为什么传统信息化手段不够，必须用 AI}{4}{}%
 \contentsline {subsection}{（二）核心目标}{4}{}%
 \contentsline {section}{二、需求分析}{4}{}%
 \contentsline {subsection}{（一）学科专业界定}{4}{}%
 \contentsline {subsection}{（二）核心痛点梳理}{4}{}%
 \contentsline {subsubsection}{1. 教学环节痛点}{4}{}%
-\contentsline {subsubsection}{2. 实验实训环节痛点}{4}{}%
+\contentsline {subsubsection}{2. 实验实训环节痛点}{5}{}%
 \contentsline {subsubsection}{3. 自主学习环节痛点}{5}{}%
 \contentsline {subsection}{（三）AI 赋能需求（融合切入点）}{5}{}%
 \contentsline {section}{三、解决方案设计}{6}{}%
