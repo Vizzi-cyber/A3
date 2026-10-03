@@ -13,6 +13,8 @@ DOCX = os.path.abspath('交付材料/02_技术方案/模板工作.docx')
 OUT = os.path.abspath('交付材料/02_技术方案/模板工作_filled.docx')
 IMG = os.path.abspath('交付材料/_assets/架构图.png')
 PHOTO_FILE = {'马其瑞': 'mqr.jpg', '孙雨瑶': 'syy.jpg', '居欣月': 'jxy.jpg'}
+WORK = os.path.abspath('交付材料/02_技术方案/latex')
+PHOTO_FILE = {'马其瑞': 'mqr.jpg', '孙雨瑶': 'syy.jpg', '居欣月': 'jxy.jpg'}
 PHOTO = {'马其瑞': os.path.abspath('交付材料/_assets/队照/mqr.jpg'),
          '孙雨瑶': os.path.abspath('交付材料/_assets/队照/syy.jpg'),
          '居欣月': os.path.abspath('交付材料/_assets/队照/jxy.jpg')}
@@ -211,16 +213,16 @@ def TEAM(rows):
                 pPr.insert(0, snap)
             if ci == 1 and ri > 0:
                 name = member.split(' ')[0].strip()
-                ph = os.path.join(os.path.dirname(os.path.abspath(MD.replace(os.sep + '文档信息' + os.sep, os.sep + '交付材料' + os.sep))), '02_技术方案', 'latex', PHOTO_FILE.get(name, ''))
+                ph = os.path.join(WORK, PHOTO_FILE.get(name, ''))
                 if os.path.exists(ph):
                     para.add_run().add_picture(ph, height=Cm(2.4))
                 continue
             if ri == 0:
-                r = para.add_run(row[ci] if ci != 1 else ''); r.font.bold = True
+                r = para.add_run(row[ci]); r.font.bold = True
                 r.font.name = '黑体'; r.font.size = Pt(10.5)
                 r._element.rPr.rFonts.set(qn('w:eastAsia'), '黑体')
             else:
-                add_text_runs(para, member if ci == 0 else row[ci], size=10.5)
+                add_text_runs(para, row[ci], size=10.5)
     count['table'] += 1
 
 def IMG_ADD(path):
