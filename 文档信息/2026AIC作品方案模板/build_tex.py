@@ -258,7 +258,7 @@ for kind, val in elems:
         rows = val
         if rows and rows[0] and str(rows[0][0]).startswith('成员'):
             rows = rows[1:]  # <th> 表头行已单独排版，跳过避免重复
-        TEX += '\\begin{longtable}{|p{2.4cm}|p{2.8cm}|p{4.0cm}|p{4.1cm}|}\n\\hline\n'
+        TEX += '\\begin{longtable}{|>{\\centering\\arraybackslash}m{2.4cm}|>{\\centering\\arraybackslash}m{2.8cm}|>{\\centering\\arraybackslash}m{4.0cm}|>{\\centering\\arraybackslash}m{4.1cm}|}\n\\hline\n'
         TEAMHDR = r'\textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline'
         TEX += TEAMHDR + '\n\\endfirsthead\n\\hline\n' + TEAMHDR + '\n\\endhead\n'
         for row in rows:
