@@ -31,6 +31,9 @@ code { font-family: Consolas, monospace; font-size: 10pt; }
 ul, ol { margin: 0 0 2.5mm; padding-left: 2em; }
 li { margin-bottom: 1mm; text-align: justify; overflow-wrap: break-word; }
 hr { border: none; border-top: 1pt solid #000; margin: 5mm 0; }
+.team-table td { vertical-align: middle; }
+.team-table .photo { width: 64px; height: 85px; object-fit: cover; border: 0.75pt solid #000; display: block; }
+.team-table .sub { font-size: 8.5pt; color: #555; }
 </style></head><body>""" + body + "</body></html>"
 
 # ---- 按内容权重自动列宽：防止短标签列被长描述列挤压成一字宽 ----
