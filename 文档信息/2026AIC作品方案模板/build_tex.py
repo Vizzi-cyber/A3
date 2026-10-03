@@ -159,11 +159,12 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
 % URL 任意断行（防止参考文献长链撑破右边界）
 \usepackage{xurl}
-% 标题孤行控制：页尾不足三行时不排标题
-\usepackage{needspace}
-\newcommand{\sectionbreak}{\needspace{3\baselineskip}}
-\newcommand{\subsectionbreak}{\needspace{3\baselineskip}}
-\newcommand{\subsubsectionbreak}{\needspace{3\baselineskip}}
+% \texttt 内禁连字符断词（字段名不被拆成 diffi-culty；下划线/点处 \allowbreak 仍可断），正文英文断词不受影响
+% （须对等宽字体对象全局设置一次——组内设置会在断行前被分组结束撤销）
+\ttfamily
+\hyphenchar\font=-1
+\normalfont
+% 标题防孤悬：标题链+表格包 minipage（见元素流转处），其余标题用标准断页行为即可
 % 行距：单倍（Word 宋体小四单倍 = 12pt × 1.3 ≈ 15.6pt；ctex 基准 baselineskip 14.4pt，1.083 × 14.4 ≈ 15.6）
 \linespread{1.083}
 \setlength{\parindent}{2em}
@@ -210,7 +211,26 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 
 # ---------- 元素流转 LaTeX ----------
 cur = []
-for kind, val in elems:
+# 预计算"标题链+表格"簇：链首开 minipage，表格后闭合——标题与表格同生共死，杜绝孤悬标题/孤表头
+_chain_start = set()
+_chain_close_after = set()
+_i = 0
+while _i < len(elems):
+    if elems[_i][0] in ('h1', 'h2', 'h3'):
+        _j = _i
+        while _j < len(elems) and elems[_j][0] in ('h1', 'h2', 'h3'):
+            _j += 1
+        if _j < len(elems) and elems[_j][0] in ('table', 'team_table'):
+            _chain_start.add(_i)
+            _chain_close_after.add(_j)
+            _i = _j
+            continue
+    _i += 1
+for ei, (kind, val) in enumerate(elems):
+    if ei in _chain_start:
+        TEX += '\\par\\noindent\\begin{minipage}{\\linewidth}\n'
+    if kind in ('h1', 'h2', 'h3'):
+        pass
     if kind == 'para_intro':
         TEX += '\n\n' + tex_inline(val) + '\n\n'; continue
     if kind == 'h1':
@@ -246,21 +266,22 @@ for kind, val in elems:
             cell = rows[0][ci] if ci < len(rows[0]) else ''
             hdr.append('\\textbf{' + tex_inline(cell) + '}')
         hdr_tex = ' & '.join(hdr) + r' \\ \hline'
-        TEX += '\\begin{longtable}{' + colspec + '}\n\\hline\n' + hdr_tex + '\n\\endfirsthead\n\\hline\n' + hdr_tex + '\n\\endhead\n'
+        # tabular 不可拆分：表格整体在本页或挪页，杜绝 longtable 表头孤悬（全文表格均短于一页，无需跨页）
+        TEX += '\\par\\noindent\\begin{tabular}{' + colspec + '}\n\\hline\n' + hdr_tex + '\n'
         for row in rows[1:]:
             cells = []
             for ci in range(ncol):
                 cell = row[ci] if ci < len(row) else ''
                 cells.append(tex_inline(cell))
             TEX += ' & '.join(cells) + r' \\ \hline' + '\n'
-        TEX += '\\end{longtable}\n'; continue
+        TEX += '\\end{tabular}\\par\n' + ('\\end{minipage}\\par\n' if ei in _chain_close_after else ''); continue
     if kind == 'team_table':
         rows = val
         if rows and rows[0] and str(rows[0][0]).startswith('成员'):
             rows = rows[1:]  # <th> 表头行已单独排版，跳过避免重复
-        TEX += '\\begin{longtable}{|>{\\centering\\arraybackslash}m{2.4cm}|>{\\centering\\arraybackslash}m{2.8cm}|>{\\centering\\arraybackslash}m{4.0cm}|>{\\centering\\arraybackslash}m{4.1cm}|}\n\\hline\n'
+        TEX += '\\par\\noindent\\begin{tabular}{|>{\\centering\\arraybackslash}m{2.4cm}|>{\\centering\\arraybackslash}m{2.8cm}|>{\\centering\\arraybackslash}m{4.0cm}|>{\\centering\\arraybackslash}m{4.1cm}|}\n\\hline\n'
         TEAMHDR = r'\textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline'
-        TEX += TEAMHDR + '\n\\endfirsthead\n\\hline\n' + TEAMHDR + '\n\\endhead\n'
+        TEX += TEAMHDR + '\n'
         for row in rows:
             row = (row + ['', '', '', ''])[:4]
             name = row[0].split('队长')[0].split('2025')[0].strip()
@@ -274,7 +295,7 @@ for kind, val in elems:
                 c0 = c0.replace(' ', r'\newline ', 1)  # 姓名/角色与年级分两行，避免窄列两端对齐拉字距
             c2 = tex_inline(row[2]); c3 = tex_inline(row[3])
             TEX += c0 + ' & ' + photo_tex + ' & ' + c2 + ' & ' + c3 + r' \\ \hline' + '\n'
-        TEX += '\\end{longtable}\n'; continue
+        TEX += '\\end{tabular}\\par\n' + ('\\end{minipage}\\par\n' if ei in _chain_close_after else ''); continue
     if kind == 'img':
         TEX += '\\begin{center}\\includegraphics[width=15cm]{arch.png}\\end{center}\n'; continue
 

@@ -43,11 +43,12 @@
 \xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
 % URL 任意断行（防止参考文献长链撑破右边界）
 \usepackage{xurl}
-% 标题孤行控制：页尾不足三行时不排标题
-\usepackage{needspace}
-\newcommand{\sectionbreak}{\needspace{3\baselineskip}}
-\newcommand{\subsectionbreak}{\needspace{3\baselineskip}}
-\newcommand{\subsubsectionbreak}{\needspace{3\baselineskip}}
+% \texttt 内禁连字符断词（字段名不被拆成 diffi-culty；下划线/点处 \allowbreak 仍可断），正文英文断词不受影响
+% （须对等宽字体对象全局设置一次——组内设置会在断行前被分组结束撤销）
+\ttfamily
+\hyphenchar\font=-1
+\normalfont
+% 标题防孤悬：标题链+表格包 minipage（见元素流转处），其余标题用标准断页行为即可
 % 行距：单倍（Word 宋体小四单倍 = 12pt × 1.3 ≈ 15.6pt；ctex 基准 baselineskip 14.4pt，1.083 × 14.4 ≈ 15.6）
 \linespread{1.083}
 \setlength{\parindent}{2em}
@@ -148,20 +149,18 @@
 
 上面四件事分别落在语言理解、知识建模、数值计算与流程自动化上，正好是大模型、知识图谱、自适应算法与多智能体各自的能力范围。
 
+\par\noindent\begin{minipage}{\linewidth}
 \subsection{（二）核心目标}
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{目标} & \textbf{学科环节} & \textbf{实现方式} \\ \hline
-\endfirsthead
-\hline
-\textbf{目标} & \textbf{学科环节} & \textbf{实现方式} \\ \hline
-\endhead
 个性化学习路径 & 自主学习 & ADPP 自适应 DAG 路径算法 + 6 维学习画像 \\ \hline
 智能辅导与错误诊断 & 教学实践 & 12 个 AI 智能体协作 + 苏格拉底式引导 \\ \hline
 虚拟实验实训 & 实验实训 & 浏览器端 MNA 电路仿真 + AI 故障诊断 + STM32 实验实训 \\ \hline
 跨学科链路打通 & 自主学习 & 跨课程知识关联 + 跨学科综合路径 + 综合实战项目 \\ \hline
 学情洞察与效果验证 & 教学管理 & 多因子趋势分析 + 试点数据分析报告 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
 \section{二、需求分析}
 \subsection{（一）学科专业界定}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
@@ -173,60 +172,52 @@
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 核心环节：教学实践（教师备课/组卷/学情）、实验实训（电路仿真/故障诊断/嵌入式实验）、自主学习（个性化路径/AI辅导/知识库）
 \end{itemize}
+\par\noindent\begin{minipage}{\linewidth}
 \subsection{（二）核心痛点梳理}
 \subsubsection{1. 教学环节痛点}
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
-\endfirsthead
-\hline
-\textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
-\endhead
 备课负担重 & 一位 C 语言教师面对 100-200 名学生，备课 2-4 小时、组卷 3-5 小时 & 手工制作，无法复用 \\ \hline
 学情滞后 & 依赖期中期末成绩，无法实时掌握班级薄弱点 & 数据采集成本高 \\ \hline
 批改低效 & 作业批改 15-30 分钟/份 & 人力瓶颈 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
+\par\noindent\begin{minipage}{\linewidth}
 \subsubsection{2. 实验实训环节痛点}
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
-\endfirsthead
-\hline
-\textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
-\endhead
 设备受限 & 实验室开放时间有限、设备数量不足，无法随时练习 & 硬件资源刚性约束 \\ \hline
 试错成本高 & 硬件实验接线错误可能损坏器件，学生不敢反复尝试 & 无虚拟化替代 \\ \hline
 反馈缺失 & 实验现象异常时，无人解释“为什么”，学习停留在操作层面 & 仿真器只给数值 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
+\par\noindent\begin{minipage}{\linewidth}
 \subsubsection{3. 自主学习环节痛点}
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
-\endfirsthead
-\hline
-\textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
-\endhead
 路径模糊 & 学生不清楚知识点依赖关系，学习顺序混乱 & 统一课程目录 \\ \hline
 辅导缺失 & 课后遇 Bug 无人即时解答，“黄金纠错期”（30 分钟）错过 & 答疑课以“天”计 \\ \hline
 反馈延迟 & 练习无即时反馈，错误理解固化 & 统一答案解析 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
 
 
 上述痛点不是凭印象列的：前测问卷专设了“学习方式”与“学习中最大的困难”两道多选题（对应 2.3 自主学习痛点），随试点发放；试点的作答数据回收后，将以实测数字回填本节，与系统行为日志互相印证。
 
+\par\noindent\begin{minipage}{\linewidth}
 \subsection{（三）AI 赋能需求（融合切入点）}
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{AI 技术} & \textbf{解决的学科问题} & \textbf{落地功能（均已上线）} \\ \hline
-\endfirsthead
-\hline
-\textbf{AI 技术} & \textbf{解决的学科问题} & \textbf{落地功能（均已上线）} \\ \hline
-\endhead
 大语言模型 & 即时辅导缺失、实验反馈缺失 & 苏格拉底式 AI 辅导、AI 电路分析、C 代码错误诊断 \\ \hline
 多智能体 & 教学流程碎片化 & 12 个教育角色智能体（LangGraph 编排）覆盖备课、学习、纠错、协作全流程 \\ \hline
 知识图谱+自适应算法 & 个性化缺失、路径模糊 & ADPP 自适应路径、跨课程知识关联、每日个性化练习 \\ \hline
 浏览器数值计算（MNA） & 实验设备受限 & 零成本虚拟电路实验，AI 叠加故障诊断 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
 
 
 三大环节共 9 条痛点全部有已上线功能承接，不存在“分析了但没做”的需求；功能与数据流的验证口径见四（一），试点效果验证设计见六（三）。
@@ -234,21 +225,19 @@
 \section{三、解决方案设计}
 \subsection{（一）系统架构设计}
 \begin{center}\includegraphics[width=15cm]{arch.png}\end{center}
+\par\noindent\begin{minipage}{\linewidth}
 \subsection{（二）技术选型依据}
-\begin{longtable}{|p{7.08cm}|p{7.08cm}|}
+\par\noindent\begin{tabular}{|p{7.08cm}|p{7.08cm}|}
 \hline
 \textbf{技术} & \textbf{选型理由（与学科需求对应）} \\ \hline
-\endfirsthead
-\hline
-\textbf{技术} & \textbf{选型理由（与学科需求对应）} \\ \hline
-\endhead
 React 18 + TypeScript & 交互式实验实训界面（电路拖拽/仿真/可视化）需要高交互性能与类型安全 \\ \hline
 Ant Design 5 & 教育工具的企业级组件体系，信息密度优先 \\ \hline
 FastAPI + SQLAlchemy & 异步高性能 API，支撑 WebSocket 流式辅导 \\ \hline
 LangGraph & 多智能体编排框架，星型拓扑匹配教育角色体系 \\ \hline
 SQLite → PostgreSQL & 开发/试点轻量部署，可平滑迁移 \\ \hline
 讯飞星火/DeepSeek 等多模型 & 5 家 LLM 统一接口 + 自动降级，教学场景成本可控 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
 \subsection{（三）核心技术模块}
 \subsubsection{1. 多智能体协同（12 Agent，LangGraph 星型拓扑）}
 
@@ -330,17 +319,13 @@ ADPP 的做法是把六样东西组合到一起：关键路径法（CPM）、BKT
 
 对照“学科问题解决新方法、教学科研新模式、AI 技术应用新场景”三个层面，本作品的创新点及与同类做法的对比：
 
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{层面} & \textbf{创新点} & \textbf{与同类做法的对比} \\ \hline
-\endfirsthead
-\hline
-\textbf{层面} & \textbf{创新点} & \textbf{与同类做法的对比} \\ \hline
-\endhead
-学科问题解决新方法 & 五层教育算法闭环（IRT 测量→BKT/GKT 建模→FSRS 记忆→MAB 决策→LLM 解释）与 ADPP 跨学科 DAG 路径规划，把“学什么、先学什么”从教师经验判断变成按认知数据计算 & 主流 AI 学习产品把大模型直接当问答器，没有认知建模层，答不了“为什么给这个学生推这个知识点”；本作品每条推荐可溯源到算法状态（mastery\_detail、difficulty\_source 等字段可查） \\ \hline
+学科问题解决新方法 & 五层教育算法闭环（IRT 测量→BKT/GKT 建模→FSRS 记忆→MAB 决策→LLM 解释）与 ADPP 跨学科 DAG 路径规划，把“学什么、先学什么”从教师经验判断变成按认知数据计算 & 主流 AI 学习产品把大模型直接当问答器，没有认知建模层，答不了“为什么给这个学生推这个知识点”；本作品每条推荐可溯源到算法状态（\texttt{mastery\_\allowbreak{}detail}、\texttt{difficulty\_\allowbreak{}source} 等字段可查） \\ \hline
 教学科研新模式 & 12 个教育角色智能体覆盖备课、学习、实训、纠错、协作、学情全流程；教师端实时学情与试点报告把期末“经验总结”变成过程性“数据研究” & 传统 LMS 只负责内容分发，学情到期中考试才可见；市面智能辅导产品多聚焦单点答疑，不覆盖教学全环节 \\ \hline
 AI 技术应用新场景 & 浏览器端 MNA+RK4 电路仿真叠加 AI 故障诊断；跨课程知识关联（C 语言→电路→嵌入式）生成跨学科学习路径；综合实战项目贯通三门课 & 传统仿真器只输出数值结果，不解释异常原因；同类学习平台多作用于单一课程，缺少跨学科链路 \\ \hline
-\end{longtable}
+\end{tabular}\par
 
 
 三个层面的共同基础是 AI 技术与学科特色的深度适配：算法层全部选用教育测量与学习科学的经典模型（IRT/BKT/GKT/FSRS 均有明确文献出处）而非通用推荐算法，内容层由电子信息工程专业成员把关学科正确性，场景层直接对应教学实践、实验实训、自主学习、教学管理四类真实环节。
@@ -367,20 +352,18 @@ AI 技术应用新场景 & 浏览器端 MNA+RK4 电路仿真叠加 AI 故障诊�
 
 部署形态也已经过真实环境验证：系统目前运行在腾讯云服务器（OpenCloudOS，2 核 4G）上，Nginx 反向代理 + HTTPS（Let's Encrypt 证书自动续期），后端由 systemd 托管并配置了内存上限与自动重启，日志层接入 journald 轮转。演示站点 \url{https://www.dreamlast.cn} 已稳定服务，最近一轮全系统测试期间 \textbf{24 小时零 500 错误}。
 
+\par\noindent\begin{minipage}{\linewidth}
 \subsection{（二）经济可行性}
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{成本类别} & \textbf{明细} & \textbf{估算} \\ \hline
-\endfirsthead
-\hline
-\textbf{成本类别} & \textbf{明细} & \textbf{估算} \\ \hline
-\endhead
 一次性部署 & 云服务器（2核4G） & ¥1,500-2,000/年（学生优惠更低） \\ \hline
 LLM API & 讯飞星火（教学场景，100 学生） & ¥300-500/月（开发者有免费额度） \\ \hline
 运维 & 学生团队志愿维护 + 开源工具 & ¥0 \\ \hline
 对比传统 & 电路实验室建设 & ¥50,000-200,000（仅设备） \\ \hline
 对比传统 & 商业 LMS 平台年费 & ¥30,000-100,000/年 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
 
 
 算下来，LearnLab 单校部署年成本约 ¥5,000-8,000，比传统实验室和商业平台低一个量级，配合免费额度还能再压。
@@ -398,15 +381,12 @@ LLM API & 讯飞星火（教学场景，100 学生） & ¥300-500/月（开发�
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item LLM 依赖做了风险隔离：支持 5 家 LLM 切换与自动降级；电路仿真、知识图谱、游戏化等非 LLM 核心功能不依赖任何 API。
 \end{itemize}
+\par\noindent\begin{minipage}{\linewidth}
 \section{五、项目实施}
 \subsection{（一）实施计划}
-\begin{longtable}{|p{2.5cm}|p{2.5cm}|p{4.0cm}|p{4.3cm}|}
+\par\noindent\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{4.0cm}|p{4.3cm}|}
 \hline
 \textbf{阶段} & \textbf{时间} & \textbf{内容} & \textbf{交付物 / 验收口径} \\ \hline
-\endfirsthead
-\hline
-\textbf{阶段} & \textbf{时间} & \textbf{内容} & \textbf{交付物 / 验收口径} \\ \hline
-\endhead
 需求分析与学科界定 & 第 1-2 周 & 学科痛点调研、学科定位（计算机+电子信息） & 需求分析文档；学科-环节-痛点清单（3 环节 9 条） \\ \hline
 系统架构设计 & 第 3 周 & 技术选型、架构分层、智能体角色设计 & 架构设计文档；12 智能体角色与 AgentMessage 协议定义 \\ \hline
 核心模块开发 & 第 4-10 周 & 12 Agent、ADPP 算法、MNA 仿真、前端体系 & 五层算法引擎与 ADPP 代码入库；MNA 求解器过解析解对照；前端页面全量可用 \\ \hline
@@ -414,7 +394,8 @@ LLM API & 讯飞星火（教学场景，100 学生） & ¥300-500/月（开发�
 AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点数据采集、多模型降级 & 9 条跨课程关联上线；3 类电路故障实验；5 家 LLM 降级链 \\ \hline
 小规模试点 & 第 15-16 周 & 8 名学生（实验组 4 + 对照组 4）试用 + 前后测 + 问卷 & 前后测对比与试点数据分析报告（教师端一键导出） \\ \hline
 文档与提交 & 第 17 周 & 技术方案、测试报告、演示材料 & 全套参赛交付材料，验证脚本随源码可复现 \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
 \subsection{（二）资源保障}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 硬件：开发笔记本×3、云服务器 1 台（试点部署）；
@@ -433,17 +414,13 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 三名成员来自三个专业，分别对应平台的三个核心侧面：马其瑞负责算法引擎与后端（电子信息工程的 C 语言、电路、嵌入式课程训练，保证电路与 STM32 内容的学科正确性），孙雨瑶负责试点数据与统计分析（数据科学训练保证效果验证可信度），居欣月负责可视化与文档交付（GIS 的空间可视化与制图训练直接用于 DAG 知识图谱与学情图表）。
 
-\begin{longtable}{|>{\centering\arraybackslash}m{2.4cm}|>{\centering\arraybackslash}m{2.8cm}|>{\centering\arraybackslash}m{4.0cm}|>{\centering\arraybackslash}m{4.1cm}|}
+\par\noindent\begin{tabular}{|>{\centering\arraybackslash}m{2.4cm}|>{\centering\arraybackslash}m{2.8cm}|>{\centering\arraybackslash}m{4.0cm}|>{\centering\arraybackslash}m{4.1cm}|}
 \hline
 \textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline
-\endfirsthead
-\hline
-\textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline
-\endhead
 马其瑞\newline 队长 2025 级 & \includegraphics[height=3.2cm]{mqr.jpg} & 电子信息工程 & 后端架构与教育算法引擎；学科内容正确性把关；生产环境部署运维 \\ \hline
 孙雨瑶\newline 2025 级 & \includegraphics[height=3.2cm]{syy.jpg} & 数据科学与大数据技术 & 试点组织实施与数据质量把关；功能与数据流测试验证 \\ \hline
 居欣月\newline 2025 级 & \includegraphics[height=3.2cm]{jxy.jpg} & 遥感科学与技术（GIS 方向） & 前端页面与数据可视化开发；参赛材料排版与交付 \\ \hline
-\end{longtable}
+\end{tabular}\par
 
 
 各成员的模块划分、任务清单与完成情况如下。
@@ -453,55 +430,43 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 电子信息工程专业的课程训练覆盖 C 语言、电路分析、单片机开发，与平台主打的“C 语言—电路—嵌入式”学科内容对口，因此由其承担技术底座与学科内容正确性两条线，共五个模块：
 
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
-\endfirsthead
-\hline
-\textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
-\endhead
 系统架构 & FastAPI 分层后端（39 个 API 模块）与 SQLite 数据模型设计，覆盖学习、测验、诊断、协作、教师端全业务线 & 已上线运行；210 个路由冒烟测试 0 崩溃 \\ \hline
 教育算法引擎 & IRT/BKT/GKT/FSRS/MAB 五层闭环与 ADPP 路径规划引擎的实现、调参与离线评估 & 算法专项断言 116 项全部通过；按学生维度做时间留出评估，输出 AUC/LogLoss/Brier 及基线对照 \\ \hline
 智能体编排 & LangGraph 12 智能体调度、AgentMessage 通信协议、执行-评估-修正的反思循环 & 全部就位；反思循环最多 3 次、支持配置开关，评审时可现场演示 \\ \hline
 学科内容工程 & “C 语言—电路—STM32”课程内容与题库建设；浏览器端电路仿真 MNA 求解器；C 代码静态分析器 & MNA 数值验证 9/9，RC/RL/LC 结果与教科书解析解一致；错误捕捉覆盖典型语法与逻辑错误 \\ \hline
 生产部署运维 & 腾讯云部署（www.dreamlast.cn）、HTTPS 证书自动续期、进程守护、LLM 降级兜底 & 线上持续运行，提交前实测 24 小时零 500 错误；未配置 LLM Key 时自动降级，演示不中断 \\ \hline
-\end{longtable}
+\end{tabular}\par
 \subsubsection{2. 孙雨瑶：试点数据与质量验证}
 
 
 数据科学专业的训练核心是统计实验设计与数据清洗，对应平台“有没有效果、数据可不可信”的证据线，共五个模块：
 
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
-\endfirsthead
-\hline
-\textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
-\endhead
 测评工具设计 & 前测试卷、后测试卷、学习体验问卷、知情同意书的编制 & 全套定稿，随试点材料交付 \\ \hline
 试点组织实施 & 招募电子信息专业大一学生 8 名，分实验组（SY01-SY04）与对照组（CK01-CK04）；制定前测→平台学习→后测→问卷的流程 & 试点于 9 月 26 日启动，两组学生按流程推进，行为数据自动落库 \\ \hline
 数据质量把关 & IRT/BKT 训练数据的清洗规则、作答有效性核验、匿名编号管理 & 清洗与核验规则定稿；试点数据回收后执行前后测对比与效度分析 \\ \hline
 功能测试验证 & AIC 功能回归 29 项、数据流 23 项、真实环境 HTTP 22 项的测试执行 & 全部通过；测试脚本随仓库交付，可一键复现 \\ \hline
 行为数据埋点 & 学习行为事件设计（观看/阅读/练习/复习/完成/跳过/重置），支撑学习时长与路径差异统计 & 已上线运行，行为流水自动落库 \\ \hline
-\end{longtable}
+\end{tabular}\par
 \subsubsection{3. 居欣月：前端页面与数据可视化}
 
 
 遥感科学与技术（GIS 方向）的专业核心是空间数据的组织与可视化表达，负责把算法输出转成学生与教师“看得懂、愿意用”的界面，共五个模块：
 
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
-\endfirsthead
-\hline
-\textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
-\endhead
 学生端页面 & 学习中心、学习路径、AI 辅导、知识库、知识树、错题诊断、资源中心、个人空间等 10 个页面 & 全部完成；24 个页面逐页遍历零 JS 错误、零横向溢出 \\ \hline
 教师端页面 & 教学仪表盘、班级对比、学情预警、试点数据分析报告等 14 个页面 & 全部完成，试点报告支持一键导出 \\ \hline
 数据可视化 & 跨学科 DAG 知识图谱、学情趋势图表、排行榜、成就徽章墙 & 已上线；GIS 的空间布局与制图训练直接用于知识图谱的层次表达 \\ \hline
 交互质量保障 & 移动端适配、学习中心布局调优、新用户引导流程 & 前端 E2E 49 个用例（7 个文件）通过；构建 TypeScript + Vite 零错误 \\ \hline
 材料排版交付 & 技术方案 PDF 排版（md→HTML→PDF 管线）、佐证材料整理、源码包验收 & 已交付；系统运行佐证截图 13 张随材料提交 \\ \hline
-\end{longtable}
+\end{tabular}\par
 
 
 协作机制上，团队用 Git 版本控制（main 保护分支 + 提交审核）和任务看板管理，每周例会同步进度；跨专业模块之间靠 API 接口契约协作，前端按接口文档并行开发，数据侧按埋点口径独立取数，互不阻塞。三个专业各管一段，人员结构本身就贴合“AI 技术 × 学科场景”，也是对赛道“避免技术与学科场景脱节”要求的组织层面回应。
@@ -512,18 +477,14 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 平台对学科核心环节的改善是可预期的，且每一项都设计了对应的验证方式，不以主观描述为准。
 
-\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
+\par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{维度} & \textbf{预期效果} & \textbf{验证方式} \\ \hline
-\endfirsthead
-\hline
-\textbf{维度} & \textbf{预期效果} & \textbf{验证方式} \\ \hline
-\endhead
 学习效率 & ADPP 路径规划减少无效学习时间（预估 20-30\%）：零基础学生不再面对超出能力的题目，有基础学生跳过已掌握内容 & 前后测对比 + 学习时长统计 \\ \hline
 个性化程度 & 画像驱动的资源/路径适配，同一个班里不同基础的学生拿到不同的学习顺序与资源 & 系统使用日志分析（路径差异率） \\ \hline
 实验实训 & 电路故障诊断正确率、实验完成度提升；虚拟环境试错零成本 & experiment\_logs 统计 \\ \hline
 教师效率 & 备课与组卷从小时级降到分钟级，学情从期中滞后变为实时洞察 & 教师端使用记录 + 访谈 \\ \hline
-\end{longtable}
+\end{tabular}\par
 
 
 其中学习效率一项的来源要说明：ADPP 把学生按掌握度分配到不同的路径分支，减少的是“在已掌握知识点上重复练习”的时间；这部分节省随学生基础差异浮动，试点后会用实测数据修正预估。
@@ -550,21 +511,17 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 平台内置了一批能直接产出对照数据的验证点，试点期间自动落库，避免“只有代码验证、没有效果数据”：
 
-\begin{longtable}{|p{2.0cm}|p{2.0cm}|p{2.4cm}|p{3.3cm}|p{3.2cm}|}
+\par\noindent\begin{tabular}{|p{2.0cm}|p{2.0cm}|p{2.4cm}|p{3.3cm}|p{3.2cm}|}
 \hline
 \textbf{对照点} & \textbf{传统方法} & \textbf{算法方法} & \textbf{可量化指标} & \textbf{当前状态} \\ \hline
-\endfirsthead
-\hline
-\textbf{对照点} & \textbf{传统方法} & \textbf{算法方法} & \textbf{可量化指标} & \textbf{当前状态} \\ \hline
-\endhead
 掌握度测量 & 最近 5 次加权平均分 & IRT θ 百分位（Φ(θ)·100） & 两口径逐生逐日差值、与后测成绩的效度相关 & 已接线，演示库 8 学生实测 \\ \hline
-路径成本 & 人工 1-5 难度分级 & IRT 标定 b 值连续插值 & 同知识点两来源耗时差、路径总时长变化 & 已接线，difficulty\_source 可区分 \\ \hline
+路径成本 & 人工 1-5 难度分级 & IRT 标定 b 值连续插值 & 同知识点两来源耗时差、路径总时长变化 & 已接线，\texttt{difficulty\_\allowbreak{}source} 可区分 \\ \hline
 知识追踪 & 无（画像快照） & BKT EM 估计 & 时间留出 AUC / LogLoss / Brier（并与最近正确率、多数类比较） & 已上线；小样本结果附置信区间与风险提示 \\ \hline
 掌握度传播 & 逐点独立 & GKT 图卷积传播 & 图感知掌握度 vs 逐点掌握度对后测的预测增益 & 已训练（可学习门控） \\ \hline
 记忆调度 & 统一间隔复习 & FSRS 个性化调度 & 到期知识点复习完成率、可提取性分布 & 已上线 \\ \hline
 路径调整策略 & 50/70/90 固定规则 & Thompson Sampling（规则先验冷启动） & strategy\_source 分组的提分统计 & 已接线，收益闭环回传 \\ \hline
 选题与资源推荐 & 固定顺序/人工权重 & MAB 探索-利用 & 各臂收益曲线、资源类型点击/完成率 & 已接线 \\ \hline
-\end{longtable}
+\end{tabular}\par
 
 
 试点结束后，这七个对照点能回答两个问题：平台有没有用，以及效果来自哪一个算法环节。第二个问题更要紧，归因证据是同类产品普遍缺失的。
@@ -641,15 +598,12 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 新工科的交叉融合还在深化，嵌入式、物联网方向的复合型人才缺口短期内看不到收窄的迹象，这是这套平台持续有用的前提。技术上值得跟进的有两件事：多模态大模型成熟后，电路仿真可以支持“看着波形图直接提问”的视觉化分析；Agent 框架演进到更自主的形态后，辅导智能体会更接近一名随时在场的助教。推广节奏不变：先把本校试点的效果做扎实，再谈省内推广与开放学科模板库（目标覆盖 10+ 学科）。
 
+\par\noindent\begin{minipage}{\linewidth}
 \section{八、附录}
 \subsection{（一）提交材料对照表}
-\begin{longtable}{|p{7.08cm}|p{7.08cm}|}
+\par\noindent\begin{tabular}{|p{7.08cm}|p{7.08cm}|}
 \hline
 \textbf{官方要求（三、作品要求 \& 五、技术方案大纲）} & \textbf{本方案对应位置} \\ \hline
-\endfirsthead
-\hline
-\textbf{官方要求（三、作品要求 \& 五、技术方案大纲）} & \textbf{本方案对应位置} \\ \hline
-\endhead
 明确聚焦学科专业、界定领域场景 & 二（一）学科专业界定 \\ \hline
 学科需求分析报告 & 二（二）核心痛点梳理（教学/实验实训/自主学习三环节） \\ \hline
 AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块） \\ \hline
@@ -661,7 +615,8 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 代码与模型（可复现性） & 八（二）代码与验证脚本 \\ \hline
 参考文献 & 八（三） \\ \hline
 学术伦理与知识产权 & 八（四） \\ \hline
-\end{longtable}
+\end{tabular}\par
+\end{minipage}\par
 \subsection{（二）代码与模型}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 完整源代码：GitHub 仓库（Vizzi-cyber/A3），Git 提交历史可追溯全部迭代
