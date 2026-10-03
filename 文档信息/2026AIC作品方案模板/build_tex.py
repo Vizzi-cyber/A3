@@ -117,12 +117,20 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \renewcommand{\labelitemi}{\textperiodcentered}
 \renewcommand{\labelitemii}{--}
 % 标题层级：一级三号粗体 / 二级四号粗体 / 三级小四粗体（模板规范）
-\ctexset{
-  section = {format = {\bfseries\zihao{3}}},
-  subsection = {format = {\bfseries\zihao{4}}},
-  subsubsection = {format = {\bfseries\zihao{-4}}},
-}
 \setcounter{secnumdepth}{-1}
+\usepackage{titlesec}
+% 标题字体：黑体承担粗体（Windows 中文惯例），字号按模板 三号/四号/小四
+\titleformat{\section}{\heiti\zihao{3}}{}{0em}{}
+\titleformat{\subsection}{\heiti\zihao{4}}{}{0em}{}
+\titleformat{\subsubsection}{\heiti\zihao{-4}}{}{0em}{}
+\titlespacing*{\section}{0pt}{1.2em}{0.6em}
+\titlespacing*{\subsection}{0pt}{0.8em}{0.4em}
+\titlespacing*{\subsubsection}{0pt}{0.6em}{0.3em}
+% 西文 Times New Roman（fontspec）
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+% 行距：单倍（模板要求）
+\linespread{1.0}
 \setlength{\parindent}{2em}
 \setlength{\parskip}{0pt}
 \renewcommand{\arraystretch}{1.15}
