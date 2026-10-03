@@ -16,10 +16,10 @@ md = open(src, encoding="utf-8").read()
 body = markdown.markdown(md, extensions=["tables", "fenced_code", "sane_lists"])
 html = """<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><style>
 
-body { font-family: "SimSun","Songti SC",serif; font-size: 11.5pt; line-height: 2.0; color:#000; margin: 0; padding: 0; line-break: strict; }
-h1 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 20pt; text-align: center; margin: 10mm 0 8mm; }
-h2 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 15pt; margin: 10mm 0 4.5mm; border-bottom: 1.5pt solid #000; padding-bottom: 2.5mm; page-break-after: avoid; }
-h3 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 13pt; margin: 7mm 0 3.5mm; page-break-after: avoid; }
+body { font-family: "SimSun","Songti SC",serif; font-size: 12pt; line-height: 1.55; color:#000; margin: 0; padding: 0; line-break: strict; }
+h1 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 22pt; text-align: center; margin: 10mm 0 8mm; }
+h2 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 16pt; margin: 10mm 0 4.5mm; border-bottom: 1.5pt solid #000; padding-bottom: 2.5mm; page-break-after: avoid; }
+h3 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 14pt; margin: 7mm 0 3.5mm; page-break-after: avoid; }
 h4 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 12pt; margin: 5.5mm 0 2.5mm; page-break-after: avoid; }
 p { margin: 0 0 3mm; text-align: justify; }
 table { width: 100%; border-collapse: collapse; font-size: 10pt; margin: 4.5mm 0; page-break-inside: avoid; }
