@@ -108,7 +108,7 @@ def tex_inline(s):
 
 # ---------- 生成 tex ----------
 TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
-\usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=3cm]{geometry}
+\usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=3cm,headheight=0.9cm,headsep=0.58cm,footskip=1.23cm]{geometry}
 \usepackage{fancyhdr}
 \usepackage{longtable}
 \usepackage{array}
@@ -134,18 +134,20 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \renewcommand{\labelitemi}{\textperiodcentered}
 \renewcommand{\labelitemii}{--}
 % 标题层级：一级三号粗体 / 二级四号粗体 / 三级小四粗体（模板规范）
+% 标题字体：宋体加粗（官方格式清单：一二三级标题均宋体粗体），字号 三号/四号/小四
 \setcounter{secnumdepth}{-1}
 \usepackage{titlesec}
-% 标题字体：黑体承担粗体（Windows 中文惯例），字号按模板 三号/四号/小四
-\titleformat{\section}{\heiti\zihao{3}}{}{0em}{}
-\titleformat{\subsection}{\heiti\zihao{4}}{}{0em}{}
-\titleformat{\subsubsection}{\heiti\zihao{-4}}{}{0em}{}
+\titleformat{\section}{\bfseries\zihao{3}}{}{0em}{}
+\titleformat{\subsection}{\bfseries\zihao{4}}{}{0em}{}
+\titleformat{\subsubsection}{\bfseries\zihao{-4}}{}{0em}{}
 \titlespacing*{\section}{0pt}{1.2em}{0.6em}
 \titlespacing*{\subsection}{0pt}{0.8em}{0.4em}
 \titlespacing*{\subsubsection}{0pt}{0.6em}{0.3em}
 % 西文 Times New Roman（fontspec）
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
+% 中文主字体宋体，粗体走 XeLaTeX 仿粗（对应 Word 的"宋体+加粗"，官方格式清单）
+\setCJKmainfont[AutoFakeBold=3]{SimSun}
 % 带圈数字①-⑳等符号区字符用中文字体渲染（Times 无字形，否则出豆腐块）
 \xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
 % 标题孤行控制：页尾不足三行时不排标题
@@ -153,8 +155,8 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \newcommand{\sectionbreak}{\needspace{3\baselineskip}}
 \newcommand{\subsectionbreak}{\needspace{3\baselineskip}}
 \newcommand{\subsubsectionbreak}{\needspace{3\baselineskip}}
-% 行距：单倍（模板要求）
-\linespread{1.0}
+% 行距：单倍（Word 宋体小四单倍 = 12pt × 1.3 ≈ 15.6pt；ctex 基准 baselineskip 14.4pt，1.083 × 14.4 ≈ 15.6）
+\linespread{1.083}
 \setlength{\parindent}{2em}
 % 标题后的首段也缩进（中文排版惯例，模板正文全部段首空两格）
 \usepackage{indentfirst}
@@ -184,10 +186,13 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \vspace*{1.5cm}
 \end{titlepage}
 \setcounter{page}{1}
-% ===== 目录 =====
+% ===== 目录 =====（目录标题：宋体二号粗体居中——官方格式清单；条目格式不受影响）
+\begingroup
+\titleformat{\section}{\centering\bfseries\zihao{2}}{}{0em}{}
 \renewcommand{\contentsname}{目\quad 录}
 \setcounter{tocdepth}{3}
 \tableofcontents
+\endgroup
 \newpage
 % ===== 作品简介 =====
 \section*{作品简介}
