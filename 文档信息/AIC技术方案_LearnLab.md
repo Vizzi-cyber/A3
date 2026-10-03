@@ -1,30 +1,55 @@
-# 2026 年第八届全球校园人工智能算法精英大赛
-
-## 算法创新赛（AI+学科交叉）技术报告
-
-- 团队名称：一起搞事情
-- 参赛编号：AIC-2026-21740176
-- 作品名称：LearnLab 跨学科智能学习平台
-- 参赛赛区：江苏赛区
-- 日期：2026 年 10 月
-
----
-
-- 项目名称：基于大模型的个性化资源生成与学习多智能体系统（LearnLab）
-- 学科定位：新工科"计算机科学与技术 × 电子信息工程"跨学科 AI 学习平台
-- 覆盖课程：C语言程序设计 / 电路分析基础 / STM32嵌入式系统开发
-- 团队：马其瑞（队长，电子信息工程）、孙雨瑶（数据科学与大数据技术）、居欣月（遥感科学与技术），均为 2025 级（分工见第五部分）
+<div class="cover">
+<div class="c1">2026 年第八届</div>
+<div class="c1">全球校园人工智能算法精英大赛</div>
+<div class="cg"></div>
+<div class="c2">算法创新赛</div>
+<div class="c2">（AI+学科交叉）</div>
+<div class="c2">技术报告</div>
+<div class="cg2"></div>
+<div class="cf">团队名称：一起搞事情</div>
+<div class="cf">参赛编号：AIC-2026-21740176</div>
+<div class="cf">作品名称：LearnLab 跨学科智能学习平台</div>
+<div class="cd">日期：2026 年 10 月</div>
+</div>
 
 ## 目录
 
-- 一、项目概述：背景与意义 / 核心目标
-- 二、需求分析：学科专业界定 / 核心痛点梳理 / AI 赋能需求
-- 三、解决方案设计：系统架构 / 技术选型 / 核心技术模块（12 Agent、五层算法闭环、ADPP、MNA 仿真、跨学科链路、防幻觉、试点数据）/ 核心创新点
-- 四、方案可行性：技术可行性 / 经济可行性 / 推广价值
-- 五、项目实施：实施计划 / 资源保障 / 团队协作（跨专业分工）
-- 六、应用效果：效果预期 / 试点方案 / 算法效果验证设计 / 功能验证数据 / 成果展示 / 佐证对照
-- 七、总结与展望
-- 八、附录：提交材料对照表 / 代码与模型 / 参考文献 / 知识产权与学术伦理
+<div class="toc">
+<div class="tl"><span class="tt">作品简介</span><span class="td"></span><span class="tp">2</span></div>
+<div class="tl"><span class="tt">一、项目概述</span><span class="td"></span><span class="tp">2</span></div>
+<div class="tl2"><span class="tt">（一）背景与意义</span><span class="td"></span><span class="tp">2</span></div>
+<div class="tl2"><span class="tt">（二）核心目标</span><span class="td"></span><span class="tp">4</span></div>
+<div class="tl"><span class="tt">二、需求分析</span><span class="td"></span><span class="tp">4</span></div>
+<div class="tl2"><span class="tt">（一）学科专业界定</span><span class="td"></span><span class="tp">4</span></div>
+<div class="tl2"><span class="tt">（二）核心痛点梳理</span><span class="td"></span><span class="tp">4</span></div>
+<div class="tl2"><span class="tt">（三）AI 赋能需求（融合切入点）</span><span class="td"></span><span class="tp">5</span></div>
+<div class="tl"><span class="tt">三、解决方案设计</span><span class="td"></span><span class="tp">6</span></div>
+<div class="tl2"><span class="tt">（一）系统架构设计</span><span class="td"></span><span class="tp">6</span></div>
+<div class="tl2"><span class="tt">（二）技术选型依据</span><span class="td"></span><span class="tp">6</span></div>
+<div class="tl2"><span class="tt">（三）核心技术模块</span><span class="td"></span><span class="tp">7</span></div>
+<div class="tl2"><span class="tt">（四）核心创新点</span><span class="td"></span><span class="tp">9</span></div>
+<div class="tl"><span class="tt">四、方案可行性</span><span class="td"></span><span class="tp">10</span></div>
+<div class="tl2"><span class="tt">（一）技术可行性</span><span class="td"></span><span class="tp">10</span></div>
+<div class="tl2"><span class="tt">（二）经济可行性</span><span class="td"></span><span class="tp">11</span></div>
+<div class="tl2"><span class="tt">（三）推广价值</span><span class="td"></span><span class="tp">11</span></div>
+<div class="tl"><span class="tt">五、项目实施</span><span class="td"></span><span class="tp">12</span></div>
+<div class="tl2"><span class="tt">（一）实施计划</span><span class="td"></span><span class="tp">12</span></div>
+<div class="tl2"><span class="tt">（二）资源保障</span><span class="td"></span><span class="tp">12</span></div>
+<div class="tl2"><span class="tt">（三）团队协作（跨专业组队）</span><span class="td"></span><span class="tp">12</span></div>
+<div class="tl"><span class="tt">六、应用效果</span><span class="td"></span><span class="tp">15</span></div>
+<div class="tl2"><span class="tt">（一）应用效果预期</span><span class="td"></span><span class="tp">15</span></div>
+<div class="tl2"><span class="tt">（二）试点方案（已启动）</span><span class="td"></span><span class="tp">16</span></div>
+<div class="tl2"><span class="tt">（三）算法效果验证设计</span><span class="td"></span><span class="tp">16</span></div>
+<div class="tl2"><span class="tt">（四）功能验证数据</span><span class="td"></span><span class="tp">18</span></div>
+<div class="tl2"><span class="tt">（五）成果展示（佐证索引）</span><span class="td"></span><span class="tp">18</span></div>
+<div class="tl2"><span class="tt">（六）佐证材料与提交对照</span><span class="td"></span><span class="tp">18</span></div>
+<div class="tl"><span class="tt">七、总结与展望</span><span class="td"></span><span class="tp">19</span></div>
+<div class="tl"><span class="tt">八、附录</span><span class="td"></span><span class="tp">20</span></div>
+<div class="tl2"><span class="tt">（一）提交材料对照表</span><span class="td"></span><span class="tp">20</span></div>
+<div class="tl2"><span class="tt">（二）代码与模型</span><span class="td"></span><span class="tp">20</span></div>
+<div class="tl2"><span class="tt">（三）参考文献</span><span class="td"></span><span class="tp">21</span></div>
+<div class="tl2"><span class="tt">（四）知识产权、学术伦理与其他材料</span><span class="td"></span><span class="tp">23</span></div>
+</div>
 
 ## 作品简介
 
@@ -37,6 +62,8 @@
 ## 一、项目概述
 
 ### （一）背景与意义
+
+本项目全称"基于大模型的个性化资源生成与学习多智能体系统（LearnLab）"，是新工科"计算机科学与技术 × 电子信息工程"跨学科 AI 学习平台，覆盖 C 语言程序设计、电路分析基础、STM32 嵌入式系统开发三门课程，由 2025 级马其瑞（队长，电子信息工程）、孙雨瑶（数据科学与大数据技术）、居欣月（遥感科学与技术）三名成员开发，分工见五（三）。
 
 #### 1. 行业痛点
 

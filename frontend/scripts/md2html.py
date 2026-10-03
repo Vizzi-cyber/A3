@@ -32,6 +32,17 @@ ul, ol { margin: 0 0 3.5mm; padding-left: 2em; }
 li { margin-bottom: 1.8mm; text-align: justify; overflow-wrap: break-word; }
 hr { border: none; border-top: 1pt solid #000; margin: 7mm 0; }
 img { max-width: 100%; height: auto; }
+.cover { text-align:center; margin-top: 24mm; page-break-after: always; }
+.cover .c1 { font-family:"SimHei","Heiti SC",sans-serif; font-size:22pt; font-weight:bold; line-height:1.7; }
+.cover .cg { height: 12mm; }
+.cover .c2 { font-family:"SimHei","Heiti SC",sans-serif; font-size:16pt; font-weight:bold; margin: 5mm 0; }
+.cover .cg2 { height: 14mm; }
+.cover .cf { font-size:14pt; width: 122mm; margin: 7mm auto 0; border-bottom: 0.75pt solid #000; padding-bottom: 1.5mm; }
+.cover .cd { margin-top: 26mm; font-size: 14pt; }
+.toc-t { text-align:center; font-family:"SimHei","Heiti SC",sans-serif; font-size: 22pt; font-weight:bold; margin: 4mm 0 8mm; }
+.tl, .tl2 { display:flex; align-items:baseline; margin-bottom: 2.4mm; }
+.tl2 { padding-left: 2em; }
+.td { flex:1; border-bottom: 1px dotted #000; margin: 0 2mm; height: 0.9em; }
 .team-table td { vertical-align: middle; }
 .team-table .photo { width: 64px; height: 85px; object-fit: cover; border: 0.75pt solid #000; display: block; }
 .team-table .sub { font-size: 8.5pt; color: #555; }
