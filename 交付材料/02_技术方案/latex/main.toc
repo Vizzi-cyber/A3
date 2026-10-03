@@ -46,7 +46,7 @@
 \contentsline {subsection}{（一）方案总结}{17}{}%
 \contentsline {subsection}{（二）未来展望}{17}{}%
 \contentsline {section}{八、附录}{17}{}%
-\contentsline {subsection}{（一）提交材料对照表（官方“作品要求”逐项对应）}{17}{}%
+\contentsline {subsection}{（一）提交材料对照表}{17}{}%
 \contentsline {subsection}{（二）代码与模型}{18}{}%
 \contentsline {subsection}{（三）参考文献}{19}{}%
 \contentsline {subsection}{（四）知识产权、学术伦理与其他材料}{20}{}%
