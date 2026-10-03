@@ -110,7 +110,7 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\includegraphics[height=0.55cm]{aic_logo.png}}
-\fancyhead[R]{\zihao{5} 2026 第八届全球校园人工智能算法精英大赛}
+\fancyhead[R]{\zihao{-5} 2026 第八届全球校园人工智能算法精英大赛}
 \renewcommand{\headrulewidth}{0.5pt}
 \fancyfoot[C]{\zihao{5}\thepage}
 % 列表符号用中文间隔号（降 AI 味，不用英文圆点）
