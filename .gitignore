@@ -101,3 +101,6 @@ frontend/test-screenshots/
 .zcode/
 交付材料/**/_验收*/
 交付材料/5_参赛承诺书_已签字.pdf
+
+# 手写签名原图不公开（防冒用），签名已贴入交付 PDF
+交付材料/_assets/签名/
