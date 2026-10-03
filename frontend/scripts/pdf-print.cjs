@@ -15,7 +15,10 @@ const { chromium } = require("playwright");
     path: out,
     format: "A4",
     printBackground: false,
-    margin: { top: "30mm", bottom: "25mm", left: "25mm", right: "25mm" },
+    displayHeaderFooter: true,
+    headerTemplate: '<div></div>',
+    footerTemplate: '<div style="font-size:8pt;font-family:SimSun,serif;width:100%;text-align:center;color:#000;">2026 第八届全球校园人工智能算法精英大赛 · 第 <span class="pageNumber"></span> 页</div>',
+    margin: { top: "25mm", bottom: "22mm", left: "30mm", right: "30mm" },
   });
   console.log("PDF_OK:", out);
   await browser.close();
