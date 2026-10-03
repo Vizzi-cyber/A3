@@ -69,6 +69,9 @@ while i < len(lines):
         elems.append(('team_table', rows_data)); continue
     if ln.startswith('- '):
         elems.append(('bullet', ln[2:].strip())); i += 1; continue
+    m_ol = re.match(r'^(\d+)\.\s+(.*)$', ln.strip())
+    if m_ol:
+        elems.append(('olitem', (m_ol.group(1), m_ol.group(2).strip()))); i += 1; continue
     elems.append(('para', ln.strip())); i += 1
 print('元素流:', len(elems))
 
@@ -83,16 +86,18 @@ def tex_escape(s):
 
 def tex_inline(s):
     out = []
-    for part in re.split(r'(\*\*.*?\*\*)', s):
+    for part in re.split(r'(\*\*.+?\*\*|\*[^*]+?\*)', s):
         if not part: continue
         b = part.startswith('**')
-        clean = part.strip('*') if b else part
+        it = (not b) and part.startswith('*') and part.endswith('*') and len(part) > 2
+        clean = part.strip('*') if (b or it) else part
         for seg in re.split(r'(`[^`]+`)', clean):
             if not seg: continue
             code = seg.startswith('`')
             body = seg.strip('`') if code else seg
             body = tex_escape(body)
             if code: body = r'\texttt{' + body + '}'
+            if it: body = r'\textit{' + body + '}'
             if b: body = r'\textbf{' + body + '}'
             out.append(body)
     return ''.join(out)
@@ -113,6 +118,14 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \fancyhead[R]{\zihao{-5} 2026 第八届全球校园人工智能算法精英大赛}
 \renewcommand{\headrulewidth}{0.5pt}
 \fancyfoot[C]{\zihao{5}\thepage}
+% 封面页样式：页眉同正文（官方 logo + 大赛名），页脚无页码（对照官方模板封面）
+\fancypagestyle{cover}{%
+  \fancyhf{}%
+  \fancyhead[L]{\includegraphics[height=0.55cm]{aic_logo.png}}%
+  \fancyhead[R]{\zihao{-5} 2026 第八届全球校园人工智能算法精英大赛}%
+  \renewcommand{\headrulewidth}{0.5pt}%
+  \fancyfoot[C]{}%
+}
 % 列表符号用中文间隔号（降 AI 味，不用英文圆点）
 \renewcommand{\labelitemi}{\textperiodcentered}
 \renewcommand{\labelitemii}{--}
@@ -137,7 +150,7 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \begin{document}
 % ===== 封面 =====（对照官方模板：标题群上 1/4 起、团队信息中部左对齐下划线、日期底部、无页码）
 \begin{titlepage}
-\thispagestyle{empty}
+\thispagestyle{cover}
 \vspace*{2.8cm}
 \begin{center}
 {\bfseries\zihao{1} 2026 年第八届}\\[0.8em]
@@ -183,6 +196,9 @@ for kind, val in elems:
         TEX += tex_inline(val) + '\n'; continue
     if kind == 'bullet':
         TEX += '\\begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]\n\\item ' + tex_inline(val) + '\n\\end{itemize}\n'; continue
+    if kind == 'olitem':
+        num, otxt = val
+        TEX += '\n\n\\noindent\\hangindent=2em ' + num + '.~' + tex_inline(otxt) + '\n'; continue
     if kind == 'table':
         rows = val
         ncol = max(len(r) for r in rows)
@@ -216,7 +232,7 @@ for kind, val in elems:
             ph2 = os.path.join('交付材料/02_技术方案/latex', name + '.jpg')
             ph = ph2 if os.path.exists(ph2) else ph
             photo_tex = (r'\includegraphics[height=3.2cm]{' + PHOTO_FILE.get(name, '') + '}') if PHOTO_FILE.get(name) else ''
-            c0 = tex_inline(row[0]); c2 = tex_inline(row[2]); c3 = tex_inline(row[3])
+            c0 = tex_inline(re.sub(r'\s+', ' ', row[0].replace('·', ' '))); c2 = tex_inline(row[2]); c3 = tex_inline(row[3])
             TEX += c0 + ' & ' + photo_tex + ' & ' + c2 + ' & ' + c3 + r' \\ \hline' + '\n'
         TEX += '\\end{longtable}\n'; continue
     if kind == 'img':
