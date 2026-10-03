@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""官方模板 docx 填充（纯追加版）：旧骨架段全删，内容按 md 流顺序追加文尾，样式用模板 Heading 1/2/3"""
+"""官方模板 docx 填充（终版）：封面填值 + 骨架改名 + 占位清理 + 纯追加内容 + 目录尾空段清理"""
 import re, os
 from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
+from docx.text.paragraph import Paragraph
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 MD = os.path.join(BASE, '..', 'AIC技术方案_LearnLab.md')
@@ -81,6 +82,30 @@ def ptext_all(el):
 def ptext(el):
     return ''.join(t.text or '' for t in el.iter(qn('w:t')))
 
+def add_text_runs(para, text, size=12, bold_all=False):
+    for part in re.split(r'(\*\*.*?\*\*)', text):
+        if not part: continue
+        b = part.startswith('**')
+        clean = part.strip('*') if b else part
+        for seg in re.split(r'(`[^`]+`)', clean):
+            if not seg: continue
+            code = seg.startswith('`')
+            r = para.add_run(seg.strip('`') if code else seg)
+            r.font.name = 'Consolas' if code else '宋体'
+            r.font.size = Pt(size - 1.5 if code else size)
+            r.font.bold = True if (b or bold_all) else None
+            r._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+
+def fmt_para(p, indent=True):
+    pf = p.paragraph_format
+    pf.line_spacing = 1.0
+    pf.space_before = Pt(0); pf.space_after = Pt(0)
+    if indent: pf.first_line_indent = Pt(24)
+    pPr = p._p.get_or_add_pPr()
+    if pPr.find(qn('w:snapToGrid')) is None:
+        snap = pPr.makeelement(qn('w:snapToGrid'), {qn('w:val'): '0'})
+        pPr.insert(0, snap)
+
 # ---------- 1. 封面填值 ----------
 def fill(p, value):
     for r in p.runs:
@@ -101,124 +126,50 @@ for p in d.paragraphs[:25]:
         for r, v in zip(p.runs, vals): r.text = v
         break
 
-# ---------- 2. 删除旧骨架与占位/提示段 ----------
 DEL_KEYS = ['提示信息', '不用此信息时', '（鼠标移到此框', '字体:宋体', '目录标题:二号', '一级标题:三号',
             '二级标题:四号', '三级标题:小四', '正文:小四号', '行距:单倍行距', '页边距:上:', '页眉:1.5',
             '页脚:1.5', '纸型:A4', '（五）其他问题', '中国学术期刊（光盘版）', '左:3厘米', '装订线',
-            '单击键入正文']
-SKELETON = ['一、项目概述', '二、AAAAAAAA', '三、附录', '（一）项目背景与意义', '（二）赛题方向定位']
+            '单击键入正文', 'AAAAAAAA', '错误!未定义书签']
+SKELETON_TEXTS = ['一、项目概述', '二、需求分析', '八、附录', '（一）项目背景与意义',
+                  '（二）核心目标与赛题方向定位', '1. 行业痛点', '2. 学科发展现状与行业需求',
+                  '二、AAAAAAAA', '三、附录', '（二）赛题方向定位', '1.', '2.']
 removed = 0
-for p in list(d.paragraphs):
-    t = p.text.strip()
-    hit = t in SKELETON or any(k in t for k in DEL_KEYS)
-    if hit:
-        p._element.getparent().remove(p._element); removed += 1
-# 深遍历补删：MACROBUTTON 域占位段（instrText 感知，覆盖 sdt 内）
 for p in list(body.iter(qn('w:p'))):
-    t = ptext_all(p)
-    if '单击键入正文' in t:
+    t = ptext_all(p).strip()
+    hit = t in SKELETON_TEXTS or any(k in t for k in DEL_KEYS) or t == '2.' or t == '1.'
+    if hit:
         p.getparent().remove(p); removed += 1
+print('删除骨架/占位/提示段:', removed)
 
-# 压缩目录条目样式（防 50 条目录+分节段溢出产生空白页）
+# ---------- 4. toc 样式压缩（防目录溢出空白页）----------
 for sn in ('toc 1', 'toc 2', 'toc 3'):
     try:
         st = d.styles[sn]
-        st.font.size = Pt(11)
-        st.paragraph_format.line_spacing = 1.0
-        st.paragraph_format.space_after = Pt(0)
+        st.font.size = Pt(10.5)
+        pf = st.paragraph_format
+        pf.line_spacing = Pt(11.8)
+        pf.space_before = Pt(0); pf.space_after = Pt(0)
     except KeyError: pass
 
-# 目录节尾空段清理（防目录与简介之间出现空白页）：
-# 从目录最后一条（含页码的知识产权条目）向后，删空段（保留分节段）直到简介标题
-t_toc_last = t_intro = None
-for p in body.iter(qn('w:p')):
-    t = ptext(p).strip()
-    if t.startswith('（四）知识产权、学术伦理与其他材料') and t.endswith(re.search(r'（四）知识产权、学术伦理与其他材料(\d+)', t).group(1) if re.search(r'（四）知识产权、学术伦理与其他材料(\d+)', t) else 'x'):
-        t_toc_last = p
-    if t.strip() == '作品简介' and t_intro is None:
-        t_intro = p
-if t_toc_last is not None and t_intro is not None:
-    children = list(body)
-    i_last = children.index(t_toc_last)
-    i_intro = children.index(t_intro)
-    removed_n = 0
-    for j in range(i_last + 1, i_intro):
-        c = children[j]
-        if c.tag == qn('w:p'):
-            pPr = c.find(qn('w:pPr'))
-            has_sect = pPr is not None and pPr.find(qn('w:sectPr')) is not None
-            if not has_sect:
-                c.getparent().remove(c); removed += 1; removed_n += 1
-print('目录尾空段清理:', removed)
-print('删除旧骨架/占位/提示段:', removed)
-
-# ---------- 3. 追加工具（文尾，顺序天然正确）----------
+# ---------- 5. 内容插入工具（文尾追加，顺序天然正确）----------
 count = {'h1': 0, 'h2': 0, 'h3': 0, 'para': 0, 'bullet': 0, 'table': 0, 'img': 0, 'intro': 0}
-
-def fmt_para(p, indent=True):
-    pf = p.paragraph_format
-    pf.line_spacing = 1.0
-    pf.space_before = Pt(0); pf.space_after = Pt(0)
-    if indent: pf.first_line_indent = Pt(24)
-    pPr = p._p.get_or_add_pPr()
-    if pPr.find(qn('w:snapToGrid')) is None:
-        snap = pPr.makeelement(qn('w:snapToGrid'), {qn('w:val'): '0'})
-        pPr.insert(0, snap)
-
-def add_text_runs(para, text, size=12, bold_all=False):
-    for part in re.split(r'(\*\*.*?\*\*)', text):
-        if not part: continue
-        b = part.startswith('**')
-        clean = part.strip('*') if b else part
-        for seg in re.split(r'(`[^`]+`)', clean):
-            if not seg: continue
-            code = seg.startswith('`')
-            r = para.add_run(seg.strip('`') if code else seg)
-            r.font.name = 'Consolas' if code else '宋体'
-            r.font.size = Pt(size - 1.5 if code else size)
-            r.font.bold = True if (b or bold_all) else None
-            r._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-
-def ins_team_table(rows):
-    # 三张证件照并排一行
-    p = d.add_paragraph('')
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for name in ['马其瑞', '孙雨瑶', '居欣月']:
-        ph = PHOTO.get(name)
-        if ph and os.path.exists(ph):
-            r = p.add_run('      ')
-            r.font.size = Pt(12)
-            p.add_run().add_picture(ph, height=Cm(3.4))
-    # 姓名行
-    np = d.add_paragraph('')
-    np.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    add_text_runs(np, '马其瑞（队长）　　　　孙雨瑶　　　　居欣月', bold_all=True)
-    # 文字表（成员 / 专业方向 / 角色定位 三列）
-    t = d.add_table(rows=len(rows), cols=3)
-    try: t.style = 'Table Grid'
-    except Exception: pass
-    t.autofit = False
-    for ri, row in enumerate(rows):
-        vals = [row[0], row[2], row[3]] if len(row) >= 4 else (row + ['', '', ''])[:3]
-        for ci, cell in enumerate(vals):
-            c = t.cell(ri, ci); c.text = ''
-            add_text_runs(c.paragraphs[0], cell, size=10.5, bold_all=(ri == 0))
-    count['table'] += 1
 
 def H(level, text):
     d.add_paragraph(text, style=f'Heading {level}')
+    count[f'h{level}'] += 1
 
-def P(text, size=12, indent=True):
+def P(text):
     p = d.add_paragraph('', style='Normal')
-    add_text_runs(p, text, size=size)
-    fmt_para(p, indent)
+    add_text_runs(p, text)
+    fmt_para(p, True)
     count['para'] += 1
 
 def B(text):
     p = d.add_paragraph('', style='Normal')
     add_text_runs(p, '• ' + text)
-    fmt_para(p, indent=False)
     p.paragraph_format.left_indent = Pt(24)
+    p.paragraph_format.first_line_indent = Pt(0)
+    fmt_para(p, False)
     count['bullet'] += 1
 
 def T(rows):
@@ -232,53 +183,44 @@ def T(rows):
             add_text_runs(c.paragraphs[0], cell, size=10.5, bold_all=(ri == 0))
     count['table'] += 1
 
+def TEAM(rows):
+    p = d.add_paragraph('')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for name in ['马其瑞', '孙雨瑶', '居欣月']:
+        ph = PHOTO.get(name)
+        if ph and os.path.exists(ph):
+            r = p.add_run('      '); r.font.size = Pt(12)
+            p.add_run().add_picture(ph, height=Cm(3.4))
+    np = d.add_paragraph('')
+    np.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    add_text_runs(np, '马其瑞（队长）　　　　孙雨瑶　　　　居欣月', bold_all=True)
+    t = d.add_table(rows=len(rows), cols=3)
+    try: t.style = 'Table Grid'
+    except Exception: pass
+    for ri, row in enumerate(rows):
+        vals = [row[0], row[2], row[3]] if len(row) >= 4 else (row + ['', '', ''])[:3]
+        for ci, cell in enumerate(vals):
+            c = t.cell(ri, ci); c.text = ''
+            add_text_runs(c.paragraphs[0], cell, size=10.5, bold_all=(ri == 0))
+    count['table'] += 1
+
 def IMG_ADD(path):
     p = d.add_paragraph('')
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run().add_picture(path, width=Cm(15))
     count['img'] += 1
 
-def TEAM(rows):
-    t = d.add_table(rows=len(rows), cols=4)
-    try: t.style = 'Table Grid'
-    except Exception: pass
-    widths = [Cm(2.6), Cm(2.8), Cm(3.6), Cm(6.0)]
-    for ri, row in enumerate(rows):
-        row = (row + ['', '', '', ''])[:4]
-        for ci in range(4):
-            c = t.cell(ri, ci); c.text = ''; c.width = widths[ci]
-            para = c.paragraphs[0]
-            if ci == 1 and ri > 0:
-                name = row[0].split('队长')[0].split('2025')[0].strip()
-                ph = PHOTO.get(name)
-                if ph and os.path.exists(ph):
-                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    para.add_run().add_picture(ph, width=Cm(2.2))
-            else:
-                add_text_runs(para, row[ci], size=10.5, bold_all=(ri == 0))
-    count['table'] += 1
-
-# ---------- 4. 按流追加全部内容 ----------
+# ---------- 6. 按流追加全部内容 ----------
 for kind, val in elems:
-    if kind == 'para_intro':
-        t_title = None
-        for p in body.iter(qn('w:p')):
-            if ptext(p).strip() == '作品简介': t_title = p; break
-        assert t_title is not None
-        np = t_title.makeelement(qn('w:p'), {})
-        t_title.addnext(np)
-        from docx.text.paragraph import Paragraph
-        para_obj = Paragraph(np, t_title.getparent())
-        add_text_runs(para_obj, val)
-        fmt_para(para_obj, True)
-        count['intro'] += 1; continue
+    if kind == 'para_intro': continue  # 简介单独处理
     if kind == 'h1':
-        d.add_paragraph(val, style='Heading 1')
-        count['h1'] += 1; continue
+        num = val.split('、')[0]
+        cn = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8}.get(num, 1)
+        H(1 if cn < 8 else 1, val); continue
     if kind == 'h2':
-        d.add_paragraph(val, style='Heading 2'); count['h2'] += 1; continue
+        H(2, val); continue
     if kind == 'h3':
-        d.add_paragraph(val, style='Heading 3'); count['h3'] += 1; continue
+        H(3, val); continue
     if kind == 'para':
         P(val); continue
     if kind == 'bullet':
@@ -286,47 +228,39 @@ for kind, val in elems:
     if kind == 'table':
         T(val); continue
     if kind == 'team_table':
-        ins_team_table(val); continue
+        TEAM(val); continue
     if kind == 'img':
         IMG_ADD(val[1]); continue
 
-# ---------- 7. 全部表格统一加边框（保存前兜底，不依赖样式）----------
-for t in d.tables:
-    # 单元格段落：单倍行距+退出网格+紧凑段距（消除格内大片空白）
-    for row in t.rows:
-        for cell in row.cells:
-            for para in cell.paragraphs:
-                pf = para.paragraph_format
-                pf.line_spacing = 1.0
-                pf.space_before = Pt(1); pf.space_after = Pt(1)
-                pPr = para._p.get_or_add_pPr()
-                if pPr.find(qn('w:snapToGrid')) is None:
-                    snap = pPr.makeelement(qn('w:snapToGrid'), {qn('w:val'): '0'})
-                    pPr.insert(0, snap)
-    # 表级单元格边距收紧（上下 0.03cm）
-    tblPr0 = t._tbl.tblPr
-    mar = tblPr0.find(qn('w:tblCellMar'))
-    if mar is None:
-        mar = tblPr0.makeelement(qn('w:tblCellMar'), {})
-        tblPr0.append(mar)
-    for side, w in (('top', 17), ('bottom', 17)):
-        el = mar.find(qn('w:' + side))
-        if el is None:
-            el = mar.makeelement(qn('w:' + side), {}); mar.append(el)
-        el.set(qn('w:w'), str(w)); el.set(qn('w:type'), 'dxa')
-    # 边框
-    tblPr = t._tbl.tblPr
-    borders = tblPr.find(qn('w:tblBorders'))
-    if borders is None:
-        borders = tblPr.makeelement(qn('w:tblBorders'), {})
-        tblPr.append(borders)
-    for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
-        el = borders.find(qn('w:' + edge))
-        if el is None:
-            el = borders.makeelement(qn('w:' + edge), {})
-            borders.append(el)
-        el.set(qn('w:val'), 'single'); el.set(qn('w:sz'), '4')
-        el.set(qn('w:space'), '0'); el.set(qn('w:color'), '000000')
+# ---------- 7. 简介正文插到"作品简介"标题后 ----------
+t_title = None
+for p in body.iter(qn('w:p')):
+    if ptext(p).strip() == '作品简介': t_title = p; break
+assert t_title is not None, '作品简介标题未找到'
+intro = [v for k, v in elems if k == 'para_intro'][0]
+np = t_title.makeelement(qn('w:p'), {})
+t_title.addnext(np)
+para_obj = Paragraph(np, t_title.getparent())
+add_text_runs(para_obj, intro)
+fmt_para(para_obj, True)
+count['intro'] = 1
+
+# ---------- 8. 全文空段清理（排除表格内与分节段，防空白页）----------
+def in_table(el):
+    anc = el.getparent()
+    while anc is not None:
+        if anc.tag == qn('w:tbl'): return True
+        anc = anc.getparent()
+    return False
+
+removed_n = 0
+for p in list(body.iter(qn('w:p'))):
+    if in_table(p): continue
+    pPr = p.find(qn('w:pPr'))
+    if pPr is not None and pPr.find(qn('w:sectPr')) is not None: continue
+    if ptext(p).strip() == '':
+        p.getparent().remove(p); removed_n += 1
+print('全文空段清理:', removed_n)
 
 d.save(OUT)
 print('saved:', OUT, os.path.getsize(OUT))
