@@ -100,7 +100,14 @@ def tex_inline(s):
             code = seg.startswith('`')
             body = seg.strip('`') if code else seg
             body = tex_escape(body)
-            if code: body = r'\texttt{' + body + '}'
+            if code:
+                # 长文件名/路径允许在分隔符后断行，否则撑破右边界
+                body = re.sub(r'([/._-])', r'\1\\allowbreak{}', body)
+                body = r'\texttt{' + body + '}'
+            else:
+                # 裸 URL 转 \url（xurl 允许任意断行）；转义后处理，回护被转义的 \_
+                body = re.sub(r'(https?://[^\s\\，。、）”]+)',
+                              lambda m: '\\url{' + m.group(1).replace('\\_', '_') + '}', body)
             if it: body = r'\textit{' + body + '}'
             if b: body = r'\textbf{' + body + '}'
             out.append(body)
@@ -150,6 +157,8 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \setCJKmainfont[AutoFakeBold=3]{SimSun}
 % 带圈数字①-⑳等符号区字符用中文字体渲染（Times 无字形，否则出豆腐块）
 \xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
+% URL 任意断行（防止参考文献长链撑破右边界）
+\usepackage{xurl}
 % 标题孤行控制：页尾不足三行时不排标题
 \usepackage{needspace}
 \newcommand{\sectionbreak}{\needspace{3\baselineskip}}
@@ -220,14 +229,17 @@ for kind, val in elems:
     if kind == 'table':
         rows = val
         ncol = max(len(r) for r in rows)
+        # 列宽合计须 = 15cm 版心 − ncol×2×tabcolsep(6pt≈0.211cm)，否则表格溢出右边界
+        PAD = round(ncol * 2 * 0.211, 2)
+        AVAIL = round(15.0 - PAD, 2)
         if ncol == 4:
-            colspec = '|p{2.6cm}|p{2.6cm}|p{4.2cm}|p{4.6cm}|'
+            colspec = '|p{2.5cm}|p{2.5cm}|p{4.0cm}|p{4.3cm}|'   # 合计 13.3 = 15−1.69
         elif ncol == 3:
-            colspec = '|p{3.2cm}|p{4.8cm}|p{6.4cm}|'
+            colspec = '|p{3.0cm}|p{4.5cm}|p{6.2cm}|'            # 合计 13.7 = 15−1.27
         elif ncol == 5:
-            colspec = '|p{2.2cm}|p{2.2cm}|p{2.6cm}|p{3.4cm}|p{3.0cm}|'
+            colspec = '|p{2.0cm}|p{2.0cm}|p{2.4cm}|p{3.3cm}|p{3.2cm}|'  # 合计 12.9 ≈ 15−2.11
         else:
-            colspec = '|' + '|'.join([f'p{{{round(15.0/ncol,2)}cm}}'] * ncol) + '|'
+            colspec = '|' + '|'.join([f'p{{{round(AVAIL/ncol,2)}cm}}'] * ncol) + '|'
         # 表头行（可跨页重复）
         hdr = []
         for ci in range(ncol):
@@ -246,7 +258,7 @@ for kind, val in elems:
         rows = val
         if rows and rows[0] and str(rows[0][0]).startswith('成员'):
             rows = rows[1:]  # <th> 表头行已单独排版，跳过避免重复
-        TEX += '\\begin{longtable}{|p{2.6cm}|p{3.0cm}|p{4.4cm}|p{5.0cm}|}\n\\hline\n'
+        TEX += '\\begin{longtable}{|p{2.4cm}|p{2.8cm}|p{4.0cm}|p{4.1cm}|}\n\\hline\n'
         TEAMHDR = r'\textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline'
         TEX += TEAMHDR + '\n\\endfirsthead\n\\hline\n' + TEAMHDR + '\n\\endhead\n'
         for row in rows:

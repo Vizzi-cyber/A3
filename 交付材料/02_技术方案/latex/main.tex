@@ -41,6 +41,8 @@
 \setCJKmainfont[AutoFakeBold=3]{SimSun}
 % 带圈数字①-⑳等符号区字符用中文字体渲染（Times 无字形，否则出豆腐块）
 \xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
+% URL 任意断行（防止参考文献长链撑破右边界）
+\usepackage{xurl}
 % 标题孤行控制：页尾不足三行时不排标题
 \usepackage{needspace}
 \newcommand{\sectionbreak}{\needspace{3\baselineskip}}
@@ -147,7 +149,7 @@
 上面四件事分别落在语言理解、知识建模、数值计算与流程自动化上，正好是大模型、知识图谱、自适应算法与多智能体各自的能力范围。
 
 \subsection{（二）核心目标}
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{目标} & \textbf{学科环节} & \textbf{实现方式} \\ \hline
 \endfirsthead
@@ -173,7 +175,7 @@
 \end{itemize}
 \subsection{（二）核心痛点梳理}
 \subsubsection{1. 教学环节痛点}
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
 \endfirsthead
@@ -185,7 +187,7 @@
 批改低效 & 作业批改 15-30 分钟/份 & 人力瓶颈 \\ \hline
 \end{longtable}
 \subsubsection{2. 实验实训环节痛点}
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
 \endfirsthead
@@ -197,7 +199,7 @@
 反馈缺失 & 实验现象异常时，无人解释“为什么”，学习停留在操作层面 & 仿真器只给数值 \\ \hline
 \end{longtable}
 \subsubsection{3. 自主学习环节痛点}
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{痛点} & \textbf{表现} & \textbf{传统方案局限} \\ \hline
 \endfirsthead
@@ -213,7 +215,7 @@
 上述痛点不是凭印象列的：前测问卷专设了“学习方式”与“学习中最大的困难”两道多选题（对应 2.3 自主学习痛点），随试点发放；试点的作答数据回收后，将以实测数字回填本节，与系统行为日志互相印证。
 
 \subsection{（三）AI 赋能需求（融合切入点）}
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{AI 技术} & \textbf{解决的学科问题} & \textbf{落地功能（均已上线）} \\ \hline
 \endfirsthead
@@ -233,7 +235,7 @@
 \subsection{（一）系统架构设计}
 \begin{center}\includegraphics[width=15cm]{arch.png}\end{center}
 \subsection{（二）技术选型依据}
-\begin{longtable}{|p{7.5cm}|p{7.5cm}|}
+\begin{longtable}{|p{7.08cm}|p{7.08cm}|}
 \hline
 \textbf{技术} & \textbf{选型理由（与学科需求对应）} \\ \hline
 \endfirsthead
@@ -251,7 +253,7 @@ SQLite → PostgreSQL & 开发/试点轻量部署，可平滑迁移 \\ \hline
 \subsubsection{1. 多智能体协同（12 Agent，LangGraph 星型拓扑）}
 
 
-12 个智能体按教育角色划分：课程设计师（Supervisor）、画像师、路径规划师、资源生成师、辅导助手五个核心角色负责主链路；知识图谱构建师、思维溯源师支撑知识体系；错误捕捉师负责代码分析；项目拆解师、角色匹配师、协作督导、成果评估师覆盖团队协作场景。智能体之间走标准化的 AgentMessage 通信协议，并带有\textbf{反思循环}（执行-评估-修正，最多 3 次，由 \texttt{REFLECTION\_ENABLED} 配置启用，评审演示时可现场开启）。
+12 个智能体按教育角色划分：课程设计师（Supervisor）、画像师、路径规划师、资源生成师、辅导助手五个核心角色负责主链路；知识图谱构建师、思维溯源师支撑知识体系；错误捕捉师负责代码分析；项目拆解师、角色匹配师、协作督导、成果评估师覆盖团队协作场景。智能体之间走标准化的 AgentMessage 通信协议，并带有\textbf{反思循环}（执行-评估-修正，最多 3 次，由 \texttt{REFLECTION\_\allowbreak{}ENABLED} 配置启用，评审演示时可现场开启）。
 
 \subsubsection{2. 五层教育算法闭环（学科问题解决新方法）}
 
@@ -280,7 +282,7 @@ SQLite → PostgreSQL & 开发/试点轻量部署，可平滑迁移 \\ \hline
 
 
 
-这些算法不是摆出来看的演示件，全部接进了业务链路。IRT θ 接入效果评估掌握度（Φ(θ)·100 百分位，\texttt{mastery\_detail} 可溯源）；IRT b 接入 ADPP 学习成本模型与资源匹配难度适配（\texttt{difficulty\_source} 可区分）；GKT 负责路径上的掌握度传播；MAB 挂在路径调整、选题、匹配三条链路上，收益还能闭环回传；FSRS 把到期知识点自动插到学习路径头部的复习阶段（\texttt{review\_source=fsrs\_due} 可溯源）。算法状态同时注入 tutor / error\_catcher / resource\_generator 三处智能体的 prompt（\texttt{build\_ai\_engine\_context} 共享构建，静默降级）。趋势分析的 6 个因子权重不是人工拍的，由历史数据学习得到（L2 正则逻辑回归，标签取随后一周是否掉队/中断），输出掉队预警概率；样本不足时回退人工先验。
+这些算法不是摆出来看的演示件，全部接进了业务链路。IRT θ 接入效果评估掌握度（Φ(θ)·100 百分位，\texttt{mastery\_\allowbreak{}detail} 可溯源）；IRT b 接入 ADPP 学习成本模型与资源匹配难度适配（\texttt{difficulty\_\allowbreak{}source} 可区分）；GKT 负责路径上的掌握度传播；MAB 挂在路径调整、选题、匹配三条链路上，收益还能闭环回传；FSRS 把到期知识点自动插到学习路径头部的复习阶段（\texttt{review\_\allowbreak{}source=fsrs\_\allowbreak{}due} 可溯源）。算法状态同时注入 tutor / error\_catcher / resource\_generator 三处智能体的 prompt（\texttt{build\_\allowbreak{}ai\_\allowbreak{}engine\_\allowbreak{}context} 共享构建，静默降级）。趋势分析的 6 个因子权重不是人工拍的，由历史数据学习得到（L2 正则逻辑回归，标签取随后一周是否掉队/中断），输出掉队预警概率；样本不足时回退人工先验。
 
 \subsubsection{3. ADPP 自适应 DAG 路径规划（核心自研算法）}
 
@@ -316,7 +318,7 @@ ADPP 的做法是把六样东西组合到一起：关键路径法（CPM）、BKT
 \subsubsection{6. 防幻觉体系（6 道防线）}
 
 
-输入过滤 → Prompt 加固 → 结构校验 → 代码校验 → 引用溯源 → LLM 自我纠错。其中①-⑤常驻主管线（\texttt{apply\_guards} 规则守卫，零成本），⑥自我纠错随反思循环生效（\texttt{REFLECTION\_ENABLED} 配置启用）。
+输入过滤 → Prompt 加固 → 结构校验 → 代码校验 → 引用溯源 → LLM 自我纠错。其中①-⑤常驻主管线（\texttt{apply\_\allowbreak{}guards} 规则守卫，零成本），⑥自我纠错随反思循环生效（\texttt{REFLECTION\_\allowbreak{}ENABLED} 配置启用）。
 
 \subsubsection{7. 试点数据分析（应用效果验证基础设施）}
 
@@ -328,7 +330,7 @@ ADPP 的做法是把六样东西组合到一起：关键路径法（CPM）、BKT
 
 对照“学科问题解决新方法、教学科研新模式、AI 技术应用新场景”三个层面，本作品的创新点及与同类做法的对比：
 
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{层面} & \textbf{创新点} & \textbf{与同类做法的对比} \\ \hline
 \endfirsthead
@@ -363,10 +365,10 @@ AI 技术应用新场景 & 浏览器端 MNA+RK4 电路仿真叠加 AI 故障诊�
 
 
 
-部署形态也已经过真实环境验证：系统目前运行在腾讯云服务器（OpenCloudOS，2 核 4G）上，Nginx 反向代理 + HTTPS（Let's Encrypt 证书自动续期），后端由 systemd 托管并配置了内存上限与自动重启，日志层接入 journald 轮转。演示站点 https://www.dreamlast.cn 已稳定服务，最近一轮全系统测试期间 \textbf{24 小时零 500 错误}。
+部署形态也已经过真实环境验证：系统目前运行在腾讯云服务器（OpenCloudOS，2 核 4G）上，Nginx 反向代理 + HTTPS（Let's Encrypt 证书自动续期），后端由 systemd 托管并配置了内存上限与自动重启，日志层接入 journald 轮转。演示站点 \url{https://www.dreamlast.cn} 已稳定服务，最近一轮全系统测试期间 \textbf{24 小时零 500 错误}。
 
 \subsection{（二）经济可行性}
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{成本类别} & \textbf{明细} & \textbf{估算} \\ \hline
 \endfirsthead
@@ -398,7 +400,7 @@ LLM API & 讯飞星火（教学场景，100 学生） & ¥300-500/月（开发�
 \end{itemize}
 \section{五、项目实施}
 \subsection{（一）实施计划}
-\begin{longtable}{|p{2.6cm}|p{2.6cm}|p{4.2cm}|p{4.6cm}|}
+\begin{longtable}{|p{2.5cm}|p{2.5cm}|p{4.0cm}|p{4.3cm}|}
 \hline
 \textbf{阶段} & \textbf{时间} & \textbf{内容} & \textbf{交付物 / 验收口径} \\ \hline
 \endfirsthead
@@ -431,7 +433,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 三名成员来自三个专业，分别对应平台的三个核心侧面：马其瑞负责算法引擎与后端（电子信息工程的 C 语言、电路、嵌入式课程训练，保证电路与 STM32 内容的学科正确性），孙雨瑶负责试点数据与统计分析（数据科学训练保证效果验证可信度），居欣月负责可视化与文档交付（GIS 的空间可视化与制图训练直接用于 DAG 知识图谱与学情图表）。
 
-\begin{longtable}{|p{2.6cm}|p{3.0cm}|p{4.4cm}|p{5.0cm}|}
+\begin{longtable}{|p{2.4cm}|p{2.8cm}|p{4.0cm}|p{4.1cm}|}
 \hline
 \textbf{成员} & \textbf{照片} & \textbf{专业方向} & \textbf{角色定位} \\ \hline
 \endfirsthead
@@ -451,7 +453,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 电子信息工程专业的课程训练覆盖 C 语言、电路分析、单片机开发，与平台主打的“C 语言—电路—嵌入式”学科内容对口，因此由其承担技术底座与学科内容正确性两条线，共五个模块：
 
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
 \endfirsthead
@@ -469,7 +471,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 数据科学专业的训练核心是统计实验设计与数据清洗，对应平台“有没有效果、数据可不可信”的证据线，共五个模块：
 
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
 \endfirsthead
@@ -487,7 +489,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 遥感科学与技术（GIS 方向）的专业核心是空间数据的组织与可视化表达，负责把算法输出转成学生与教师“看得懂、愿意用”的界面，共五个模块：
 
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
 \endfirsthead
@@ -510,7 +512,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 平台对学科核心环节的改善是可预期的，且每一项都设计了对应的验证方式，不以主观描述为准。
 
-\begin{longtable}{|p{3.2cm}|p{4.8cm}|p{6.4cm}|}
+\begin{longtable}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{维度} & \textbf{预期效果} & \textbf{验证方式} \\ \hline
 \endfirsthead
@@ -529,7 +531,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 \subsection{（二）试点方案（已启动）}
 
 
-试点平台已部署上线（https://www.dreamlast.cn，腾讯云 2 核 4G + Nginx + HTTPS）。材料都先行备齐：知情同意书、前后测问卷（微信小程序发放）、匿名编号规则。8 名电子信息专业大一学生（实验组 SY01-SY04、对照组 CK01-CK04）已招募到位，流程如下：
+试点平台已部署上线（\url{https://www.dreamlast.cn}，腾讯云 2 核 4G + Nginx + HTTPS）。材料都先行备齐：知情同意书、前后测问卷（微信小程序发放）、匿名编号规则。8 名电子信息专业大一学生（实验组 SY01-SY04、对照组 CK01-CK04）已招募到位，流程如下：
 
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 流程：前测 → 实验组使用 LearnLab 学习 1-2 周（要求完成一次“标记完成”和一次 AI 辅导提问，累计 10-15 分钟）→ 后测 → 反馈问卷
@@ -548,7 +550,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 平台内置了一批能直接产出对照数据的验证点，试点期间自动落库，避免“只有代码验证、没有效果数据”：
 
-\begin{longtable}{|p{2.2cm}|p{2.2cm}|p{2.6cm}|p{3.4cm}|p{3.0cm}|}
+\begin{longtable}{|p{2.0cm}|p{2.0cm}|p{2.4cm}|p{3.3cm}|p{3.2cm}|}
 \hline
 \textbf{对照点} & \textbf{传统方法} & \textbf{算法方法} & \textbf{可量化指标} & \textbf{当前状态} \\ \hline
 \endfirsthead
@@ -641,7 +643,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 \section{八、附录}
 \subsection{（一）提交材料对照表（官方“作品要求”逐项对应）}
-\begin{longtable}{|p{7.5cm}|p{7.5cm}|}
+\begin{longtable}{|p{7.08cm}|p{7.08cm}|}
 \hline
 \textbf{官方要求（三、作品要求 \& 五、技术方案大纲）} & \textbf{本方案对应位置} \\ \hline
 \endfirsthead
@@ -668,43 +670,43 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 \item 算法层（backend/app/algorithms/，全部自研或文献复现）：
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{path\_planning\_dag.py} — ADPP 自适应 DAG 路径规划（BKT/IRT/GKT/MAB 四路接线，策略 MAB 决策）
+\item \texttt{path\_\allowbreak{}planning\_\allowbreak{}dag.\allowbreak{}py} — ADPP 自适应 DAG 路径规划（BKT/IRT/GKT/MAB 四路接线，策略 MAB 决策）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{irt\_diagnoser.py} — IRT 1PL/2PL MAP 联合估计（scipy BFGS）
+\item \texttt{irt\_\allowbreak{}diagnoser.\allowbreak{}py} — IRT 1PL/2PL MAP 联合估计（scipy BFGS）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{bkt\_engine.py} — pyBKT 完整贝叶斯知识追踪（EM 参数估计 + AUC 验证）
+\item \texttt{bkt\_\allowbreak{}engine.\allowbreak{}py} — pyBKT 完整贝叶斯知识追踪（EM 参数估计 + AUC 验证）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{gkt\_engine.py} — 可学习门控图卷积（自监督 MSE 训练，w≥0 单调约束）
+\item \texttt{gkt\_\allowbreak{}engine.\allowbreak{}py} — 可学习门控图卷积（自监督 MSE 训练，w≥0 单调约束）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{memory\_scheduler.py} — FSRS 间隔重复调度（复习队列/可提取性/持久化）
+\item \texttt{memory\_\allowbreak{}scheduler.\allowbreak{}py} — FSRS 间隔重复调度（复习队列/可提取性/持久化）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{bandit\_selector.py} — Thompson Sampling 选题器（mabwiser 封装）
+\item \texttt{bandit\_\allowbreak{}selector.\allowbreak{}py} — Thompson Sampling 选题器（mabwiser 封装）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{ncd\_diagnoser.py} — 神经认知诊断（numpy 向量化实现，单调约束）
+\item \texttt{ncd\_\allowbreak{}diagnoser.\allowbreak{}py} — 神经认知诊断（numpy 向量化实现，单调约束）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{trend\_analysis.py} — 多因子趋势分析 + TrendWeightLearner 掉队预警学习器（L2 逻辑回归）
+\item \texttt{trend\_\allowbreak{}analysis.\allowbreak{}py} — 多因子趋势分析 + TrendWeightLearner 掉队预警学习器（L2 逻辑回归）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{weighted\_matching.py} — 多维加权匹配 + MAB 探索层
+\item \texttt{weighted\_\allowbreak{}matching.\allowbreak{}py} — 多维加权匹配 + MAB 探索层
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item \texttt{effect\_evaluation.py} — 学习效果评估（IRT θ 掌握度 + FSRS 记忆小节）
+\item \texttt{effect\_\allowbreak{}evaluation.\allowbreak{}py} — 学习效果评估（IRT θ 掌握度 + FSRS 记忆小节）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 电路仿真（frontend/src/pages/circuit-simulator/utils/mna-solver.ts）：并查集 + MNA 直流稳态 + 状态变量法 RK4 暂态，数值经解析解对照验证
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 训练/验证脚本（backend/scripts/，一键复现）：\texttt{verify\_ai\_algorithms.py}（算法断言）、\texttt{evaluate\_algorithms.py}（按学生时间留出，输出 AUC/LogLoss/Brier/置信区间及基线对照）、\texttt{verify\_p0\_wiring\_api.py}（38 项 API 全链路）、\texttt{verify\_aic\_features.py}（29 项回归）、\texttt{verify\_all\_routes.py}（210 路由冒烟）、\texttt{verify\_dataflow.py} 等
+\item 训练/验证脚本（backend/scripts/，一键复现）：\texttt{verify\_\allowbreak{}ai\_\allowbreak{}algorithms.\allowbreak{}py}（算法断言）、\texttt{evaluate\_\allowbreak{}algorithms.\allowbreak{}py}（按学生时间留出，输出 AUC/LogLoss/Brier/置信区间及基线对照）、\texttt{verify\_\allowbreak{}p0\_\allowbreak{}wiring\_\allowbreak{}api.\allowbreak{}py}（38 项 API 全链路）、\texttt{verify\_\allowbreak{}aic\_\allowbreak{}features.\allowbreak{}py}（29 项回归）、\texttt{verify\_\allowbreak{}all\_\allowbreak{}routes.\allowbreak{}py}（210 路由冒烟）、\texttt{verify\_\allowbreak{}dataflow.\allowbreak{}py} 等
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 训练端点：\texttt{POST /algorithms/irt/fit}、\texttt{/algorithms/bkt/fit}、\texttt{/algorithms/gkt/train}、\texttt{/algorithms/trend/train}（启动时自动拟合 BKT/IRT）
+\item 训练端点：\texttt{POST /\allowbreak{}algorithms/\allowbreak{}irt/\allowbreak{}fit}、\texttt{/\allowbreak{}algorithms/\allowbreak{}bkt/\allowbreak{}fit}、\texttt{/\allowbreak{}algorithms/\allowbreak{}gkt/\allowbreak{}train}、\texttt{/\allowbreak{}algorithms/\allowbreak{}trend/\allowbreak{}train}（启动时自动拟合 BKT/IRT）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 数据注入脚本：seed\_cross\_discipline.py（跨学科关联）、seed\_classes.py（班级）
@@ -756,7 +758,7 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 
 
 
-\noindent\hangindent=2em 11.~open-spaced-repetition. py-fsrs: Free Spaced Repetition Scheduler (Python). https://github.com/open-spaced-repetition/py-fsrs
+\noindent\hangindent=2em 11.~open-spaced-repetition. py-fsrs: Free Spaced Repetition Scheduler (Python). \url{https://github.com/open-spaced-repetition/py-fsrs}
 
 
 
@@ -768,7 +770,7 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 
 
 
-\noindent\hangindent=2em 14.~Fidelity Center for Applied Technology. Mabwiser: An ARD Library for Multi-Armed Bandits. https://github.com/fidelity/mabwiser
+\noindent\hangindent=2em 14.~Fidelity Center for Applied Technology. Mabwiser: An ARD Library for Multi-Armed Bandits. \url{https://github.com/fidelity/mabwiser}
 
 
 
@@ -804,7 +806,7 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 
 
 
-\noindent\hangindent=2em 21.~LangGraph 官方文档. https://langchain-ai.github.io/langgraph/
+\noindent\hangindent=2em 21.~LangGraph 官方文档. \url{https://langchain-ai.github.io/langgraph/}
 
 
 
