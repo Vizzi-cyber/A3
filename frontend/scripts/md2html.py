@@ -31,6 +31,7 @@ code { font-family: Consolas, monospace; font-size: 10pt; }
 ul, ol { margin: 0 0 3.5mm; padding-left: 2em; }
 li { margin-bottom: 1.8mm; text-align: justify; overflow-wrap: break-word; }
 hr { border: none; border-top: 1pt solid #000; margin: 7mm 0; }
+img { max-width: 100%; height: auto; }
 .team-table td { vertical-align: middle; }
 .team-table .photo { width: 64px; height: 85px; object-fit: cover; border: 0.75pt solid #000; display: block; }
 .team-table .sub { font-size: 8.5pt; color: #555; }
