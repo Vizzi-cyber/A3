@@ -104,3 +104,5 @@ frontend/test-screenshots/
 
 # 手写签名原图不公开（防冒用），签名已贴入交付 PDF
 交付材料/_assets/签名/
+交付材料/02_技术方案/_*
+交付材料/02_技术方案/模板工作_filled.docx
