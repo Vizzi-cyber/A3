@@ -12,6 +12,7 @@ MD = os.path.join(BASE, '..', 'AIC技术方案_LearnLab.md')
 DOCX = os.path.abspath('交付材料/02_技术方案/模板工作.docx')
 OUT = os.path.abspath('交付材料/02_技术方案/模板工作_filled.docx')
 IMG = os.path.abspath('交付材料/_assets/架构图.png')
+PHOTO_FILE = {'马其瑞': 'mqr.jpg', '孙雨瑶': 'syy.jpg', '居欣月': 'jxy.jpg'}
 PHOTO = {'马其瑞': os.path.abspath('交付材料/_assets/队照/mqr.jpg'),
          '孙雨瑶': os.path.abspath('交付材料/_assets/队照/syy.jpg'),
          '居欣月': os.path.abspath('交付材料/_assets/队照/jxy.jpg')}
@@ -184,24 +185,42 @@ def T(rows):
     count['table'] += 1
 
 def TEAM(rows):
-    p = d.add_paragraph('')
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for name in ['马其瑞', '孙雨瑶', '居欣月']:
-        ph = PHOTO.get(name)
-        if ph and os.path.exists(ph):
-            r = p.add_run('      '); r.font.size = Pt(12)
-            p.add_run().add_picture(ph, height=Cm(3.4))
-    np = d.add_paragraph('')
-    np.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    add_text_runs(np, '马其瑞（队长）　　　　孙雨瑶　　　　居欣月', bold_all=True)
-    t = d.add_table(rows=len(rows), cols=3)
+    # 4 列表格：成员 / 照片（格内居中 2.4cm）/ 专业方向 / 角色定位
+    t = d.add_table(rows=len(rows), cols=4)
     try: t.style = 'Table Grid'
     except Exception: pass
+    t.autofit = False
+    widths = [Cm(3.2), Cm(3.0), Cm(4.0), Cm(4.8)]
+    grid = t._tbl.find(qn('w:tblGrid'))
+    if grid is not None:
+        for gc, w in zip(grid.findall(qn('w:gridCol')), widths):
+            gc.set(qn('w:w'), str(int(w.twips)))
     for ri, row in enumerate(rows):
-        vals = [row[0], row[2], row[3]] if len(row) >= 4 else (row + ['', '', ''])[:3]
-        for ci, cell in enumerate(vals):
-            c = t.cell(ri, ci); c.text = ''
-            add_text_runs(c.paragraphs[0], cell, size=10.5, bold_all=(ri == 0))
+        row = (row + ['', '', '', ''])[:4]
+        member = row[0].replace('·', ' ').replace('・', ' ').replace('  ', ' ')
+        for ci in range(4):
+            c = t.cell(ri, ci); c.text = ''; c.width = widths[ci]
+            para = c.paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            pf = para.paragraph_format
+            pf.line_spacing = 1.0
+            pf.space_before = Pt(1); pf.space_after = Pt(1)
+            pPr = para._p.get_or_add_pPr()
+            if pPr.find(qn('w:snapToGrid')) is None:
+                snap = pPr.makeelement(qn('w:snapToGrid'), {qn('w:val'): '0'})
+                pPr.insert(0, snap)
+            if ci == 1 and ri > 0:
+                name = member.split(' ')[0].strip()
+                ph = os.path.join(os.path.dirname(os.path.abspath(MD.replace(os.sep + '文档信息' + os.sep, os.sep + '交付材料' + os.sep))), '02_技术方案', 'latex', PHOTO_FILE.get(name, ''))
+                if os.path.exists(ph):
+                    para.add_run().add_picture(ph, height=Cm(2.4))
+                continue
+            if ri == 0:
+                r = para.add_run(row[ci] if ci != 1 else ''); r.font.bold = True
+                r.font.name = '黑体'; r.font.size = Pt(10.5)
+                r._element.rPr.rFonts.set(qn('w:eastAsia'), '黑体')
+            else:
+                add_text_runs(para, member if ci == 0 else row[ci], size=10.5)
     count['table'] += 1
 
 def IMG_ADD(path):
