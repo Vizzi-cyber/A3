@@ -98,7 +98,7 @@ def tex_inline(s):
     return ''.join(out)
 
 # ---------- 生成 tex ----------
-TEX = r'''\documentclass[zihao=-4,a4paper,UTF8]{ctexart}
+TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=3cm]{geometry}
 \usepackage{fancyhdr}
 \usepackage{longtable}
@@ -109,10 +109,13 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8]{ctexart}
 \definecolor{aicblue}{RGB}{18,86,184}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\textcolor{aicblue}{\bfseries\itshape\zihao{4} AIC}}
+\fancyhead[L]{\includegraphics[height=0.55cm]{aic_logo.png}}
 \fancyhead[R]{\zihao{5} 2026 第八届全球校园人工智能算法精英大赛}
 \renewcommand{\headrulewidth}{0.5pt}
 \fancyfoot[C]{\zihao{5}\thepage}
+% 列表符号用中文间隔号（降 AI 味，不用英文圆点）
+\renewcommand{\labelitemi}{\textperiodcentered}
+\renewcommand{\labelitemii}{--}
 % 标题层级：一级三号粗体 / 二级四号粗体 / 三级小四粗体（模板规范）
 \ctexset{
   section = {format = {\bfseries\zihao{3}}},
