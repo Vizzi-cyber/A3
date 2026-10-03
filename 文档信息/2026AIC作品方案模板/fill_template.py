@@ -292,6 +292,29 @@ for kind, val in elems:
 
 # ---------- 7. 全部表格统一加边框（保存前兜底，不依赖样式）----------
 for t in d.tables:
+    # 单元格段落：单倍行距+退出网格+紧凑段距（消除格内大片空白）
+    for row in t.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                pf = para.paragraph_format
+                pf.line_spacing = 1.0
+                pf.space_before = Pt(1); pf.space_after = Pt(1)
+                pPr = para._p.get_or_add_pPr()
+                if pPr.find(qn('w:snapToGrid')) is None:
+                    snap = pPr.makeelement(qn('w:snapToGrid'), {qn('w:val'): '0'})
+                    pPr.insert(0, snap)
+    # 表级单元格边距收紧（上下 0.03cm）
+    tblPr0 = t._tbl.tblPr
+    mar = tblPr0.find(qn('w:tblCellMar'))
+    if mar is None:
+        mar = tblPr0.makeelement(qn('w:tblCellMar'), {})
+        tblPr0.append(mar)
+    for side, w in (('top', 17), ('bottom', 17)):
+        el = mar.find(qn('w:' + side))
+        if el is None:
+            el = mar.makeelement(qn('w:' + side), {}); mar.append(el)
+        el.set(qn('w:w'), str(w)); el.set(qn('w:type'), 'dxa')
+    # 边框
     tblPr = t._tbl.tblPr
     borders = tblPr.find(qn('w:tblBorders'))
     if borders is None:
