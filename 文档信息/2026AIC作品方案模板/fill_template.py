@@ -59,11 +59,12 @@ while i < len(lines):
         while i < len(lines) and not lines[i].startswith('</table>'):
             block.append(lines[i]); i += 1
         i += 1
+        block_str = chr(10).join(block)
         rows_data = []
-        for bl in block:
-            cells = re.findall(r'<t[hd][^>]*>(.*?)</t[hd]>', bl)
+        for tr in re.findall(r'<tr>(.*?)</tr>', block_str, re.S):
+            cells = re.findall(r'<t[hd][^>]*>(.*?)</t[hd]>', tr, re.S)
             if cells:
-                rows_data.append([re.sub(r'<[^>]+>', '', c).replace(chr(10), ' ').strip() for c in cells])
+                rows_data.append([re.sub(r'<[^>]+>', ' ', c).replace(chr(10), ' ').strip() for c in cells])
         elems.append(('team_table', rows_data)); continue
     if ln.startswith('- '):
         elems.append(('bullet', ln[2:].strip())); i += 1; continue
@@ -251,6 +252,21 @@ for kind, val in elems:
         ins_team_table(val); continue
     if kind == 'img':
         IMG_ADD(val[1]); continue
+
+# ---------- 7. 全部表格统一加边框（保存前兜底，不依赖样式）----------
+for t in d.tables:
+    tblPr = t._tbl.tblPr
+    borders = tblPr.find(qn('w:tblBorders'))
+    if borders is None:
+        borders = tblPr.makeelement(qn('w:tblBorders'), {})
+        tblPr.append(borders)
+    for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+        el = borders.find(qn('w:' + edge))
+        if el is None:
+            el = borders.makeelement(qn('w:' + edge), {})
+            borders.append(el)
+        el.set(qn('w:val'), 'single'); el.set(qn('w:sz'), '4')
+        el.set(qn('w:space'), '0'); el.set(qn('w:color'), '000000')
 
 d.save(OUT)
 print('saved:', OUT, os.path.getsize(OUT))
