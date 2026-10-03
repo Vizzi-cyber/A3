@@ -138,7 +138,8 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
   \fancyfoot[C]{}%
 }
 % 列表符号用中文间隔号（降 AI 味，不用英文圆点）
-\renewcommand{\labelitemi}{\textperiodcentered}
+% 列表符号：一级实心圆点●（宋体小五，中文正式文档惯例），二级短横线
+\renewcommand{\labelitemi}{{\zihao{-5}●}}
 \renewcommand{\labelitemii}{--}
 % 标题层级：一级三号粗体 / 二级四号粗体 / 三级小四粗体（模板规范）
 % 标题字体：宋体加粗（官方格式清单：一二三级标题均宋体粗体），字号 三号/四号/小四
@@ -157,6 +158,8 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 \setCJKmainfont[AutoFakeBold=3]{SimSun}
 % 带圈数字①-⑳等符号区字符用中文字体渲染（Times 无字形，否则出豆腐块）
 \xeCJKDeclareCharClass{CJK}{"2460 -> "24FF}
+% 几何图形区（●■◆等）也走中文字体
+\xeCJKDeclareCharClass{CJK}{"25A0 -> "25FF}
 % URL 任意断行（防止参考文献长链撑破右边界）
 \usepackage{xurl}
 % \texttt 内禁连字符断词（字段名不被拆成 diffi-culty；下划线/点处 \allowbreak 仍可断），正文英文断词不受影响
