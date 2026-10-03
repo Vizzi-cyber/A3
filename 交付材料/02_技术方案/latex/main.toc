@@ -20,16 +20,16 @@
 \contentsline {subsubsection}{2. 五层教育算法闭环（学科问题解决新方法）}{7}{}%
 \contentsline {subsubsection}{3. ADPP 自适应 DAG 路径规划（核心自研算法）}{7}{}%
 \contentsline {subsubsection}{4. 浏览器端 MNA 电路仿真（直流稳态 + RK4 暂态）+ AI 故障诊断（实验实训新范式）}{7}{}%
-\contentsline {subsubsection}{5. 跨学科学习链路（学科交叉核心创新）}{7}{}%
+\contentsline {subsubsection}{5. 跨学科学习链路（学科交叉核心创新）}{8}{}%
 \contentsline {subsubsection}{6. 防幻觉体系（6 道防线）}{8}{}%
 \contentsline {subsubsection}{7. 试点数据分析（应用效果验证基础设施）}{8}{}%
 \contentsline {subsection}{（四）核心创新点}{8}{}%
-\contentsline {section}{四、方案可行性}{8}{}%
-\contentsline {subsection}{（一）技术可行性}{8}{}%
+\contentsline {section}{四、方案可行性}{9}{}%
+\contentsline {subsection}{（一）技术可行性}{9}{}%
 \contentsline {subsection}{（二）经济可行性}{9}{}%
 \contentsline {subsection}{（三）推广价值}{9}{}%
-\contentsline {section}{五、项目实施}{9}{}%
-\contentsline {subsection}{（一）实施计划}{9}{}%
+\contentsline {section}{五、项目实施}{10}{}%
+\contentsline {subsection}{（一）实施计划}{10}{}%
 \contentsline {subsection}{（二）资源保障}{10}{}%
 \contentsline {subsection}{（三）团队协作（跨专业组队）}{10}{}%
 \contentsline {subsubsection}{1. 马其瑞：后端架构与算法引擎}{11}{}%
@@ -38,7 +38,7 @@
 \contentsline {section}{六、应用效果}{13}{}%
 \contentsline {subsection}{（一）应用效果预期}{13}{}%
 \contentsline {subsection}{（二）试点方案（已启动）}{14}{}%
-\contentsline {subsection}{（三）算法效果验证设计（"传统 vs 算法"可量化对照）}{14}{}%
+\contentsline {subsection}{（三）算法效果验证设计（“传统 vs 算法”可量化对照）}{14}{}%
 \contentsline {subsection}{（四）功能验证数据（系统可用性）}{15}{}%
 \contentsline {subsection}{（五）成果展示（佐证索引）}{15}{}%
 \contentsline {subsection}{（六）佐证材料与提交对照}{15}{}%
@@ -46,7 +46,7 @@
 \contentsline {subsection}{（一）方案总结}{15}{}%
 \contentsline {subsection}{（二）未来展望}{16}{}%
 \contentsline {section}{八、附录}{16}{}%
-\contentsline {subsection}{（一）提交材料对照表（官方"作品要求"逐项对应）}{16}{}%
+\contentsline {subsection}{（一）提交材料对照表（官方“作品要求”逐项对应）}{16}{}%
 \contentsline {subsection}{（二）代码与模型}{16}{}%
 \contentsline {subsection}{（三）参考文献}{17}{}%
 \contentsline {subsection}{（四）知识产权、学术伦理与其他材料}{18}{}%

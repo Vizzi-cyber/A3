@@ -85,6 +85,8 @@ def tex_escape(s):
     return s
 
 def tex_inline(s):
+    # 直引号成对转中文引号（XeLaTeX 西文字体把 " 渲染成两个右引号）
+    s = re.sub(r'"([^"]*?)"', '\u201c\\1\u201d', s)
     out = []
     for part in re.split(r'(\*\*.+?\*\*|\*[^*]+?\*)', s):
         if not part: continue
@@ -145,6 +147,8 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 % 行距：单倍（模板要求）
 \linespread{1.0}
 \setlength{\parindent}{2em}
+% 标题后的首段也缩进（中文排版惯例，模板正文全部段首空两格）
+\usepackage{indentfirst}
 \setlength{\parskip}{0pt}
 \renewcommand{\arraystretch}{1.15}
 \begin{document}
@@ -185,7 +189,7 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 cur = []
 for kind, val in elems:
     if kind == 'para_intro':
-        TEX += tex_inline(val) + '\n'; continue
+        TEX += tex_inline(val) + '\n\n'; continue
     if kind == 'h1':
         TEX += '\\section{' + tex_inline(val) + '}\n'; continue
     if kind == 'h2':
@@ -193,12 +197,12 @@ for kind, val in elems:
     if kind == 'h3':
         TEX += '\\subsubsection{' + tex_inline(val) + '}\n'; continue
     if kind == 'para':
-        TEX += tex_inline(val) + '\n'; continue
+        TEX += tex_inline(val) + '\n\n'; continue
     if kind == 'bullet':
         TEX += '\\begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]\n\\item ' + tex_inline(val) + '\n\\end{itemize}\n'; continue
     if kind == 'olitem':
         num, otxt = val
-        TEX += '\n\n\\noindent\\hangindent=2em ' + num + '.~' + tex_inline(otxt) + '\n'; continue
+        TEX += '\n\n\\noindent\\hangindent=2em ' + num + '.~' + tex_inline(otxt) + '\n\n'; continue
     if kind == 'table':
         rows = val
         ncol = max(len(r) for r in rows)
