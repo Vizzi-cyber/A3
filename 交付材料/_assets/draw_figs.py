@@ -38,7 +38,7 @@ def save(fig, name):
     print(name, 'ok')
 
 # ============ 图 2：五层算法闭环与数据回流 ============
-fig, ax = new_ax(5.512, 2.55)          # 14cm × 6.5cm
+fig, ax = new_ax(5.512, 2.25)          # 14cm × 5.7cm
 layers = [('① 测量', 'IRT 认知诊断', '能力参数 θ'),
           ('② 建模', 'BKT / GKT', '掌握概率'),
           ('③ 记忆', 'FSRS 调度', '复习到期日'),
@@ -46,7 +46,7 @@ layers = [('① 测量', 'IRT 认知诊断', '能力参数 θ'),
           ('⑤ 解释', 'LLM 数理化', '可读反馈')]
 bw, bh, gap = 0.92, 0.86, 0.16
 x0 = (5.512 - (5 * bw + 4 * gap)) / 2
-ytop = 1.52
+ytop = 1.26
 for k, (t, m, o) in enumerate(layers):
     x = x0 + k * (bw + gap)
     rbox(ax, x, ytop, bw, bh)
@@ -62,7 +62,7 @@ ax.plot([x0 + bw/2, x0 + 4*(bw+gap) + bw/2], [ymid, ymid], color='black', lw=0.8
 arr(ax, x0 + bw/2, ymid, x0 + bw/2, ytop - 0.02, lw=0.8)
 ax.text(5.512/2, ymid - 0.16, '行为数据自动落库 → 回灌模型再训练（决策产生行为，行为沉淀为数据）',
         ha='center', va='center', fontsize=6.8, color='#333333')
-ax.text(5.512/2, 0.12, '业务入口：答题 · 路径 · 复习 · 选题 · 解释（五层全部接进真实链路）',
+ax.text(5.512/2, 0.25, '业务入口：答题 · 路径 · 复习 · 选题 · 解释（五层全部接进真实链路）',
         ha='center', va='center', fontsize=7.2)
 save(fig, 'fig_loop.png')
 
