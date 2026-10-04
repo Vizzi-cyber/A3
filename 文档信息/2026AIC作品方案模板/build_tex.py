@@ -14,7 +14,9 @@ OUT_PDF = os.path.abspath('交付材料/1_技术方案.pdf')
 os.makedirs(WORK, exist_ok=True)
 for f in ['mqr.jpg', 'syy.jpg', 'jxy.jpg']:
     shutil.copy(os.path.abspath(f'交付材料/_assets/队照/{f}'), os.path.join(WORK, f))
-shutil.copy(os.path.abspath('交付材料/_assets/架构图.png'), os.path.join(WORK, 'arch.png'))
+shutil.copy(os.path.abspath('交付材料/_assets/架构图.png'), os.path.join(WORK, '架构图.png'))
+for _f in ('fig_loop.png', 'fig_cross.png', 'fig_pilot.png'):
+    shutil.copy(os.path.abspath(f'交付材料/_assets/{_f}'), os.path.join(WORK, _f))
 
 # ---------- md 解析 ----------
 lines = open(MD, encoding='utf-8').read().split('\n')
@@ -47,7 +49,7 @@ while i < len(lines):
     m = re.match(r'^#### (.+)$', ln)
     if m: elems.append(('h3', m.group(1).strip())); i += 1; continue
     m = re.match(r'^!\[(.*)\]\((.*)\)$', ln)
-    if m: elems.append(('img', (m.group(1), 'arch.png'))); i += 1; continue
+    if m: elems.append(('img', (m.group(1), os.path.basename(m.group(2))))); i += 1; continue
     if ln.startswith('|'):
         rows = []
         while i < len(lines) and lines[i].startswith('|'):
@@ -139,7 +141,7 @@ TEX = r'''\documentclass[zihao=-4,a4paper,UTF8,fontset=windows]{ctexart}
 }
 % 列表符号用中文间隔号（降 AI 味，不用英文圆点）
 % 列表符号：一级实心圆点●（宋体小五，中文正式文档惯例），二级短横线
-\renewcommand{\labelitemi}{{\zihao{-5}●}}
+\renewcommand{\labelitemi}{{\fontsize{6.3pt}{6.3pt}\selectfont ●}}
 \renewcommand{\labelitemii}{--}
 % 标题层级：一级三号粗体 / 二级四号粗体 / 三级小四粗体（模板规范）
 % 标题字体：宋体加粗（官方格式清单：一二三级标题均宋体粗体），字号 三号/四号/小四
@@ -300,7 +302,8 @@ for ei, (kind, val) in enumerate(elems):
             TEX += c0 + ' & ' + photo_tex + ' & ' + c2 + ' & ' + c3 + r' \\ \hline' + '\n'
         TEX += '\\end{tabular}\\par\n' + ('\\end{minipage}\\par\n' if ei in _chain_close_after else ''); continue
     if kind == 'img':
-        TEX += '\\begin{center}\\includegraphics[width=15cm]{arch.png}\\end{center}\n'; continue
+        _w = '15cm' if val[1] == 'arch.png' else '14cm'
+        TEX += '\\begin{center}\\includegraphics[width=' + _w + ']{' + val[1] + '}\\\\[2pt]{\\zihao{5}' + tex_inline(val[0]) + '}\\end{center}\n'; continue
 
 TEX += '\\end{document}\n'
 

@@ -21,34 +21,34 @@
 \contentsline {subsubsection}{3. ADPP 自适应 DAG 路径规划（核心自研算法）}{8}{}%
 \contentsline {subsubsection}{4. 浏览器端 MNA 电路仿真（直流稳态 + RK4 暂态）+ AI 故障诊断（实验实训新范式）}{8}{}%
 \contentsline {subsubsection}{5. 跨学科学习链路（学科交叉核心创新）}{8}{}%
-\contentsline {subsubsection}{6. 防幻觉体系（6 道防线）}{8}{}%
-\contentsline {subsubsection}{7. 试点数据分析（应用效果验证基础设施）}{8}{}%
-\contentsline {subsection}{（四）核心创新点}{8}{}%
-\contentsline {section}{四、方案可行性}{9}{}%
-\contentsline {subsection}{（一）技术可行性}{9}{}%
-\contentsline {subsection}{（二）经济可行性}{10}{}%
-\contentsline {subsection}{（三）推广价值}{10}{}%
-\contentsline {section}{五、项目实施}{11}{}%
-\contentsline {subsection}{（一）实施计划}{11}{}%
-\contentsline {subsection}{（二）资源保障}{11}{}%
-\contentsline {subsection}{（三）团队协作（跨专业组队）}{11}{}%
-\contentsline {subsubsection}{1. 马其瑞：后端架构与算法引擎}{12}{}%
-\contentsline {subsubsection}{2. 孙雨瑶：试点数据与质量验证}{13}{}%
-\contentsline {subsubsection}{3. 居欣月：前端页面与数据可视化}{14}{}%
-\contentsline {section}{六、应用效果}{15}{}%
-\contentsline {subsection}{（一）应用效果预期}{15}{}%
-\contentsline {subsection}{（二）试点方案（已启动）}{15}{}%
-\contentsline {subsection}{（三）算法效果验证设计（“传统 vs 算法”可量化对照）}{16}{}%
-\contentsline {subsection}{（四）功能验证数据（系统可用性）}{16}{}%
-\contentsline {subsection}{（五）成果展示（佐证索引）}{17}{}%
-\contentsline {subsection}{（六）佐证材料与提交对照}{17}{}%
-\contentsline {section}{七、总结与展望}{17}{}%
-\contentsline {subsection}{（一）方案总结}{17}{}%
-\contentsline {subsection}{（二）不足与归因}{18}{}%
-\contentsline {subsection}{（三）改进方向}{18}{}%
-\contentsline {subsection}{（四）未来展望}{19}{}%
-\contentsline {section}{八、附录}{19}{}%
-\contentsline {subsection}{（一）提交材料对照表}{19}{}%
-\contentsline {subsection}{（二）代码与模型}{19}{}%
-\contentsline {subsection}{（三）参考文献}{20}{}%
-\contentsline {subsection}{（四）知识产权、学术伦理与其他材料}{21}{}%
+\contentsline {subsubsection}{6. 防幻觉体系（6 道防线）}{9}{}%
+\contentsline {subsubsection}{7. 试点数据分析（应用效果验证基础设施）}{9}{}%
+\contentsline {subsection}{（四）核心创新点}{9}{}%
+\contentsline {section}{四、方案可行性}{10}{}%
+\contentsline {subsection}{（一）技术可行性}{10}{}%
+\contentsline {subsection}{（二）经济可行性}{11}{}%
+\contentsline {subsection}{（三）推广价值}{11}{}%
+\contentsline {section}{五、项目实施}{12}{}%
+\contentsline {subsection}{（一）实施计划}{12}{}%
+\contentsline {subsection}{（二）资源保障}{12}{}%
+\contentsline {subsection}{（三）团队协作（跨专业组队）}{12}{}%
+\contentsline {subsubsection}{1. 马其瑞：后端架构与算法引擎}{13}{}%
+\contentsline {subsubsection}{2. 孙雨瑶：试点数据与质量验证}{14}{}%
+\contentsline {subsubsection}{3. 居欣月：前端页面与数据可视化}{15}{}%
+\contentsline {section}{六、应用效果}{16}{}%
+\contentsline {subsection}{（一）应用效果预期}{16}{}%
+\contentsline {subsection}{（二）试点方案（已启动）}{16}{}%
+\contentsline {subsection}{（三）算法效果验证设计（“传统 vs 算法”可量化对照）}{17}{}%
+\contentsline {subsection}{（四）功能验证数据（系统可用性）}{18}{}%
+\contentsline {subsection}{（五）成果展示（佐证索引）}{18}{}%
+\contentsline {subsection}{（六）佐证材料与提交对照}{18}{}%
+\contentsline {section}{七、总结与展望}{18}{}%
+\contentsline {subsection}{（一）方案总结}{18}{}%
+\contentsline {subsection}{（二）不足与归因}{19}{}%
+\contentsline {subsection}{（三）改进方向}{19}{}%
+\contentsline {subsection}{（四）未来展望}{20}{}%
+\contentsline {section}{八、附录}{21}{}%
+\contentsline {subsection}{（一）提交材料对照表}{21}{}%
+\contentsline {subsection}{（二）代码与模型}{21}{}%
+\contentsline {subsection}{（三）参考文献}{22}{}%
+\contentsline {subsection}{（四）知识产权、学术伦理与其他材料}{23}{}%
