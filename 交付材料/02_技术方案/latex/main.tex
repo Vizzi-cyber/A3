@@ -268,6 +268,7 @@ SQLite → PostgreSQL & 开发/试点轻量部署，可平滑迁移 \\ \hline
 
 \textbf{记忆 — FSRS 间隔重复调度}（文献 9-11）：真实复习队列 + 记忆可提取性预警，把艾宾浩斯遗忘曲线工程化。
 
+\begin{center}\includegraphics[width=11cm]{fig_fsrs.png}\\[2pt]{\zihao{5}记忆调度机制示意：FSRS 在遗忘临界点前安排复习，对比统一间隔}\end{center}
 
 
 \textbf{决策 — Thompson Sampling 多臂老虎机}（文献 12-14）：用在三处——路径调整策略（回炉/强化/加速/维持，分数段候选集保底）、每日练习选题、资源匹配探索层。
@@ -317,6 +318,7 @@ ADPP 的做法是把六样东西组合到一起：关键路径法（CPM）、BKT
 
 输入过滤 → Prompt 加固 → 结构校验 → 代码校验 → 引用溯源 → LLM 自我纠错。其中①-⑤常驻主管线（\texttt{apply\_\allowbreak{}guards} 规则守卫，零成本），⑥自我纠错随反思循环生效（\texttt{REFLECTION\_\allowbreak{}ENABLED} 配置启用）。
 
+\begin{center}\includegraphics[width=14cm]{fig_guard.png}\\[2pt]{\zihao{5}防幻觉六道防线}\end{center}
 \subsubsection{7. 试点数据分析（应用效果验证基础设施）}
 
 

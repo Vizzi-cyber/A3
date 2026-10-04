@@ -15,7 +15,7 @@ os.makedirs(WORK, exist_ok=True)
 for f in ['mqr.jpg', 'syy.jpg', 'jxy.jpg']:
     shutil.copy(os.path.abspath(f'交付材料/_assets/队照/{f}'), os.path.join(WORK, f))
 shutil.copy(os.path.abspath('交付材料/_assets/架构图.png'), os.path.join(WORK, '架构图.png'))
-for _f in ('fig_loop.png', 'fig_cross.png', 'fig_pilot.png'):
+for _f in ('fig_loop.png', 'fig_cross.png', 'fig_pilot.png', 'fig_guard.png', 'fig_fsrs.png'):
     shutil.copy(os.path.abspath(f'交付材料/_assets/{_f}'), os.path.join(WORK, _f))
 
 # ---------- md 解析 ----------
@@ -302,7 +302,7 @@ for ei, (kind, val) in enumerate(elems):
             TEX += c0 + ' & ' + photo_tex + ' & ' + c2 + ' & ' + c3 + r' \\ \hline' + '\n'
         TEX += '\\end{tabular}\\par\n' + ('\\end{minipage}\\par\n' if ei in _chain_close_after else ''); continue
     if kind == 'img':
-        _w = '15cm' if val[1] == 'arch.png' else '14cm'
+        _w = {'arch.png': '15cm', 'fig_fsrs.png': '11cm'}.get(val[1], '14cm')
         TEX += '\\begin{center}\\includegraphics[width=' + _w + ']{' + val[1] + '}\\\\[2pt]{\\zihao{5}' + tex_inline(val[0]) + '}\\end{center}\n'; continue
 
 TEX += '\\end{document}\n'
