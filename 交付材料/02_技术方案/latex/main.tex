@@ -352,7 +352,7 @@ AI 技术应用新场景 & 浏览器端 MNA+RK4 电路仿真叠加 AI 故障诊�
 \subsection{（一）技术可行性}
 
 
-全栈技术都是工业级开源方案（React / FastAPI / LangGraph），没有用不可控的黑盒组件。算法部分（ADPP 路径规划、IRT/BKT/GKT/FSRS/MAB 五层算法引擎、趋势权重学习器、MNA+RK4 电路求解器）全部源码在仓库内，公式与文献出处见附录参考文献。
+全栈技术都是工业级开源方案（React / FastAPI / LangGraph），没有用不可控的黑盒组件。算法部分（ADPP 路径规划、IRT/BKT/GKT/FSRS/MAB 五层算法引擎、趋势权重学习器、MNA+RK4 电路求解器）全部源码随材料交付，公式与文献出处见附录参考文献。
 
 
 
@@ -360,7 +360,7 @@ AI 技术应用新场景 & 浏览器端 MNA+RK4 电路仿真叠加 AI 故障诊�
 
 
 
-测试方面，所有可复现脚本随仓库交付：算法层专项断言 \textbf{116 项全部通过}（覆盖 BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索/安全与接线加固）；API 全链路冒烟 38 项（用演示库真实数据训练 IRT/GKT/趋势学习器）；后端 \textbf{210 个路由 0 崩溃}，AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项全部通过；前端 E2E 49 个用例（7 个文件），MNA 数值验证 9/9（RC/RL/LC 对照教科书解析解）；前端构建 TypeScript + Vite 零错误。
+测试方面，所有可复现脚本随网盘材料交付：算法层专项断言 \textbf{116 项全部通过}（覆盖 BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索/安全与接线加固）；API 全链路冒烟 38 项（用演示库真实数据训练 IRT/GKT/趋势学习器）；后端 \textbf{210 个路由 0 崩溃}，AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项全部通过；前端 E2E 49 个用例（7 个文件），MNA 数值验证 9/9（RC/RL/LC 对照教科书解析解）；前端构建 TypeScript + Vite 零错误。
 
 
 
@@ -394,7 +394,7 @@ LLM API & 讯飞星火（教学场景，100 学生） & ¥300-500/月（开发�
 \item 落地按三阶段走：先在本校计算机/电子专业试点，再到省内同类院校推广，最后开放学科内容模板，支持 10+ 学科接入；
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 全部验证脚本（算法断言、全路由冒烟、功能回归）与试点报告工具随仓库交付，外校引入后可独立复现测试与效果评估，不依赖原团队；
+\item 全部验证脚本（算法断言、全路由冒烟、功能回归）与试点报告工具随网盘材料交付，外校引入后可独立复现测试与效果评估，不依赖原团队；
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item LLM 依赖做了风险隔离：支持 5 家 LLM 切换与自动降级；电路仿真、知识图谱、游戏化等非 LLM 核心功能不依赖任何 API。
@@ -468,7 +468,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 测评工具设计 & 前测试卷、后测试卷、学习体验问卷、知情同意书的编制 & 全套定稿，随试点材料交付 \\ \hline
 试点组织实施 & 面向电子信息类专业大一学生组织试点；制定前测→平台学习→后测→问卷的完整流程，问卷经微信小程序在线发放与回收，全程匿名 & 试点于 9 月 26 日启动；问卷已回收（前测 20 份、后测 17 份），行为数据自动落库 \\ \hline
 数据质量把关 & IRT/BKT 训练数据的清洗规则、作答有效性核验、匿名编号管理 & 清洗与核验规则定稿；试点数据回收后执行前后测对比与效度分析 \\ \hline
-功能测试验证 & AIC 功能回归 29 项、数据流 23 项、真实环境 HTTP 22 项的测试执行 & 全部通过；测试脚本随仓库交付，可一键复现 \\ \hline
+功能测试验证 & AIC 功能回归 29 项、数据流 23 项、真实环境 HTTP 22 项的测试执行 & 全部通过；测试脚本随网盘材料交付，可一键复现 \\ \hline
 行为数据埋点 & 学习行为事件设计（观看/阅读/练习/复习/完成/跳过/重置），支撑学习时长与路径差异统计 & 已上线运行，行为流水自动落库 \\ \hline
 \end{tabular}\par
 \subsubsection{3. 居欣月：前端页面与数据可视化}
@@ -483,7 +483,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 教师端页面 & 教学仪表盘、班级对比、学情预警、试点数据分析报告等 14 个页面 & 全部完成，试点报告支持一键导出 \\ \hline
 数据可视化 & 跨学科 DAG 知识图谱、学情趋势图表、排行榜、成就徽章墙 & 已上线；GIS 的空间布局与制图训练直接用于知识图谱的层次表达 \\ \hline
 交互质量保障 & 移动端适配、学习中心布局调优、新用户引导流程 & 前端 E2E 49 个用例（7 个文件）通过；构建 TypeScript + Vite 零错误 \\ \hline
-材料排版交付 & 技术方案 PDF 排版（md→HTML→PDF 管线）、佐证材料整理、源码包验收 & 已交付；系统运行佐证截图 13 张随材料提交 \\ \hline
+材料排版交付 & 技术方案排版、佐证材料整理、源码包验收 & 已交付；系统运行佐证截图 13 张随材料提交 \\ \hline
 \end{tabular}\par
 
 
@@ -590,20 +590,26 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 \item 提交前全系统实测 3 轮：24 个页面逐页遍历（学生 10 页 + 教师 14 页）零 JS 错误、零横向溢出；API 全接口 26 项通过（含越权访问 403 校验）；新用户注册→引导问卷→路径生成→成就解锁 11 步全旅程零异常；生产环境 24 小时零 500
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 全部验证脚本随仓库交付，可一键复现
+\item 全部验证脚本随网盘源码包交付，可一键复现
 \end{itemize}
 \subsection{（六）成果展示（佐证索引）}
+
+本方案中的各项数据，其原始证据均在随材料提交的《佐证材料》PDF 与网盘源码包中可查，索引如下：
+
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 系统运行截图 13 张（学生端 8 页 + 教师端 4 页 + 登录页）：见佐证材料“系统功能实证”章节
+\item 系统运行截图 13 张（学生端 8 页 + 教师端 4 页 + 登录页）：见《佐证材料》第三章「系统功能实证」
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 测试验证数据摘要表：见佐证材料“测试验证”章节
+\item 测试验证数据摘要表（116 项断言 / 210 路由 / 49 E2E 等）：见《佐证材料》第一章「测试验证数据摘要」
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 试点前后测与满意度数据：已回收（前测 20 份、后测 17 份），逐题统计与学生反馈原文见佐证材料“试点前后测问卷与结果”章节
+\item 试点前后测与满意度数据：已回收（前测 20 份、后测 17 份），逐题统计与学生反馈原文见《佐证材料》第五章「试点前后测问卷与结果」
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 算法离线评估：backend/reports/algorithm\_evaluation.md（随源码交付）
+\item 算法离线评估（BKT/GKT 时间留出验证、AUC/LogLoss/Brier 及基线对照）：见《佐证材料》第二章；原始输出为源码包中的 \texttt{backend/reports/algorithm\_\allowbreak{}evaluation.\allowbreak{}md}
+\end{itemize}
+\begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
+\item 全部验证脚本与源代码：见网盘材料《\dots{}源代码.zip》，解压后按《\dots{}运行说明.pdf》可一键复现
 \end{itemize}
 \subsection{（七）佐证材料与提交对照}
 
@@ -684,7 +690,7 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 \end{minipage}\par
 \subsection{（二）代码与模型}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 完整源代码：GitHub 仓库（Vizzi-cyber/A3），Git 提交历史可追溯全部迭代
+\item 完整源代码：见网盘材料《AIC-2026-21740176-AI+学科交叉-LearnLab跨学科智能学习平台-源代码.zip》，含后端、前端与全部训练/验证脚本，解压即可运行
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 算法层（backend/app/algorithms/，全部自研或文献复现）：
@@ -843,6 +849,6 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 
 
 
-其他佐证材料：测试说明书（12 章，系统测试佐证）、试点知情同意书（试点前发放）、演示视频（3-5 分钟，覆盖跨学科路径、故障实验、算法对照面板、教师报告）。
+其他佐证材料：测试说明书（12 章，系统测试佐证）、试点知情同意书（试点前发放）、演示视频（覆盖跨学科路径、故障实验、算法对照面板、教师报告）。
 
 \end{document}
