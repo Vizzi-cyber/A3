@@ -10,7 +10,7 @@ test("student quick login opens the student application", async ({ page }) => {
       response.url().endsWith("/api/v1/auth/login") &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "学生一键登录" }).click();
+  await page.getByRole("button", { name: "体验学生账号" }).click();
 
   expect((await loginResponse).ok()).toBe(true);
   await page.waitForURL((url) => url.pathname !== "/login");
@@ -33,7 +33,7 @@ test("teacher quick login opens the teacher application", async ({ page }) => {
       response.url().endsWith("/api/v1/auth/login") &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "教师一键登录" }).click();
+  await page.getByRole("button", { name: "体验教师账号" }).click();
 
   expect((await loginResponse).ok()).toBe(true);
   await page.waitForURL((url) => url.pathname.startsWith("/teacher"));

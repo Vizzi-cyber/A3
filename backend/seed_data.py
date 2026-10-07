@@ -2342,37 +2342,123 @@ print(f'KVL验证: 电源{V_source}V = 压降{V_drop1}+{V_drop2}={V_drop1+V_drop
         tags=["串联", "并联", "等效电阻", "分压", "分流"],
         document="""# 电阻串联与并联
 
-## 2.1 电阻串联
+## 2.1 先搞懂：判断串并联看电流怎么流
 
-多个电阻首尾相连，电流相同。
+学会串并联之前，先建立一个判断标准。**串联看电流，并联看电压**：
 
-**等效电阻**：$$R_{eq} = R_1 + R_2 + ... + R_n$$
+- 电流只有一条路可走，流过每个电阻的电流必然一样 —— 这就是**串联**。
+- 电流在多条路里分开走，但每条路两端的电压都等于电源电压 —— 这就是**并联**。
 
-**分压公式**：$$V_k = V_{total} \\times \\frac{R_k}{R_{eq}}$$
+为什么"串联电流相同"？因为电荷不会凭空堆积 —— 第一秒流进第一个电阻多少电荷，就必须从它流出去多少，否则电荷会在电阻里越积越多。既然一条路上处处流量相等，电流自然处处相同。这个"电荷守恒"是所有串并联公式的根。
 
-## 2.2 电阻并联
+<svg width="620" height="300" viewBox="0 0 620 300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <text x="16" y="24" font-size="15" font-weight="bold" fill="#334155">串联：电流只有一条路</text>
+  <line x1="40" y1="60" x2="78" y2="60" stroke="#334155" stroke-width="2"/>
+  <rect x="78" y="46" width="80" height="28" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="118" y="65" font-size="14" text-anchor="middle" fill="#334155">R1</text>
+  <line x1="158" y1="60" x2="190" y2="60" stroke="#334155" stroke-width="2"/>
+  <rect x="190" y="46" width="80" height="28" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="230" y="65" font-size="14" text-anchor="middle" fill="#334155">R2</text>
+  <line x1="270" y1="60" x2="302" y2="60" stroke="#334155" stroke-width="2"/>
+  <rect x="302" y="46" width="80" height="28" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="342" y="65" font-size="14" text-anchor="middle" fill="#334155">R3</text>
+  <line x1="382" y1="60" x2="430" y2="60" stroke="#334155" stroke-width="2"/>
+  <line x1="430" y1="60" x2="430" y2="112" stroke="#334155" stroke-width="2"/>
+  <line x1="430" y1="112" x2="40" y2="112" stroke="#334155" stroke-width="2"/>
+  <line x1="40" y1="112" x2="40" y2="60" stroke="#334155" stroke-width="2"/>
+  <circle cx="118" cy="60" r="8" fill="#fea619" stroke="#334155" stroke-width="1.5"/>
+  <circle cx="230" cy="60" r="8" fill="#fea619" stroke="#334155" stroke-width="1.5"/>
+  <circle cx="342" cy="60" r="8" fill="#fea619" stroke="#334155" stroke-width="1.5"/>
+  <text x="452" y="56" font-size="13" fill="#b45309" font-weight="bold">I 处处相同</text>
+  <text x="452" y="78" font-size="12" fill="#64748b">只有一条路</text>
+  <text x="452" y="98" font-size="12" fill="#64748b">电压逐级分走</text>
+  <text x="16" y="160" font-size="15" font-weight="bold" fill="#334155">并联：电流分几条路</text>
+  <line x1="150" y1="198" x2="150" y2="272" stroke="#334155" stroke-width="2"/>
+  <line x1="330" y1="198" x2="330" y2="272" stroke="#334155" stroke-width="2"/>
+  <line x1="150" y1="212" x2="200" y2="212" stroke="#334155" stroke-width="2"/>
+  <rect x="200" y="198" width="80" height="28" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="240" y="217" font-size="14" text-anchor="middle" fill="#334155">R1</text>
+  <line x1="280" y1="212" x2="330" y2="212" stroke="#334155" stroke-width="2"/>
+  <line x1="150" y1="258" x2="200" y2="258" stroke="#334155" stroke-width="2"/>
+  <rect x="200" y="244" width="80" height="28" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="240" y="263" font-size="14" text-anchor="middle" fill="#334155">R2</text>
+  <line x1="280" y1="258" x2="330" y2="258" stroke="#334155" stroke-width="2"/>
+  <circle cx="150" cy="235" r="4" fill="#fea619"/>
+  <circle cx="330" cy="235" r="4" fill="#fea619"/>
+  <text x="140" y="292" font-size="12" fill="#64748b" text-anchor="middle">节点 A</text>
+  <text x="330" y="292" font-size="12" fill="#64748b" text-anchor="middle">节点 B</text>
+  <text x="372" y="214" font-size="13" fill="#64748b">同一对节点之间</text>
+  <text x="372" y="234" font-size="13" fill="#b45309" font-weight="bold">⇒ 电压相同</text>
+  <text x="372" y="256" font-size="13" fill="#64748b">电流按电阻分走</text>
+</svg>
 
-多个电阻并列连接，电压相同。
+## 2.2 串联怎么算：电阻相加
 
-**等效电阻**：$$\\frac{1}{R_{eq}} = \\frac{1}{R_1} + \\frac{1}{R_2} + ... + \\frac{1}{R_n}$$
+三个电阻串联，相当于把导线越接越长，阻碍累加，所以**等效电阻直接相加**：
 
-两个电阻并联简化：$$R_{eq} = \\frac{R_1 \\times R_2}{R_1 + R_2}$$
+$$R_{eq} = R_1 + R_2 + ... + R_n$$
 
-**分流公式**：$$I_k = I_{total} \\times \\frac{R_{total}}{R_k}$$
+**举个具体例子**：12V 电源接 R₁=100Ω 和 R₂=200Ω 串联，求电流和各自的电压。
 
-## 2.3 混联电路
+1. 先求等效电阻：$R_{eq} = 100 + 200 = 300\\,\\Omega$
+2. 求电流：$I = \\dfrac{V}{R_{eq}} = \\dfrac{12}{300} = 0.04\\,\\mathrm{A} = 40\\,\\mathrm{mA}$
+3. 各电阻电压：$V_1 = I \\times R_1 = 0.04 \\times 100 = 4\\,\\mathrm{V}$；$V_2 = 0.04 \\times 200 = 8\\,\\mathrm{V}$
+4. **验算**：$4 + 8 = 12\\,\\mathrm{V}$，正好等于电源电压 —— KVL 成立。
 
-既有串联又有并联的电路，需要逐步化简：
-1. 先计算并联部分的等效电阻
-2. 再计算串联部分的总电阻
+**分压公式**就是从这来的：电阻越大，分到的电压越多。
 
-## 2.4 实际应用
+$$V_k = V_{total} \\times \\frac{R_k}{R_{eq}}$$
 
-- **分压器**：从高电压获得低电压
-- **电流表扩程**：并联分流电阻
-- **电压表扩程**：串联分压电阻
+上面的例子里 200Ω 是 100Ω 的两倍，分到的电压 8V 也是 4V 的两倍。
 
-> **学习建议**：熟练掌握串并联等效计算和分压分流公式是分析复杂电路的关键。""",
+## 2.3 并联怎么算：倒数相加
+
+并联相当于给电流多开了几条路，阻碍变小，所以等效电阻**比任何一个支路都小**。公式是倒数相加：
+
+$$\\frac{1}{R_{eq}} = \\frac{1}{R_1} + \\frac{1}{R_2} + ... + \\frac{1}{R_n}$$
+
+两个电阻并联时有简化公式（背这个更快，但要记得**只对两个电阻成立**）：
+
+$$R_{eq} = \\frac{R_1 \\times R_2}{R_1 + R_2}$$
+
+**举个具体例子**：12V 电源接 R₁=100Ω 和 R₂=200Ω 并联，求总电流。
+
+1. 等效电阻：$R_{eq} = \\dfrac{100 \\times 200}{100 + 200} = \\dfrac{20000}{300} \\approx 66.7\\,\\Omega$（确实比 100Ω 还小）
+2. 各支路电流：$I_1 = \\dfrac{12}{100} = 0.12\\,\\mathrm{A}$；$I_2 = \\dfrac{12}{200} = 0.06\\,\\mathrm{A}$
+3. 总电流：$I = 0.12 + 0.06 = 0.18\\,\\mathrm{A}$
+4. **验算**：$\\dfrac{12}{66.7} \\approx 0.18\\,\\mathrm{A}$，两法一致。
+
+**分流公式**：电阻越小，抢到的电流越多（和分压刚好相反）。
+
+$$I_k = I_{total} \\times \\frac{R_{total}}{R_k}$$
+
+## 2.4 混联：先拆并联，再算串联
+
+同时有串有并的电路，口诀是「**从内到外、先并后串**」：
+
+1. 先找出并联部分，算出它的等效电阻
+2. 把这个等效电阻当成一个普通电阻，再和其余电阻做串联计算
+
+**例子**：R₂=200Ω 与 R₃=200Ω 并联，再与 R₁=100Ω 串联，接 12V 电源。
+
+1. 并联部分：$R_{23} = \\dfrac{200 \\times 200}{200 + 200} = 100\\,\\Omega$
+2. 整体串联：$R_{总} = 100 + 100 = 200\\,\\Omega$
+3. 总电流：$I = \\dfrac{12}{200} = 0.06\\,\\mathrm{A}$
+4. R₁ 分走 $0.06 \\times 100 = 6\\,\\mathrm{V}$，并联部分分掉剩下的 6V，两条支路各得 3V。
+
+## 2.5 新手最容易踩的三个坑
+
+1. **并联公式用错范围**：$\\dfrac{R_1 R_2}{R_1+R_2}$ 只适用于**两个**电阻。三个以上必须回到倒数相加，不能两两套用。
+2. **等效电阻算出比支路还大**：并联等效电阻一定小于最小的那个支路。如果你算出并联后比 100Ω 大，一定算错了。
+3. **忘了验算**：算完用 KVL（各分压加起来等于电源）或 KCL（各支路电流加起来等于总电流）检查一遍，多数错误这一步就能抓出来。
+
+## 2.6 实际应用
+
+- **分压器**：从高电压得到低电压。电位器就是可调分压器。
+- **电流表扩程**：并联一个分流电阻，让大部分电流绕开表头。
+- **电压表扩程**：串联一个分压电阻，让大部分电压落在电阻上。
+
+> **小结**：串联看电流相同、电阻相加、电压按电阻比例分；并联看电压相同、倒数相加、电流按电阻反比分配。判断电路先看电流走一条路还是几条路。""",
         code_example="""# 电阻串并联计算示例
 
 # 串联电阻计算
