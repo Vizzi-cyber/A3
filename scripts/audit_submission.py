@@ -21,8 +21,11 @@ from pathlib import Path
 import pypdf
 
 ROOT = Path(__file__).resolve().parent.parent
-NETDISK = ROOT / "交付材料" / "网盘提交" / "AIC-2026-21740176-AI+学科交叉-LearnLab跨学科智能学习平台"
+# 网盘为两层结构（依江苏赛区附件3）：
+#   外层「编号-省赛-团队名称-队长姓名」/ 内层「编号-赛题名称-作品名称」/
+OUTER = "AIC-2026-21740176-省赛-一起搞事情-马其瑞"
 PREFIX = "AIC-2026-21740176-AI+学科交叉-LearnLab跨学科智能学习平台"
+NETDISK = ROOT / "交付材料" / "网盘提交" / OUTER / PREFIX
 ZIP = ROOT / "交付材料" / "_内部母本勿传" / "2_源码包.zip"
 
 # 实测基准值（跑过验证脚本得到的真实数字）
@@ -142,16 +145,33 @@ def main() -> int:
     else:
         ok_all = False
 
-    # 4 命名规范
+    # 4 命名规范（两层结构，依江苏赛区附件3）
     print("\n【四、命名规范】")
-    if NETDISK.name == PREFIX:
-        print("  ✅ 根目录名合规")
+    outer_dir = ROOT / "交付材料" / "网盘提交" / OUTER
+    if outer_dir.is_dir():
+        print(f"  ✅ 外层目录合规：{OUTER}")
     else:
-        print(f"  ❌ 根目录名不合规: {NETDISK.name}")
+        print(f"  ❌ 缺外层目录：{OUTER}")
         ok_all = False
-    nbad = [f.name for f in NETDISK.iterdir() if f.is_file() and not f.name.startswith(PREFIX + "-")]
+    if NETDISK.is_dir():
+        print(f"  ✅ 内层目录合规：{PREFIX}")
+    else:
+        print(f"  ❌ 缺内层目录：{PREFIX}")
+        ok_all = False
+    nbad = [f.name for f in NETDISK.iterdir()
+            if f.is_file() and not f.name.startswith(PREFIX + "-")] if NETDISK.is_dir() else []
     print("  ✅ 文件名全部合规" if not nbad else f"  ❌ 不合规: {nbad}")
     if nbad:
+        ok_all = False
+
+    # 4.5 省赛必备项（江苏赛区附件3 硬性要求）
+    print("\n【4.5 省赛必备项】")
+    photo_dir = NETDISK / "检录照片"
+    if photo_dir.is_dir() and any(photo_dir.glob("*.jpg")):
+        n = len(list(photo_dir.glob("*.jpg")))
+        print(f"  ✅ 检录照片 {n} 张（附件3 第 9 条要求，须与视频中团队一致）")
+    else:
+        print("  ❌ 缺检录照片（附件3 第 9 条：不一致视为作弊）")
         ok_all = False
 
     # 5 公平性
