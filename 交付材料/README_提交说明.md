@@ -84,9 +84,24 @@ cd 交付材料/04_佐证材料_latex && xelatex zz.tex && xelatex zz.tex
 # 源码包
 python make_source_package.py
 
+# 功能说明 / 功能验证清单 / 运行说明（Markdown → PDF）
+python scripts/md_to_pdf.py 文档信息/09_功能说明_评审版.md <输出路径>
+python scripts/md_to_pdf.py 文档信息/10_功能验证清单.md <输出路径>
+python scripts/md_to_pdf.py 文档信息/08_源码评审运行说明.md <输出路径>
+
 # 口播稿 Word
 python scripts/gen_koubo_docx.py
-
-# Markdown → PDF（功能说明等）
-python scripts/md_to_pdf.py <输入.md> <输出.pdf>
 ```
+
+## 七、提交前自动审计
+
+改动材料后，运行审计脚本做最终把关（提交前必跑）：
+
+```bash
+python scripts/audit_submission.py
+```
+
+脚本检查五项：内部信息残留、关键数字在各文档间的一致性、
+交叉引用是否指向真实存在的文件、命名规范、公平性（校名/指导教师）。
+
+全部通过时会输出「结论：全部通过 ✅」。
