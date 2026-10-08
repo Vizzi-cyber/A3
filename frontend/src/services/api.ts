@@ -174,6 +174,20 @@ api.interceptors.response.use(
   },
 );
 
+// ---------- 算法能力（BKT 知识追踪等）----------
+export const algorithmApi = {
+  /** BKT 逐知识点掌握度（0-1），用于薄弱点识别与展示 */
+  bktMastery: (studentId: string) =>
+    api.get<{
+      status: string;
+      data: {
+        student_id: string;
+        mastery_map: Record<string, number>;
+        auc?: number;
+      };
+    }>(`/algorithms/bkt/mastery/${studentId}`),
+};
+
 // ---------- 学生画像 ----------
 export const profileApi = {
   get: (studentId: string) =>

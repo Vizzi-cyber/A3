@@ -60,6 +60,7 @@ import {
   learningDataApi,
   logReflectionApi,
   resourceApi,
+  knowledgeApi,
   apiGet,
 } from "../services/api";
 import { kbApi } from "../services/knowledgeBaseApi";
@@ -444,16 +445,45 @@ const LearningPathPage: React.FC = () => {
             suggestions.push("实践偏好分较低，建议增加练习比重");
           setProfileSuggestions(suggestions);
           setWeakReviewTopics((p.weak_areas || []).slice(0, 5));
-          // 薄弱知识点；画像只提供名称，掌握度必须来自真实学习记录
-          if (p.weak_areas?.length) {
-            setWeakPoints(
-              p.weak_areas.map((area: string) => ({
-                name: area,
-                mastery: 0,
-              })),
-            );
-          }
         }
+
+        // 薄弱知识点与掌握度：按知识点统计该生答题平均分，取最低的若干项
+        // （此前用画像 weak_areas 配硬编码 mastery=0，百分比不是真实值）
+        try {
+          const [histRes, kpRes] = await Promise.all([
+            // 后端 limit 上限为 200，超出会 422
+            learningDataApi.getHistory(studentId, 200).catch(() => null),
+            // 不传 subject：薄弱点可能跨课程，需要全部知识点才能查到名称
+            knowledgeApi.list().catch(() => null),
+          ]);
+          if (ignore) return;
+          const nameOf = new Map<string, string>(
+            (kpRes?.data?.data || []).map((k) => [k.kp_id, k.name]),
+          );
+          // 逐知识点聚合答题得分
+          const acc = new Map<string, { sum: number; n: number }>();
+          for (const q of histRes?.data?.quizzes || []) {
+            if (q.score == null) continue;
+            const cur = acc.get(q.kp_id) || { sum: 0, n: 0 };
+            cur.sum += q.score;
+            cur.n += 1;
+            acc.set(q.kp_id, cur);
+          }
+          const weak = [...acc.entries()]
+            .map(([kpId, v]) => ({
+              name: nameOf.get(kpId) || kpId,
+              mastery: Math.round(v.sum / v.n), // 该知识点答题平均分
+            }))
+            .filter((w) => w.mastery < 80) // 平均分低于 80 视为薄弱
+            .sort((a, b) => a.mastery - b.mastery)
+            .slice(0, 5);
+          if (weak.length) {
+            setWeakPoints(weak);
+            const names = weak.map((w) => w.name);
+            setWeakReviewTopics(names);
+            setSelectedWeakPoints(names);
+          }
+        } catch {}
       } catch {}
     };
     loadProfile();

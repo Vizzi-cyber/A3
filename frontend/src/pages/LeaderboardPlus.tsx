@@ -289,8 +289,11 @@ const LeaderboardPlus: React.FC = () => {
     let ignore = false;
     setLoading(true);
     // 六维均为后端真实计算（ai_collab = AI 问答次数，improvement = 前后测差值）
+    // 进步榜基于前后测配对差值，属长期指标，周/月窗口内通常无数据；
+    // 该维度自动用总榜，避免呈现一直是空榜。
+    const effectivePeriod = activeDim === "improvement" ? "all" : period;
     leaderboardPlusApi
-      .get(activeDim, period, 20)
+      .get(activeDim, effectivePeriod, 20)
       .then((res) => {
         if (ignore) return;
         const data = res.data.data.entries || [];

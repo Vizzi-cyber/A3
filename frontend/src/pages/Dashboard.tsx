@@ -275,7 +275,9 @@ const Dashboard: React.FC = () => {
           .then((res) => {
             if (res.data) {
               const d = res.data;
-              setStats(d.stats || stats);
+              // 用函数式更新取最新值：闭包里的 stats 是 effect 创建时的旧值，
+              // 直接回退会导致用初始值覆盖已加载的数据
+              setStats((prev) => d.stats || prev);
               setTasks(d.tasks || []);
               setRecommendations(d.recommendations || []);
               if (d.trend?.length) {
@@ -546,7 +548,12 @@ const Dashboard: React.FC = () => {
               <AnimatedRing
                 percent={
                   stats.total_kps > 0
-                    ? Math.min(100, Math.round((stats.mastered_kps / stats.total_kps) * 100))
+                    ? Math.min(
+                        100,
+                        Math.round(
+                          (stats.mastered_kps / stats.total_kps) * 100,
+                        ),
+                      )
                     : 0
                 }
                 size={96}
