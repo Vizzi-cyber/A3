@@ -96,7 +96,7 @@
 \addcontentsline{toc}{section}{作品简介}
 
 
-新工科课堂有三个老问题：学生基础参差却共用一份教案，实验设备有限且试错成本高，C 语言、电路、嵌入式三门课各教各的。LearnLab 用 12 个教育智能体协作应对：五层算法（IRT 测量→BKT/GKT 建模→FSRS 记忆→MAB 决策→大模型解释）为每个学生计算个性化学习路径与资源，浏览器端 MNA 电路仿真让实验随时随地零成本开展、AI 叠加故障诊断，并打通“编程思维→电路建模→嵌入式实现”跨课程链路。质量上有硬口径：算法专项断言 116 项全部通过，210 个路由冒烟 0 崩溃，24 个页面零 JS 错误；学生试点问卷已回收（前测 20 份、后测 17 份），内容有帮助满意度 100\%、零阻断性故障。系统已在腾讯云上线（www.dreamlast.cn），机制可复用至同类工科课程。
+新工科课堂有三个老问题：学生基础参差却共用一份教案，实验设备有限且试错成本高，C 语言、电路、嵌入式三门课各教各的。LearnLab 用 12 个教育智能体协作应对：五层算法（IRT 测量→BKT/GKT 建模→FSRS 记忆→MAB 决策→大模型解释）为每个学生计算个性化学习路径与资源，浏览器端 MNA 电路仿真让实验随时随地零成本开展、AI 叠加故障诊断，并打通“编程思维→电路建模→嵌入式实现”跨课程链路。质量上有硬口径：算法专项断言 116 项全部通过，211 个路由冒烟 0 崩溃，24 个页面零 JS 错误；学生试点问卷已回收（前测 20 份、后测 17 份），内容有帮助满意度 100\%、零阻断性故障。系统已在腾讯云上线（www.dreamlast.cn），机制可复用至同类工科课程。
 
 \section{一、项目概述}
 \subsection{（一）背景与意义}
@@ -360,7 +360,7 @@ AI 技术应用新场景 & 浏览器端 MNA+RK4 电路仿真叠加 AI 故障诊�
 
 
 
-测试方面，所有可复现脚本随网盘材料交付：算法层专项断言 \textbf{116 项全部通过}（覆盖 BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索/安全与接线加固）；API 全链路冒烟 38 项（用演示库真实数据训练 IRT/GKT/趋势学习器）；后端 \textbf{210 个路由 0 崩溃}，AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项全部通过；前端 E2E 49 个用例（7 个文件），MNA 数值验证 9/9（RC/RL/LC 对照教科书解析解）；前端构建 TypeScript + Vite 零错误。
+测试方面，所有可复现脚本随网盘材料交付：算法层专项断言 \textbf{116 项全部通过}（覆盖 BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索/安全与接线加固）；API 全链路冒烟 38 项（用演示库真实数据训练 IRT/GKT/趋势学习器）；后端 \textbf{211 个路由 0 崩溃}，AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项全部通过；前端 E2E 59 个用例（7 个文件），MNA 数值验证 9/9（RC/RL/LC 对照教科书解析解）；前端构建 TypeScript + Vite 零错误。
 
 
 
@@ -408,7 +408,7 @@ LLM API & 讯飞星火（教学场景，100 学生） & ¥300-500/月（开发�
 需求分析与学科界定 & 第 1-2 周 & 学科痛点调研、学科定位（计算机+电子信息） & 需求分析文档；学科-环节-痛点清单（3 环节 9 条） \\ \hline
 系统架构设计 & 第 3 周 & 技术选型、架构分层、智能体角色设计 & 架构设计文档；12 智能体角色与 AgentMessage 协议定义 \\ \hline
 核心模块开发 & 第 4-10 周 & 12 Agent、ADPP 算法、MNA 仿真、前端体系 & 五层算法引擎与 ADPP 代码入库；MNA 求解器过解析解对照；前端页面全量可用 \\ \hline
-测试与优化 & 第 11-12 周 & E2E 测试、性能/安全测试 & E2E 49 用例、算法专项断言 116 项全绿；210 路由冒烟 0 崩溃 \\ \hline
+测试与优化 & 第 11-12 周 & E2E 测试、性能/安全测试 & E2E 59 用例、算法专项断言 116 项全绿；211 路由冒烟 0 崩溃 \\ \hline
 AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点数据采集、多模型降级 & 9 条跨课程关联上线；3 类电路故障实验；5 家 LLM 降级链 \\ \hline
 小规模试点 & 第 15-16 周 & 面向电子信息类专业大一学生发放前后测与满意度问卷，学生自主使用平台学习 & 问卷已回收（前测 20 份、后测 17 份）；逐题统计与学生反馈见佐证材料 \\ \hline
 文档与提交 & 第 17 周 & 技术方案、测试报告、演示材料 & 全套参赛交付材料，验证脚本随源码可复现 \\ \hline
@@ -451,7 +451,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 \par\noindent\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{6.2cm}|}
 \hline
 \textbf{模块} & \textbf{具体任务} & \textbf{完成情况} \\ \hline
-系统架构 & FastAPI 分层后端（39 个 API 模块）与 SQLite 数据模型设计，覆盖学习、测验、诊断、协作、教师端全业务线 & 已上线运行；210 个路由冒烟测试 0 崩溃 \\ \hline
+系统架构 & FastAPI 分层后端（39 个 API 模块）与 SQLite 数据模型设计，覆盖学习、测验、诊断、协作、教师端全业务线 & 已上线运行；211 个路由冒烟测试 0 崩溃 \\ \hline
 教育算法引擎 & IRT/BKT/GKT/FSRS/MAB 五层闭环与 ADPP 路径规划引擎的实现、调参与离线评估 & 算法专项断言 116 项全部通过；按学生维度做时间留出评估，输出 AUC/LogLoss/Brier 及基线对照 \\ \hline
 智能体编排 & LangGraph 12 智能体调度、AgentMessage 通信协议、执行-评估-修正的反思循环 & 全部就位；反思循环最多 3 次、支持配置开关，评审时可现场演示 \\ \hline
 学科内容工程 & “C 语言—电路—STM32”课程内容与题库建设；浏览器端电路仿真 MNA 求解器；C 代码静态分析器 & MNA 数值验证 9/9，RC/RL/LC 结果与教科书解析解一致；错误捕捉覆盖典型语法与逻辑错误 \\ \hline
@@ -482,7 +482,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 学生端页面 & 学习中心、学习路径、AI 辅导、知识库、知识树、错题诊断、资源中心、个人空间等 10 个页面 & 全部完成；24 个页面逐页遍历零 JS 错误、零横向溢出 \\ \hline
 教师端页面 & 教学仪表盘、班级对比、学情预警、试点数据分析报告等 14 个页面 & 全部完成，试点报告支持一键导出 \\ \hline
 数据可视化 & 跨学科 DAG 知识图谱、学情趋势图表、排行榜、成就徽章墙 & 已上线；GIS 的空间布局与制图训练直接用于知识图谱的层次表达 \\ \hline
-交互质量保障 & 移动端适配、学习中心布局调优、新用户引导流程 & 前端 E2E 49 个用例（7 个文件）通过；构建 TypeScript + Vite 零错误 \\ \hline
+交互质量保障 & 移动端适配、学习中心布局调优、新用户引导流程 & 前端 E2E 59 个用例（7 个文件）通过；构建 TypeScript + Vite 零错误 \\ \hline
 材料排版交付 & 技术方案排版、佐证材料整理、源码包验收 & 已交付；系统运行佐证截图 13 张随材料提交 \\ \hline
 \end{tabular}\par
 
@@ -581,10 +581,10 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 \item API 全链路冒烟 38 项（演示库真实数据训练 IRT/GKT/趋势学习器并验证端到端输出）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 后端 210 个路由 0 崩溃；AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项、真实环境 HTTP 22 项全部通过
+\item 后端 211 个路由 0 崩溃；AIC 功能回归 29 项、数据流 23 项、Agent/LLM 专项 23 项、真实环境 HTTP 22 项全部通过
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 前端 E2E 49 个用例（7 文件）+ MNA 数值验证 9/9（RC/RL/LC 对照解析解）
+\item 前端 E2E 59 个用例（7 文件）+ MNA 数值验证 9/9（RC/RL/LC 对照解析解）
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 提交前全系统实测 3 轮：24 个页面逐页遍历（学生 10 页 + 教师 14 页）零 JS 错误、零横向溢出；API 全接口 26 项通过（含越权访问 403 校验）；新用户注册→引导问卷→路径生成→成就解锁 11 步全旅程零异常；生产环境 24 小时零 500
@@ -600,7 +600,10 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 \item 系统运行截图 13 张（学生端 8 页 + 教师端 4 页 + 登录页）：见《佐证材料》第三章「系统功能实证」
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 测试验证数据摘要表（116 项断言 / 210 路由 / 49 E2E 等）：见《佐证材料》第一章「测试验证数据摘要」
+\item 测试验证数据摘要表（116 项断言 / 211 路由 / 59 项 E2E 等）：见《佐证材料》第一章「测试验证数据摘要」
+\end{itemize}
+\begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
+\item 各项能力的验证口径与复现方式：见网盘材料《\dots{}功能验证清单.pdf》
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 试点前后测与满意度数据：已回收（前测 20 份、后测 17 份），逐题统计与学生反馈原文见《佐证材料》第五章「试点前后测问卷与结果」
@@ -624,7 +627,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 
 
 
-第二层价值在跨学科。C 语言、电路、嵌入式三门课各教各的是新工科的老毛病，本系统用 9 条跨课程知识关联把三门课的知识图谱接起来——学完 C 语言的位运算会自动关联到单片机的寄存器配置，电路的分压采样会关联到 ADC 采集；路径规划编排的不是单课程序列，而是跨课程的学习顺序；综合实战项目（智能温控风扇）让学生把三门课的知识用在一个真实作品上。第三层价值是工程可信度：算法专项断言 116 项全部通过，210 个路由冒烟 0 崩溃，MNA 数值求解 9/9 与解析解一致，5 家 LLM 自动降级链加 6 道防幻觉防线，生产环境实测 24 小时零 500 错误。这些数字共同说明一件事：\textbf{这是一套拿得出源码、可复现、敢在评审现场运行的真实系统}，而不是一份纸面方案。试点问卷已回收（前测 20 份、后测 17 份），前后测由同一批学生在使用系统前后配对完成：电路分析方向正确率由 80\% 提升至 88\%，且在题目由正向计算加深为逆向换算的前提下依然提升；满意度三项均无负面评价、零阻断性故障。试点同时定位出“编程概念”这一具体难点，并在本轮内容迭代中针对性补强了讲义原理讲解。
+第二层价值在跨学科。C 语言、电路、嵌入式三门课各教各的是新工科的老毛病，本系统用 9 条跨课程知识关联把三门课的知识图谱接起来——学完 C 语言的位运算会自动关联到单片机的寄存器配置，电路的分压采样会关联到 ADC 采集；路径规划编排的不是单课程序列，而是跨课程的学习顺序；综合实战项目（智能温控风扇）让学生把三门课的知识用在一个真实作品上。第三层价值是工程可信度：算法专项断言 116 项全部通过，211 个路由冒烟 0 崩溃，MNA 数值求解 9/9 与解析解一致，5 家 LLM 自动降级链加 6 道防幻觉防线，生产环境实测 24 小时零 500 错误。这些数字共同说明一件事：\textbf{这是一套拿得出源码、可复现、敢在评审现场运行的真实系统}，而不是一份纸面方案。试点问卷已回收（前测 20 份、后测 17 份），前后测由同一批学生在使用系统前后配对完成：电路分析方向正确率由 80\% 提升至 88\%，且在题目由正向计算加深为逆向换算的前提下依然提升；满意度三项均无负面评价、零阻断性故障。试点同时定位出“编程概念”这一具体难点，并在本轮内容迭代中针对性补强了讲义原理讲解。
 
 \subsection{（二）技术边界说明}
 
@@ -668,7 +671,7 @@ AIC 功能增强 & 第 13-15 周 & 跨学科链路、故障诊断实验、试点
 明确聚焦学科专业、界定领域场景 & 二（一）学科专业界定 \\ \hline
 学科需求分析报告 & 二（二）核心痛点梳理（教学/实验实训/自主学习三环节） \\ \hline
 AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块） \\ \hline
-作品功能说明 & 《03\_功能与验证报告》（学生端 9 模块 + 教师端 6 模块逐项说明）；一（二）核心目标表 \\ \hline
+作品功能说明 & 网盘材料《\dots{}功能说明.pdf》（学生端 9 模块 + 教师端 9 模块逐项说明）；一（二）核心目标表 \\ \hline
 效果验证依据 & 六、应用效果（试点实测结果 + 算法对照设计 + 功能验证数据） \\ \hline
 跨专业组队分工与协作机制 & 五（三）团队协作 \\ \hline
 创新点及对比传统方式优势 & 一（三）为什么必须用 AI；三（三）2 五层算法闭环；七（一）核心创新 \\ \hline
@@ -719,7 +722,7 @@ AI 技术应用方案 & （三）解决方案设计（架构/选型/核心模块
 \item 电路仿真（frontend/src/pages/circuit-simulator/utils/mna-solver.ts）：并查集 + MNA 直流稳态 + 状态变量法 RK4 暂态，数值经解析解对照验证
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
-\item 训练/验证脚本（backend/scripts/，一键复现）：\texttt{verify\_\allowbreak{}ai\_\allowbreak{}algorithms.\allowbreak{}py}（算法断言）、\texttt{evaluate\_\allowbreak{}algorithms.\allowbreak{}py}（按学生时间留出，输出 AUC/LogLoss/Brier/置信区间及基线对照）、\texttt{verify\_\allowbreak{}p0\_\allowbreak{}wiring\_\allowbreak{}api.\allowbreak{}py}（38 项 API 全链路）、\texttt{verify\_\allowbreak{}aic\_\allowbreak{}features.\allowbreak{}py}（29 项回归）、\texttt{verify\_\allowbreak{}all\_\allowbreak{}routes.\allowbreak{}py}（210 路由冒烟）、\texttt{verify\_\allowbreak{}dataflow.\allowbreak{}py} 等
+\item 训练/验证脚本（backend/scripts/，一键复现）：\texttt{verify\_\allowbreak{}ai\_\allowbreak{}algorithms.\allowbreak{}py}（算法断言）、\texttt{evaluate\_\allowbreak{}algorithms.\allowbreak{}py}（按学生时间留出，输出 AUC/LogLoss/Brier/置信区间及基线对照）、\texttt{verify\_\allowbreak{}p0\_\allowbreak{}wiring\_\allowbreak{}api.\allowbreak{}py}（38 项 API 全链路）、\texttt{verify\_\allowbreak{}aic\_\allowbreak{}features.\allowbreak{}py}（29 项回归）、\texttt{verify\_\allowbreak{}all\_\allowbreak{}routes.\allowbreak{}py}（211 路由冒烟）、\texttt{verify\_\allowbreak{}dataflow.\allowbreak{}py} 等
 \end{itemize}
 \begin{itemize}[leftmargin=2em,itemsep=0pt,topsep=0pt]
 \item 训练端点：\texttt{POST /\allowbreak{}algorithms/\allowbreak{}irt/\allowbreak{}fit}、\texttt{/\allowbreak{}algorithms/\allowbreak{}bkt/\allowbreak{}fit}、\texttt{/\allowbreak{}algorithms/\allowbreak{}gkt/\allowbreak{}train}、\texttt{/\allowbreak{}algorithms/\allowbreak{}trend/\allowbreak{}train}（启动时自动拟合 BKT/IRT）
