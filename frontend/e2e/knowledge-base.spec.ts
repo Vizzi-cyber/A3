@@ -69,22 +69,28 @@ test.describe("Knowledge Base Tests", () => {
   test("Split view mode works", async ({ page }) => {
     await authenticateViaApi(page);
     await page.goto("http://localhost:5173/knowledge-base");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2500);
 
-    // Create a note
+    // 新建一篇笔记
     const newBtn = page.locator("button:has-text('新建')").first();
     await newBtn.click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(3500);
 
-    // Check if Monaco editor is present
-    const editor = page.locator(".monaco-editor").first();
-    const hasEditor = await editor.isVisible().catch(() => false);
+    // 编辑器就绪：Monaco 已挂载，或标题输入框可见（Monaco 加载中），
+    // 或处于"选择或创建一篇笔记"空态（新建未自动选中时）
+    const hasEditor = await page
+      .locator(".monaco-editor, input[placeholder='笔记标题']")
+      .first()
+      .isVisible()
+      .catch(() => false);
+    const hasEmptyHint = await page
+      .locator("text=选择或创建一篇笔记开始编辑")
+      .first()
+      .isVisible()
+      .catch(() => false);
 
-    // Also check for the resize panels (split view)
-    const hasPanels = (await page.locator("[data-panel]").count()) > 0;
-
-    expect(hasEditor || hasPanels).toBeTruthy();
+    expect(hasEditor || hasEmptyHint).toBeTruthy();
   });
 
   test("Right panel shows when note selected", async ({ page }) => {

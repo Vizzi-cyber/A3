@@ -678,7 +678,7 @@ const Tutor: React.FC = () => {
       <div className="flex-1 flex flex-col min-h-0">
         <Card
           className="h-full flex-1 flex flex-col border border-slate-100 rounded-2xl shadow-card relative z-10"
-          bordered={false}
+          variant="borderless"
           title={
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-glow">
@@ -1027,7 +1027,7 @@ const Tutor: React.FC = () => {
         <Card
           title={<span className="font-semibold text-sm">历史会话</span>}
           size="small"
-          bordered={false}
+          variant="borderless"
           className="rounded-2xl border border-slate-100 shadow-card relative z-10"
           styles={{ body: { padding: 8, maxHeight: 200, overflowY: "auto" } }}
           loading={conversationsLoading}
@@ -1073,7 +1073,7 @@ const Tutor: React.FC = () => {
         <Card
           title={<span className="font-semibold text-sm">学情雷达</span>}
           size="small"
-          bordered={false}
+          variant="borderless"
           className="rounded-2xl border border-slate-100 shadow-card relative z-10"
         >
           <div className="h-48">
@@ -1118,7 +1118,7 @@ const Tutor: React.FC = () => {
         <Card
           title={<span className="font-semibold text-sm">薄弱知识点</span>}
           size="small"
-          bordered={false}
+          variant="borderless"
           className="rounded-2xl border border-slate-100 shadow-card relative z-10"
         >
           <div className="flex flex-wrap gap-1.5">
@@ -1142,7 +1142,7 @@ const Tutor: React.FC = () => {
         <Card
           title={<span className="font-semibold text-sm">资源偏好</span>}
           size="small"
-          bordered={false}
+          variant="borderless"
           className="rounded-2xl border border-slate-100 shadow-card relative z-10"
         >
           {Object.keys(resourcePref).length > 0 ? (
