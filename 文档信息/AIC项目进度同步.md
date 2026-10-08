@@ -38,7 +38,7 @@
 | 第二轮 审计加固 | 双轴审查修复 3 个链路 bug + 8 处健壮性缺陷（趋势分析数据饿死、收益首反馈丢失、maintain 臂缺失等） | 53→62 项 |
 | 第三轮 算法补全 | GKT 可学习门控图卷积（自监督）、趋势权重学习器（L2 逻辑回归掉队预警）、匹配 MAB 探索层+收益闭环、MNA RK4 暂态分析（电感直流短路一并修复，数值对照解析解 9/9） | 62→77 项 |
 | 第四轮 文档-代码对齐 | FSRS 到期→路径复习阶段、KT 注入三处智能体、IRT b→匹配难度（修恒 1.0 bug）、JWT /auth/refresh+前端静默重放、反思循环接线（REFLECTION_ENABLED）、排行榜六维真实化、BFS/DFS 动画、kbStore 防抖；README/技术方案/进度同步勘误 | 77→91 项（API 16→26） |
-| 第五轮 全量后端审计修复 | 修 40+ 真问题：quiz_score 榜恒 500（count(id)）、tutor 三处越权、qa-feedback 契约断裂、反思日志正则失效、作业答案泄漏、自加分入口、难度量纲错位（0-1 vs 1-5）、IRT 复合键断路、tutor 全局锁串行化、WS 泄漏+越权、缓存串号、NCD 孤立引擎接线、/generate 环防护等 | 91→100 项（API 26→38，210 路由） |
+| 第五轮 全量后端审计修复 | 修 40+ 真问题：quiz_score 榜恒 500（count(id)）、tutor 三处越权、qa-feedback 契约断裂、反思日志正则失效、作业答案泄漏、自加分入口、难度量纲错位（0-1 vs 1-5）、IRT 复合键断路、tutor 全局锁串行化、WS 泄漏+越权、缓存串号、NCD 孤立引擎接线、/generate 环防护等 | 91→100 项（API 26→38，211 路由） |
 
 ### 测试验证记录（2026-09-05 最新）
 
@@ -47,7 +47,7 @@
 | 算法专项 | 116 项断言（BKT/IRT/FSRS/MAB/GKT/NCD/时间留出评估/五层接线/趋势学习器/匹配探索） | ✅ 116/116 | `backend/scripts/verify_ai_algorithms.py` |
 | 算法接线 API 冒烟 | 38 项（演示库真实数据训练 IRT/GKT/趋势学习器 + MAB 闭环） | ✅ 38/38 | `backend/scripts/verify_p0_wiring_api.py` |
 | AIC 功能回归 | 29 项 | ✅ 29/29 | `backend/scripts/verify_aic_features.py` |
-| 全路由冒烟 | 210 个路由 | ✅ 0 崩溃 | `backend/scripts/verify_all_routes.py` |
+| 全路由冒烟 | 211 个路由 | ✅ 0 崩溃 | `backend/scripts/verify_all_routes.py` |
 | MNA 数值对照 | RC/RL/LC 解析解验证 | ✅ 9/9 | `cd frontend && npm run test:mna` |
 | 全链路数据流 | 23 项 | ✅ 23/23 | `backend/scripts/verify_dataflow.py` |
 | Agent/LLM 专项 | 23 项 | ✅ 23/23 | `backend/scripts/verify_agent_llm.py` |
