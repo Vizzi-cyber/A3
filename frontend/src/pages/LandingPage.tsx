@@ -684,7 +684,7 @@ const LandingPage: React.FC = () => {
               <div className="hero-title">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs text-primary font-medium mb-6">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  第十五届中国软件杯 A3 赛题作品
+                  AI 赋能新工科跨学科学习
                 </div>
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tighter text-slate-900">
                   <AnimatedText text="让 AI 为你" delay={0.15} />
@@ -1483,8 +1483,7 @@ const LandingPage: React.FC = () => {
                 <span className="font-semibold text-slate-900">LearnLab</span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                基于大模型的个性化资源生成与学习多智能体系统，第十五届中国软件杯大赛
-                A3 赛题作品。
+                基于大模型的个性化资源生成与学习多智能体系统，面向新工科跨学科学习场景。
               </p>
             </div>
             <div>
@@ -1523,7 +1522,7 @@ const LandingPage: React.FC = () => {
               &copy; {new Date().getFullYear()} LearnLab
             </div>
             <div className="flex items-center gap-6 text-xs text-slate-400">
-              <span>第十五届中国软件杯 A3 赛题</span>
+              <span>AI 赋能新工科跨学科学习</span>
               <span>基于大模型的个性化学习平台</span>
             </div>
           </div>

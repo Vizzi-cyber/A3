@@ -965,21 +965,39 @@ async def get_pilot_report(
     zq = zq.group_by(QuizResultModel.student_id)
     quiz_map = {r.student_id: r for r in zq.all()}
 
-    # 前后测对比（全班/班级）：前1/3 vs 后1/3 平均分
+    # 前后测对比：以正式测评（assessment_phase=pre/post）为准。
+    # 注意：不能用"全部测验按时间切前1/3 vs 后1/3"代替——后期练习难度更高，
+    # 会算出负提升，且与前后测问卷口径无关。
     pre_post = None
     if not student_id:
-        pq = db.query(QuizResultModel.score).filter(QuizResultModel.created_at >= since)
+        pq = db.query(
+            QuizResultModel.assessment_phase,
+            QuizResultModel.score,
+        ).filter(
+            QuizResultModel.created_at >= since,
+            QuizResultModel.assessment_phase.in_(["pre", "post"]),
+        )
         _sf = _scope_filter(QuizResultModel)
         if _sf is not None:
             pq = pq.filter(_sf)
-        all_scores = pq.order_by(QuizResultModel.created_at.asc()).all()
-        n = len(all_scores)
-        if n >= 6:
-            third = n // 3
-            pre = sum(s[0] for s in all_scores[:third]) / third
-            post = sum(s[0] for s in all_scores[-third:]) / third
-            pre_post = {"pre_avg": round(pre, 1), "post_avg": round(post, 1),
-                        "improvement": round(post - pre, 1), "sample_size": n}
+        phase_scores: Dict[str, List[float]] = {"pre": [], "post": []}
+        for phase, score in pq.all():
+            if phase in phase_scores and score is not None:
+                phase_scores[phase].append(score)
+        pre_list, post_list = phase_scores["pre"], phase_scores["post"]
+        # 需两侧各有样本才能对比
+        if pre_list and post_list:
+            pre = sum(pre_list) / len(pre_list)
+            post = sum(post_list) / len(post_list)
+            pre_post = {
+                "pre_avg": round(pre, 1),
+                "post_avg": round(post, 1),
+                "improvement": round(post - pre, 1),
+                # 正式测评份数 = 前后测样本量（如 20 份前测 / 17 份后测取较小侧）
+                "sample_size": min(len(pre_list), len(post_list)),
+                "pre_count": len(pre_list),
+                "post_count": len(post_list),
+            }
 
     # ---------- 3. 掌握度趋势（student_trends） ----------
     tq = db.query(
@@ -1094,12 +1112,15 @@ async def get_pilot_report(
             "",
         ]
         if pre_post:
+            # 提升幅度按实际正负号显示，避免负数被写成 "+-18.1"
+            imp = pre_post["improvement"]
+            sign = "+" if imp >= 0 else ""
             lines += [
                 "## 二、前后测成绩对比",
                 "",
-                f"- 前测平均分：{pre_post['pre_avg']}",
-                f"- 后测平均分：{pre_post['post_avg']}",
-                f"- 提升幅度：**+{pre_post['improvement']} 分**（样本 {pre_post['sample_size']} 次测验）",
+                f"- 前测平均分：{pre_post['pre_avg']}（{pre_post.get('pre_count', pre_post['sample_size'])} 份）",
+                f"- 后测平均分：{pre_post['post_avg']}（{pre_post.get('post_count', pre_post['sample_size'])} 份）",
+                f"- 提升幅度：**{sign}{imp} 分**",
                 "",
             ]
         if experiment_map:

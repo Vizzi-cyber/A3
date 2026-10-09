@@ -172,6 +172,10 @@ const Tutor: React.FC = () => {
     { name: string; mastery: number }[]
   >([]);
   const [resourcePref, setResourcePref] = useState<Record<string, number>>({});
+  // 知识点掌握度（0-1 比值 → 百分比），独立于偏好计数，避免量纲混算导致各项相等
+  const [kbMastery, setKbMastery] = useState<{ name: string; pct: number }[]>(
+    [],
+  );
   const [profile, setProfile] = useState<any>(null);
 
   // 会话列表
@@ -213,16 +217,13 @@ const Tutor: React.FC = () => {
         // 雷达图：使用 buildRadarData 的数据（6维中文标签）
         // radarValues 保留作为备用，但雷达图已改用 radarData
 
-        // 资源偏好：从 practical_preferences 提取
+        // 资源偏好：练习类型 / 交互偏好（计数合并，展示时归一化为占比）
         const pp = p.practical_preferences || {};
         const prefMap: Record<string, number> = {};
         if (pp.preferred_practice_types?.length) {
           pp.preferred_practice_types.forEach((t) => {
             prefMap[t] = (prefMap[t] || 0) + 1;
           });
-        }
-        if (pp.overall_score) {
-          prefMap["综合评分"] = Math.round(pp.overall_score);
         }
         if (pp.interaction_pref) {
           const prefLabel =
@@ -231,7 +232,7 @@ const Tutor: React.FC = () => {
               : pp.interaction_pref === "audio"
                 ? "音频"
                 : "文本";
-          prefMap[prefLabel] = (prefMap[prefLabel] || 0) + 10;
+          prefMap[prefLabel] = (prefMap[prefLabel] || 0) + 1;
         }
         setResourcePref(prefMap);
       }
@@ -267,18 +268,21 @@ const Tutor: React.FC = () => {
           }
         }
 
-        // 资源偏好：合并 profile_summary 中的数据
+        // 知识点掌握度单独存放为百分比（0-1 比值 → 0-100），不与偏好计数混算
         const profileSummary = data.profile_summary;
         if (profileSummary?.knowledge_base) {
-          setResourcePref((prev) => {
-            const merged = { ...prev };
-            Object.entries(profileSummary.knowledge_base).forEach(([k, v]) => {
-              if (typeof v === "number" && k !== "overall_score") {
-                merged[k] = Math.round(v);
-              }
-            });
-            return merged;
-          });
+          const kb = profileSummary.knowledge_base;
+          const entries = Object.entries(kb).filter(
+            ([k, v]) =>
+              typeof v === "number" &&
+              !["overall_score", "academic_level"].includes(k),
+          );
+          setKbMastery(
+            entries.map(([k, v]) => ({
+              name: k,
+              pct: Math.round(Math.min(1, Math.max(0, v as number)) * 100),
+            })),
+          );
         }
       }
     } catch {
@@ -1145,10 +1149,8 @@ const Tutor: React.FC = () => {
           variant="borderless"
           className="rounded-2xl border border-slate-100 shadow-card relative z-10"
         >
-          {Object.keys(resourcePref).length > 0 ? (
+          {Object.keys(resourcePref).length > 0 || kbMastery.length > 0 ? (
             (() => {
-              const total =
-                Object.values(resourcePref).reduce((a, b) => a + b, 0) || 1;
               const colors = [
                 "#4f46e5",
                 "#10B981",
@@ -1156,23 +1158,31 @@ const Tutor: React.FC = () => {
                 "#EF4444",
                 "#0D9488",
               ];
-              return Object.entries(resourcePref).map(([label, value], idx) => {
-                const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-                return (
-                  <div key={label} className={idx > 0 ? "mt-2" : ""}>
-                    <div className="flex justify-between text-xs text-slate-500 mb-1">
-                      <span>{label}</span>
-                      <span>{pct}%</span>
-                    </div>
-                    <Progress
-                      percent={pct}
-                      strokeColor={colors[idx % colors.length]}
-                      size="small"
-                      showInfo={false}
-                    />
+              // 偏好计数归一化为占比（同量纲，求和有意义）
+              const total =
+                Object.values(resourcePref).reduce((a, b) => a + b, 0) || 1;
+              const rows = [
+                ...Object.entries(resourcePref).map(([label, value]) => ({
+                  label,
+                  pct: Math.round((value / total) * 100),
+                })),
+                // 知识点掌握度已是百分比，直接展示
+                ...kbMastery.map((m) => ({ label: m.name, pct: m.pct })),
+              ];
+              return rows.map((r, idx) => (
+                <div key={r.label} className={idx > 0 ? "mt-2" : ""}>
+                  <div className="flex justify-between text-xs text-slate-500 mb-1">
+                    <span>{r.label}</span>
+                    <span>{r.pct}%</span>
                   </div>
-                );
-              });
+                  <Progress
+                    percent={r.pct}
+                    strokeColor={colors[idx % colors.length]}
+                    size="small"
+                    showInfo={false}
+                  />
+                </div>
+              ));
             })()
           ) : (
             <span className="text-xs text-slate-400">暂无数据</span>
