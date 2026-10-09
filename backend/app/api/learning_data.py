@@ -45,7 +45,11 @@ class LearningRecordRequest(BaseModel):
 class ExperimentLogRequest(BaseModel):
     student_id: str
     experiment_id: Optional[str] = Field(None, max_length=64)
-    experiment_type: Literal["circuit_simulate", "circuit_fault", "stm32_simulate"]
+    # 与前端各上报点保持一致：电路仿真/电路故障/STM32 仿真/STM32 实验/跨学科实战项目
+    experiment_type: Literal[
+        "circuit_simulate", "circuit_fault", "stm32_simulate",
+        "stm32_experiment", "cross_project",
+    ]
     action: Literal["run", "diagnose", "submit", "complete"] = "run"
     detail: Dict[str, Any] = {}
     duration: int = Field(0, ge=0, le=86400)

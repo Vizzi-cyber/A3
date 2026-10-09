@@ -1110,7 +1110,8 @@ async def get_pilot_report(
                 "|---|---|",
             ]
             labels = {"circuit_simulate": "模拟电路仿真", "circuit_fault": "故障诊断实验",
-                      "stm32_simulate": "STM32仿真", "stm32_experiment": "STM32实验实训"}
+                      "stm32_simulate": "STM32仿真", "stm32_experiment": "STM32实验实训",
+                      "cross_project": "跨学科实战项目"}
             for k, v in experiment_map.items():
                 lines.append(f"| {labels.get(k, k)} | {v} |")
             lines.append("")

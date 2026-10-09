@@ -845,8 +845,13 @@ export const learningDataApi = {
     }>("/learning-data/quiz", data),
   submitExperiment: (data: {
     student_id: string;
-    experiment_type: string;
-    action?: string;
+    experiment_type:
+      | "circuit_simulate"
+      | "circuit_fault"
+      | "stm32_simulate"
+      | "stm32_experiment"
+      | "cross_project";
+    action?: "run" | "diagnose" | "submit" | "complete";
     detail?: Record<string, unknown>;
     duration?: number;
   }) => api.post<{ status: string }>("/learning-data/experiment", data),
