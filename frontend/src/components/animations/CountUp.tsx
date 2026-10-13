@@ -33,6 +33,10 @@ const CountUp: React.FC<CountUpProps> = ({
     const el = ref.current;
     if (!el) return;
 
+    // StrictMode 下 effect 会执行两次（挂载→卸载→再挂载），useRef 不会随之重置。
+    // 若不复位标志位，第二次执行时 play() 会被直接 return，数字永远停在 0。
+    playedRef.current = false;
+
     const play = () => {
       if (playedRef.current) return;
       playedRef.current = true;
@@ -45,23 +49,39 @@ const CountUp: React.FC<CountUpProps> = ({
       });
     };
 
-    if (!scrollTrigger) {
+    // 关闭滚动触发，或元素已在视口内 → 立即播放
+    //   首屏元素在 ScrollTrigger 建立前就已越过触发线，onEnter 不会触发，
+    //   会导致数字停在 0（滚动一下才出现）。这里显式判断一次。
+    const inViewport = () => {
+      const r = el.getBoundingClientRect();
+      return r.top < window.innerHeight * 0.95 && r.bottom > 0;
+    };
+    if (!scrollTrigger || inViewport()) {
       play();
       return;
     }
 
     // 初始显示 0，滚动到视口才滚动
+    let killed = false;
+    let killSt: (() => void) | undefined;
     import("gsap/ScrollTrigger").then(({ ScrollTrigger }) => {
+      if (killed) return; // 组件已卸载，不再创建
       gsap.registerPlugin(ScrollTrigger);
       const st = ScrollTrigger.create({
         trigger: el,
-        start: "top 92%",
+        start: "top 95%",
         once: true,
         onEnter: play,
       });
-      return () => st.kill();
+      killSt = () => st.kill();
+      // 异步加载期间元素可能已滚入视口
+      if (inViewport()) play();
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      killed = true;
+      killSt?.();
+    };
   }, [value, duration, scrollTrigger]);
 
   const formatted = display.toLocaleString("zh-CN", {

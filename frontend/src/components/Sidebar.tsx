@@ -48,6 +48,8 @@ interface NavLeaf {
   key: string;
   icon: React.ReactNode;
   label: string;
+  /** 一句话用途说明，帮新用户判断这个板块是干什么的 */
+  desc?: string;
 }
 
 type NavEntry =
@@ -56,20 +58,61 @@ type NavEntry =
   | { type: "group"; key: string; label: string; children: NavLeaf[] };
 
 const studentMenuItems: NavEntry[] = [
-  { key: "/", icon: <DashboardOutlined />, label: "学习仪表盘" },
+  {
+    key: "/",
+    icon: <DashboardOutlined />,
+    label: "学习仪表盘",
+    desc: "总览进度与今日任务",
+  },
 
-  { key: "/tutor", icon: <RobotOutlined />, label: "智能辅导" },
-  { key: "/learning-path", icon: <NodeIndexOutlined />, label: "学习路径" },
-  { key: "/resources", icon: <ReadOutlined />, label: "学习中心" },
-  { key: "/challenges", icon: <ThunderboltOutlined />, label: "知识冒险" },
-  { key: "/error-diagnosis", icon: <BugOutlined />, label: "错误诊断" },
+  {
+    key: "/tutor",
+    icon: <RobotOutlined />,
+    label: "智能辅导",
+    desc: "随时提问，AI 引导你自己想通",
+  },
+  {
+    key: "/learning-path",
+    icon: <NodeIndexOutlined />,
+    label: "学习路径",
+    desc: "规划先学什么、后学什么",
+  },
+  {
+    key: "/resources",
+    icon: <ReadOutlined />,
+    label: "学习中心",
+    desc: "按知识点看讲义、代码和练习",
+  },
+  {
+    key: "/challenges",
+    icon: <ThunderboltOutlined />,
+    label: "知识冒险",
+    desc: "闯关式刷题，带排行榜",
+  },
+  {
+    key: "/error-diagnosis",
+    icon: <BugOutlined />,
+    label: "错误诊断",
+    desc: "贴出报错代码，定位错在哪",
+  },
   {
     key: "/project-collaboration",
     icon: <ProjectOutlined />,
     label: "项目协作",
+    desc: "小组作业拆任务分工",
   },
-  { key: "/personal", icon: <UserOutlined />, label: "个人空间" },
-  { key: "/knowledge-base", icon: <BookOutlined />, label: "知识库" },
+  {
+    key: "/personal",
+    icon: <UserOutlined />,
+    label: "个人空间",
+    desc: "你的笔记和复盘记录",
+  },
+  {
+    key: "/knowledge-base",
+    icon: <BookOutlined />,
+    label: "知识库",
+    desc: "自建笔记，用双链连成知识网",
+  },
 ];
 
 const teacherMenuItems: NavEntry[] = [
@@ -79,7 +122,11 @@ const teacherMenuItems: NavEntry[] = [
     label: "教学管理",
     children: [
       { key: "/teacher", icon: <DashboardOutlined />, label: "首页" },
-      { key: "/teacher/assignments", icon: <FileTextOutlined />, label: "作业管理" },
+      {
+        key: "/teacher/assignments",
+        icon: <FileTextOutlined />,
+        label: "作业管理",
+      },
       { key: "/teacher/students", icon: <TeamOutlined />, label: "学生管理" },
       { key: "/teacher/resources", icon: <BookOutlined />, label: "备课资源" },
     ],
@@ -89,11 +136,31 @@ const teacherMenuItems: NavEntry[] = [
     key: "analytics",
     label: "学情与报告",
     children: [
-      { key: "/teacher/analytics", icon: <BarChartOutlined />, label: "学情分析" },
-      { key: "/teacher/class-analytics", icon: <LineChartOutlined />, label: "班级学情" },
-      { key: "/teacher/class-comparison", icon: <ExperimentOutlined />, label: "班级对比" },
-      { key: "/teacher/reports", icon: <FileExcelOutlined />, label: "报告导出" },
-      { key: "/teacher/pilot-report", icon: <BarChartOutlined />, label: "试点数据分析" },
+      {
+        key: "/teacher/analytics",
+        icon: <BarChartOutlined />,
+        label: "学情分析",
+      },
+      {
+        key: "/teacher/class-analytics",
+        icon: <LineChartOutlined />,
+        label: "班级学情",
+      },
+      {
+        key: "/teacher/class-comparison",
+        icon: <ExperimentOutlined />,
+        label: "班级对比",
+      },
+      {
+        key: "/teacher/reports",
+        icon: <FileExcelOutlined />,
+        label: "报告导出",
+      },
+      {
+        key: "/teacher/pilot-report",
+        icon: <BarChartOutlined />,
+        label: "试点数据分析",
+      },
     ],
   },
   {
@@ -101,9 +168,21 @@ const teacherMenuItems: NavEntry[] = [
     key: "ai-tools",
     label: "智能教学工具",
     children: [
-      { key: "/teacher/lesson-plan", icon: <BulbOutlined />, label: "AI智能备课" },
-      { key: "/teacher/insights", icon: <LineChartOutlined />, label: "AI学情洞察" },
-      { key: "/teacher/smart-quiz", icon: <RocketOutlined />, label: "AI智能组卷" },
+      {
+        key: "/teacher/lesson-plan",
+        icon: <BulbOutlined />,
+        label: "AI智能备课",
+      },
+      {
+        key: "/teacher/insights",
+        icon: <LineChartOutlined />,
+        label: "AI学情洞察",
+      },
+      {
+        key: "/teacher/smart-quiz",
+        icon: <RocketOutlined />,
+        label: "AI智能组卷",
+      },
     ],
   },
   {
@@ -111,7 +190,11 @@ const teacherMenuItems: NavEntry[] = [
     key: "account",
     label: "账户",
     children: [
-      { key: "/teacher/settings", icon: <SettingOutlined />, label: "系统设置" },
+      {
+        key: "/teacher/settings",
+        icon: <SettingOutlined />,
+        label: "系统设置",
+      },
       { key: "/teacher/personal", icon: <UserOutlined />, label: "个人空间" },
     ],
   },
@@ -152,19 +235,30 @@ const Sidebar: React.FC = () => {
   };
 
   const navMenuItems = React.useMemo(() => {
+    // 收起态与手机端都放不下两行，降级为单行标题（tooltip 里带上用途说明）
+    const compact = collapsed || isMobile;
     const toMenuLeaf = (item: NavLeaf) => ({
       key: item.key,
       icon: item.icon,
-      label: collapsed && !isMobile ? (
-        <Tooltip title={item.label} placement="right">
+      label: compact ? (
+        <Tooltip
+          title={item.desc ? `${item.label} — ${item.desc}` : item.label}
+          placement="right"
+        >
           <span>{item.label}</span>
         </Tooltip>
       ) : (
         <span
+          className="block leading-tight py-0.5"
           onMouseEnter={() => preloadRoute(item.key)}
           onFocus={() => preloadRoute(item.key)}
         >
-          {item.label}
+          <span className="block">{item.label}</span>
+          {item.desc && (
+            <span className="block text-[11px] text-slate-400 truncate">
+              {item.desc}
+            </span>
+          )}
         </span>
       ),
     });
@@ -194,98 +288,102 @@ const Sidebar: React.FC = () => {
         />
       )}
       <Sider
-      width={240}
-      collapsedWidth={80}
-      collapsed={isMobile ? false : collapsed}
-      theme="light"
-      className={`fixed left-0 top-0 h-screen z-50 border-r border-slate-200 bg-white transition-transform duration-300 ${
-        isMobile && collapsed ? "-translate-x-full" : "translate-x-0"
-      } ${isMobile && !collapsed ? "shadow-2xl" : ""}`}
-    >
-      {/* Logo区域 */}
-      <div className="h-16 flex items-center px-5 border-b border-slate-100 justify-between">
-        <Space>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary">
-            <RobotOutlined className="text-white text-lg" />
-          </div>
-          {(!collapsed || isMobile) && (
-            <Typography.Title
-              level={5}
-              className="!m-0 text-slate-900 font-bold tracking-tight"
-            >
-              LearnLab
-            </Typography.Title>
-          )}
-        </Space>
-        <button
-          onClick={toggleSidebar}
-          className="text-slate-400 hover:text-primary transition-colors p-1 rounded-lg hover:bg-slate-50"
-        >
-          {!isMobile && collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-        </button>
-      </div>
-
-      {/* 菜单区域 */}
-      <div className="py-4 px-2">
-        <Menu
-          mode="inline"
-          inlineCollapsed={!isMobile && collapsed}
-          selectedKeys={[location.pathname]}
-          items={navMenuItems}
-          onClick={({ key }) => handleNavigate(key)}
-          className="border-r-0 bg-transparent"
-          style={
-            {
-              "--ant-menu-item-selected-bg": "rgba(79, 70, 229, 0.08)",
-              "--ant-menu-item-selected-color": "#4f46e5",
-            } as React.CSSProperties
-          }
-        />
-      </div>
-
-      {/* 底部学习进度 */}
-      {!collapsed && !isTeacher && !isMobile && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
-          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-            <Typography.Text className="text-xs text-slate-500 block mb-2 font-medium">
-              今日学习时长
-            </Typography.Text>
-            <Typography.Text className="text-2xl font-bold text-primary block tracking-tight">
-              {todayMinutes >= 60
-                ? `${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m`
-                : `${todayMinutes}m`}
-            </Typography.Text>
-            <div className="mt-3 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{
-                  width: `${Math.min(100, Math.round((todayMinutes / 120) * 100))}%`,
-                }}
-              />
+        width={240}
+        collapsedWidth={80}
+        collapsed={isMobile ? false : collapsed}
+        theme="light"
+        className={`fixed left-0 top-0 h-screen z-50 border-r border-slate-200 bg-white transition-transform duration-300 ${
+          isMobile && collapsed ? "-translate-x-full" : "translate-x-0"
+        } ${isMobile && !collapsed ? "shadow-2xl" : ""}`}
+      >
+        {/* Logo区域 */}
+        <div className="h-16 flex items-center px-5 border-b border-slate-100 justify-between">
+          <Space>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary">
+              <RobotOutlined className="text-white text-lg" />
             </div>
-            <div className="flex justify-between mt-1.5">
-              <Typography.Text className="text-xs text-slate-400">
-                目标: 2小时
-              </Typography.Text>
-              <Typography.Text className="text-xs text-primary font-medium">
-                {Math.min(100, Math.round((todayMinutes / 120) * 100))}%
-              </Typography.Text>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {collapsed && !isTeacher && !isMobile && (
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-          <Tooltip
-            title={`今日已学 ${todayMinutes >= 60 ? `${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m` : `${todayMinutes}m`}`}
+            {(!collapsed || isMobile) && (
+              <Typography.Title
+                level={5}
+                className="!m-0 text-slate-900 font-bold tracking-tight"
+              >
+                LearnLab
+              </Typography.Title>
+            )}
+          </Space>
+          <button
+            onClick={toggleSidebar}
+            className="text-slate-400 hover:text-primary transition-colors p-1 rounded-lg hover:bg-slate-50"
           >
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-              {Math.min(100, Math.round((todayMinutes / 120) * 100))}%
-            </div>
-          </Tooltip>
+            {!isMobile && collapsed ? (
+              <MenuUnfoldOutlined />
+            ) : (
+              <MenuFoldOutlined />
+            )}
+          </button>
         </div>
-      )}
+
+        {/* 菜单区域 */}
+        <div className="py-4 px-2">
+          <Menu
+            mode="inline"
+            inlineCollapsed={!isMobile && collapsed}
+            selectedKeys={[location.pathname]}
+            items={navMenuItems}
+            onClick={({ key }) => handleNavigate(key)}
+            className="border-r-0 bg-transparent"
+            style={
+              {
+                "--ant-menu-item-selected-bg": "rgba(79, 70, 229, 0.08)",
+                "--ant-menu-item-selected-color": "#4f46e5",
+              } as React.CSSProperties
+            }
+          />
+        </div>
+
+        {/* 底部学习进度 */}
+        {!collapsed && !isTeacher && !isMobile && (
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+              <Typography.Text className="text-xs text-slate-500 block mb-2 font-medium">
+                今日学习时长
+              </Typography.Text>
+              <Typography.Text className="text-2xl font-bold text-primary block tracking-tight">
+                {todayMinutes >= 60
+                  ? `${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m`
+                  : `${todayMinutes}m`}
+              </Typography.Text>
+              <div className="mt-3 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{
+                    width: `${Math.min(100, Math.round((todayMinutes / 120) * 100))}%`,
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <Typography.Text className="text-xs text-slate-400">
+                  目标: 2小时
+                </Typography.Text>
+                <Typography.Text className="text-xs text-primary font-medium">
+                  {Math.min(100, Math.round((todayMinutes / 120) * 100))}%
+                </Typography.Text>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {collapsed && !isTeacher && !isMobile && (
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+            <Tooltip
+              title={`今日已学 ${todayMinutes >= 60 ? `${Math.floor(todayMinutes / 60)}h ${todayMinutes % 60}m` : `${todayMinutes}m`}`}
+            >
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
+                {Math.min(100, Math.round((todayMinutes / 120) * 100))}%
+              </div>
+            </Tooltip>
+          </div>
+        )}
       </Sider>
     </>
   );

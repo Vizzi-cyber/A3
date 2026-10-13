@@ -170,7 +170,7 @@ const PPTGenerator: React.FC<PPTGeneratorProps> = ({
       onCancel={handleClose}
       footer={null}
       width={520}
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="space-y-5 py-2">
         {/* 主题输入 */}

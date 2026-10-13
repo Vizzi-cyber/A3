@@ -3,40 +3,40 @@
   "method": "per_student_chronological_holdout",
   "test_fraction": 0.3,
   "coverage": {
-    "all_answers": 218,
-    "train_answers": 149,
-    "all_test_answers": 69,
-    "eligible_test_answers": 34,
-    "students": 8,
-    "fitted_skills": 23,
-    "positive_rate_test": 0.7647
+    "all_answers": 222,
+    "train_answers": 152,
+    "all_test_answers": 70,
+    "eligible_test_answers": 43,
+    "students": 7,
+    "fitted_skills": 21,
+    "positive_rate_test": 0.6279
   },
   "models": {
     "bkt": {
-      "auc": 0.8101,
-      "log_loss": 0.7684,
-      "brier_score": 0.1159,
-      "accuracy": 0.8824,
+      "auc": 0.9051,
+      "log_loss": 0.5591,
+      "brier_score": 0.0835,
+      "accuracy": 0.907,
       "auc_ci_95": [
-        0.5724,
-        0.9762
+        0.7716,
+        0.9919
       ]
     },
     "recent_5_correctness": {
-      "auc": 0.7909,
-      "log_loss": 1.5331,
-      "brier_score": 0.1271,
-      "accuracy": 0.8529,
+      "auc": 0.897,
+      "log_loss": 1.1922,
+      "brier_score": 0.0961,
+      "accuracy": 0.8837,
       "auc_ci_95": [
-        0.6081,
-        0.9881
+        0.7929,
+        1.0
       ]
     },
     "train_majority_rate": {
       "auc": 0.5,
-      "log_loss": 0.5605,
-      "brier_score": 0.1845,
-      "accuracy": 0.7647,
+      "log_loss": 0.7573,
+      "brier_score": 0.2689,
+      "accuracy": 0.6279,
       "auc_ci_95": [
         0.5,
         0.5
@@ -44,11 +44,10 @@
     }
   },
   "warnings": [
-    "holdout_below_100_answers",
-    "bkt_calibration_worse_than_majority_baseline"
+    "holdout_below_100_answers"
   ],
   "fit": {
-    "train_auc": 0.8304,
+    "train_auc": 0.8996,
     "note": "train_auc is diagnostic only; use holdout metrics for claims"
   }
 }

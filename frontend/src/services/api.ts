@@ -174,6 +174,20 @@ api.interceptors.response.use(
   },
 );
 
+// ---------- 算法能力（BKT 知识追踪等）----------
+export const algorithmApi = {
+  /** BKT 逐知识点掌握度（0-1），用于薄弱点识别与展示 */
+  bktMastery: (studentId: string) =>
+    api.get<{
+      status: string;
+      data: {
+        student_id: string;
+        mastery_map: Record<string, number>;
+        auc?: number;
+      };
+    }>(`/algorithms/bkt/mastery/${studentId}`),
+};
+
 // ---------- 学生画像 ----------
 export const profileApi = {
   get: (studentId: string) =>
@@ -415,6 +429,7 @@ export interface DashboardSummaryResponse {
     achievements: number;
     favorites: number;
     mastered_kps: number;
+    total_kps: number;
     today_duration_min: number;
   };
   tasks: Array<{
@@ -830,8 +845,13 @@ export const learningDataApi = {
     }>("/learning-data/quiz", data),
   submitExperiment: (data: {
     student_id: string;
-    experiment_type: string;
-    action?: string;
+    experiment_type:
+      | "circuit_simulate"
+      | "circuit_fault"
+      | "stm32_simulate"
+      | "stm32_experiment"
+      | "cross_project";
+    action?: "run" | "diagnose" | "submit" | "complete";
     detail?: Record<string, unknown>;
     duration?: number;
   }) => api.post<{ status: string }>("/learning-data/experiment", data),

@@ -89,6 +89,20 @@ frontend/.pytest_cache/
 screenshots/
 *.zip
 
+# 交付材料打包区（最终提交文件，随仓库共享给团队）
+!交付材料/**/*.zip
+
 # Playwright local config & AIC test screenshots
 frontend/playwright.config.local.ts
 frontend/test-screenshots/
+
+
+# ZCode session files
+.zcode/
+交付材料/**/_验收*/
+交付材料/5_参赛承诺书_已签字.pdf
+
+# 手写签名原图不公开（防冒用），签名已贴入交付 PDF
+交付材料/_assets/签名/
+交付材料/02_技术方案/_*
+交付材料/02_技术方案/模板工作_filled.docx

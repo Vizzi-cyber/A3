@@ -273,14 +273,14 @@ const Login: React.FC = () => {
                       disabled={loading}
                       onClick={() => handleQuickLogin("student_001", "123456")}
                     >
-                      学生一键登录
+                      体验学生账号
                     </Button>
                     <Button
                       icon={<UserOutlined />}
                       disabled={loading}
                       onClick={() => handleQuickLogin("T001", "Teacher123")}
                     >
-                      教师一键登录
+                      体验教师账号
                     </Button>
                   </div>
                 </Form>

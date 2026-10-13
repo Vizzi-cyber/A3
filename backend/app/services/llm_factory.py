@@ -321,6 +321,26 @@ class FailoverLLM(BaseLLM):
         raise last_error
 
 
+class DegradedLLM(BaseLLM):
+    """未配置任何 LLM API Key 时的兜底实现：不抛错，所有调用返回友好提示"""
+
+    provider = "degraded"
+    model = "not-configured"
+
+    def __init__(self) -> None:
+        self.message = (
+            "AI 功能尚未配置：请在 backend/.env 中至少设置一项大模型 API Key"
+            "（SPARK_API_KEY / DEEPSEEK_API_KEY / BIGMODEL_API_KEY / OPENAI_API_KEY / MIMO_API_KEY），"
+            "重启后端即可启用智能辅导与内容生成。"
+        )
+
+    async def ainvoke(self, messages, temperature: float = 0.7, max_tokens: int = 1024, thinking: bool = False) -> str:
+        return self.message
+
+    async def astream(self, messages, temperature: float = 0.7, max_tokens: int = 1024, thinking: bool = False):
+        yield self.message
+
+
 class LLMFactory:
     """大模型工厂 — 支持多家提供商注册与自动降级"""
 
@@ -383,10 +403,15 @@ class LLMFactory:
             # 主提供商未配置 Key 时，自动选择第一个已配置的提供商
             configured = [n for n in cls._PROVIDER_MAP if cls.is_configured(n)]
             if not configured:
-                raise ValueError(
-                    "未配置任何 LLM API Key。请在 .env 中至少配置一项："
-                    "SPARK_API_KEY / DEEPSEEK_API_KEY / BIGMODEL_API_KEY / OPENAI_API_KEY / MIMO_API_KEY"
+                # 一个 Key 都没有：进入降级模式而不是崩溃，保证应用可启动
+                logger.warning(
+                    "未配置任何 LLM API Key，AI 功能进入降级模式（返回友好提示）。"
+                    "启用方法：在 .env 中至少设置一项 SPARK_API_KEY / DEEPSEEK_API_KEY / "
+                    "BIGMODEL_API_KEY / OPENAI_API_KEY / MIMO_API_KEY"
                 )
+                degraded = DegradedLLM()
+                cls._cache["degraded"] = degraded
+                return degraded
             logger.warning(f"主提供商 {primary_name} 未配置 API Key，自动切换为 {configured[0]}")
             primary_name = configured[0]
 

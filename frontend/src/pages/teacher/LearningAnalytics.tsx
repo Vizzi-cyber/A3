@@ -36,6 +36,7 @@ const LearningAnalytics: React.FC = () => {
   const [weakAreas, setWeakAreas] = useState<{ area: string; count: number }[]>(
     [],
   );
+  const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -45,9 +46,13 @@ const LearningAnalytics: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await teacherApi.getWeakPoints();
-      setWeakPoints(res.data.weak_tags || []);
-      setWeakAreas(res.data.weak_areas || []);
+      const [weakRes, overviewRes] = await Promise.all([
+        teacherApi.getWeakPoints(),
+        teacherApi.getOverview(),
+      ]);
+      setWeakPoints(weakRes.data.weak_tags || []);
+      setWeakAreas(weakRes.data.weak_areas || []);
+      setTotalStudents(overviewRes.data.overview?.total_students || 0);
     } catch {
       // ignore
     } finally {
@@ -129,7 +134,11 @@ const LearningAnalytics: React.FC = () => {
                         </span>
                       </div>
                       <Progress
-                        percent={Math.min(100, (item.count / 20) * 100)}
+                        percent={
+                          totalStudents > 0
+                            ? Math.min(100, (item.count / totalStudents) * 100)
+                            : 0
+                        }
                         showInfo={false}
                         strokeColor={
                           item.count > 5

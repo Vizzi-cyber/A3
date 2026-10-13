@@ -334,7 +334,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({ onNoteClick }) => {
         style={{ top: 20 }}
         styles={{ body: { height: "calc(90vh - 55px)", padding: 0 } }}
         closeIcon={<CloseOutlined className="text-slate-500" />}
-        destroyOnClose
+        destroyOnHidden
       >
         <div className="h-full">{graphContent}</div>
       </Modal>

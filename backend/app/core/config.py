@@ -41,21 +41,16 @@ class Settings(BaseSettings):
             object.__setattr__(self, 'ALLOWED_ORIGINS', list(dict.fromkeys(self.ALLOWED_ORIGINS + extra)))
 
         if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
-            if not self.DEBUG:
-                raise ValueError(
-                    "生产环境必须设置强SECRET_KEY（至少32字符）。"
-                    "建议运行: python -c \"import secrets; print(secrets.token_hex(32))\""
-                )
-            else:
-                import secrets as _secrets
-                import warnings
-                warnings.warn(
-                    "DEBUG模式未设置SECRET_KEY，已自动生成临时密钥（重启后失效）。"
-                    "建议在 .env 中设置 SECRET_KEY 以保持 token 稳定。",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                object.__setattr__(self, 'SECRET_KEY', _secrets.token_hex(32))
+            import secrets as _secrets
+            import warnings
+            warnings.warn(
+                "SECRET_KEY 未设置或强度不足，已自动生成临时密钥（重启后已签发的 token 会失效）。"
+                "正式部署请在 .env 中设置固定的强 SECRET_KEY："
+                "python -c \"import secrets; print(secrets.token_hex(32))\"",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            object.__setattr__(self, 'SECRET_KEY', _secrets.token_hex(32))
 
     # 数据库配置
     DATABASE_URL: str = "sqlite:///./ai_learning_v2.db"

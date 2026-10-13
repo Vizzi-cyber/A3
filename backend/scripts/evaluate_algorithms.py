@@ -16,6 +16,11 @@ from app.models.knowledge import QuizResultModel
 
 
 def load_quiz_results() -> list[dict]:
+    """加载学生作答记录。
+
+    只取学生账号：教师演示账号的作答不属于学生能力数据，
+    混入会污染知识追踪模型的训练与评估口径。
+    """
     db = SessionLocal()
     try:
         rows = db.query(QuizResultModel).order_by(QuizResultModel.created_at, QuizResultModel.quiz_id).all()
@@ -28,6 +33,7 @@ def load_quiz_results() -> list[dict]:
                 "created_at": row.created_at.isoformat() if row.created_at else "",
             }
             for row in rows
+            if not row.student_id.startswith("teacher")
         ]
     finally:
         db.close()

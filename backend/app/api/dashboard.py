@@ -94,6 +94,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
         .distinct()
         .all()
     }
+    total_kps = db.query(KnowledgePointModel).count()
 
     # ---------- 成就数 ----------
     ach_count = db.query(AchievementModel).filter(AchievementModel.student_id == student_id).count()
@@ -282,6 +283,7 @@ async def get_dashboard_summary(student_id: str, db: Session = Depends(get_db), 
             "achievements": ach_count,
             "favorites": fav_count,
             "mastered_kps": len(mastered_kps),
+            "total_kps": total_kps,
             "today_duration_min": today_duration_min,
         },
         "tasks": pending_tasks,

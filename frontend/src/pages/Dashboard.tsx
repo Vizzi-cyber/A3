@@ -89,6 +89,7 @@ const Dashboard: React.FC = () => {
     achievements: 0,
     favorites: 0,
     mastered_kps: 0,
+    total_kps: 0,
     today_duration_min: 0,
   });
   const [pathNodesState, setPathNodesState] = useState<PathNode[]>([]);
@@ -274,7 +275,9 @@ const Dashboard: React.FC = () => {
           .then((res) => {
             if (res.data) {
               const d = res.data;
-              setStats(d.stats || stats);
+              // 用函数式更新取最新值：闭包里的 stats 是 effect 创建时的旧值，
+              // 直接回退会导致用初始值覆盖已加载的数据
+              setStats((prev) => d.stats || prev);
               setTasks(d.tasks || []);
               setRecommendations(d.recommendations || []);
               if (d.trend?.length) {
@@ -544,8 +547,13 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center gap-6 mb-6 p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 to-emerald-50/60 border border-indigo-100/50">
               <AnimatedRing
                 percent={
-                  stats.mastered_kps > 0
-                    ? Math.min(100, Math.round((stats.mastered_kps / 20) * 100))
+                  stats.total_kps > 0
+                    ? Math.min(
+                        100,
+                        Math.round(
+                          (stats.mastered_kps / stats.total_kps) * 100,
+                        ),
+                      )
                     : 0
                 }
                 size={96}
@@ -556,7 +564,9 @@ const Dashboard: React.FC = () => {
                   <div className="text-xl font-bold text-slate-800">
                     <CountUp value={stats.mastered_kps} duration={1.6} />
                   </div>
-                  <div className="text-[10px] text-slate-400">已掌握/20</div>
+                  <div className="text-[10px] text-slate-400">
+                    已掌握/{stats.total_kps}
+                  </div>
                 </div>
               </AnimatedRing>
               <div>

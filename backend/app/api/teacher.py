@@ -500,11 +500,11 @@ async def get_weak_points(
     """全班薄弱知识点统计"""
     # 从测验结果中统计弱项标签
     quizzes = db.query(QuizResultModel).all()
-    tag_count = {}
+    tag_students = defaultdict(set)
     for q in quizzes:
         if q.weak_tags:
             for tag in q.weak_tags:
-                tag_count[tag] = tag_count.get(tag, 0) + 1
+                tag_students[tag].add(q.student_id)
 
     kp_scores = defaultdict(list)
     for q in quizzes:
@@ -517,7 +517,10 @@ async def get_weak_points(
     weak_kps.sort(key=lambda x: (x["avg_score"], -x["attempts"]))
 
     # 排序
-    sorted_tags = sorted(tag_count.items(), key=lambda x: x[1], reverse=True)
+    sorted_tags = sorted(
+        ((tag, len(student_ids)) for tag, student_ids in tag_students.items()),
+        key=lambda x: (-x[1], x[0]),
+    )
 
     # 从学生画像中统计薄弱领域
     profiles = db.query(StudentProfileModel).all()
@@ -910,9 +913,6 @@ async def get_pilot_report(
                 UserModel.class_id == class_id,
             ).all()
         ]
-        if not class_student_ids:
-            return {"status": "success", "period_days": days, "scope": f"class:{class_id}",
-                    "summary": {"active_students": 0}, "students": []}
     from ..models.monitor import ApiMonitorModel
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
@@ -921,7 +921,7 @@ async def get_pilot_report(
         """班级/学生作用域过滤条件"""
         if student_id:
             return model.student_id == student_id
-        if class_student_ids:
+        if class_student_ids is not None:
             return model.student_id.in_(class_student_ids)
         return None
 
@@ -965,21 +965,39 @@ async def get_pilot_report(
     zq = zq.group_by(QuizResultModel.student_id)
     quiz_map = {r.student_id: r for r in zq.all()}
 
-    # 前后测对比（全班/班级）：前1/3 vs 后1/3 平均分
+    # 前后测对比：以正式测评（assessment_phase=pre/post）为准。
+    # 注意：不能用"全部测验按时间切前1/3 vs 后1/3"代替——后期练习难度更高，
+    # 会算出负提升，且与前后测问卷口径无关。
     pre_post = None
     if not student_id:
-        pq = db.query(QuizResultModel.score).filter(QuizResultModel.created_at >= since)
+        pq = db.query(
+            QuizResultModel.assessment_phase,
+            QuizResultModel.score,
+        ).filter(
+            QuizResultModel.created_at >= since,
+            QuizResultModel.assessment_phase.in_(["pre", "post"]),
+        )
         _sf = _scope_filter(QuizResultModel)
         if _sf is not None:
             pq = pq.filter(_sf)
-        all_scores = pq.order_by(QuizResultModel.created_at.asc()).all()
-        n = len(all_scores)
-        if n >= 6:
-            third = n // 3
-            pre = sum(s[0] for s in all_scores[:third]) / third
-            post = sum(s[0] for s in all_scores[-third:]) / third
-            pre_post = {"pre_avg": round(pre, 1), "post_avg": round(post, 1),
-                        "improvement": round(post - pre, 1), "sample_size": n}
+        phase_scores: Dict[str, List[float]] = {"pre": [], "post": []}
+        for phase, score in pq.all():
+            if phase in phase_scores and score is not None:
+                phase_scores[phase].append(score)
+        pre_list, post_list = phase_scores["pre"], phase_scores["post"]
+        # 需两侧各有样本才能对比
+        if pre_list and post_list:
+            pre = sum(pre_list) / len(pre_list)
+            post = sum(post_list) / len(post_list)
+            pre_post = {
+                "pre_avg": round(pre, 1),
+                "post_avg": round(post, 1),
+                "improvement": round(post - pre, 1),
+                # 正式测评份数 = 前后测样本量（如 20 份前测 / 17 份后测取较小侧）
+                "sample_size": min(len(pre_list), len(post_list)),
+                "pre_count": len(pre_list),
+                "post_count": len(post_list),
+            }
 
     # ---------- 3. 掌握度趋势（student_trends） ----------
     tq = db.query(
@@ -1027,29 +1045,32 @@ async def get_pilot_report(
 
     # ---------- 汇总 ----------
     students = []
-    for r in learn_rows:
-        q = quiz_map.get(r.student_id)
+    learning_map = {r.student_id: r for r in learn_rows}
+    student_ids = set(learning_map) | set(quiz_map)
+    for sid in student_ids:
+        r = learning_map.get(sid)
+        q = quiz_map.get(sid)
         students.append({
-            "student_id": r.student_id,
-            "record_count": r.record_count,
-            "total_duration_sec": r.total_duration,
-            "total_duration_hours": round(r.total_duration / 3600, 1),
-            "completed_kps": complete_map.get(r.student_id, 0),
+            "student_id": sid,
+            "record_count": r.record_count if r else 0,
+            "total_duration_sec": r.total_duration if r else 0,
+            "total_duration_hours": round((r.total_duration if r else 0) / 3600, 1),
+            "completed_kps": complete_map.get(sid, 0),
             "quiz_count": q.quiz_count if q else 0,
             "avg_score": round(q.avg_score, 1) if q and q.avg_score else 0,
             "max_score": q.max_score if q else 0,
         })
-    students.sort(key=lambda s: -s["total_duration_sec"])
+    students.sort(key=lambda s: (-s["total_duration_sec"], s["student_id"]))
 
     total_duration = sum(s["total_duration_sec"] for s in students)
     total_quiz = sum(s["quiz_count"] for s in students)
-    total_score = sum(s["avg_score"] * s["quiz_count"] for s in students)
+    total_score = sum((q.avg_score or 0) * q.quiz_count for q in quiz_map.values())
     report = {
         "status": "success",
         "period_days": days,
         "scope": class_id or ("student" if student_id else "class"),
         "summary": {
-            "active_students": len(students),
+            "active_students": len(learning_map),
             "total_duration_hours": round(total_duration / 3600, 1),
             "avg_daily_hours": round(total_duration / 3600 / max(days, 1), 2),
             "total_records": sum(s["record_count"] for s in students),
@@ -1091,12 +1112,15 @@ async def get_pilot_report(
             "",
         ]
         if pre_post:
+            # 提升幅度按实际正负号显示，避免负数被写成 "+-18.1"
+            imp = pre_post["improvement"]
+            sign = "+" if imp >= 0 else ""
             lines += [
                 "## 二、前后测成绩对比",
                 "",
-                f"- 前测平均分：{pre_post['pre_avg']}",
-                f"- 后测平均分：{pre_post['post_avg']}",
-                f"- 提升幅度：**+{pre_post['improvement']} 分**（样本 {pre_post['sample_size']} 次测验）",
+                f"- 前测平均分：{pre_post['pre_avg']}（{pre_post.get('pre_count', pre_post['sample_size'])} 份）",
+                f"- 后测平均分：{pre_post['post_avg']}（{pre_post.get('post_count', pre_post['sample_size'])} 份）",
+                f"- 提升幅度：**{sign}{imp} 分**",
                 "",
             ]
         if experiment_map:
@@ -1107,7 +1131,8 @@ async def get_pilot_report(
                 "|---|---|",
             ]
             labels = {"circuit_simulate": "模拟电路仿真", "circuit_fault": "故障诊断实验",
-                      "stm32_simulate": "STM32仿真", "stm32_experiment": "STM32实验实训"}
+                      "stm32_simulate": "STM32仿真", "stm32_experiment": "STM32实验实训",
+                      "cross_project": "跨学科实战项目"}
             for k, v in experiment_map.items():
                 lines.append(f"| {labels.get(k, k)} | {v} |")
             lines.append("")

@@ -61,6 +61,8 @@ const EXPERIMENT_LABELS: Record<string, string> = {
   circuit_simulate: "模拟电路仿真",
   circuit_fault: "故障诊断实验",
   stm32_simulate: "STM32仿真",
+  stm32_experiment: "STM32实验实训",
+  cross_project: "跨学科实战项目",
 };
 
 const TREND_LABELS: Record<string, string> = {
