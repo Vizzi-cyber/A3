@@ -90,6 +90,14 @@ const CodeBlock: React.FC<{ language: string; children: string }> = ({
 /** 静态 components 映射 —— 模块级单例，避免每次渲染重新创建对象 */
 
 const markdownComponents: Record<string, any> = {
+  pre({ children }: { children?: React.ReactNode }) {
+    // HAST nodes have no parent reference. Recognize blocks at the pre element,
+    // so unlabeled fences work and the block UI is never nested inside a pre.
+    const code = React.Children.toArray(children)[0];
+    const cls = React.isValidElement(code) ? code.props.className || "" : "";
+    const language = /language-(\S+)/.exec(cls)?.[1] || "text";
+    return <CodeBlock language={language}>{extractText(children)}</CodeBlock>;
+  },
   code({
     node,
     className: cls,
@@ -101,16 +109,9 @@ const markdownComponents: Record<string, any> = {
     children?: React.ReactNode;
     [key: string]: unknown;
   }) {
-    const match = /language-(\w+)/.exec(cls || "");
     const codeText = extractText(children);
-    if (match) {
-      return <CodeBlock language={match[1]}>{codeText}</CodeBlock>;
-    }
-    if (node?.parent?.tagName === "pre") {
-      return <CodeBlock language="text">{codeText}</CodeBlock>;
-    }
     return (
-      <code className="inline-code" {...props}>
+      <code className={cls || "inline-code"} {...props}>
         {codeText}
       </code>
     );
@@ -140,8 +141,8 @@ const markdownComponents: Record<string, any> = {
   ul({ children }: { children?: React.ReactNode }) {
     return <ul className="md-ul">{children}</ul>;
   },
-  ol({ children }: { children?: React.ReactNode }) {
-    return <ol className="md-ol">{children}</ol>;
+  ol({ children, start }: { children?: React.ReactNode; start?: number }) {
+    return <ol className="md-ol" start={start}>{children}</ol>;
   },
   li({ children }: { children?: React.ReactNode }) {
     return <li className="md-li">{children}</li>;

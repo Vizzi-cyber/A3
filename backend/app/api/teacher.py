@@ -920,7 +920,10 @@ async def get_pilot_report(
     def _scope_filter(model):
         """班级/学生作用域过滤条件"""
         if student_id:
-            return model.student_id == student_id
+            condition = model.student_id == student_id
+            if class_student_ids is not None:
+                condition = condition & model.student_id.in_(class_student_ids)
+            return condition
         if class_student_ids is not None:
             return model.student_id.in_(class_student_ids)
         return None
@@ -1003,15 +1006,18 @@ async def get_pilot_report(
     tq = db.query(
         TrendDataModel.student_id,
         TrendDataModel.trend_state,
-        func.count().label("count"),
+        func.row_number().over(
+            partition_by=TrendDataModel.student_id,
+            order_by=(TrendDataModel.date.desc(), TrendDataModel.created_at.desc(), TrendDataModel.id.desc()),
+        ).label("rank"),
     ).filter(TrendDataModel.created_at >= since)
     _sf = _scope_filter(TrendDataModel)
     if _sf is not None:
         tq = tq.filter(_sf)
-    tq = tq.group_by(TrendDataModel.student_id, TrendDataModel.trend_state)
-    trend_map: Dict[str, int] = {}
-    for r in tq.all():
-        trend_map[r.trend_state] = trend_map.get(r.trend_state, 0) + r.count
+    latest_trends = tq.subquery()
+    trend_map = dict(db.query(
+        latest_trends.c.trend_state, func.count(),
+    ).filter(latest_trends.c.rank == 1).group_by(latest_trends.c.trend_state).all())
 
     # ---------- 4. 实验参与（experiment_logs） ----------
     eq = db.query(
@@ -1021,6 +1027,9 @@ async def get_pilot_report(
     _sf = _scope_filter(ExperimentLogModel)
     if _sf is not None:
         eq = eq.filter(_sf)
+    experiment_students = {
+        sid for (sid,) in eq.with_entities(ExperimentLogModel.student_id).distinct().all()
+    }
     eq = eq.group_by(ExperimentLogModel.experiment_type)
     experiment_map = {r.experiment_type: r.count for r in eq.all()}
 
@@ -1046,7 +1055,7 @@ async def get_pilot_report(
     # ---------- 汇总 ----------
     students = []
     learning_map = {r.student_id: r for r in learn_rows}
-    student_ids = set(learning_map) | set(quiz_map)
+    student_ids = set(learning_map) | set(quiz_map) | experiment_students
     for sid in student_ids:
         r = learning_map.get(sid)
         q = quiz_map.get(sid)
@@ -1070,7 +1079,7 @@ async def get_pilot_report(
         "period_days": days,
         "scope": class_id or ("student" if student_id else "class"),
         "summary": {
-            "active_students": len(learning_map),
+            "active_students": len(student_ids),
             "total_duration_hours": round(total_duration / 3600, 1),
             "avg_daily_hours": round(total_duration / 3600 / max(days, 1), 2),
             "total_records": sum(s["record_count"] for s in students),
