@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -92,6 +93,11 @@ def main() -> int:
     r = subprocess.run(
         ["node", str(printer), str(tmp_html.resolve()), str(dst.resolve())],
         cwd=str(ROOT / "frontend"), capture_output=True, text=True, encoding="utf-8",
+        env={**os.environ, "NODE_PATH": os.pathsep.join(filter(None, [
+            os.environ.get("NODE_PATH"), str(Path("E:/开发/learnlabAI教学平台/frontend/node_modules")),
+            str(ROOT / "frontend" / "node_modules"),
+            str(ROOT / "node_modules"),
+        ]))},
     )
     tmp_html.unlink(missing_ok=True)
     printer.unlink(missing_ok=True)

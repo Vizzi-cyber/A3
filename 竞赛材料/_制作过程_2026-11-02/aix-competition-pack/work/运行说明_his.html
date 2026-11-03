@@ -1,0 +1,195 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><style>
+
+body { font-family: "SimSun","Songti SC",serif; font-size: 12pt; line-height: 1.55; color:#000; margin: 0; padding: 0; line-break: strict; }
+h1 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 22pt; text-align: center; margin: 10mm 0 8mm; }
+h2 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 16pt; margin: 10mm 0 4.5mm; border-bottom: 1.5pt solid #000; padding-bottom: 2.5mm; page-break-after: avoid; }
+h3 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 14pt; margin: 7mm 0 3.5mm; page-break-after: avoid; }
+h4 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 12pt; margin: 5.5mm 0 2.5mm; page-break-after: avoid; }
+p { margin: 0 0 3mm; text-align: justify; }
+table { width: 100%; border-collapse: collapse; font-size: 10pt; margin: 4.5mm 0; page-break-inside: avoid; }
+th, td { border: 1pt solid #000; padding: 5px 9px; text-align: left; vertical-align: top; }
+th { font-family: "SimHei","Heiti SC",sans-serif; font-weight: bold; background: #fff; }
+tr { page-break-inside: avoid; }
+pre { background: #f6f6f6; border: 0.75pt solid #000; padding: 2.5mm; font-size: 9.5pt; line-height: 1.5; white-space: pre-wrap; page-break-inside: avoid; }
+code { font-family: Consolas, monospace; font-size: 10pt; }
+ul, ol { margin: 0 0 3.5mm; padding-left: 2em; }
+li { margin-bottom: 1.8mm; text-align: justify; overflow-wrap: break-word; }
+hr { border: none; border-top: 1pt solid #000; margin: 7mm 0; }
+img { max-width: 100%; height: auto; }
+.cover { text-align:center; margin-top: 24mm; page-break-after: always; }
+.cover .c1 { font-family:"SimHei","Heiti SC",sans-serif; font-size:22pt; font-weight:bold; line-height:1.7; }
+.cover .cg { height: 12mm; }
+.cover .c2 { font-family:"SimHei","Heiti SC",sans-serif; font-size:16pt; font-weight:bold; margin: 5mm 0; }
+.cover .cg2 { height: 14mm; }
+.cover .cf { font-size:14pt; width: 122mm; margin: 7mm auto 0; border-bottom: 0.75pt solid #000; padding-bottom: 1.5mm; }
+.cover .cd { margin-top: 26mm; font-size: 14pt; }
+.toc-t { text-align:center; font-family:"SimHei","Heiti SC",sans-serif; font-size: 22pt; font-weight:bold; margin: 4mm 0 8mm; }
+.tl, .tl2 { display:flex; align-items:baseline; margin-bottom: 2.4mm; }
+.tl2 { padding-left: 2em; }
+.td { flex:1; border-bottom: 1px dotted #000; margin: 0 2mm; height: 0.9em; }
+.team-table td { vertical-align: middle; }
+.team-table .photo { width: 64px; height: 85px; object-fit: cover; border: 0.75pt solid #000; display: block; }
+.team-table .sub { font-size: 8.5pt; color: #555; }
+</style></head><body><h1>LearnLab 评审运行说明</h1>
+<blockquote>
+<p>LearnLab 跨学科智能学习平台（“AI+X”跨学科智能创新应用竞赛）</p>
+<p>本说明面向评审人员，提供线上体验入口和本地源码运行方法。</p>
+</blockquote>
+<h2>1. 体验入口</h2>
+<p>平台线上环境：<strong>https://www.dreamlast.cn</strong></p>
+<p>线上环境已部署学生端和教师端功能，可直接用于功能体验。登录页提供“体验学生账号”和“体验教师账号”快捷入口，也可以使用以下演示账号：</p>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>账号</th>
+<th>密码</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>学生</td>
+<td><code>student_001</code></td>
+<td><code>123456</code></td>
+</tr>
+<tr>
+<td>教师</td>
+<td><code>T001</code></td>
+<td><code>Teacher123</code></td>
+</tr>
+</tbody>
+</table>
+<h2>2. 运行环境</h2>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>版本要求</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>操作系统</td>
+<td>Windows 10/11 或 Linux</td>
+<td>开发与运行环境</td>
+</tr>
+<tr>
+<td>Python</td>
+<td>3.11 及以上</td>
+<td>后端服务与算法验证</td>
+</tr>
+<tr>
+<td>Node.js</td>
+<td>18 及以上</td>
+<td>前端依赖与构建</td>
+</tr>
+<tr>
+<td>浏览器</td>
+<td>Chrome 或 Edge</td>
+<td>平台访问与功能体验</td>
+</tr>
+</tbody>
+</table>
+<p>系统默认使用 SQLite 演示数据库，源码包已包含演示数据，不需要额外安装 MySQL 或 PostgreSQL。</p>
+<h2>3. 源码目录</h2>
+<pre><code class="language-text">learnlab/
+├─ backend/
+│  ├─ app/                    # FastAPI 接口、算法与智能体源码
+│  ├─ ai_learning_v2.db      # SQLite 演示数据库
+│  ├─ requirements.txt        # Python 依赖清单
+│  ├─ requirements-lock.txt   # 锁定版本依赖清单
+│  └─ seed_data.py            # 演示数据初始化脚本
+└─ frontend/
+   ├─ src/                    # React + TypeScript 前端源码
+   ├─ e2e/                    # Playwright 端到端测试
+   └─ package.json            # 前端依赖与脚本
+</code></pre>
+<h2>4. 本地启动</h2>
+<h3>4.1 启动后端</h3>
+<p>在第一个终端执行：</p>
+<pre><code class="language-bash">cd backend
+python -m venv venv
+</code></pre>
+<p>Windows：</p>
+<pre><code class="language-bash">venv\Scripts\activate
+</code></pre>
+<p>Linux 或 macOS：</p>
+<pre><code class="language-bash">source venv/bin/activate
+</code></pre>
+<p>安装依赖并启动服务：</p>
+<pre><code class="language-bash">pip install -r requirements-lock.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+</code></pre>
+<p>启动成功后，访问 <code>http://127.0.0.1:8001/health</code>，返回 <code>{"status":"healthy"}</code> 即表示后端已就绪。</p>
+<h3>4.2 启动前端</h3>
+<p>新开第二个终端执行：</p>
+<pre><code class="language-bash">cd frontend
+npm install
+</code></pre>
+<p>Windows：</p>
+<pre><code class="language-bash">set VITE_PROXY_TARGET=http://127.0.0.1:8001
+</code></pre>
+<p>Linux 或 macOS：</p>
+<pre><code class="language-bash">export VITE_PROXY_TARGET=http://127.0.0.1:8001
+</code></pre>
+<p>启动前端：</p>
+<pre><code class="language-bash">npm run dev
+</code></pre>
+<p>启动成功后，浏览器访问 <code>http://localhost:5173/</code>。</p>
+<h2>5. 大模型能力配置</h2>
+<p>线上环境已配置可用的大模型能力。本地运行时，在 <code>backend/.env</code> 中配置兼容接口密钥后，可以体验智能辅导、AI 备课、AI 学情洞察和 AI 智能组卷等实时生成能力。系统支持多 Provider 注册与切换，配置项示例见 <code>backend/.env.example</code>。</p>
+<p>未配置外部模型密钥时，平台的课程浏览、学习路径、知识图谱、练习、实验仿真、数据看板及离线算法验证仍可运行；需要实时生成的功能会按照系统配置返回相应提示。</p>
+<h2>6. 推荐评审路径</h2>
+<ol>
+<li>进入线上环境或本地前端，登录学生账号。</li>
+<li>查看学习仪表盘，了解学习时长、掌握度、任务和成长信息。</li>
+<li>进入学习路径，查看跨 C 语言、电路分析、STM32 的知识依赖关系与个性化学习顺序。</li>
+<li>进入学习中心，阅读知识点讲义，体验 Cornell 笔记栏、思维导图和 AI 辅导助手。</li>
+<li>进入智能辅导，输入学习问题，体验苏格拉底式引导和流式回复。</li>
+<li>进入错误诊断，提交含有错误的 C 代码，查看语法、逻辑和概念层面的诊断结果。</li>
+<li>进入知识冒险和排行榜，体验闯关练习、知识树和多维成长记录。</li>
+<li>退出学生账号，登录教师账号，查看教师工作台、学生管理和学情分析。</li>
+<li>进入 AI 智能组卷，选择知识点和难度，生成多题型试卷。</li>
+<li>进入试点数据分析，查看学习行为、测验、掌握度和实验参与等数据的汇总报告。</li>
+</ol>
+<h2>7. 算法验证</h2>
+<p>源码包中的 <code>backend/scripts/</code> 提供算法、接口和功能验证脚本，<code>backend/reports/algorithm_evaluation.md</code> 提供算法评估结果记录。常用验证命令如下：</p>
+<pre><code class="language-bash">cd backend
+python -X utf8 scripts/verify_ai_algorithms.py
+python -X utf8 scripts/verify_aic_features.py
+python -X utf8 scripts/verify_dataflow.py
+python -X utf8 scripts/verify_agent_llm.py
+</code></pre>
+<p>后端服务启动后，可运行全路由验证：</p>
+<pre><code class="language-bash">python -X utf8 scripts/verify_all_routes.py
+</code></pre>
+<p>前端端到端验证：</p>
+<pre><code class="language-bash">cd frontend
+npx playwright test e2e/aic-features.spec.ts --reporter=list
+npx playwright test e2e/frontend.spec.ts --reporter=list
+</code></pre>
+<h2>8. 常用端口</h2>
+<table>
+<thead>
+<tr>
+<th>服务</th>
+<th>默认地址</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>后端 API</td>
+<td><code>http://127.0.0.1:8001</code></td>
+</tr>
+<tr>
+<td>后端健康检查</td>
+<td><code>http://127.0.0.1:8001/health</code></td>
+</tr>
+<tr>
+<td>前端开发服务</td>
+<td><code>http://localhost:5173/</code></td>
+</tr>
+</tbody>
+</table>
+<p>端口可在启动命令中按实际环境调整；前端代理目标应与后端地址保持一致。</p></body></html>

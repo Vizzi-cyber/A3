@@ -1,0 +1,9 @@
+export { default as TeacherHome } from "./TeacherHome";
+export { default as AssignmentManagement } from "./AssignmentManagement";
+export { default as StudentManagement } from "./StudentManagement";
+export { default as TeachingResources } from "./TeachingResources";
+export { default as LearningAnalytics } from "./LearningAnalytics";
+export { default as ClassAnalytics } from "./ClassAnalytics";
+export { default as ClassComparison } from "./ClassComparison";
+export { default as ReportExport } from "./ReportExport";
+export { default as SystemSettings } from "./SystemSettings";

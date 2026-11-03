@@ -18,6 +18,12 @@ import sys
 import zipfile
 from pathlib import Path
 
+# Windows 中文控制台可能使用 GBK；统一按 UTF-8 输出，避免审计因符号字符中断。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import pypdf
 
 ROOT = Path(__file__).resolve().parent.parent

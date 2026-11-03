@@ -1,0 +1,172 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><style>
+
+body { font-family: "SimSun","Songti SC",serif; font-size: 12pt; line-height: 1.55; color:#000; margin: 0; padding: 0; line-break: strict; }
+h1 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 22pt; text-align: center; margin: 10mm 0 8mm; }
+h2 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 16pt; margin: 10mm 0 4.5mm; border-bottom: 1.5pt solid #000; padding-bottom: 2.5mm; page-break-after: avoid; }
+h3 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 14pt; margin: 7mm 0 3.5mm; page-break-after: avoid; }
+h4 { font-family: "SimHei","Heiti SC",sans-serif; font-size: 12pt; margin: 5.5mm 0 2.5mm; page-break-after: avoid; }
+p { margin: 0 0 3mm; text-align: justify; }
+table { width: 100%; border-collapse: collapse; font-size: 10pt; margin: 4.5mm 0; page-break-inside: avoid; }
+th, td { border: 1pt solid #000; padding: 5px 9px; text-align: left; vertical-align: top; }
+th { font-family: "SimHei","Heiti SC",sans-serif; font-weight: bold; background: #fff; }
+tr { page-break-inside: avoid; }
+pre { background: #f6f6f6; border: 0.75pt solid #000; padding: 2.5mm; font-size: 9.5pt; line-height: 1.5; white-space: pre-wrap; page-break-inside: avoid; }
+code { font-family: Consolas, monospace; font-size: 10pt; }
+ul, ol { margin: 0 0 3.5mm; padding-left: 2em; }
+li { margin-bottom: 1.8mm; text-align: justify; overflow-wrap: break-word; }
+hr { border: none; border-top: 1pt solid #000; margin: 7mm 0; }
+img { max-width: 100%; height: auto; }
+.cover { text-align:center; margin-top: 24mm; page-break-after: always; }
+.cover .c1 { font-family:"SimHei","Heiti SC",sans-serif; font-size:22pt; font-weight:bold; line-height:1.7; }
+.cover .cg { height: 12mm; }
+.cover .c2 { font-family:"SimHei","Heiti SC",sans-serif; font-size:16pt; font-weight:bold; margin: 5mm 0; }
+.cover .cg2 { height: 14mm; }
+.cover .cf { font-size:14pt; width: 122mm; margin: 7mm auto 0; border-bottom: 0.75pt solid #000; padding-bottom: 1.5mm; }
+.cover .cd { margin-top: 26mm; font-size: 14pt; }
+.toc-t { text-align:center; font-family:"SimHei","Heiti SC",sans-serif; font-size: 22pt; font-weight:bold; margin: 4mm 0 8mm; }
+.tl, .tl2 { display:flex; align-items:baseline; margin-bottom: 2.4mm; }
+.tl2 { padding-left: 2em; }
+.td { flex:1; border-bottom: 1px dotted #000; margin: 0 2mm; height: 0.9em; }
+.team-table td { vertical-align: middle; }
+.team-table .photo { width: 64px; height: 85px; object-fit: cover; border: 0.75pt solid #000; display: block; }
+.team-table .sub { font-size: 8.5pt; color: #555; }
+</style></head><body><h1>LearnLab 功能验证清单</h1>
+<p>本清单给出平台各项能力的验证口径与实测结果。验证脚本随网盘源码包交付，主要位于 <code>backend/scripts/</code> 和 <code>frontend/e2e/</code>；按《LearnLab 评审运行说明》启动服务后即可复现。</p>
+<h2>一、验证结果总览</h2>
+<table>
+<thead>
+<tr>
+<th>验证项</th>
+<th>覆盖范围</th>
+<th>实测结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>算法层专项断言</td>
+<td>BKT / IRT / FSRS / MAB / GKT / NCD / 时间留出评估 / 五层接线 / 趋势学习器 / 匹配探索 等 11 类</td>
+<td><strong>116 项全部通过</strong></td>
+</tr>
+<tr>
+<td>算法接线 API 冒烟</td>
+<td>用真实数据训练 IRT / GKT / 趋势学习器，并验证 MAB 收益闭环回传</td>
+<td><strong>38 项全部通过</strong></td>
+</tr>
+<tr>
+<td>后端全路由冒烟</td>
+<td>211 个接口按验证脚本调用</td>
+<td><strong>0 崩溃</strong>（89 项返回 200、72 项返回合法 4xx、50 项动态参数接口按规则跳过）</td>
+</tr>
+<tr>
+<td>核心功能回归</td>
+<td>跨学科链路 / 试点报告 / 故障实验 / 实验日志</td>
+<td><strong>29 项全部通过</strong></td>
+</tr>
+<tr>
+<td>数据流验证</td>
+<td>学习行为 → 画像 → 路径 → 效果全链路</td>
+<td><strong>23 项全部通过</strong></td>
+</tr>
+<tr>
+<td>Agent / LLM 专项</td>
+<td>多智能体编排 / 模型降级链 / 防幻觉守卫</td>
+<td><strong>23 项全部通过</strong></td>
+</tr>
+<tr>
+<td>前端 E2E</td>
+<td>学生端与教师端核心流程（Playwright）</td>
+<td><strong>59 个用例全部通过</strong></td>
+</tr>
+<tr>
+<td>MNA 数值对照</td>
+<td>RC / RL / LC 电路暂态对照教科书解析解</td>
+<td><strong>9 项全部通过</strong></td>
+</tr>
+<tr>
+<td>密码安全校验</td>
+<td>错误旧密码 / 弱密码 / 重复密码 / 更新提交</td>
+<td><strong>3 项全部通过</strong></td>
+</tr>
+<tr>
+<td>全页面走查</td>
+<td>学生端 10 页 + 教师端 14 页逐页遍历</td>
+<td><strong>24 页全部正常</strong>，零 JS 错误、零横向溢出</td>
+</tr>
+<tr>
+<td>生产环境部署</td>
+<td>腾讯云 + Nginx + HTTPS</td>
+<td>持续运行，<strong>24 小时零 500</strong></td>
+</tr>
+</tbody>
+</table>
+<p>上述验证脚本分四层，分别覆盖算法正确性、接口可用性、业务完整性、界面可操作性，互为补充。</p>
+<h2>二、已验证功能清单</h2>
+<h3>（一）五层教育算法闭环</h3>
+<ul>
+<li><strong>掌握度测量（IRT）</strong>：θ 掌握度估计，小样本自动采用 1PL、数据充分时可切换 2PL；题目难度参数 b 由 IRT 标定，替代人工 1–5 难度分级。</li>
+<li><strong>知识追踪（BKT / GKT）</strong>：BKT 采用 EM 参数估计，并按学生作答时间留出做泛化评估（AUC / LogLoss / Brier，对照最近 5 次正确率与多数类两条基线）；GKT 实现图卷积掌握度传播，采用可学习门控、边权由数据驱动，支持自监督训练。</li>
+<li><strong>记忆调度（FSRS）</strong>：按遗忘曲线计算可提取性，自动生成到期复习队列，知识点在遗忘临界点前被重新排入学习路径。</li>
+<li><strong>决策（MAB）</strong>：路径调整策略采用 Thompson Sampling（含规则先验冷启动），每日选题与资源推荐由多臂老虎机探索-利用，收益数据闭环回传用于策略更新。</li>
+<li><strong>解释（LLM）</strong>：将上述数值结果翻译为学习建议；配套 5 家模型自动降级链与 6 道防幻觉防线。</li>
+</ul>
+<h3>（二）路径规划与知识图谱</h3>
+<ul>
+<li><strong>ADPP 自适应 DAG 路径规划</strong>：综合知识依赖关系与学生掌握度生成学习序列，薄弱环节前置；支持每次测验后自动调整。</li>
+<li><strong>跨课程知识关联</strong>：9 条跨课程关联把 C 语言、电路分析、STM32 三门课的知识图谱接通，可编排跨课程学习顺序。</li>
+<li><strong>知识图谱完整性</strong>：DAG 无环校验、课程元数据与跨课程依赖关系均可查询。</li>
+</ul>
+<h3>（三）电路仿真与实验实训</h3>
+<ul>
+<li><strong>MNA 求解器</strong>：支持直流稳态与状态变量法 RK4 暂态分析（电容充放电、电感电流波形），数值经解析解对照验证。</li>
+<li><strong>电路故障诊断</strong>：在仿真基础上叠加 AI 分析，可定位故障模式并给出排查建议。</li>
+<li><strong>STM32 实训</strong>：芯片与外设连线、代码区域联动、实验行为上报与实验报告生成。</li>
+</ul>
+<h3>（四）智能体与平台服务</h3>
+<ul>
+<li><strong>多智能体协作</strong>：12 个教育角色智能体基于 LangGraph 星型拓扑编排，覆盖备课、学习、纠错、协作全流程。</li>
+<li><strong>Agent 可靠性</strong>：反思机制、结果缓存、JSON 容错解析、模型降级与防幻觉守卫均已接入。</li>
+<li><strong>多模型接入</strong>：Provider 注册机制支持多厂商切换，未配置密钥时自动跳过，服务不中断。</li>
+</ul>
+<h3>（五）教学与数据链路</h3>
+<ul>
+<li><strong>核心学习链路</strong>：仪表盘、课程知识列表、每日练习、学习行为记录、测验成绩、学习画像、路径生成与调整、趋势分析、教师报告构成完整数据流。</li>
+<li><strong>权限与安全</strong>：学生与教师数据隔离，越权访问返回 403；密码修改需校验当前密码，含弱密码与重复密码拦截。</li>
+<li><strong>教师端能力</strong>：作业下发与自动批改、学情分析、班级对比、试点报告导出、AI 备课 / 学情洞察 / 智能组卷。</li>
+</ul>
+<h2>三、测试环境</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>操作系统</td>
+<td>Windows 11</td>
+</tr>
+<tr>
+<td>后端</td>
+<td>Python 3.11 + FastAPI + SQLAlchemy，SQLite 演示数据库</td>
+</tr>
+<tr>
+<td>前端</td>
+<td>React 18 + TypeScript + Vite + Ant Design 5</td>
+</tr>
+<tr>
+<td>浏览器</td>
+<td>Chrome（Playwright E2E 与页面走查）</td>
+</tr>
+<tr>
+<td>生产环境</td>
+<td>腾讯云 2 核 4G + Nginx + HTTPS（https://www.dreamlast.cn）</td>
+</tr>
+</tbody>
+</table>
+<h2>四、如何复现</h2>
+<ol>
+<li>解压《…源代码.zip》到任意目录；</li>
+<li>按《…运行说明.pdf》安装依赖并启动前后端；</li>
+<li>在 <code>backend/</code> 下按需执行算法、接口和功能验证脚本，或在 <code>frontend/</code> 下执行 <code>npx playwright test</code> 运行前端端到端用例。验证脚本会输出各项断言结果；需要实时大模型调用的功能按本地 Provider 配置运行。</li>
+</ol></body></html>

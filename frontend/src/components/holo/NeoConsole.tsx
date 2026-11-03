@@ -768,7 +768,9 @@ const NeoConsole: React.FC<{ data: HoloData }> = ({ data }) => {
 
       <Canvas
         camera={{ position: [0, 0.1, 16], fov: 44 }}
-        dpr={[1, 2]}
+        // 固定 dpr=1：原先 [1,2] 在 2K/4K 屏或系统缩放 150% 时按 2 倍渲染，
+        // 像素量翻 4 倍，正是滚动卡顿的主因；本场景靠 Bloom 补辉光，1 倍足够。
+        dpr={1}
         gl={{ antialias: true }}
       >
         {/* 背景：深蓝黑 */}
@@ -826,8 +828,9 @@ const NeoConsole: React.FC<{ data: HoloData }> = ({ data }) => {
           autoRotateSpeed={0.35}
         />
 
-        {/* Bloom 柔和辉光 */}
-        <EffectComposer multisampling={0}>
+        {/* Bloom 柔和辉光（resolutionScale 半分辨率：后处理是滚动卡顿的主要开销，
+            减半后像素量降到 1/4，视觉上只在辉光边缘有极细微差别） */}
+        <EffectComposer multisampling={0} resolutionScale={0.5}>
           <Bloom
             intensity={1.15}
             luminanceThreshold={0.25}
